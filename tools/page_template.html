@@ -1,0 +1,157 @@
+<title>The Fidget Shelf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F2F3F0; --panel:#FFFFFF; --panel-2:#FAFBF9;
+  --ink:#232A2B; --muted:#5D6C6E; --faint:#5F6E70;
+  --line:#DDE3DF; --accent:#15776F; --accent-ink:#0E5A54;
+  --pass:#256B31; --pass-bg:#E3F1E4; --warn:#7A5407; --warn-bg:#F7EDD6;
+  --photo-bg:#EBEDE9; --shadow:0 1px 3px rgba(35,42,43,.08),0 4px 16px rgba(35,42,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#14181A; --panel:#1C2225; --panel-2:#20272A;
+    --ink:#E4EBE9; --muted:#9AA9A6; --faint:#93A3A0;
+    --line:#2B3438; --accent:#49C7B8; --accent-ink:#6BD8CB;
+    --pass:#66C173; --pass-bg:#1E3423; --warn:#DFAE4E; --warn-bg:#3A2F17;
+    --photo-bg:#232A2D; --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#14181A; --panel:#1C2225; --panel-2:#20272A;
+  --ink:#E4EBE9; --muted:#9AA9A6; --faint:#93A3A0;
+  --line:#2B3438; --accent:#49C7B8; --accent-ink:#6BD8CB;
+  --pass:#66C173; --pass-bg:#1E3423; --warn:#DFAE4E; --warn-bg:#3A2F17;
+  --photo-bg:#232A2D; --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--ground);color:var(--ink);
+  font:400 15.5px/1.55 "IBM Plex Sans",system-ui,sans-serif;
+  padding:0 24px 80px}
+.wrap{max-width:1240px;margin:0 auto}
+header.top{padding:52px 0 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px}
+h1{font:700 clamp(30px,4.5vw,44px)/1.05 "Chakra Petch",sans-serif;letter-spacing:.5px}
+h1 .tld{color:var(--accent)}
+.sub{color:var(--muted);max-width:62ch;text-wrap:balance;margin:10px 0 0;flex-basis:100%}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 34px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:10px 18px 8px;min-width:118px}
+.stat b{display:block;font:600 24px/1.1 "Chakra Petch",sans-serif;
+  font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.stat b em{font-style:normal;font-size:14px;color:var(--faint)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3;overflow:hidden}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.pill{position:absolute;top:12px;right:12px;font:500 12px/1 "IBM Plex Mono",monospace;
+  padding:6px 10px;border-radius:99px;letter-spacing:.02em}
+.pill.pass{background:var(--pass-bg);color:var(--pass);border:1px solid var(--pass)}
+.pill.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
+.body{padding:18px 20px 16px;display:flex;flex-direction:column;gap:12px;flex:1}
+.card h3{font:600 21px/1.15 "Chakra Petch",sans-serif}
+.card h3 .mat{font:600 11px/1 "IBM Plex Mono",monospace;color:var(--accent-ink);
+  border:1px solid var(--accent);border-radius:4px;padding:3px 6px;
+  vertical-align:3px;margin-left:6px;letter-spacing:.05em}
+.designer{color:var(--muted);font-size:13px;margin-top:2px}
+.principle{font-size:14.5px}
+.card h4{font:600 11.5px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--accent-ink);margin-bottom:-4px}
+.drivers{list-style:none;padding:0;display:flex;flex-direction:column;gap:5px}
+.drivers li{font-size:13.5px;padding-left:16px;position:relative;color:var(--ink)}
+.drivers li::before{content:"";position:absolute;left:0;top:.55em;width:8px;height:2px;
+  background:var(--accent)}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;
+  border-top:1px solid var(--line);padding-top:12px}
+.spec dt{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.spec dd{font:400 13px/1.35 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.note{font-size:13px;color:var(--muted);border-left:2px solid var(--accent);
+  padding:2px 0 2px 10px}
+.files{font:400 11.5px/1.4 "IBM Plex Mono",monospace;color:var(--faint);
+  margin-top:auto;padding-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+section.block{margin-top:56px}
+section.block>h2{font:600 24px/1.2 "Chakra Petch",sans-serif;margin-bottom:6px}
+section.block>p.lede{color:var(--muted);max-width:70ch;margin-bottom:20px}
+.fixes{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.fixes li{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.fixes strong{display:block;font:600 15px "Chakra Petch",sans-serif;margin-bottom:4px}
+.fixes span{font-size:13.5px;color:var(--muted)}
+.fixes code, .note code{font:400 12px "IBM Plex Mono",monospace;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:4px;padding:1px 4px;color:var(--ink)}
+.ledgerwrap>summary{cursor:pointer;font:600 13px "IBM Plex Sans",sans-serif;color:var(--muted);
+  padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  list-style-position:inside}
+.ledgerwrap[open]>summary{border-radius:10px 10px 0 0;border-bottom:none}
+.ledgerwrap[open] .tablewrap{border-radius:0 0 10px 10px}
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th{font:600 11px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--faint);text-align:left;padding:12px 16px;border-bottom:1px solid var(--line)}
+td{padding:9px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.mono{font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+th.num{text-align:right}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.dot.pass{background:var(--pass)}
+.dot.warn{background:var(--warn)}
+footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
+@media (max-width:640px){.specs{grid-template-columns:1fr}}
+</style>
+<div class="wrap">
+<header class="top">
+  <h1>The Fidget Shelf<span class="tld">.</span></h1>
+  <p class="sub">Every toy-print 3MF and STL in ~/Downloads — geometry validated with trimesh,
+  thumbnails pulled from the files, and each design reduced to the principle and the few
+  parameters that actually drive its shape.</p>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>27</b><span>files scanned</span></div>
+  <div class="stat"><b>15</b><span>distinct designs</span></div>
+  <div class="stat"><b>9<em>/15</em></b><span>fully clean designs</span></div>
+  <div class="stat"><b>6</b><span>with mesh defects</span></div>
+  <div class="stat"><b>1</b><span>repaired part</span></div>
+  <div class="stat"><b>8.6 M</b><span>triangles checked</span></div>
+</div>
+
+<div class="grid">{{CARDS}}</div>
+
+<section class="block">
+  <h2>Cross-design compatibility</h2>
+  <p class="lede">Where parts from different downloads can (and cannot) work together. The rule
+  of thumb that falls out of the analysis: two pieces mate when their interface genus (slot or
+  thread count) and profile radii match — diameters alone are not enough.</p>
+  <ul class="fixes">{{COMPAT}}</ul>
+</section>
+
+<section class="block">
+  <h2>Fixes &amp; swapped parts</h2>
+  <p class="lede">You mentioned at least one model had a part replaced — several did.
+  Everything below was verified from part names, metadata and mesh comparison, not guessed
+  from filenames.</p>
+  <ul class="fixes">{{FIXES}}</ul>
+</section>
+
+<section class="block">
+  <h2>File ledger</h2>
+  <p class="lede">All 27 files, mapped to their design family. <strong>Genus</strong> is the
+  count of tunnels passing clear through a closed solid — a ball is genus 0, a donut or ring
+  genus 1, and each extra handle or helical slot adds one. It is computed from the mesh itself
+  (Euler’s formula: vertices − edges + faces = 2 − 2·genus), so it fingerprints the interlock
+  mechanism no matter how the surface is decorated: the passthrough ball’s 21 helical channels
+  read out as genus 21, and the hourglass bodies’ slot counts as genus 8–19.</p>
+  <details class="ledgerwrap"><summary>Show all 27 files</summary>
+  <div class="tablewrap"><table>
+    <thead><tr><th>File</th><th class="num">MB</th><th>Design</th><th>Geometry verdict</th></tr></thead>
+    <tbody>{{ROWS}}</tbody>
+  </table></div></details>
+</section>
+
+<footer>Validated 2026-08-24 with trimesh 5.0 (watertightness, Euler characteristic / genus,
+duplicate &amp; degenerate faces, primitive fitting, rotational-symmetry FFT). Weights are
+solid-PLA upper bounds at 1.24 g/cm³ except where the file embeds a slicer estimate. Mesh
+defects noted here are all slicer-repairable; none block printing on the P2S.</footer>
+</div>

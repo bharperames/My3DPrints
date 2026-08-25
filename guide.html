@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P2S Field Guide</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#129513;</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@700;900&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --bg: #F6F6F3; --surface: #FFFFFF; --surface-2: #EDEEE9;
+    --ink: #24292E; --ink-soft: #565D66; --line: #D8DAD3;
+    --accent: #2E6E63; --accent-ink: #FFFFFF;
+    --good: #2A7136; --warn: #855C0F; --risk: #B03A2E;
+    --chip-good-bg: #E3F0E4; --chip-warn-bg: #F5EBD6; --chip-risk-bg: #F7E2DF;
+    --code-bg: #EDEEE9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1B1E21; --surface: #23272B; --surface-2: #2A2F34;
+      --ink: #E6E4DE; --ink-soft: #A6ACB2; --line: #3A4046;
+      --accent: #5FA893; --accent-ink: #14201C;
+      --good: #7CC287; --warn: #D9A84E; --risk: #E08578;
+      --chip-good-bg: #263B29; --chip-warn-bg: #3D3321; --chip-risk-bg: #402A26;
+      --code-bg: #2A2F34;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1B1E21; --surface: #23272B; --surface-2: #2A2F34;
+    --ink: #E6E4DE; --ink-soft: #A6ACB2; --line: #3A4046;
+    --accent: #5FA893; --accent-ink: #14201C;
+    --good: #7CC287; --warn: #D9A84E; --risk: #E08578;
+    --chip-good-bg: #263B29; --chip-warn-bg: #3D3321; --chip-risk-bg: #402A26;
+    --code-bg: #2A2F34;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink);
+    font: 1.02rem/1.62 "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    margin: 0; padding: 0 1.25rem 5rem; }
+  main { max-width: 46rem; margin: 0 auto; }
+  .backlink { display: inline-block; margin-top: 1.4rem;
+    font: 600 .85rem "IBM Plex Mono", ui-monospace, monospace; color: var(--accent);
+    text-decoration: none; }
+  .backlink:hover { text-decoration: underline; }
+  header.masthead { padding: 1.6rem 0 2rem; border-bottom: 3px solid var(--ink); margin-bottom: 2.4rem; }
+  .kicker { font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .74rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 .6rem; }
+  h1 { font-family: Chivo, "Arial Black", sans-serif; font-weight: 900;
+    font-size: clamp(2.1rem, 6vw, 3rem); line-height: 1.05;
+    margin: 0 0 .7rem; letter-spacing: -.01em; text-wrap: balance; }
+  .standfirst { color: var(--ink-soft); max-width: 38rem; margin: 0; }
+  section { margin: 2.8rem 0; }
+  .eyebrow { display: flex; align-items: baseline; gap: .7rem;
+    border-bottom: 1px solid var(--line); padding-bottom: .45rem; margin-bottom: 1.1rem; }
+  .eyebrow .tag { font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; }
+  h2 { font-family: Chivo, "Arial Black", sans-serif; font-weight: 700;
+    font-size: 1.45rem; margin: 0; letter-spacing: -.005em; text-wrap: balance; }
+  h3 { font-family: Chivo, sans-serif; font-weight: 700; font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
+  p { margin: .7rem 0; max-width: 44rem; }
+  .thresholds { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; }
+  .threshold { background: var(--surface); border: 1px solid var(--line);
+    border-left: 4px solid var(--accent); border-radius: 4px;
+    padding: .55rem .85rem; min-width: 10rem; flex: 1 1 12rem; }
+  .threshold .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600;
+    font-size: 1.15rem; font-variant-numeric: tabular-nums; display: block; }
+  .threshold .why { font-size: .84rem; color: var(--ink-soft); line-height: 1.4; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--surface); margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th { text-align: left; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 600;
+    padding: .6rem .8rem; border-bottom: 2px solid var(--line); background: var(--surface-2);
+    white-space: nowrap; }
+  td { padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.setting, code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .86em;
+    font-variant-numeric: tabular-nums; }
+  code { background: var(--code-bg); padding: .08em .35em; border-radius: 3px; }
+  .chip { display: inline-block; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem; font-weight: 600; letter-spacing: .05em;
+    padding: .1rem .5rem; border-radius: 999px; white-space: nowrap; }
+  .chip.good { background: var(--chip-good-bg); color: var(--good); }
+  .chip.warn { background: var(--chip-warn-bg); color: var(--warn); }
+  .chip.risk { background: var(--chip-risk-bg); color: var(--risk); }
+  .note { background: var(--surface); border: 1px solid var(--line);
+    border-left: 4px solid var(--warn); border-radius: 4px;
+    padding: .7rem 1rem; margin: 1rem 0; font-size: .93rem; }
+  .note.accent { border-left-color: var(--accent); }
+  ul { padding-left: 1.2rem; margin: .6rem 0; }
+  li { margin: .3rem 0; }
+  li::marker { color: var(--accent); }
+  strong { font-weight: 600; }
+  footer { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--line);
+    color: var(--ink-soft); font-size: .84rem; }
+</style>
+</head>
+<body>
+<main>
+<a class="backlink" href="index.html">← The Fidget Shelf</a>
+<header class="masthead">
+  <p class="kicker">Bambu Lab P2S · 0.4 nozzle · Textured PEI · AMS</p>
+  <h1>P2S Field Guide</h1>
+  <p class="standfirst">Working guidelines for material choice, geometry risk, slicer recipes, and building portable 3MF project files — distilled from real prints, real failures, and measured numbers on this machine.</p>
+</header>
+
+<section>
+  <div class="eyebrow"><span class="tag">01</span><h2>Pick the material from what the part does</h2></div>
+  <p>Material tracks the <em>job of the joint and the surface</em>, not general reputation. PLA is the default for anything precise, interlocking, or decorative; PETG earns its place on parts that flex repeatedly or live outdoors.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Job</th><th>Material</th><th>Why</th></tr>
+    <tr><td>Print-in-place, captive &amp; passthrough fidgets, spinning/sliding fits</td><td><span class="chip good">PLA Basic</span></td><td>Stiff, slick, clean gaps, no strings welding parts together</td></tr>
+    <tr><td>Decorative / display parts</td><td><span class="chip good">PLA Silk / Matte</span></td><td>Finish over strength — silk is the weakest PLA along layers</td></tr>
+    <tr><td>Snap-fits cycled repeatedly; clips under sustained load</td><td><span class="chip warn">PETG</span></td><td>Flexes without stress-whitening or cracking like PLA</td></tr>
+    <tr><td>Outdoor, heat (car), tough brackets</td><td><span class="chip warn">PETG</span></td><td>UV/heat tolerance, layer adhesion, toughness</td></tr>
+    <tr><td>Continuous overhang flares, domes, tall thin sculpture</td><td><span class="chip good">PLA</span></td><td>PETG curls on sustained ≥35° overhangs → nozzle strikes</td></tr>
+    <tr><td>Multi-color plates</td><td><span class="chip good">One material only</span></td><td>PLA and PETG don't bond and want different temps — never mix in a print</td></tr>
+  </table></div>
+  <ul>
+    <li><strong>PLA variants:</strong> Basic is the workhorse for mechanisms. Matte hides layer lines but is grippy (bad for rubbing surfaces). Silk is the most brittle — never for flexing features. Bambu Silk+ improves on old silk but still sits below Basic.</li>
+    <li><strong>PETG variants:</strong> Bambu PETG HF is formulated for less stringing at speed — prefer it over Generic/Basic when buying.</li>
+    <li><strong>Door policy:</strong> PLA — crack the door on long prints once chamber passes ~35&nbsp;°C (≤30&nbsp;°C is fine). PETG — closed; warmth helps layer adhesion.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow"><span class="tag">02</span><h2>Check the geometry before slicing</h2></div>
+  <p>Most "bad print" failures are geometry risks that were visible before the first layer. Four numbers predict them:</p>
+  <div class="thresholds">
+    <div class="threshold"><span class="num">≥ 4:1</span><span class="why">Height ÷ base half-width lever ratio → elevated knock-over risk. Brim becomes mandatory (also at any height ≥150 mm).</span></div>
+    <div class="threshold"><span class="num">&gt; 50°</span><span class="why">Wall angle from vertical that needs support. Below ~45–50° prints clean with a 0.4 nozzle.</span></div>
+    <div class="threshold"><span class="num">≥ 35°</span><span class="why">A <em>continuous</em> flare at this angle around the perimeter curls at the edges (worse in PETG) — curl is what the nozzle strikes.</span></div>
+    <div class="threshold"><span class="num">islands</span><span class="why">First-layer contact is about islands, not area. Each separate island must hold its own tower; gate on the smallest one, and brim when there are many.</span></div>
+  </div>
+  <p><strong>Knock-over mechanics, in one line:</strong> the printer runs open-loop — curled edges and part sway put plastic where the G-code doesn't expect it, the nozzle hits it, and everything above that layer is spaghetti.</p>
+  <p><strong>Also check the mesh:</strong> watertight, no non-manifold edges. The common export defect is a zero-thickness duplicate-face flap — slicers usually auto-repair it silently, but fix the file to remove the gamble.</p>
+</section>
+
+<section>
+  <div class="eyebrow"><span class="tag">03</span><h2>Settings recipes by job</h2></div>
+
+  <h3>Tall / thin / top-heavy (lever ≥ 4:1 or ≥ 150 mm)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Setting</th><th>Value</th><th>Note</th></tr>
+    <tr><td>Brim type</td><td class="setting">Outer brim only · 5 mm · gap 0</td><td>Never "Auto" — Auto often skips it</td></tr>
+    <tr><td>Wall loops</td><td class="setting">3</td><td>Thin parts get strength from perimeters, not infill</td></tr>
+    <tr><td>Outer wall speed</td><td class="setting">100–120 mm/s</td><td>Softens nozzle-strike contact, better flare surfaces</td></tr>
+    <tr><td>Z-hop / Avoid crossing walls</td><td class="setting">on / on</td><td>Travels don't drag across perimeters</td></tr>
+    <tr><td>Infill</td><td class="setting">15% gyroid · 100% if thin &amp; solid</td><td>Flexing bodies + nozzle drag = knock-over</td></tr>
+    <tr><td>Sets per plate</td><td class="setting">one</td><td>More parts ≈ 2× travels ≈ 2× strike chances; two single plates cost the same time</td></tr>
+  </table></div>
+
+  <h3>Print-in-place &amp; interlocking</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Setting</th><th>Value</th><th>Note</th></tr>
+    <tr><td>Supports</td><td class="setting">off</td><td>Support inside internal cavities is unremovable</td></tr>
+    <tr><td>Seam position</td><td class="setting">Aligned / Rear</td><td>Seam blobs are hard bumps inside your clearance</td></tr>
+    <tr><td>Design clearance (PLA)</td><td class="setting">0.20–0.40 mm radial</td><td>0.15–0.25 is stuck territory on an untuned machine</td></tr>
+    <tr><td>Design clearance (PETG)</td><td class="setting">0.30–0.40 mm radial</td><td>PETG prints a touch fat; strings eat the gap</td></tr>
+    <tr><td>If parts bind</td><td class="setting">reprint outer at 101% X/Y, 100% Z</td><td>Preserves helix/thread pitch, unlike uniform scaling</td></tr>
+  </table></div>
+
+  <h3>Multi-color (AMS)</h3>
+  <p>Two modes with wildly different costs — pick deliberately:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Mode</th><th>Use when</th><th>Cost</th></tr>
+    <tr><td><strong>By object</strong> — each object completes fully, then the next</td><td>Each object is a single color</td><td>One filament change per object. Needs toolhead clearance: <span class="setting">72 mm</span> radius between parts on the P2S, X-rod <span class="setting">32.5 mm</span> above nozzle — always re-Arrange after switching printers</td></tr>
+    <tr><td><strong>By layer</strong> — colors change within layers</td><td>Colors mix within one object</td><td>A change every layer: prime tower + flush waste. The same plate measured 1h30m by-object vs 16h42m by-layer</td></tr>
+  </table></div>
+  <p>Flush goes to the prime tower by default; <code>flush_into_support</code> / infill recovers some waste. By-object barely needs a prime tower at all.</p>
+
+  <h3>PETG handling</h3>
+  <ul>
+    <li><strong>Dry first, tune second</strong> — 55–65 °C for 6–8 h; store with desiccant. Popping sounds, fuzz, rough matte surfaces = wet filament, not bad settings. "New roll" does not guarantee dry.</li>
+    <li><strong>Temperature at the low end</strong> of the range — ooze scales strongly with temp. Strings? Drop 10 °C before touching anything else.</li>
+    <li>Fine wisps that brush off are <em>normal</em> for PETG; zero-string PLA-style results are not a realistic target.</li>
+    <li>Don't crank retraction — over-retraction with PETG jams and blobs. The Bambu profiles are already tuned.</li>
+    <li>Textured PEI only — PETG fuses to smooth PEI plates.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow"><span class="tag">03b</span><h2>PETG stringing is a failure chain, not one defect</h2></div>
+  <p>Every mode below comes from the same two material properties: PETG stays tacky and stretchy in the melt far longer than PLA, and it is hygroscopic. Ordered from cosmetic to print-killing:</p>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>Mode</th><th>Mechanism</th><th>Where it bites</th></tr>
+    <tr><td>1</td><td><strong>Classic stringing</strong> (hairs)</td><td>Residual melt pressure oozes during travel; PLA ooze snaps, PETG ooze stretches like hot mozzarella and draws a hair across the travel path</td><td>Multi-island prints maximize travels; on interlocking toys the hairs accumulate <em>inside the clearance gaps</em></td></tr>
+    <tr><td>2</td><td><strong>Moisture fuzz</strong></td><td>Water flashes to steam in the nozzle: faint popping, foamy inconsistent extrusion, rough matte surfaces, cobwebs everywhere, weaker layers</td><td>A spool left out a couple of humid weeks. If it "used to print fine," it's moisture, not settings</td></tr>
+    <tr><td>3</td><td><strong>Blobs &amp; seam defects</strong></td><td>Melt tack keeps the nozzle from releasing cleanly at perimeter starts/stops → raised seam blobs</td><td>Cosmetic on display parts; on a mating surface a seam blob is a hard bump inside your clearance — hence seams Aligned/Rear for print-in-place</td></tr>
+    <tr><td>4</td><td><strong>Nozzle boogers</strong></td><td>Wiped-back ooze clings to the hot nozzle and carbonizes; blobs let go into the print</td><td>Mystery brown specks in a clean part; big accretions drag through top surfaces. Silicone sock + occasional warm brass-brush wipe</td></tr>
+    <tr><td>5</td><td><strong>Strings become mechanical failures</strong></td><td>A hair spanning a print-in-place gap gets welded over by the next layer → a tack weld between parts meant to move; string forests can also catch the nozzle and lift small islands</td><td>Fused or gritty mechanisms; stringing escalating into knock-over / adhesion failures</td></tr>
+    <tr><td>6</td><td><strong>The cooling dilemma</strong> (curl)</td><td>PETG wants low fan for adhesion and gloss, but overhangs need fan to not curl and droop; profiles split the difference</td><td>PETG overhangs always trail PLA's; curled overhang edges are nozzle-strike bait on tall parts</td></tr>
+  </table></div>
+  <p><strong>Taming it on the P2S</strong>, in order of impact — most of this is already in Bambu's PETG profiles:</p>
+  <ul>
+    <li><strong>Dry filament</strong> — nothing else matters if it's wet. The AMS with fresh desiccant keeps a dry spool dry; it does not dry a wet one.</li>
+    <li><strong>Temperature at the low end</strong> — ooze rate scales strongly with temp; drop 10 °C before touching anything else.</li>
+    <li><strong>Avoid crossing walls + z-hop</strong> both on — fewer travels over open space, and the hop snaps strings instead of dragging them.</li>
+    <li><strong>Leave retraction alone</strong> — the Bambu profiles are tuned; cranking it causes jams and worse blobs.</li>
+    <li><strong>Buy PETG HF</strong> — formulated to print faster with less of all of the above than Generic/Basic PETG.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow"><span class="tag">04</span><h2>Diagnose failures from the symptom</h2></div>
+  <div class="tablewrap"><table>
+    <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+    <tr><td>Spaghetti partway up a tall part</td><td>Knock-over: curled overhang edge or sway → nozzle strike</td><td>Brim, slower outer wall, fewer parts per plate, PLA for flares</td></tr>
+    <tr><td>Fails on crowded plates, fine on sparse ones</td><td>Travel moves multiply: more strings, more strike chances per layer</td><td>One set per plate; avoid-crossing-walls; space parts out</td></tr>
+    <tr><td>Print-in-place parts fused or gritty</td><td>Strings tack-welded across clearance gaps; seam blobs</td><td>Dry filament, rear seams, more clearance, PLA</td></tr>
+    <tr><td>Popping sounds, fuzz, rough surfaces</td><td>Wet filament</td><td>Dry it — highest-leverage PETG fix there is</td></tr>
+    <tr><td>Brown specks embedded in the print</td><td>Carbonized nozzle build-up dropping off</td><td>Brush the warm nozzle; keep the silicone sock intact</td></tr>
+    <tr><td>PLA overhangs curling on long prints</td><td>Chamber heat &gt; ~35 °C</td><td>Crack the door; watch chamber temp on screen</td></tr>
+    <tr><td>1-star "doesn't fit" reviews on a model</td><td>Usually settings/material, not the file</td><td>Check whether geometry actually explains the reports first</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow"><span class="tag">05</span><h2>3MF project files are printer-specific</h2></div>
+  <p>A downloaded 3MF carries the author's whole machine context. Before printing someone else's project — or shipping your own — know what's baked in:</p>
+  <ul>
+    <li><strong>Printer preset</strong> (<code>printer_settings_id</code>, <code>printer_model</code>): the print dialog refuses a mismatched machine. Fix on the Prepare page — switch printer, re-slice. The listed process/filament presets are also machine-suffixed (<code>@BBL A1</code> vs <code>@BBL P2S</code>).</li>
+    <li><strong>Exclusion zones</strong> (<code>bed_exclude_area</code>): the P1S draws an 18×28 mm no-print corner; the P2S has none. They travel with the machine preset, not the model.</li>
+    <li><strong>Prime tower position</strong> (<code>wipe_tower_x/y</code>): stored as absolute coordinates — can hang off a different printer's usable area. Drag it toward the middle if the slicer complains.</li>
+    <li><strong>Arrangement</strong>: object spacing was validated against the <em>author's</em> toolhead clearance. After any printer switch, re-Arrange — especially in by-object mode (P2S wants 72 mm; P1S only needed 57 mm).</li>
+    <li><strong>Filament list ≠ filament used</strong>: slots can be leftovers. Check <code>Metadata/slice_info.config</code> for what the plate actually consumes before buying anything.</li>
+    <li><strong>Unsolicited settings</strong>: imported projects carry the author's supports, infill, and sequence choices — review <code>print_sequence</code>, <code>enable_support</code>, <code>brim_type</code> rather than trusting them.</li>
+  </ul>
+  <div class="note accent"><strong>Generating your own 3MFs:</strong> the high-leverage keys in <code>Metadata/project_settings.config</code> are <code>printer_settings_id</code>, <code>curr_bed_type</code>, <code>print_sequence</code>, <code>brim_type</code>/<code>brim_width</code>, <code>wall_loops</code>, <code>enable_support</code>, <code>wipe_tower_x/y</code>, and the per-object <code>extruder</code> assignments in <code>model_settings.config</code>. Set those per job from the recipes above and a file slices cleanly on the machine it claims to target.</div>
+  <div class="note"><strong>Headless / CLI slicing traps</strong> (if scripting against the BambuStudio CLI): preset <code>inherits</code> chains are <em>not</em> resolved — flatten them or you silently get parent defaults; always name the plate via <code>curr_bed_type</code> (the Cool Plate fallback can't slice PETG at all); verify by reading <code>layer_height</code> back out of the G-code.</div>
+</section>
+
+<footer>
+  Numbers cited (1h30m vs 16h42m, clearance radii, thresholds) were measured on this P2S with BambuStudio's own slicer. Recipes assume the 0.20 mm Standard profile as the base.
+  Mirrored from the "P2S Field Guide" artifact into the Fidget Shelf app.
+</footer>
+</main>
+</body>
+</html>

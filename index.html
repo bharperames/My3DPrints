@@ -1,0 +1,1223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Fidget Shelf — Live</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#129513;</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#14181A; --panel:#1D2327; --panel-2:#232B2F;
+  --ink:#EAF1EF; --muted:#AFBEBB; --faint:#97A7A4;
+  --line:#313B40; --accent:#4FD2C2; --accent-ink:#7FE2D5;
+  --pass:#74CD81; --pass-bg:#1E3423; --warn:#E7B75E; --warn-bg:#3A2F17;
+  --photo-bg:#171D20; --shadow:0 1px 3px rgba(0,0,0,.45),0 4px 18px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--ground);color:var(--ink);
+  font:400 15.5px/1.55 "IBM Plex Sans",system-ui,sans-serif;
+  padding:0 24px 80px}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:5}
+.wrap{max-width:1240px;margin:0 auto}
+header.top{padding:52px 0 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px}
+h1{font:700 clamp(30px,4.5vw,44px)/1.05 "Chakra Petch",sans-serif;letter-spacing:.5px}
+h1 .tld{color:var(--accent)}
+.guidelink{font:600 13px "IBM Plex Sans",sans-serif;color:var(--accent-ink);
+  text-decoration:none;border:1px solid var(--accent);border-radius:6px;padding:8px 14px;
+  align-self:center}
+.guidelink:hover{background:var(--accent);color:var(--panel)}
+.sub{color:var(--muted);max-width:62ch;text-wrap:balance;margin:10px 0 0;flex-basis:100%}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 34px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:10px 18px 8px;min-width:118px}
+.stat b{display:block;font:600 24px/1.1 "Chakra Petch",sans-serif;
+  font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.stat b em{font-style:normal;font-size:14px;color:var(--faint)}
+.dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.dia{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.dia svg{width:100%;height:auto;display:block}
+.dia .part{fill:none;stroke:var(--ink);stroke-width:2}
+.dia circle.part:first-of-type{}
+.dia .part2{fill:none;stroke:var(--muted);stroke-width:2}
+.dia .axis{stroke:var(--line);stroke-dasharray:4 4}
+.dia .dim{stroke:var(--muted);stroke-width:1.5}
+.dia .dim.acc{stroke:var(--accent);stroke-width:2}
+.dia .lbl{font:500 10px "IBM Plex Sans",sans-serif;fill:var(--muted)}
+.dia figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+.dia figcaption strong{color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3}
+.view{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
+.view:active{cursor:grabbing}
+.view .status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  color:var(--faint);font:500 13px "Chakra Petch",sans-serif}
+.pill{position:absolute;top:12px;right:12px;font:500 12px/1 "IBM Plex Mono",monospace;
+  padding:6px 10px;border-radius:99px;letter-spacing:.02em;z-index:6;pointer-events:none}
+.pill.pass{background:var(--pass-bg);color:var(--pass);border:1px solid var(--pass)}
+.pill.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
+.chips{position:absolute;left:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;z-index:6}
+.chips button{background:var(--panel);border:1px solid var(--line);color:var(--muted);
+  border-radius:99px;padding:4px 10px;font:500 11px "IBM Plex Sans",sans-serif;cursor:pointer}
+.chips button.on{color:var(--accent);border-color:var(--accent)}
+.dimtag{position:absolute;left:12px;top:14px;z-index:6;pointer-events:none;
+  font:400 11px "IBM Plex Mono",monospace;color:var(--muted)}
+.body{padding:18px 20px 16px;display:flex;flex-direction:column;gap:12px;flex:1}
+.card h3{font:600 19px/1.2 "Chakra Petch",sans-serif}
+.eyebrow{font:600 10.5px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--accent-ink)}
+.specline{font:400 12px/1.4 "IBM Plex Mono",monospace;color:var(--faint);
+  border-top:1px solid var(--line);padding-top:10px;font-variant-numeric:tabular-nums}
+.savelink{font:400 11.5px/1.4 "IBM Plex Mono",monospace;color:var(--faint);
+  text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.savelink:hover{color:var(--accent-ink);text-decoration:underline}
+.card.superseded{display:none}
+.card.superseded.revealed{display:flex;outline:2px dashed var(--warn);outline-offset:-2px}
+.showorig{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+  font:500 11.5px "IBM Plex Sans",sans-serif;padding:5px 10px;cursor:pointer}
+.showorig:hover{color:var(--warn);border-color:var(--warn)}
+.mate{font-size:13px;color:var(--accent-ink)}
+.notes{border-top:1px dashed var(--line);margin-top:10px;padding-top:8px;
+  display:flex;flex-direction:column;gap:6px}
+.notes .n{font-size:12.5px;color:var(--muted);border-left:2px solid var(--warn);padding-left:8px}
+.notes .n b{color:var(--faint);font:500 10.5px "IBM Plex Mono",monospace;display:block}
+.notes form{display:flex;gap:6px}
+.notes input{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+  color:var(--ink);font:400 12px "IBM Plex Sans",sans-serif;padding:6px 8px;min-width:0}
+.notes button{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+  font:500 11px "IBM Plex Sans",sans-serif;padding:4px 10px;cursor:pointer}
+.notes button:hover{color:var(--accent-ink);border-color:var(--accent)}
+.card h3 .mat{font:600 11px/1 "IBM Plex Mono",monospace;color:var(--accent-ink);
+  border:1px solid var(--accent);border-radius:4px;padding:3px 6px;
+  vertical-align:3px;margin-left:6px;letter-spacing:.05em}
+.designer{color:var(--muted);font-size:13px;margin-top:2px}
+.principle{font-size:14.5px}
+.card h4{font:600 11.5px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--accent-ink);margin-bottom:-4px}
+.drivers{list-style:none;padding:0;display:flex;flex-direction:column;gap:5px}
+.drivers li{font-size:13.5px;padding-left:16px;position:relative;color:var(--ink)}
+.drivers li::before{content:"";position:absolute;left:0;top:.55em;width:8px;height:2px;
+  background:var(--accent)}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;
+  border-top:1px solid var(--line);padding-top:12px}
+.spec dt{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.spec dd{font:400 13px/1.35 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.note{font-size:13px;color:var(--muted);border-left:2px solid var(--accent);
+  padding:2px 0 2px 10px}
+.actions{display:flex;align-items:flex-start;flex-direction:column;gap:8px;margin-top:auto;padding-top:8px}
+.print{background:var(--accent);color:var(--ground);border:none;border-radius:6px;
+  padding:9px 16px;font:600 13px "IBM Plex Sans",sans-serif;cursor:pointer;letter-spacing:.01em}
+.print:hover{filter:brightness(1.08)}
+.print:disabled{opacity:.75;cursor:default}
+.filelist{width:100%}
+.filelist summary{cursor:pointer;font:400 11.5px "IBM Plex Mono",monospace;color:var(--faint)}
+.filelist ul{list-style:none;padding:7px 0 0;display:flex;flex-direction:column;gap:5px}
+.filelist li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font:400 11.5px "IBM Plex Mono",monospace;color:var(--muted)}
+.filelist li>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl-act{display:flex;gap:8px;flex-shrink:0}
+.fl-act a,.fl-act button{color:var(--accent-ink);background:none;border:none;padding:0;
+  font:500 11.5px "IBM Plex Sans",sans-serif;cursor:pointer;text-decoration:none}
+.fl-act a:hover,.fl-act button:hover{text-decoration:underline}
+.ledgerwrap>summary{cursor:pointer;font:600 13px "IBM Plex Sans",sans-serif;color:var(--muted);
+  padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  list-style-position:inside}
+.ledgerwrap[open]>summary{border-radius:10px 10px 0 0;border-bottom:none}
+.ledgerwrap[open] .tablewrap{border-radius:0 0 10px 10px}
+section.block{margin-top:56px}
+section.block>h2{font:600 24px/1.2 "Chakra Petch",sans-serif;margin-bottom:6px}
+section.block>p.lede{color:var(--muted);max-width:70ch;margin-bottom:20px}
+.fixes{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.fixes li{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.fixes strong{display:block;font:600 15px "Chakra Petch",sans-serif;margin-bottom:4px}
+.fixes span{font-size:13.5px;color:var(--muted)}
+.fixes code, .note code{font:400 12px "IBM Plex Mono",monospace;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:4px;padding:1px 4px;color:var(--ink)}
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th{font:600 11px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--faint);text-align:left;padding:12px 16px;border-bottom:1px solid var(--line)}
+td{padding:9px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.mono{font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+th.num{text-align:right}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.dot.pass{background:var(--pass)}
+.dot.warn{background:var(--warn)}
+footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
+@media (max-width:640px){.specs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="wrap">
+<header class="top">
+  <h1>The Fidget Shelf<span class="tld">.</span></h1>
+  <a class="guidelink" href="guide.html">P2S Field Guide →</a>
+  <p class="sub">One card per file — every preview is the real mesh; drag to orbit.
+  The four “pair plate” files were built here: both mating parts on one plate, ready to
+  print as a single job. Run <code>make&nbsp;serve</code> in this folder — it serves the
+  page and powers the print buttons. New to the vocabulary? See <a href="#glossary" style="color:var(--accent-ink)">reading the numbers</a>.</p>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>27</b><span>files scanned</span></div>
+  <div class="stat"><b>15</b><span>distinct designs</span></div>
+  <div class="stat"><b>9<em>/15</em></b><span>fully clean designs</span></div>
+  <div class="stat"><b>6</b><span>with mesh defects</span></div>
+  <div class="stat"><b>1</b><span>repaired part</span></div>
+  <div class="stat"><b>4</b><span>pair plates built</span></div>
+  <div class="stat"><b>8.6 M</b><span>triangles checked</span></div>
+</div>
+
+
+<section class="block" id="glossary">
+  <h2>Reading the numbers</h2>
+  <p class="lede">The cards lean on a small vocabulary of measurements. First, the symbol that
+  appears everywhere: <strong style="color:var(--ink)">&#216; means diameter</strong> — the full
+  width of a circle through its center, in millimetres ("&#216;19 ball" = a ball 19&nbsp;mm
+  across). Everything else:</p>
+  <div class="dias">
+    <figure class="dia">
+      <svg viewBox="0 0 220 150" role="img" aria-label="Ball resting on a ring stand">
+        <line x1="110" y1="8" x2="110" y2="142" class="axis"/>
+        <circle cx="110" cy="62" r="40" class="part"/>
+        <path d="M60 118 L82 96 L138 96 L160 118 Z" class="part2"/>
+        <line x1="70" y1="62" x2="150" y2="62" class="dim"/>
+        <text x="110" y="56" class="lbl" text-anchor="middle">ball &#216; (diameter)</text>
+        <line x1="82" y1="96" x2="138" y2="96" class="dim acc"/>
+        <text x="110" y="132" class="lbl" text-anchor="middle">rim &#216; — the opening the ball rests on</text>
+        <path d="M110 62 L110 32 A 30 30 0 0 1 133 43" fill="none" class="dim acc"/>
+        <text x="148" y="34" class="lbl">contact angle</text>
+      </svg>
+      <figcaption><strong>Ball on a stand.</strong> The ball sits when its &#216; (diameter) exceeds the rim &#216;.
+      The contact angle is measured from the vertical axis to where the rim touches — ≈45° is a
+      shallow perch, ≥60° is a <strong>deep seat</strong> (the rim wraps well past the equator's
+      underside, so the ball can't be knocked off easily). Too small a ball simply falls through.</figcaption>
+    </figure>
+    <figure class="dia">
+      <svg viewBox="0 0 220 150" role="img" aria-label="Hourglass with waist and body diameters">
+        <path d="M70 14 L150 14 L118 75 L150 136 L70 136 L102 75 Z" class="part"/>
+        <line x1="70" y1="20" x2="150" y2="20" class="dim"/>
+        <text x="160" y="24" class="lbl">body &#216;</text>
+        <line x1="102" y1="75" x2="118" y2="75" class="dim acc"/>
+        <text x="128" y="79" class="lbl">waist &#216;</text>
+        <line x1="56" y1="14" x2="56" y2="136" class="dim"/>
+        <text x="10" y="78" class="lbl">height</text>
+      </svg>
+      <figcaption><strong>Waist &amp; lever ratio.</strong> The waist is the narrowest &#216; of an
+      hourglass body. Lever ratio = height ÷ half of the base width: at <strong>≥4:1</strong> a print
+      is tall enough that nozzle bumps can knock it over — that's when the cards say
+      "brim mandatory".</figcaption>
+    </figure>
+    <figure class="dia">
+      <svg viewBox="0 0 220 150" role="img" aria-label="Radial clearance between mating parts">
+        <circle cx="110" cy="75" r="56" fill="none" class="part"/>
+        <circle cx="110" cy="75" r="44" fill="none" class="part2"/>
+        <line x1="110" y1="19" x2="110" y2="31" class="dim acc"/>
+        <text x="120" y="28" class="lbl">radial clearance</text>
+        <text x="110" y="80" class="lbl" text-anchor="middle">inner part</text>
+      </svg>
+      <figcaption><strong>Radial clearance</strong> is the designed air gap between mating surfaces,
+      per side. On this printer 0.20–0.40&nbsp;mm works for PLA (0.30–0.40 for PETG); under
+      ~0.25&nbsp;mm parts print fused. The hourglass pairs measure 0.38&nbsp;mm; the chain test
+      0.74&nbsp;mm; the held sphere 0.51&nbsp;mm.</figcaption>
+    </figure>
+    <figure class="dia">
+      <img src="assets/genus.png" alt="Three blocks: solid, one cylinder bored through, two bored through" style="width:100%;display:block">
+      <figcaption><strong>Genus</strong> counts the tunnels through a closed solid — a ball is 0,
+      a block with one cylinder bored clear through it is 1, and every additional bore adds one. It's computed from the mesh itself,
+      so it fingerprints a part's interlock mechanism: the hourglass bodies read 7 slots + a
+      central channel; the passthrough ball's 21 channels read genus 21.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<div class="grid">
+<article class="card" data-cid="sphere1">
+  <div class="photo">
+    <div class="view" data-models="sphere1"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Sphere Stands · (unattributed export)</p>
+    <h3>Sphere Stand 1″ <span class="mat">PLA</span></h3>
+    <p class="principle">Ring stand for a 25.4 mm sphere — knife-edge rim Ø19.2 mm holds it at ≈49°. Genus-1, watertight. Also seats the 27 mm passthrough ball.</p>
+    
+    <p class="specline">20.5×20.5×5.1 mm · 1 part · 2,304 tris<br>P2S slice: 2 m · 0.8 g</p>
+    <div class="actions">
+      <button class="print" data-card="sphere1">Open in Bambu Studio</button>
+      <a class="savelink" href="models/sphere_stand_1.0in.3mf" download title="sphere_stand_1.0in.3mf">save · sphere_stand_1.0in.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="sphere1"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="sphere2">
+  <div class="photo">
+    <div class="view" data-models="sphere2"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Sphere Stands · (unattributed export)</p>
+    <h3>Sphere Stand 2″ <span class="mat">PLA</span></h3>
+    <p class="principle">Same revolved profile scaled for a 50.8 mm sphere — rim Ø36.5 mm, contact ≈46°. Also seats the 39 mm passthrough ball.</p>
+    
+    <p class="specline">41.3×41.3×9.3 mm · 1 part · 2,304 tris<br>P2S slice: 7 m · 3.4 g</p>
+    <div class="actions">
+      <button class="print" data-card="sphere2">Open in Bambu Studio</button>
+      <a class="savelink" href="models/sphere_stand_2.0in.3mf" download title="sphere_stand_2.0in.3mf">save · sphere_stand_2.0in.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="sphere2"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="sphere3">
+  <div class="photo">
+    <div class="view" data-models="sphere3"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Sphere Stands · (unattributed export)</p>
+    <h3>Sphere Stand 3″ <span class="mat">PLA</span></h3>
+    <p class="principle">Largest of the family — rim Ø57.7 mm for a 76.2 mm sphere. All three share one 2,304-triangle topology.</p>
+    
+    <p class="specline">61.5×61.5×13.4 mm · 1 part · 2,304 tris<br>P2S slice: 14 m · 8.8 g</p>
+    <div class="actions">
+      <button class="print" data-card="sphere3">Open in Bambu Studio</button>
+      <a class="savelink" href="models/sphere_stand_3.0in.3mf" download title="sphere_stand_3.0in.3mf">save · sphere_stand_3.0in.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="sphere3"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="vortex">
+  <div class="photo">
+    <div class="view" data-models="vortex"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Vortex · Bazzlington · original</p>
+    <h3>Vortex v3 <span class="mat">PLA</span></h3>
+    <p class="principle">Three nested twisted sleeves (genus-1 tubes, 4-fold symmetry, 50 mm tall) that spin freely inside each other. Slicer estimate 32 g · 2 h 06 m.</p>
+    
+    <p class="specline">66.7×76.7×50.0 mm · 3 parts · 378,652 tris<br>P2S slice: 1 h 24 m · 27.9 g (via STL re-slice — the project file mis-slices in the CLI)</p>
+    <div class="actions">
+      <button class="print" data-card="vortex">Open in Bambu Studio</button>
+      <a class="savelink" href="models/Vortex+v3+project.3mf" download title="Vortex+v3+project.3mf">save · Vortex+v3+project.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="vortex"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="fidget">
+  <div class="photo">
+    <div class="view" data-models="fidget"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Passthrough series · RJ Design</p>
+    <h3>Mini Fidget Ball <span class="mat">PLA</span></h3>
+    <p class="principle">Genus-21 helical ball threads itself through the smaller genus-7 disc. The preview shows every object in the file — the designer ships the ball at two sizes (27 + 13.5 mm, V2-series compatible); you print one. Axle = 33 mm of filament or a 2×33 brass dowel.</p>
+    
+    <p class="specline">46.0×67.7×27.0 mm · 3 parts · 845,530 tris<br>P2S slice: 44 m · 8.0 g</p>
+    <div class="actions">
+      <button class="print" data-card="fidget">Open in Bambu Studio</button>
+      <a class="savelink" href="models/Mini+Fidget+Ball.3mf" download title="Mini+Fidget+Ball.3mf">save · Mini+Fidget+Ball.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="fidget"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="stackable">
+  <div class="photo">
+    <div class="view" data-models="stackable"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Passthrough series · RJ Design · V2</p>
+    <h3>Mini Stackable Passthrough <span class="mat">PLA</span></h3>
+    <p class="principle">Threaded genus-17 tube sections stack into a vortex column; the preview shows all shipped objects: ball size variants (13.5/27/39 mm, V2-series compatible — print the one you need) plus assembly copies. Tree supports ship as mesh bodies — print sequentially.</p>
+    
+    <p class="specline">90.5×121.8×62.2 mm · 7 parts · 3,731,786 tris<br>P2S slice: 5 h 32 m · 48.6 g</p>
+    <div class="actions">
+      <button class="print" data-card="stackable">Open in Bambu Studio</button>
+      <a class="savelink" href="models/Mini+Stackable+Supports+added+back+in.3mf" download title="Mini+Stackable+Supports+added+back+in.3mf">save · Mini+Stackable+Supports+added+back+in.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="stackable"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="top">
+  <div class="photo">
+    <div class="view" data-models="top"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Spinning Top · AeroDesigns</p>
+    <h3>Magic Spinning Top <span class="mat">PLA</span></h3>
+    <p class="principle">Floating-ring illusion: two genus-3 halves (ring + 3 spokes) plus two connector sizes — standard and +0.07 mm for slippery filaments. Never rescale.</p>
+    
+    <p class="specline">100.3×152.2×41.3 mm · 4 parts · 5,292 tris<br>P2S slice: 28 m · 11.4 g</p>
+    <div class="actions">
+      <button class="print" data-card="top">Open in Bambu Studio</button>
+      <a class="savelink" href="models/magic_spinning_top_+23+de+fight+d.3mf" download title="magic_spinning_top_+23+de+fight+d.3mf">save · magic_spinning_top_+23+de+fight+d.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="top"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="skull">
+  <div class="photo">
+    <div class="view" data-models="skull"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Quantum Skull · Gmino</p>
+    <h3>Quantum Skull <span class="mat">PLA</span></h3>
+    <p class="principle">Two identical 31.5 cm³ skull halves that nest and slide as a two-hand fidget. Print each half in its own colour (two plates).</p>
+    
+    <p class="specline">81.0×212.6×36.7 mm · 2 parts · 30,692 tris<br>P2S slice: 1 h 02 m · 36.7 g</p>
+    <div class="actions">
+      <button class="print" data-card="skull">Open in Bambu Studio</button>
+      <a class="savelink" href="models/Quantum+Skull.3mf" download title="Quantum+Skull.3mf">save · Quantum+Skull.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="skull"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="puffer">
+  <div class="photo">
+    <div class="view" data-models="puffer"></div>
+    <span class="pill warn">1 leaky object</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Pufferfish · Legend Lee</p>
+    <h3>Pufferfish — original <span class="mat">PETG</span></h3>
+    <p class="principle">Articulated squeeze-ball: hinged spike plates around a multi-body core, pulled by rubber bands. One leaky object of 10 — every slicer auto-repairs it.</p>
+    
+    <p class="specline">182.5×177.9×41.9 mm · 10 parts · 385,412 tris<br>P2S slice: 2 h 09 m · 63.1 g — plate 1 of 4</p>
+    <div class="actions">
+      <button class="print" data-card="puffer">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pufferfish.3mf" download title="pufferfish.3mf">save · pufferfish.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="puffer"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="puffer3p">
+  <div class="photo">
+    <div class="view" data-models="puffer3p"></div>
+    <span class="pill warn">Same leaky part</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Pufferfish · Legend Lee</p>
+    <h3>Pufferfish — 3-plate re-save <span class="mat">PETG</span></h3>
+    <p class="principle">Same 10 parts as the original (verified rotation-invariant), re-arranged across three plates for easier printing.</p>
+    
+    <p class="specline">182.5×177.9×41.9 mm · 10 parts · 385,412 tris<br>P2S slice: 2 h 09 m · 63.1 g — plate 1 of 4</p>
+    <div class="actions">
+      <button class="print" data-card="puffer3p">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pufferfish-p2s-threeplates.3mf" download title="pufferfish-p2s-threeplates.3mf">save · pufferfish-p2s-threeplates.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="puffer3p"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="puffer1c">
+  <div class="photo">
+    <div class="view" data-models="puffer1c"></div>
+    <span class="pill warn">Same leaky part</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Pufferfish · Legend Lee</p>
+    <h3>Pufferfish — one-colour re-save <span class="mat">PETG</span></h3>
+    <p class="principle">Same parts, colour scheme flattened. A 1.3× scale is baked into mesh coords and cancelled by transforms — prints the same size.</p>
+    
+    <p class="specline">193.4×177.9×41.9 mm · 10 parts · 385,412 tris<br>P2S slice: 4 h 07 m · 81.8 g — single plate</p>
+    <div class="actions">
+      <button class="print" data-card="puffer1c">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pufferfish-p2s-onecolor.3mf" download title="pufferfish-p2s-onecolor.3mf">save · pufferfish-p2s-onecolor.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="puffer1c"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="pikachu">
+  <div class="photo">
+    <div class="view" data-models="pikachu"></div>
+    <span class="pill warn">Minor defects</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Pikachu Flexy · B-Forge3D · v2</p>
+    <h3>Pikachu Flexy Keychain <span class="mat">PETG</span></h3>
+    <p class="principle">Print-in-place flexy of 7 hinged bodies. This file is itself the fix — the reinforced single-colour v2 of a fragile original.</p>
+    
+    <p class="specline">32.5×76.1×14.1 mm · 1 part · 34,818 tris<br>P2S slice: 18 m · 5.3 g</p>
+    <div class="actions">
+      <button class="print" data-card="pikachu">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pikachu+more+resistant+one+color.3mf" download title="pikachu+more+resistant+one+color.3mf">save · pikachu+more+resistant+one+color.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="pikachu"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="staryu">
+  <div class="photo">
+    <div class="view" data-models="staryu"></div>
+    <span class="pill warn">Dup-face defect</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Staryu & Starmie · pythong · remix</p>
+    <h3>Staryu & Starmie — original <span class="mat">PLA</span></h3>
+    <p class="principle">Two spinners on one bearing recipe, friction tuned by the diff_disc washer stack. Star heads carry 152 k duplicate faces — slicers discard them.</p>
+    
+    <p class="specline">187.4×192.5×17.0 mm · 16 parts · 921,452 tris<br>P2S slice: 10 m · 4.3 g — plate 1 of 4</p>
+    <div class="actions">
+      <button class="print" data-card="staryu">Open in Bambu Studio</button>
+      <a class="savelink" href="models/Staryu_Starmie_Spin_Spin.3mf" download title="Staryu_Starmie_Spin_Spin.3mf">save · Staryu_Starmie_Spin_Spin.3mf</a>
+      <button class="showorig" data-target="staryu_dup" data-show-label="show duplicate download" data-hide-label="hide duplicate download">show duplicate download</button>
+    </div>
+    <div class="notes" data-cid="staryu"></div>
+  </div>
+</article>
+
+<article class="card superseded" data-cid="staryu_dup">
+  <div class="photo">
+    <div class="view" data-models="staryu_dup"></div>
+    <span class="pill warn">Duplicate file</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Staryu & Starmie · pythong · remix</p>
+    <h3>Staryu & Starmie — copy (1) <span class="mat">PLA</span></h3>
+    <p class="principle">Byte-identical duplicate download of the original (same MD5). Safe to delete; kept here for completeness.</p>
+    
+    <p class="specline">187.4×192.5×17.0 mm · 16 parts · 921,452 tris<br>P2S slice: 10 m · 4.3 g — plate 1 of 4</p>
+    <div class="actions">
+      <button class="print" data-card="staryu_dup">Open in Bambu Studio</button>
+      <a class="savelink" href="models/Staryu_Starmie_Spin_Spin (1).3mf" download title="Staryu_Starmie_Spin_Spin (1).3mf">save · Staryu_Starmie_Spin_Spin (1).3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="staryu_dup"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="cone_pair_s">
+  <div class="photo">
+    <div class="view" data-models="cone_pair_s"></div>
+    <span class="pill pass">Built · both parts</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
+    <h3>Cone Pair Plate — 90 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Built for you: solid + spiral on one plate — print this single file and the whole toy comes off the bed together. 100% infill on the solid, 15% on the spiral, brim on.</p>
+    
+    <p class="specline">44.7×92.0×90.0 mm · 2 parts · 362,160 tris<br>P2S slice: 2 h 19 m · 60.5 g</p>
+    <div class="actions">
+      <button class="print" data-card="cone_pair_s">Open in Bambu Studio</button>
+      <a class="savelink" href="models/cone-hourglass-pair-small.3mf" download title="cone-hourglass-pair-small.3mf">save · cone-hourglass-pair-small.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="cone_pair_s"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="cone_pair_d">
+  <div class="photo">
+    <div class="view" data-models="cone_pair_d"></div>
+    <span class="pill pass">Built · both parts</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
+    <h3>Cone Pair Plate — dubbel 180 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Built for you: the double-height pair on one plate. 8.7:1 lever ratio at 180 mm — brim is mandatory.</p>
+    
+    <p class="specline">48.4×95.5×180.0 mm · 2 parts · 418,836 tris<br>P2S slice: 4 h 54 m · 133.2 g</p>
+    <div class="actions">
+      <button class="print" data-card="cone_pair_d">Open in Bambu Studio</button>
+      <a class="savelink" href="models/cone-hourglass-pair-dubbel.3mf" download title="cone-hourglass-pair-dubbel.3mf">save · cone-hourglass-pair-dubbel.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="cone_pair_d"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="cone_solid_s">
+  <div class="photo">
+    <div class="view" data-models="cone_solid_s"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
+    <h3>Cone Solid — 90 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Hourglass body with 7 helical slots + a central channel (mesh genus 8). 100% infill per the designer; lands on 7 first-layer islands — brim.</p>
+    <p class="mate">mates with Cone Spiral — 90 mm (pair plate: cone-hourglass-pair-small.3mf)</p>
+    <p class="specline">44.7×44.7×90.0 mm · 1 part · 184,238 tris<br>P2S slice: 1 h 17 m · 30.6 g</p>
+    <div class="actions">
+      <button class="print" data-card="cone_solid_s">Open in Bambu Studio</button>
+      <a class="savelink" href="models/cone-solid-small.stl" download title="cone-solid-small.stl">save · cone-solid-small.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="cone_solid_s"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="cone_spiral_s">
+  <div class="photo">
+    <div class="view" data-models="cone_spiral_s"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
+    <h3>Cone Spiral — 90 mm <span class="mat">PETG</span></h3>
+    <p class="principle">The smooth twisted piece (genus 0) that screws through the solid's slots. 15% gyroid infill.</p>
+    <p class="mate">mates with Cone Solid — 90 mm</p>
+    <p class="specline">41.3×41.4×90.0 mm · 1 part · 177,922 tris<br>P2S slice: 1 h 03 m · 30.1 g</p>
+    <div class="actions">
+      <button class="print" data-card="cone_spiral_s">Open in Bambu Studio</button>
+      <a class="savelink" href="models/cone-spiral-small.stl" download title="cone-spiral-small.stl">save · cone-spiral-small.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="cone_spiral_s"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="cone_solid_d">
+  <div class="photo">
+    <div class="view" data-models="cone_solid_d"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
+    <h3>Cone Solid — dubbel 180 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Two hourglass cells stacked at constant Ø — same 7 slots per cell (mesh genus 15). 7.4:1 lever ratio — brim mandatory.</p>
+    <p class="mate">mates with Cone Spiral — dubbel 180 mm (pair plate: cone-hourglass-pair-dubbel.3mf)</p>
+    <p class="specline">48.4×48.4×180.0 mm · 1 part · 214,672 tris<br>P2S slice: 2 h 42 m · 71.0 g</p>
+    <div class="actions">
+      <button class="print" data-card="cone_solid_d">Open in Bambu Studio</button>
+      <a class="savelink" href="models/cone-solid.stl" download title="cone-solid.stl">save · cone-solid.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="cone_solid_d"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="cone_spiral_d">
+  <div class="photo">
+    <div class="view" data-models="cone_spiral_d"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
+    <h3>Cone Spiral — dubbel 180 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Double-length spiral, same Ø41 body. 8.7:1 lever ratio — brim mandatory.</p>
+    <p class="mate">mates with Cone Solid — dubbel 180 mm</p>
+    <p class="specline">41.1×41.2×180.0 mm · 1 part · 204,164 tris<br>P2S slice: 2 h 12 m · 62.4 g</p>
+    <div class="actions">
+      <button class="print" data-card="cone_spiral_d">Open in Bambu Studio</button>
+      <a class="savelink" href="models/cone-spiral.stl" download title="cone-spiral.stl">save · cone-spiral.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="cone_spiral_d"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="pyr_pair_s">
+  <div class="photo">
+    <div class="view" data-models="pyr_pair_s"></div>
+    <span class="pill pass">Built · both parts</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
+    <h3>Pyramid Pair Plate — 90 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Built for you: the repaired solid + spiral on one plate — the complete toy in one job. Uses the fixed body, not the broken original.</p>
+    
+    <p class="specline">46.6×93.9×90.0 mm · 2 parts · 401,514 tris<br>P2S slice: 2 h 37 m · 75.5 g</p>
+    <div class="actions">
+      <button class="print" data-card="pyr_pair_s">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pyramid-hourglass-pair-small.3mf" download title="pyramid-hourglass-pair-small.3mf">save · pyramid-hourglass-pair-small.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="pyr_pair_s"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="pyr_pair_d">
+  <div class="photo">
+    <div class="view" data-models="pyr_pair_d"></div>
+    <span class="pill pass">Built · both parts</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
+    <h3>Pyramid Pair Plate — dubbel 180 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Built for you: double-height pyramid pair on one plate. Brim mandatory at this height.</p>
+    
+    <p class="specline">47.5×94.7×180.0 mm · 2 parts · 432,840 tris<br>P2S slice: 5 h 11 m · 147.6 g</p>
+    <div class="actions">
+      <button class="print" data-card="pyr_pair_d">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pyramid-hourglass-pair-dubbel.3mf" download title="pyramid-hourglass-pair-dubbel.3mf">save · pyramid-hourglass-pair-dubbel.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="pyr_pair_d"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="pyr_solid_sf">
+  <div class="photo">
+    <div class="view" data-models="pyr_solid_sf"></div>
+    <span class="pill pass">Repaired</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
+    <h3>Pyramid Solid — 90 mm (fixed) <span class="mat">PETG</span></h3>
+    <p class="principle">The repaired body: zero-thickness pinch removed (2 fewer faces, watertight) — 7 slots + channel. Print this, not the original.</p>
+    <p class="mate">mates with Pyramid Spiral — 90 mm (pair plate: pyramid-hourglass-pair-small.3mf)</p>
+    <p class="specline">46.6×46.6×90.0 mm · 1 part · 200,876 tris<br>P2S slice: 1 h 32 m · 42.7 g</p>
+    <div class="actions">
+      <button class="print" data-card="pyr_solid_sf">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pyramid-solid-small-fixed.stl" download title="pyramid-solid-small-fixed.stl">save · pyramid-solid-small-fixed.stl</a>
+      <button class="showorig" data-target="pyr_solid_so" data-show-label="show original (pinch)" data-hide-label="hide original (pinch)">show original (pinch)</button>
+    </div>
+    <div class="notes" data-cid="pyr_solid_sf"></div>
+  </div>
+</article>
+
+<article class="card superseded" data-cid="pyr_solid_so">
+  <div class="photo">
+    <div class="view" data-models="pyr_solid_so"></div>
+    <span class="pill warn">Pinch defect</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
+    <h3>Pyramid Solid — 90 mm (original) <span class="mat">PETG</span></h3>
+    <p class="principle">Ships with a zero-thickness pinch: one duplicated triangle on a non-manifold edge. Superseded by the -fixed file — kept for reference.</p>
+    
+    <p class="specline">46.6×46.6×90.0 mm · 1 part · 200,878 tris<br>P2S slice: 1 h 31 m · 42.7 g</p>
+    <div class="actions">
+      <button class="print" data-card="pyr_solid_so">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pyramid-solid-small.stl" download title="pyramid-solid-small.stl">save · pyramid-solid-small.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="pyr_solid_so"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="pyr_spiral_s">
+  <div class="photo">
+    <div class="view" data-models="pyr_spiral_s"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
+    <h3>Pyramid Spiral — 90 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Twisted square-base piece (genus 0) with the set's shared 7-lobe thread. 15% gyroid infill.</p>
+    <p class="mate">mates with Pyramid Solid — 90 mm (fixed)</p>
+    <p class="specline">41.4×41.4×90.0 mm · 1 part · 200,638 tris<br>P2S slice: 1 h 06 m · 32.9 g</p>
+    <div class="actions">
+      <button class="print" data-card="pyr_spiral_s">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pyramid-spiral-small.stl" download title="pyramid-spiral-small.stl">save · pyramid-spiral-small.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="pyr_spiral_s"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="pyr_solid_d">
+  <div class="photo">
+    <div class="view" data-models="pyr_solid_d"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
+    <h3>Pyramid Solid — dubbel 180 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Double-height slotted body, 7 slots per cell (mesh genus 19). 100% infill and a brim.</p>
+    <p class="mate">mates with Pyramid Spiral — dubbel 180 mm (pair plate: pyramid-hourglass-pair-dubbel.3mf)</p>
+    <p class="specline">47.5×47.5×180.0 mm · 1 part · 221,738 tris<br>P2S slice: 2 h 58 m · 83.7 g</p>
+    <div class="actions">
+      <button class="print" data-card="pyr_solid_d">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pyramid-solid.stl" download title="pyramid-solid.stl">save · pyramid-solid.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="pyr_solid_d"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="pyr_spiral_d">
+  <div class="photo">
+    <div class="view" data-models="pyr_spiral_d"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
+    <h3>Pyramid Spiral — dubbel 180 mm <span class="mat">PETG</span></h3>
+    <p class="principle">Double-length spiral. 8.7:1 lever ratio — brim mandatory.</p>
+    <p class="mate">mates with Pyramid Solid — dubbel 180 mm</p>
+    <p class="specline">41.1×41.2×180.0 mm · 1 part · 211,102 tris<br>P2S slice: 2 h 14 m · 64.0 g</p>
+    <div class="actions">
+      <button class="print" data-card="pyr_spiral_d">Open in Bambu Studio</button>
+      <a class="savelink" href="models/pyramid-spiral.stl" download title="pyramid-spiral.stl">save · pyramid-spiral.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="pyr_spiral_d"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="nuts">
+  <div class="photo">
+    <div class="view" data-models="nuts"></div>
+    <span class="pill warn">Nut not watertight</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Nuts & Bolts · carnivalcamps</p>
+    <h3>Montessori Nuts & Bolts <span class="mat">PLA</span></h3>
+    <p class="principle">Toddler counting toy: five jumbo bolts in 30 mm height steps (59–179 mm) sharing one chunky thread, plus a nut — every nut fits every bolt; print as many nuts as needed. The nut mesh leaks (slicer-repairable). Non-toxic filament, brim on the tall bolts.</p>
+    
+    <p class="specline">106.6×183.4×179.2 mm · 6 parts · 217,774 tris<br>P2S slice: 5 h 32 m · 228.4 g</p>
+    <div class="actions">
+      <button class="print" data-card="nuts">Open in Bambu Studio</button>
+      <a class="savelink" href="models/montessori+nuts+and+bolts.3mf" download title="montessori+nuts+and+bolts.3mf">save · montessori+nuts+and+bolts.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="nuts"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="held">
+  <div class="photo">
+    <div class="view" data-models="held"></div>
+    <span class="pill pass">Designed · ready</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · this session</p>
+    <h3>Held Sphere <span class="mat">PLA</span></h3>
+    <p class="principle">A captive Ø19 ball inside an openwork Ø50 cage — 11 round windows (Ø16, so the ball cannot escape), 3.5 mm walls, flat base. Support-free: the ball stands on a Ø2.4 mm breakaway pip; twist to snap it loose after printing. Cage–ball clearance 0.51 mm.</p>
+    
+    <p class="specline">50.0×50.0×49.0 mm · 2 parts · 18,260 tris<br>P2S slice: 39 m · 15.7 g — support-free</p>
+    <div class="actions">
+      <button class="print" data-card="held">Open in Bambu Studio</button>
+      <a class="savelink" href="models/held-sphere.3mf" download title="held-sphere.3mf">save · held-sphere.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="held"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="chain">
+  <div class="photo">
+    <div class="view" data-models="chain"></div>
+    <span class="pill pass">Designed · ready</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · this session</p>
+    <h3>Chain Test — 5 Links <span class="mat">PLA</span></h3>
+    <p class="principle">Print-in-place chain: five 0.75″ stadium links with 0.125″ round cross-section, alternating ±45° tilt in a gentle coil so every link self-supports. Verified: 0.74 mm clearance at every joint, threading proven by section intersection. Print with a brim — each link touches the bed on a thin line.</p>
+    
+    <p class="specline">62.5×14.6×8.8 mm · 5 parts · 12,320 tris<br>P2S slice: 9 m · 2.3 g</p>
+    <div class="actions">
+      <button class="print" data-card="chain">Open in Bambu Studio</button>
+      <a class="savelink" href="models/chain-test-5seg.3mf" download title="chain-test-5seg.3mf">save · chain-test-5seg.3mf</a>
+      
+    </div>
+    <div class="notes" data-cid="chain"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="cshape">
+  <div class="photo">
+    <div class="view" data-models="cshape"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">One-off Experiments · (local export)</p>
+    <h3>C-Shape (copy 16) <span class="mat">PLA</span></h3>
+    <p class="principle">Arch of fused spherical lobes — 286 cm³ solid, clean and watertight.</p>
+    
+    <p class="specline">120.9×145.7×41.7 mm · 1 part · 9,770 tris<br>P2S slice: 2 h 54 m · 93.1 g</p>
+    <div class="actions">
+      <button class="print" data-card="cshape">Open in Bambu Studio</button>
+      <a class="savelink" href="models/c-shape copy 16.stl" download title="c-shape copy 16.stl">save · c-shape copy 16.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="cshape"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="remesh">
+  <div class="photo">
+    <div class="view" data-models="remesh"></div>
+    <span class="pill pass">Clean</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">One-off Experiments · (local export)</p>
+    <h3>Averaged Remesh <span class="mat">PLA</span></h3>
+    <p class="principle">Smoothed low-poly arch (2,146 faces) — an averaging-pipeline output at threshold 0.900.</p>
+    
+    <p class="specline">103.5×116.4×17.2 mm · 1 part · 2,146 tris<br>P2S slice: 1 h 26 m · 37.4 g</p>
+    <div class="actions">
+      <button class="print" data-card="remesh">Open in Bambu Studio</button>
+      <a class="savelink" href="models/remesh_averaged_model_thresh0.900.stl" download title="remesh_averaged_model_thresh0.900.stl">save · remesh_averaged_model_thresh0.900.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="remesh"></div>
+  </div>
+</article>
+
+<article class="card superseded" data-cid="voro">
+  <div class="photo">
+    <div class="view" data-models="voro"></div>
+    <span class="pill warn">Superseded</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">One-off Experiments · (local export)</p>
+    <h3>Voronoi Sphere — original <span class="mat">PLA</span></h3>
+    <p class="principle">Openwork lattice shell (genus 56, “Voronoi” per the filename) as downloaded: inverted normals and saved at Ø2 mm. Superseded by the fixed version — kept for reference.</p>
+    
+    <p class="specline">2.0×2.0×2.0 mm · 1 part · 84,480 tris<br>P2S slice: unsliceable at Ø2 mm — print the fixed version</p>
+    <div class="actions">
+      <button class="print" data-card="voro">Open in Bambu Studio</button>
+      <a class="savelink" href="models/voro_sphere_2.stl" download title="voro_sphere_2.stl">save · voro_sphere_2.stl</a>
+      
+    </div>
+    <div class="notes" data-cid="voro"></div>
+  </div>
+</article>
+
+<article class="card" data-cid="voro_f">
+  <div class="photo">
+    <div class="view" data-models="voro_f"></div>
+    <span class="pill pass">Repaired · ready</span>
+    <div class="chips"></div>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">One-off Experiments · (local export)</p>
+    <h3>Voronoi Sphere — fixed Ø60 <span class="mat">PLA</span></h3>
+    <p class="principle">Repaired here: normals flipped (volume now positive, 28.8 cm³) and scaled 30× to Ø60 mm — mean strut ≈2.9 mm, comfortably printable. Watertight, genus 56. Slicer flags floating regions where lattice arcs start mid-air: enable tree supports or accept some rough undersides.</p>
+    
+    <p class="specline">59.1×60.3×60.1 mm · 1 part · 84,480 tris<br>P2S slice: 1 h 22 m · 24.8 g</p>
+    <div class="actions">
+      <button class="print" data-card="voro_f">Open in Bambu Studio</button>
+      <a class="savelink" href="models/voro_sphere_2-fixed.stl" download title="voro_sphere_2-fixed.stl">save · voro_sphere_2-fixed.stl</a>
+      <button class="showorig" data-target="voro" data-show-label="show original (Ø2 mm)" data-hide-label="hide original (Ø2 mm)">show original (Ø2 mm)</button>
+    </div>
+    <div class="notes" data-cid="voro_f"></div>
+  </div>
+</article></div>
+
+<section class="block">
+  <h2>Cross-design compatibility</h2>
+  <p class="lede">Where parts from different downloads can (and cannot) work together. The rule
+  of thumb that falls out of the analysis: two pieces mate when their interface genus (slot or
+  thread count) and profile radii match — diameters alone are not enough.</p>
+  <ul class="fixes"><li><strong><span class="dot pass"></span>V2 passthrough series (designer-stated, measured)</strong><span>Mini Fidget Ball and Mini Stackable share the same canonical ball mesh at 13.5 / 27 / 39 mm — the 27 mm ball threads both the fidget disc (Ø34.9) and the stackable tube (Ø35.4). Stackable sections thread into each other indefinitely: male passes female by design.</span></li><li><strong><span class="dot pass"></span>Passthrough balls on the sphere stands</strong><span>A ball sits on a stand when its Ø exceeds the rim Ø. The 27 mm ball rests on the 1″ stand (rim 19.2 mm, contact ≈45°) and the 39 mm ball on the 2″ stand (rim 36.5 mm — deep seat, ≈69°). The 13.5 mm ball falls through every stand.</span></li><li><strong><span class="dot warn"></span>Staryu vs Starmie — same design, no shared parts</strong><span>Staryu is the same spinner at 94% scale: pins, spacers and heads do not interchange between the two (designer-confirmed, and the pin Øs differ). The diff_disc washer stack is the shared tuning hardware within each spinner.</span></li><li><strong><span class="dot pass"></span>Hourglass cone & pyramid share one 7-lobe thread (measured)</strong><span>Cross-sections show every hourglass part rides the same 7-lobe inner mechanism — cone and pyramid differ only in outer skin (round vs square). Clearance measured 0.38 mm for all four solid×spiral combinations at the mid-connection, so same-size cone and pyramid parts likely interchange. Size classes do not mix: small and dubbel waist profiles differ.</span></li><li><strong><span class="dot warn"></span>Spinning top connector is fit-critical</strong><span>The two connectors differ by 0.06–0.07 mm for different filaments; the designer warns any rescale of the top breaks the fit, since clearance does not scale with the part.</span></li></ul>
+</section>
+
+<section class="block">
+  <h2>Fixes &amp; swapped parts</h2>
+  <p class="lede">Verified from part names, metadata and mesh comparison, not guessed from
+  filenames.</p>
+  <ul class="fixes"><li><strong>Pyramid hourglass</strong><span>Mesh repaired locally: <code>pyramid-solid-small.stl</code> has a zero-thickness pinch (one duplicated triangle on a non-manifold edge). <code>pyramid-solid-small-fixed.stl</code> (Aug 20) deletes both copies of the triangle — 2 fewer faces, watertight again.</span></li><li><strong>Staryu / Starmie</strong><span>Head replaced upstream: <code>Startmie_head_final_fixed.stl</code>. The whole model is a remix that redesigned the body edges, pin and back wall at half the original thickness, removing the need for supports and glue.</span></li><li><strong>Magic Spinning Top</strong><span>Connector part shipped in two sizes — standard and <code>connector PLA.stl</code>, +0.06–0.07&nbsp;mm — swap the part instead of rescaling to fix a loose fit.</span></li><li><strong>Pikachu</strong><span>Entire file is the replacement: v2 “more resistant” rebuild of a fragile original, in single-colour form.</span></li><li><strong>Mini Stackable</strong><span>“Supports added back in” — the floating ball’s tree-support geometry was restored as an extra mesh body inside each ball object after an earlier upload shipped without it.</span></li><li><strong>Pufferfish</strong><span>Your two <code>-p2s-</code> files are re-saves of the original — verified with rotation-invariant part signatures. threeplates re-plates the same parts; onecolor bakes a 1.3× scale into mesh coordinates and cancels it in the placement transform (same printed size).</span></li><li><strong>Staryu duplicate</strong><span><code>Staryu_Starmie_Spin_Spin (1).3mf</code> is byte-identical (MD5 <code>9eb99177…</code>) to the original — a double download, not a revision.</span></li></ul>
+</section>
+
+<section class="block">
+  <h2>File ledger</h2>
+  <p class="lede">All 27 files, mapped to their design family. <strong>Genus</strong> is the
+  count of tunnels passing clear through a closed solid — a ball is genus 0, a donut or ring
+  genus 1, and each extra handle or helical slot adds one. It is computed from the mesh itself
+  (Euler’s formula: vertices − edges + faces = 2 − 2·genus), so it fingerprints the interlock
+  mechanism no matter how the surface is decorated: the passthrough ball’s 21 helical channels
+  read out as genus 21, and the hourglass bodies’ slot counts as genus 8–19.</p>
+  <details class="ledgerwrap"><summary>Show all 31 files (27 scanned + 4 built)</summary>
+  <div class="tablewrap"><table>
+    <thead><tr><th>File</th><th class="num">MB</th><th>Design</th><th>Geometry verdict</th></tr></thead>
+    <tbody><tr><td class="mono">sphere_stand_1.0in.3mf</td><td class="mono num">0.02</td><td>Sphere Stand</td><td><span class="dot pass"></span>watertight · genus 1</td></tr><tr><td class="mono">sphere_stand_2.0in.3mf</td><td class="mono num">0.02</td><td>Sphere Stand</td><td><span class="dot pass"></span>watertight · genus 1</td></tr><tr><td class="mono">sphere_stand_3.0in.3mf</td><td class="mono num">0.02</td><td>Sphere Stand</td><td><span class="dot pass"></span>watertight · genus 1</td></tr><tr><td class="mono">Vortex+v3+project.3mf</td><td class="mono num">6.03</td><td>Vortex v3</td><td><span class="dot pass"></span>3 objects, all watertight</td></tr><tr><td class="mono">Mini+Fidget+Ball.3mf</td><td class="mono num">6.07</td><td>Mini Fidget Ball</td><td><span class="dot pass"></span>watertight · genus 21+7</td></tr><tr><td class="mono">Mini+Stackable+Supports+added+back+in.3mf</td><td class="mono num">23.4</td><td>Mini Stackable</td><td><span class="dot pass"></span>watertight · 3.73 M tris</td></tr><tr><td class="mono">magic_spinning_top_+23+de+fight+d.3mf</td><td class="mono num">0.70</td><td>Magic Spinning Top</td><td><span class="dot pass"></span>watertight · 2 connector variants</td></tr><tr><td class="mono">Quantum+Skull.3mf</td><td class="mono num">1.38</td><td>Quantum Skull</td><td><span class="dot pass"></span>watertight · mirror pair</td></tr><tr><td class="mono">pufferfish.3mf</td><td class="mono num">7.01</td><td>Pufferfish</td><td><span class="dot warn"></span>1 of 10 objects leaks</td></tr><tr><td class="mono">pufferfish-p2s-threeplates.3mf</td><td class="mono num">7.01</td><td>Pufferfish</td><td><span class="dot warn"></span>same geometry, replated</td></tr><tr><td class="mono">pufferfish-p2s-onecolor.3mf</td><td class="mono num">5.63</td><td>Pufferfish</td><td><span class="dot warn"></span>same geometry, one colour</td></tr><tr><td class="mono">pikachu+more+resistant+one+color.3mf</td><td class="mono num">1.43</td><td>Pikachu Flexy</td><td><span class="dot warn"></span>not watertight · 5 degen faces</td></tr><tr><td class="mono">Staryu_Starmie_Spin_Spin.3mf</td><td class="mono num">15.7</td><td>Staryu & Starmie</td><td><span class="dot warn"></span>152 k duplicate faces</td></tr><tr><td class="mono">Staryu_Starmie_Spin_Spin (1).3mf</td><td class="mono num">15.7</td><td>Staryu & Starmie</td><td><span class="dot warn"></span>exact duplicate file</td></tr><tr><td class="mono">cone-solid-small.stl</td><td class="mono num">8.8</td><td>Hourglass · cone</td><td><span class="dot pass"></span>watertight · genus 8</td></tr><tr><td class="mono">cone-solid.stl</td><td class="mono num">10.0</td><td>Hourglass · cone</td><td><span class="dot pass"></span>watertight · genus 15</td></tr><tr><td class="mono">cone-spiral-small.stl</td><td class="mono num">8.5</td><td>Hourglass · cone</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">cone-spiral.stl</td><td class="mono num">9.7</td><td>Hourglass · cone</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">pyramid-solid-small.stl</td><td class="mono num">9.6</td><td>Hourglass · pyramid</td><td><span class="dot warn"></span>pinch defect — superseded by -fixed</td></tr><tr><td class="mono">pyramid-solid-small-fixed.stl</td><td class="mono num">9.6</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>repaired · watertight · genus 10</td></tr><tr><td class="mono">pyramid-solid.stl</td><td class="mono num">11.0</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>watertight · genus 19</td></tr><tr><td class="mono">pyramid-spiral-small.stl</td><td class="mono num">9.6</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">pyramid-spiral.stl</td><td class="mono num">10.0</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">c-shape copy 16.stl</td><td class="mono num">0.5</td><td>One-off experiments</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">remesh_averaged_model_thresh0.900.stl</td><td class="mono num">0.1</td><td>One-off experiments</td><td><span class="dot pass"></span>watertight · low-poly</td></tr><tr><td class="mono">voro_sphere_2.stl</td><td class="mono num">4.1</td><td>One-off experiments</td><td><span class="dot warn"></span>inverted normals · unit scale Ø2 mm</td></tr><tr><td class="mono">montessori+nuts+and+bolts.3mf</td><td class="mono num">2.9</td><td>Montessori Nuts & Bolts</td><td><span class="dot warn"></span>5 bolts clean · nut leaks (repairable)</td></tr><tr><td class="mono">cone-hourglass-pair-small.3mf</td><td class="mono num">5.6</td><td>Hourglass · cone</td><td><span class="dot pass"></span>built here — both mating parts, one plate</td></tr><tr><td class="mono">cone-hourglass-pair-dubbel.3mf</td><td class="mono num">6.5</td><td>Hourglass · cone</td><td><span class="dot pass"></span>built here — both mating parts, one plate</td></tr><tr><td class="mono">pyramid-hourglass-pair-small.3mf</td><td class="mono num">6.3</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>built here — fixed solid + spiral, one plate</td></tr><tr><td class="mono">pyramid-hourglass-pair-dubbel.3mf</td><td class="mono num">6.9</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>built here — both mating parts, one plate</td></tr><tr><td class="mono">voro_sphere_2-fixed.stl</td><td class="mono num">4.1</td><td>One-off experiments</td><td><span class="dot pass"></span>repaired here — normals flipped, scaled to Ø60 mm</td></tr></tbody>
+  </table></div></details>
+</section>
+
+<footer>P2S slice numbers are real Bambu Studio CLI slices from this session — 0.2 mm
+Standard, Bambu PLA Basic, textured PEI, 15% infill defaults. Designs that specify other
+settings (100% infill hourglass solids, PETG) will run heavier and longer. Multi-plate
+projects are labeled with the plate that was sliced.<br><br>Validated 2026-08-24 with trimesh 5.0. Previews are decimated to ≤180 k triangles
+(full counts in each card); originals live in <span class="mono">models/</span>. Weights are
+solid-PLA upper bounds at 1.24 g/cm³ except where the file embeds a slicer estimate.</footer>
+</div>
+
+<script>const MODELS = {"sphere1": [{"slug": "sphere_stand_1in", "file": "sphere_stand_1.0in.3mf", "family": "Sphere Stands", "label": "1\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [20.5, 20.5, 5.1], "glb_mb": 0.0}], "sphere2": [{"slug": "sphere_stand_2in", "file": "sphere_stand_2.0in.3mf", "family": "Sphere Stands", "label": "2\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [41.3, 41.3, 9.3], "glb_mb": 0.0}], "sphere3": [{"slug": "sphere_stand_3in", "file": "sphere_stand_3.0in.3mf", "family": "Sphere Stands", "label": "3\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [61.5, 61.5, 13.4], "glb_mb": 0.0}], "vortex": [{"slug": "vortex_v3", "file": "Vortex+v3+project.3mf", "family": "Vortex v3", "label": "Vortex v3 (3 sleeves)", "parts": 3, "tris": 179996, "tris_full": 378652, "dims": [66.7, 76.7, 50.0], "glb_mb": 3.6}], "fidget": [{"slug": "mini_fidget_ball", "file": "Mini+Fidget+Ball.3mf", "family": "Passthrough series", "label": "Mini Fidget Ball", "parts": 3, "tris": 179996, "tris_full": 845530, "dims": [46.0, 67.7, 27.0], "glb_mb": 3.6}], "stackable": [{"slug": "mini_stackable", "file": "Mini+Stackable+Supports+added+back+in.3mf", "family": "Passthrough series", "label": "Mini Stackable tube", "parts": 7, "tris": 179994, "tris_full": 3731786, "dims": [90.5, 121.8, 62.2], "glb_mb": 3.6}], "top": [{"slug": "spinning_top", "file": "magic_spinning_top_+23+de+fight+d.3mf", "family": "Spinning Top", "label": "Magic spinning top", "parts": 4, "tris": 5292, "tris_full": 5292, "dims": [100.3, 152.2, 41.3], "glb_mb": 0.1}], "skull": [{"slug": "quantum_skull", "file": "Quantum+Skull.3mf", "family": "Quantum Skull", "label": "Quantum Skull halves", "parts": 2, "tris": 30692, "tris_full": 30692, "dims": [81.0, 212.6, 36.7], "glb_mb": 0.6}], "puffer": [{"slug": "pufferfish", "file": "pufferfish.3mf", "family": "Pufferfish", "label": "Pufferfish (all parts)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6}], "puffer3p": [{"slug": "pufferfish_threeplates", "file": "pufferfish-p2s-threeplates.3mf", "family": "Pufferfish", "label": "Pufferfish (3-plate re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6}], "puffer1c": [{"slug": "pufferfish_onecolor", "file": "pufferfish-p2s-onecolor.3mf", "family": "Pufferfish", "label": "Pufferfish (one-color re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [193.4, 177.9, 41.9], "glb_mb": 3.6}], "pikachu": [{"slug": "pikachu", "file": "pikachu+more+resistant+one+color.3mf", "family": "Pikachu Flexy", "label": "Pikachu flexy keychain", "parts": 1, "tris": 34818, "tris_full": 34818, "dims": [32.5, 76.1, 14.1], "glb_mb": 0.7}], "staryu": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin.3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7}], "staryu_dup": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin (1).3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7}], "cone_pair_s": [{"slug": "cone_pair_small", "file": "cone-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 90 mm", "parts": 2, "tris": 179998, "tris_full": 362160, "dims": [44.7, 92.0, 90.0], "glb_mb": 3.6}], "cone_pair_d": [{"slug": "cone_pair_dubbel", "file": "cone-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 418836, "dims": [48.4, 95.5, 180.0], "glb_mb": 3.6}], "cone_solid_s": [{"slug": "cone_solid_small", "file": "cone-solid-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 184238, "dims": [44.7, 44.7, 90.0], "glb_mb": 3.6}], "cone_spiral_s": [{"slug": "cone_spiral_small", "file": "cone-spiral-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 90 mm", "parts": 1, "tris": 177922, "tris_full": 177922, "dims": [41.3, 41.4, 90.0], "glb_mb": 3.6}], "cone_solid_d": [{"slug": "cone_solid", "file": "cone-solid.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 214672, "dims": [48.4, 48.4, 180.0], "glb_mb": 3.6}], "cone_spiral_d": [{"slug": "cone_spiral", "file": "cone-spiral.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 204164, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "pyr_pair_s": [{"slug": "pyramid_pair_small", "file": "pyramid-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 90 mm (fixed)", "parts": 2, "tris": 179998, "tris_full": 401514, "dims": [46.6, 93.9, 90.0], "glb_mb": 3.6}], "pyr_pair_d": [{"slug": "pyramid_pair_dubbel", "file": "pyramid-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 432840, "dims": [47.5, 94.7, 180.0], "glb_mb": 3.6}], "pyr_solid_sf": [{"slug": "pyramid_solid_small_fixed", "file": "pyramid-solid-small-fixed.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (fixed)", "parts": 1, "tris": 180000, "tris_full": 200876, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_solid_so": [{"slug": "pyramid_solid_small_orig", "file": "pyramid-solid-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (orig, pinch)", "parts": 1, "tris": 180000, "tris_full": 200878, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_spiral_s": [{"slug": "pyramid_spiral_small", "file": "pyramid-spiral-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 200638, "dims": [41.4, 41.4, 90.0], "glb_mb": 3.6}], "pyr_solid_d": [{"slug": "pyramid_solid", "file": "pyramid-solid.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 221738, "dims": [47.5, 47.5, 180.0], "glb_mb": 3.6}], "pyr_spiral_d": [{"slug": "pyramid_spiral", "file": "pyramid-spiral.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 211102, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "nuts": [{"slug": "nuts_bolts", "file": "montessori+nuts+and+bolts.3mf", "family": "Nuts & Bolts", "label": "Montessori nuts & bolts", "parts": 6, "tris": 179994, "tris_full": 217774, "dims": [106.6, 183.4, 179.2], "glb_mb": 3.6}], "held": [{"slug": "held_sphere", "file": "held-sphere.3mf", "family": "Designed here", "label": "Held sphere (captive ball)", "parts": 2, "tris": 18260, "tris_full": 18260, "dims": [50.0, 50.0, 49.0], "glb_mb": 0.4}], "chain": [{"slug": "chain_test", "file": "chain-test-5seg.3mf", "family": "Designed here", "label": "Chain test \u2014 5 links", "parts": 5, "tris": 12320, "tris_full": 12320, "dims": [62.5, 14.6, 8.8], "glb_mb": 0.1}], "cshape": [{"slug": "c_shape", "file": "c-shape copy 16.stl", "family": "One-off STLs", "label": "C-shape (copy 16)", "parts": 1, "tris": 9770, "tris_full": 9770, "dims": [120.9, 145.7, 41.7], "glb_mb": 0.2}], "remesh": [{"slug": "remesh_avg", "file": "remesh_averaged_model_thresh0.900.stl", "family": "One-off STLs", "label": "Averaged remesh", "parts": 1, "tris": 2146, "tris_full": 2146, "dims": [103.5, 116.4, 17.2], "glb_mb": 0.0}], "voro": [{"slug": "voro_sphere", "file": "voro_sphere_2.stl", "family": "One-off STLs", "label": "Voronoi sphere", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [2.0, 2.0, 2.0], "glb_mb": 1.7}], "voro_f": [{"slug": "voro_fixed", "file": "voro_sphere_2-fixed.stl", "family": "One-off Experiments", "label": "Voronoi sphere (fixed)", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [59.1, 60.3, 60.1], "glb_mb": 1.7}]};</script>
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
+"three/addons/loaders/GLTFLoader.js":"./vendor/loaders/GLTFLoader.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setScissorTest(true);
+const loader = new GLTFLoader();
+const views = [];   // {el, scene, camera, controls, entries, idx, loaded:{} , visible}
+
+function makeScene(){
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xdfe8e6, 0x394447, 1.15));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(1.2, 2, 1.4);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0x7fd8cc, 0.45); rim.position.set(-1.5, 0.6, -1);
+  scene.add(rim);
+  return scene;
+}
+
+function frameModel(v, obj){
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3()).length();
+  const r = size / 2;
+  const c = box.getCenter(new THREE.Vector3());
+  v.controls.target.copy(c);
+  const fovV = v.camera.fov * Math.PI / 180;
+  const fovH = 2 * Math.atan(Math.tan(fovV / 2) * v.camera.aspect);
+  const dist = 1.08 * r / Math.sin(Math.min(fovV, fovH) / 2);
+  const dir = new THREE.Vector3(1, 0.6, 1).normalize();
+  v.camera.position.copy(c).addScaledVector(dir, dist);
+  v.camera.near = dist/50; v.camera.far = dist*20;
+  v.camera.updateProjectionMatrix();
+}
+
+function setModel(v, i){
+  const entry = v.entries[i];
+  v.idx = i;
+  const dimtag = v.el.parentElement.querySelector('.dimtag');
+  if (dimtag) dimtag.textContent =
+    `${entry.dims[0]}×${entry.dims[1]}×${entry.dims[2]} mm · ${entry.tris.toLocaleString()} tris`;
+  if (v.loaded[entry.slug]){
+    if (v.current) v.scene.remove(v.current);
+    v.current = v.loaded[entry.slug];
+    v.scene.add(v.current); frameModel(v, v.current);
+    return;
+  }
+  const status = document.createElement('div');
+  status.className = 'status'; status.textContent = 'loading…';
+  v.el.appendChild(status);
+  loader.load('models/glb/' + entry.slug + '.glb', gltf => {
+    status.remove();
+    const obj = gltf.scene;
+    obj.rotation.x = -Math.PI/2;   // z-up sources
+    obj.traverse(o => { if (o.isMesh){
+      o.material.metalness = 0.05; o.material.roughness = 0.62;
+      o.material.side = THREE.DoubleSide; }});
+    v.loaded[entry.slug] = obj;
+    if (v.idx === i){
+      if (v.current) v.scene.remove(v.current);
+      v.current = obj; v.scene.add(obj); frameModel(v, obj);
+    }
+  }, undefined, () => { status.textContent = 'load failed — serve over http'; });
+}
+
+document.querySelectorAll('.view').forEach(el => {
+  const entries = MODELS[el.dataset.models];
+  if (!entries) return;
+  const v = {el, entries, idx: 0, loaded: {}, current: null, started: false};
+  v.scene = makeScene();
+  v.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
+  v.controls = new OrbitControls(v.camera, el);
+  v.controls.enableDamping = true; v.controls.autoRotate = true;
+  v.controls.autoRotateSpeed = 1.0;
+  v.controls.enableZoom = false; v.controls.enablePan = false;
+  views.push(v);
+  const chips = el.parentElement.querySelector('.chips');
+  if (chips && entries.length > 1){
+    entries.forEach((e, i) => {
+      const b = document.createElement('button');
+      b.textContent = e.chip || e.label; if (i === 0) b.classList.add('on');
+      b.onclick = () => { chips.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on'); setModel(v, i); };
+      chips.appendChild(b);
+    });
+  }
+});
+
+const io = new IntersectionObserver(es => es.forEach(e => {
+  const v = views.find(x => x.el === e.target);
+  if (!v) return;
+  v.visible = e.isIntersecting;
+  if (v.visible && !v.started){ v.started = true; setModel(v, 0); }
+}), {rootMargin: '200px'});
+views.forEach(v => io.observe(v.el));
+
+async function openInSlicer(files, btn){
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Opening…';
+  try{
+    for (const f of files){
+      const r = await fetch('/open?f=' + encodeURIComponent(f));
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || 'server refused');
+    }
+    btn.textContent = 'Sent to Bambu Studio ✓';
+  }catch(e){
+    btn.textContent = /fetch|network/i.test(e.message)
+      ? 'Run python3 serve.py first' : ('✗ ' + e.message);
+  }
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3500);
+}
+document.querySelectorAll('.print').forEach(btn => {
+  btn.onclick = () => {
+    const v = views.find(x => x.el.dataset.models === btn.dataset.card);
+    const entry = v ? v.entries[v.idx] : null;
+    if (entry) openInSlicer(entry.file.split(' + '), btn);
+  };
+});
+document.querySelectorAll('.fileopen').forEach(btn => {
+  btn.onclick = () => openInSlicer([btn.dataset.file], btn);
+});
+document.querySelectorAll('.showorig').forEach(btn => {
+  btn.onclick = () => {
+    const card = document.querySelector(`.card[data-cid="${btn.dataset.target}"]`);
+    if (!card) return;
+    const on = card.classList.toggle('revealed');
+    btn.textContent = on ? btn.dataset.hideLabel : btn.dataset.showLabel;
+    if (on) card.scrollIntoView({block: 'center', behavior: 'smooth'});
+  };
+});
+
+function renderNotes(box, list){
+  box.querySelectorAll('.n').forEach(n => n.remove());
+  const form = box.querySelector('form');
+  (list || []).forEach(n => {
+    const d = document.createElement('div');
+    d.className = 'n';
+    const b = document.createElement('b'); b.textContent = n.date;
+    d.appendChild(b); d.appendChild(document.createTextNode(n.text));
+    box.insertBefore(d, form);
+  });
+}
+fetch('/notes').then(r => r.json()).then(all => {
+  document.querySelectorAll('.notes').forEach(box => {
+    const cid = box.dataset.cid;
+    const form = document.createElement('form');
+    const inp = document.createElement('input');
+    inp.placeholder = 'Add a print note…'; inp.maxLength = 2000;
+    const btn = document.createElement('button'); btn.textContent = 'Note';
+    form.append(inp, btn);
+    form.onsubmit = async ev => {
+      ev.preventDefault();
+      const text = inp.value.trim(); if (!text) return;
+      const r = await fetch('/notes', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({cid, text})});
+      const j = await r.json();
+      if (j.ok){ inp.value = ''; renderNotes(box, j.notes); }
+    };
+    box.appendChild(form);
+    renderNotes(box, all[cid]);
+  });
+}).catch(() => {});
+
+function animate(){
+  const w = innerWidth, h = innerHeight;
+  if (canvas.width !== w * renderer.getPixelRatio())
+    renderer.setSize(w, h, false);
+  renderer.setClearColor(0x000000, 0);
+  renderer.setScissorTest(false);
+  renderer.clear();
+  renderer.setScissorTest(true);
+  for (const v of views){
+    if (!v.visible || !v.current) continue;
+    const r = v.el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > h || r.width === 0) continue;
+    v.controls.update();
+    const bottom = h - r.bottom;
+    renderer.setViewport(r.left, bottom, r.width, r.height);
+    renderer.setScissor(r.left, bottom, r.width, r.height);
+    v.camera.aspect = r.width / r.height; v.camera.updateProjectionMatrix();
+    renderer.render(v.scene, v.camera);
+  }
+}
+renderer.setAnimationLoop(animate);
+</script>
+</body>
+</html>
