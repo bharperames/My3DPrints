@@ -161,3 +161,50 @@ def build_chain(scale, fname):
 
 build_chain(1.0, "chain-test-5seg.3mf")
 build_chain(2.0, "chain-test-5seg-2x.3mf")
+
+
+# ---------- 3. Held sphere + 10-link chain (pendant variant) ----------
+# Link 1 is fused into the cage's lower lattice (rigid weld, like a cast
+# pendant loop); links 2-10 articulate freely. Placement x=17.5 / first pitch
+# 11.0 was found by scan; re-verified here on every build.
+def build_chained():
+    base = trimesh.load(os.path.join(M, "held-sphere.3mf"), force="scene")
+    cage2 = base.geometry["cage"].copy()
+    held2 = base.geometry["ball"].copy()
+    link = tube_from_loop(stadium_path(), D / 2)
+    X1, P1 = 17.5, 11.0
+
+    def placed(x, tilt):
+        l = link.copy()
+        l.apply_transform(trimesh.transformations.rotation_matrix(tilt, [1, 0, 0]))
+        l.apply_translation([x, 0, 0])
+        l.apply_translation([0, 0, -l.bounds[0][2]])
+        return l
+
+    l1 = placed(X1, np.pi / 4)
+    weld = l1.intersection(cage2)
+    assert (not weld.is_empty) and weld.volume > 5, "fused link no longer welds"
+    body = trimesh.boolean.union([cage2, l1], engine="manifold")
+    links = [placed(X1 + P1 + (i - 1) * PITCH,
+                    np.pi / 4 if i % 2 == 0 else -np.pi / 4) for i in range(1, 10)]
+    cm = trimesh.collision.CollisionManager()
+    cm.add_object("w", body)
+    assert not cm.in_collision_single(links[0])
+    d2 = cm.min_distance_single(links[0])
+    ok = d2 >= 0.6
+    for i in range(len(links) - 1):
+        c = trimesh.collision.CollisionManager()
+        c.add_object("a", links[i])
+        ok &= (not c.in_collision_single(links[i + 1]))
+        ok &= c.min_distance_single(links[i + 1]) >= 0.5
+    sc3 = trimesh.Scene()
+    sc3.add_geometry(body, geom_name="cage_with_loop")
+    sc3.add_geometry(held2, geom_name="ball")
+    for i, l in enumerate(links):
+        sc3.add_geometry(l, geom_name=f"link_{i + 2}")
+    sc3.export(os.path.join(M, "held-sphere-chained.3mf"))
+    print(f"held-sphere-chained: link2 clearance {d2:.2f}, "
+          f"{'ALL-OK' if ok else 'FAILED CHECKS'}")
+
+
+build_chained()
