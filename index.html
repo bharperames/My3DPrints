@@ -19,7 +19,7 @@
 body{background:var(--ground);color:var(--ink);
   font:400 15.5px/1.55 "IBM Plex Sans",system-ui,sans-serif;
   padding:0 24px 80px}
-#gl{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:5}
+#gl{position:absolute;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:5}
 .wrap{max-width:1240px;margin:0 auto}
 header.top{padding:52px 0 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px}
 h1{font:700 clamp(30px,4.5vw,44px)/1.05 "Chakra Petch",sans-serif;letter-spacing:.5px}
@@ -46,6 +46,8 @@ h1 .tld{color:var(--accent)}
 .dia .dim{stroke:var(--muted);stroke-width:1.5}
 .dia .dim.acc{stroke:var(--accent);stroke-width:2}
 .dia .lbl{font:500 10px "IBM Plex Sans",sans-serif;fill:var(--muted)}
+.genlabels{display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;
+  font:600 13px "IBM Plex Mono",monospace;color:var(--ink);margin-top:6px}
 .dia figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
 .dia figcaption strong{color:var(--ink)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
@@ -53,6 +55,22 @@ h1 .tld{color:var(--accent)}
   overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3}
 .view{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
+.coverimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:5}
+.photo.showphoto .coverimg{display:block}
+.phototoggle{position:absolute;left:10px;bottom:10px;z-index:6;background:var(--panel);
+  border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:5px 11px;
+  font:500 11px "IBM Plex Sans",sans-serif;cursor:pointer}
+.phototoggle:hover,.phototoggle.on{color:var(--accent-ink);border-color:var(--accent)}
+.metabox{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px}
+.metabox summary{cursor:pointer;font:400 11.5px "IBM Plex Mono",monospace;color:var(--faint)}
+.mrows{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:10px 0 0}
+.mrow dt{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.mrow dd{font-size:12.5px;color:var(--muted);margin:0;overflow-wrap:anywhere}
+.mdesc{font-size:12.5px;color:var(--muted);margin:10px 0 0;white-space:pre-line;
+  max-height:130px;overflow-y:auto}
+.gal{display:flex;gap:6px;margin-top:10px;overflow-x:auto;padding-bottom:4px}
+.gal img{height:56px;border-radius:6px;border:1px solid var(--line);cursor:pointer;flex:none}
+.gal img:hover{border-color:var(--accent)}
 .view:active{cursor:grabbing}
 .view .status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   color:var(--faint);font:500 13px "Chakra Petch",sans-serif}
@@ -189,11 +207,11 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
         <circle cx="110" cy="62" r="40" class="part"/>
         <path d="M60 118 L82 96 L138 96 L160 118 Z" class="part2"/>
         <line x1="70" y1="62" x2="150" y2="62" class="dim"/>
-        <text x="110" y="56" class="lbl" text-anchor="middle">ball &#216; (diameter)</text>
+        <text x="110" y="55" class="lbl" text-anchor="middle">ball &#216;</text>
         <line x1="82" y1="96" x2="138" y2="96" class="dim acc"/>
         <text x="110" y="132" class="lbl" text-anchor="middle">rim &#216; — the opening the ball rests on</text>
         <path d="M110 62 L110 32 A 30 30 0 0 1 133 43" fill="none" class="dim acc"/>
-        <text x="148" y="34" class="lbl">contact angle</text>
+        <text x="156" y="24" class="lbl">contact angle</text>
       </svg>
       <figcaption><strong>Ball on a stand.</strong> The ball sits when its &#216; (diameter) exceeds the rim &#216;.
       The contact angle is measured from the vertical axis to where the rim touches — ≈45° is a
@@ -219,8 +237,8 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       <svg viewBox="0 0 220 150" role="img" aria-label="Radial clearance between mating parts">
         <circle cx="110" cy="75" r="56" fill="none" class="part"/>
         <circle cx="110" cy="75" r="44" fill="none" class="part2"/>
-        <line x1="110" y1="19" x2="110" y2="31" class="dim acc"/>
-        <text x="120" y="28" class="lbl">radial clearance</text>
+        <line x1="110" y1="16" x2="110" y2="31" class="dim acc"/>
+        <text x="110" y="10" class="lbl" text-anchor="middle">radial clearance</text>
         <text x="110" y="80" class="lbl" text-anchor="middle">inner part</text>
       </svg>
       <figcaption><strong>Radial clearance</strong> is the designed air gap between mating surfaces,
@@ -230,6 +248,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
     </figure>
     <figure class="dia">
       <img src="assets/genus.png" alt="Three blocks: solid, one cylinder bored through, two bored through" style="width:100%;display:block">
+        <div class="genlabels"><span>genus 0</span><span>genus 1</span><span>genus 2</span></div>
       <figcaption><strong>Genus</strong> counts the tunnels through a closed solid — a ball is 0,
       a block with one cylinder bored clear through it is 1, and every additional bore adds one. It's computed from the mesh itself,
       so it fingerprints a part's interlock mechanism: the hourglass bodies read 7 slots + a
@@ -258,6 +277,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="sphere1"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -280,6 +300,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="sphere2"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -302,6 +323,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="sphere3"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -324,6 +346,11 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="vortex"></div>
+    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>Bazzlington</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 3 walls, 25% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-01.10.01.50</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-02-21</dd></div><div class="mrow"><dt>slicer_weight_g</dt><dd>32.2</dd></div><div class="mrow"><dt>slicer_time</dt><dd>2h 05m</dd></div></dl><p class="mdesc">I designed this version of my Vortex fidget toy to have 3 seperate pieces. 
+
+&nbsp;
+
+This model prints fine with no supports.</p><div class="gal"><img src="models/meta/vortex_v3_project/photo_1.webp" loading="lazy" data-cid="vortex" alt="designer photo"><img src="models/meta/vortex_v3_project/photo_2.webp" loading="lazy" data-cid="vortex" alt="designer photo"><img src="models/meta/vortex_v3_project/photo_3.webp" loading="lazy" data-cid="vortex" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -346,6 +373,51 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="fidget"></div>
+    <details class="metabox"><summary>3MF metadata · 4 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>RJ Design</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 2 walls, 30% Gyroid infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-01.10.01.50</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-02-21</dd></div><div class="mrow"><dt>slicer_weight_g</dt><dd>11.3</dd></div><div class="mrow"><dt>slicer_time</dt><dd>0h 52m</dd></div></dl><p class="mdesc">The Design
+
+&nbsp;
+
+The Latest model in the Series is Here: The v2 - Vortex Fidget Ball
+
+&nbsp;
+
+Note: this model is best used with some minor assembly (though not neccessary)
+
+&nbsp;
+
+This can be played with in one hand. you push the ball through the disc and back.
+
+&nbsp;
+
+The parts are also compaitble with other designs in the V2 series.
+
+&nbsp;
+
+Dimensions are approximately: 27mm x 27mm x 35mm
+
+&nbsp;
+
+Let me know if you experience any issues.
+
+&nbsp;
+
+If you enjoy this print consider giving it a boost (It&#39;d really help me out!)
+
+&nbsp;
+
+Assembly
+
+&nbsp;
+
+Though not necessary, this toy is best enjoyed with some assembly.
+
+&nbsp;
+
+There are two methods:
+
+&nbsp;
+
+The First Method uses …</p><div class="gal"><img src="models/meta/mini_fidget_ball/photo_1.webp" loading="lazy" data-cid="fidget" alt="designer photo"><img src="models/meta/mini_fidget_ball/photo_2.webp" loading="lazy" data-cid="fidget" alt="designer photo"><img src="models/meta/mini_fidget_ball/photo_3.webp" loading="lazy" data-cid="fidget" alt="designer photo"><img src="models/meta/mini_fidget_ball/photo_4.webp" loading="lazy" data-cid="fidget" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -368,6 +440,47 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="stackable"></div>
+    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>RJ Design</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>profile</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 2 walls, 30% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.01.01.52</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-08-01</dd></div></dl><p class="mdesc">The Design
+
+&nbsp;
+
+You Asked for it, its here!
+
+&nbsp;
+
+The new Stackable impossible passthrough!
+
+&nbsp;
+
+Fully compatible with the V2 Series,
+
+&nbsp;
+
+The “male” part of the thread seems to defy physics by passing through the slightly larger “female” Part
+
+&nbsp;
+
+Now your can print as many tall parts as you like and add them together to make an extra long vortex tube!
+
+&nbsp;
+
+The Ball Twists its way down the Tube
+
+&nbsp;
+
+There is a Top cap and a Bottom cap to prevent the the ball escaping
+
+&nbsp;
+
+Or, if you&#39;ve got a spring from a ball point pen lying around, try adding this into the centre!
+
+&nbsp;
+
+Dimensions of 1 tall part is approximately: diameter 32mm x 60mm
+
+&nbsp;
+
+Let me k…</p><div class="gal"><img src="models/meta/mini_stackable_supports_added_back_in/photo_1.webp" loading="lazy" data-cid="stackable" alt="designer photo"><img src="models/meta/mini_stackable_supports_added_back_in/photo_2.webp" loading="lazy" data-cid="stackable" alt="designer photo"><img src="models/meta/mini_stackable_supports_added_back_in/photo_3.webp" loading="lazy" data-cid="stackable" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -390,6 +503,28 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="top"></div>
+    <details class="metabox"><summary>3MF metadata · 5 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>AeroDesigns</dd></div><div class="mrow"><dt>License</dt><dd>MakerWorld Exclusive License</dd></div><div class="mrow"><dt>Origin</dt><dd>profile</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>impression plus solide !</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.07.01.62</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-07-14</dd></div></dl><p class="mdesc">A spinning top that creates a unique visual effect while spinning.
+Balanced with special geometry for long spin times and smooth motion, making it fun to watch and satisfying to use.
+Prints easily and works well as a desk toy or fidget.
+
+&nbsp;
+
+warning:
+
+Connector may not fit properly if the model id scaled up or down.
+
+&nbsp;
+
+Notes:
+
+prints in two halves with a separate connecting piece.
+
+Glue is not needed but advised for a good connection between pieces.
+
+Has two different sizes of connector to accommodate filaments with different tolerances eg. PLA silk.
+
+&nbsp;
+MembershipEnjoying my models? If you&#39;d like to support future projects or sell physical prints of my designs, consider jo…</p><div class="gal"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_1.webp" loading="lazy" data-cid="top" alt="designer photo"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_2.webp" loading="lazy" data-cid="top" alt="designer photo"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_3.webp" loading="lazy" data-cid="top" alt="designer photo"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_4.webp" loading="lazy" data-cid="top" alt="designer photo"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_5.webp" loading="lazy" data-cid="top" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -412,6 +547,19 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="skull"></div>
+    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>Gmino</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.24mm layer, 3 walls, 15% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.04.00.70</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-01-06</dd></div></dl><p class="mdesc">Quantum Skull is a fidget you must have in your hands.
+
+&nbsp;
+
+In the print profile, you&#39;ll find two plates, one for each plate, and you&#39;ll need to print one in the color of your choice.
+
+&nbsp;
+
+And you&#39;re ready to play.
+
+&nbsp;
+
+Enjoy!</p><div class="gal"><img src="models/meta/quantum_skull/photo_1.webp" loading="lazy" data-cid="skull" alt="designer photo"><img src="models/meta/quantum_skull/photo_2.webp" loading="lazy" data-cid="skull" alt="designer photo"><img src="models/meta/quantum_skull/photo_3.webp" loading="lazy" data-cid="skull" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -434,6 +582,18 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="puffer"></div>
+    <details class="metabox"><summary>3MF metadata · 4 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>Legend Lee</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>profile</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.16mm 层高, 2 层墙, 15% 填充</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.08.02.60</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-08-23</dd></div></dl><p class="mdesc">本作品需要用到橡皮筋、润滑剂和胶水
+
+本作品主作结构参考比个赞@user_294872208
+
+&nbsp;
+
+安装指南如下：
+
+ 
+
+&nbsp;
+为我助力</p><div class="gal"><img src="models/meta/pufferfish/photo_1.webp" loading="lazy" data-cid="puffer" alt="designer photo"><img src="models/meta/pufferfish/photo_2.webp" loading="lazy" data-cid="puffer" alt="designer photo"><img src="models/meta/pufferfish/photo_3.webp" loading="lazy" data-cid="puffer" alt="designer photo"><img src="models/meta/pufferfish/photo_4.webp" loading="lazy" data-cid="puffer" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -456,6 +616,18 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="puffer3p"></div>
+    <details class="metabox"><summary>3MF metadata · 4 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>Legend Lee</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>profile</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.16mm 层高, 2 层墙, 15% 填充</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.08.02.60</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-08-23</dd></div></dl><p class="mdesc">本作品需要用到橡皮筋、润滑剂和胶水
+
+本作品主作结构参考比个赞@user_294872208
+
+&nbsp;
+
+安装指南如下：
+
+ 
+
+&nbsp;
+为我助力</p><div class="gal"><img src="models/meta/pufferfish_p2s_threeplates/photo_1.webp" loading="lazy" data-cid="puffer3p" alt="designer photo"><img src="models/meta/pufferfish_p2s_threeplates/photo_2.webp" loading="lazy" data-cid="puffer3p" alt="designer photo"><img src="models/meta/pufferfish_p2s_threeplates/photo_3.webp" loading="lazy" data-cid="puffer3p" alt="designer photo"><img src="models/meta/pufferfish_p2s_threeplates/photo_4.webp" loading="lazy" data-cid="puffer3p" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -478,6 +650,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="puffer1c"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.08.02.60</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-08-23</dd></div></dl></details>
   </div>
 </article>
 
@@ -500,6 +673,19 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="pikachu"></div>
+    <details class="metabox"><summary>3MF metadata · 5 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>B-Forge3D</dd></div><div class="mrow"><dt>License</dt><dd>MakerWorld Exclusive License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>new version - more resistant single color</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.05.00.66</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-05-04</dd></div></dl><p class="mdesc">Ho realizzato un portachiavi articolato di pikachu stampabile a colori con AMS, cercate di avere un giallo coprente sennò si noterà un pò di nero intorno alla bocca, se avranno in molti questo problema cercherò di modificare il modello per far si che non si veda, ho messo anche il modello con un singolo colore per chi non possiede un AMS, per dubbi o domande lasciate pure un commento qua sotto
+
+&nbsp;
+
+aggiornamento: ho realizzato una nuova versione più resistente che dovrebbe dare anche meno problemi durante la stampa multicolore, spero sia di vostro gradimento.
+
+&nbsp;
+
+Want to sell physical prints of my designs?
+
+Become an active Patreon member to obtain a commercial license.
+
+Link in my …</p><div class="gal"><img src="models/meta/pikachu_more_resistant_one_color/photo_1.webp" loading="lazy" data-cid="pikachu" alt="designer photo"><img src="models/meta/pikachu_more_resistant_one_color/photo_2.webp" loading="lazy" data-cid="pikachu" alt="designer photo"><img src="models/meta/pikachu_more_resistant_one_color/photo_3.webp" loading="lazy" data-cid="pikachu" alt="designer photo"><img src="models/meta/pikachu_more_resistant_one_color/photo_4.webp" loading="lazy" data-cid="pikachu" alt="designer photo"><img src="models/meta/pikachu_more_resistant_one_color/photo_5.webp" loading="lazy" data-cid="pikachu" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -522,6 +708,23 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       <button class="showorig" data-target="staryu_dup" data-show-label="show duplicate download" data-hide-label="hide duplicate download">show duplicate download</button>
     </div>
     <div class="notes" data-cid="staryu"></div>
+    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>pythong</dd></div><div class="mrow"><dt>License</dt><dd>BY-NC-SA</dd></div><div class="mrow"><dt>Origin</dt><dd>remix</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>Staryu Starmie Spinners (NO AMS NEEDED)</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.01.01.52</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-07-11</dd></div></dl><p class="mdesc">Based on the Starmie Fidget Spinner of Nova7171
+
+&nbsp;
+
+I am no fan of the thickness and the necessity of supports or glue, also I had problems with the friction of the original model, so I redesigned the main body and their edges, the connector pin, the back wall, and overall the spinner is half as thick to fit my kids&#39; hands better. Also you don&#39;t need support or glue here to assemble the spinner
+
+&nbsp;
+
+I&#39;ve also created a slightly smaller version for Staryu with a different diamond, have fun with it!
+
+&nbsp;
+
+FOR THOSE WITHOUT AMS (like me): I&#39;ve added a pause to plate 1, where you can exchange your filament
+
+&nbsp;
+
+For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><img src="models/meta/staryu_starmie_spin_spin/photo_1.webp" loading="lazy" data-cid="staryu" alt="designer photo"><img src="models/meta/staryu_starmie_spin_spin/photo_2.webp" loading="lazy" data-cid="staryu" alt="designer photo"><img src="models/meta/staryu_starmie_spin_spin/photo_3.webp" loading="lazy" data-cid="staryu" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -544,6 +747,23 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="staryu_dup"></div>
+    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>pythong</dd></div><div class="mrow"><dt>License</dt><dd>BY-NC-SA</dd></div><div class="mrow"><dt>Origin</dt><dd>remix</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>Staryu Starmie Spinners (NO AMS NEEDED)</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.01.01.52</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-07-11</dd></div></dl><p class="mdesc">Based on the Starmie Fidget Spinner of Nova7171
+
+&nbsp;
+
+I am no fan of the thickness and the necessity of supports or glue, also I had problems with the friction of the original model, so I redesigned the main body and their edges, the connector pin, the back wall, and overall the spinner is half as thick to fit my kids&#39; hands better. Also you don&#39;t need support or glue here to assemble the spinner
+
+&nbsp;
+
+I&#39;ve also created a slightly smaller version for Staryu with a different diamond, have fun with it!
+
+&nbsp;
+
+FOR THOSE WITHOUT AMS (like me): I&#39;ve added a pause to plate 1, where you can exchange your filament
+
+&nbsp;
+
+For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><img src="models/meta/staryu_starmie_spin_spin_1/photo_1.webp" loading="lazy" data-cid="staryu_dup" alt="designer photo"><img src="models/meta/staryu_starmie_spin_spin_1/photo_2.webp" loading="lazy" data-cid="staryu_dup" alt="designer photo"><img src="models/meta/staryu_starmie_spin_spin_1/photo_3.webp" loading="lazy" data-cid="staryu_dup" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -566,6 +786,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="cone_pair_s"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -588,6 +809,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="cone_pair_d"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -610,6 +832,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="cone_solid_s"></div>
+    
   </div>
 </article>
 
@@ -632,6 +855,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="cone_spiral_s"></div>
+    
   </div>
 </article>
 
@@ -654,6 +878,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="cone_solid_d"></div>
+    
   </div>
 </article>
 
@@ -676,6 +901,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="cone_spiral_d"></div>
+    
   </div>
 </article>
 
@@ -698,6 +924,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="pyr_pair_s"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -720,6 +947,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="pyr_pair_d"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -742,6 +970,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       <button class="showorig" data-target="pyr_solid_so" data-show-label="show original (pinch)" data-hide-label="hide original (pinch)">show original (pinch)</button>
     </div>
     <div class="notes" data-cid="pyr_solid_sf"></div>
+    
   </div>
 </article>
 
@@ -764,6 +993,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="pyr_solid_so"></div>
+    
   </div>
 </article>
 
@@ -786,6 +1016,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="pyr_spiral_s"></div>
+    
   </div>
 </article>
 
@@ -808,6 +1039,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="pyr_solid_d"></div>
+    
   </div>
 </article>
 
@@ -830,6 +1062,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="pyr_spiral_d"></div>
+    
   </div>
 </article>
 
@@ -852,6 +1085,14 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="nuts"></div>
+    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>carnivalcamps</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 2 walls, 15% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.03.01.51</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-11-08</dd></div></dl><p class="mdesc">MembershipQuires vender este modelo en Etsy o tiendas similares?, adquiere una licencia comercial hoy mismoBoost MeSi te gustó el modelo apoyame con un impulso
+Buy me coffe if you like my models https://ko-fi.com/carnivalcamps
+
+Looking for a fun, safe, and educational toy for your little one? Introducing the Jumbo Nuts &amp; Bolts set!
+
+Designed specifically for small hands, this 3D-printable toy is perfect for helping toddlers develop crucial skills like fine motor control, hand-eye coordination, color recognition, and basic counting. The chunky, oversized design ensures it&#39;s easy to grip and completely safe for young children.
+
+Watch them delight in stacking, screwing, and creating the…</p><div class="gal"><img src="models/meta/montessori_nuts_and_bolts/photo_1.webp" loading="lazy" data-cid="nuts" alt="designer photo"><img src="models/meta/montessori_nuts_and_bolts/photo_2.webp" loading="lazy" data-cid="nuts" alt="designer photo"><img src="models/meta/montessori_nuts_and_bolts/photo_3.webp" loading="lazy" data-cid="nuts" alt="designer photo"></div></details>
   </div>
 </article>
 
@@ -874,6 +1115,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="held"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -896,6 +1138,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="chain"></div>
+    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
   </div>
 </article>
 
@@ -918,6 +1161,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="cshape"></div>
+    
   </div>
 </article>
 
@@ -940,6 +1184,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="remesh"></div>
+    
   </div>
 </article>
 
@@ -962,6 +1207,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       
     </div>
     <div class="notes" data-cid="voro"></div>
+    
   </div>
 </article>
 
@@ -984,6 +1230,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
       <button class="showorig" data-target="voro" data-show-label="show original (Ø2 mm)" data-hide-label="hide original (Ø2 mm)">show original (Ø2 mm)</button>
     </div>
     <div class="notes" data-cid="voro_f"></div>
+    
   </div>
 </article></div>
 
@@ -1025,7 +1272,7 @@ projects are labeled with the plate that was sliced.<br><br>Validated 2026-08-24
 solid-PLA upper bounds at 1.24 g/cm³ except where the file embeds a slicer estimate.</footer>
 </div>
 
-<script>const MODELS = {"sphere1": [{"slug": "sphere_stand_1in", "file": "sphere_stand_1.0in.3mf", "family": "Sphere Stands", "label": "1\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [20.5, 20.5, 5.1], "glb_mb": 0.0}], "sphere2": [{"slug": "sphere_stand_2in", "file": "sphere_stand_2.0in.3mf", "family": "Sphere Stands", "label": "2\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [41.3, 41.3, 9.3], "glb_mb": 0.0}], "sphere3": [{"slug": "sphere_stand_3in", "file": "sphere_stand_3.0in.3mf", "family": "Sphere Stands", "label": "3\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [61.5, 61.5, 13.4], "glb_mb": 0.0}], "vortex": [{"slug": "vortex_v3", "file": "Vortex+v3+project.3mf", "family": "Vortex v3", "label": "Vortex v3 (3 sleeves)", "parts": 3, "tris": 179996, "tris_full": 378652, "dims": [66.7, 76.7, 50.0], "glb_mb": 3.6}], "fidget": [{"slug": "mini_fidget_ball", "file": "Mini+Fidget+Ball.3mf", "family": "Passthrough series", "label": "Mini Fidget Ball", "parts": 3, "tris": 179996, "tris_full": 845530, "dims": [46.0, 67.7, 27.0], "glb_mb": 3.6}], "stackable": [{"slug": "mini_stackable", "file": "Mini+Stackable+Supports+added+back+in.3mf", "family": "Passthrough series", "label": "Mini Stackable tube", "parts": 7, "tris": 179994, "tris_full": 3731786, "dims": [90.5, 121.8, 62.2], "glb_mb": 3.6}], "top": [{"slug": "spinning_top", "file": "magic_spinning_top_+23+de+fight+d.3mf", "family": "Spinning Top", "label": "Magic spinning top", "parts": 4, "tris": 5292, "tris_full": 5292, "dims": [100.3, 152.2, 41.3], "glb_mb": 0.1}], "skull": [{"slug": "quantum_skull", "file": "Quantum+Skull.3mf", "family": "Quantum Skull", "label": "Quantum Skull halves", "parts": 2, "tris": 30692, "tris_full": 30692, "dims": [81.0, 212.6, 36.7], "glb_mb": 0.6}], "puffer": [{"slug": "pufferfish", "file": "pufferfish.3mf", "family": "Pufferfish", "label": "Pufferfish (all parts)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6}], "puffer3p": [{"slug": "pufferfish_threeplates", "file": "pufferfish-p2s-threeplates.3mf", "family": "Pufferfish", "label": "Pufferfish (3-plate re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6}], "puffer1c": [{"slug": "pufferfish_onecolor", "file": "pufferfish-p2s-onecolor.3mf", "family": "Pufferfish", "label": "Pufferfish (one-color re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [193.4, 177.9, 41.9], "glb_mb": 3.6}], "pikachu": [{"slug": "pikachu", "file": "pikachu+more+resistant+one+color.3mf", "family": "Pikachu Flexy", "label": "Pikachu flexy keychain", "parts": 1, "tris": 34818, "tris_full": 34818, "dims": [32.5, 76.1, 14.1], "glb_mb": 0.7}], "staryu": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin.3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7}], "staryu_dup": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin (1).3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7}], "cone_pair_s": [{"slug": "cone_pair_small", "file": "cone-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 90 mm", "parts": 2, "tris": 179998, "tris_full": 362160, "dims": [44.7, 92.0, 90.0], "glb_mb": 3.6}], "cone_pair_d": [{"slug": "cone_pair_dubbel", "file": "cone-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 418836, "dims": [48.4, 95.5, 180.0], "glb_mb": 3.6}], "cone_solid_s": [{"slug": "cone_solid_small", "file": "cone-solid-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 184238, "dims": [44.7, 44.7, 90.0], "glb_mb": 3.6}], "cone_spiral_s": [{"slug": "cone_spiral_small", "file": "cone-spiral-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 90 mm", "parts": 1, "tris": 177922, "tris_full": 177922, "dims": [41.3, 41.4, 90.0], "glb_mb": 3.6}], "cone_solid_d": [{"slug": "cone_solid", "file": "cone-solid.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 214672, "dims": [48.4, 48.4, 180.0], "glb_mb": 3.6}], "cone_spiral_d": [{"slug": "cone_spiral", "file": "cone-spiral.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 204164, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "pyr_pair_s": [{"slug": "pyramid_pair_small", "file": "pyramid-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 90 mm (fixed)", "parts": 2, "tris": 179998, "tris_full": 401514, "dims": [46.6, 93.9, 90.0], "glb_mb": 3.6}], "pyr_pair_d": [{"slug": "pyramid_pair_dubbel", "file": "pyramid-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 432840, "dims": [47.5, 94.7, 180.0], "glb_mb": 3.6}], "pyr_solid_sf": [{"slug": "pyramid_solid_small_fixed", "file": "pyramid-solid-small-fixed.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (fixed)", "parts": 1, "tris": 180000, "tris_full": 200876, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_solid_so": [{"slug": "pyramid_solid_small_orig", "file": "pyramid-solid-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (orig, pinch)", "parts": 1, "tris": 180000, "tris_full": 200878, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_spiral_s": [{"slug": "pyramid_spiral_small", "file": "pyramid-spiral-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 200638, "dims": [41.4, 41.4, 90.0], "glb_mb": 3.6}], "pyr_solid_d": [{"slug": "pyramid_solid", "file": "pyramid-solid.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 221738, "dims": [47.5, 47.5, 180.0], "glb_mb": 3.6}], "pyr_spiral_d": [{"slug": "pyramid_spiral", "file": "pyramid-spiral.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 211102, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "nuts": [{"slug": "nuts_bolts", "file": "montessori+nuts+and+bolts.3mf", "family": "Nuts & Bolts", "label": "Montessori nuts & bolts", "parts": 6, "tris": 179994, "tris_full": 217774, "dims": [106.6, 183.4, 179.2], "glb_mb": 3.6}], "held": [{"slug": "held_sphere", "file": "held-sphere.3mf", "family": "Designed here", "label": "Held sphere (captive ball)", "parts": 2, "tris": 18260, "tris_full": 18260, "dims": [50.0, 50.0, 49.0], "glb_mb": 0.4}], "chain": [{"slug": "chain_test", "file": "chain-test-5seg.3mf", "family": "Designed here", "label": "Chain test \u2014 5 links", "parts": 5, "tris": 12320, "tris_full": 12320, "dims": [62.5, 14.6, 8.8], "glb_mb": 0.1}], "cshape": [{"slug": "c_shape", "file": "c-shape copy 16.stl", "family": "One-off STLs", "label": "C-shape (copy 16)", "parts": 1, "tris": 9770, "tris_full": 9770, "dims": [120.9, 145.7, 41.7], "glb_mb": 0.2}], "remesh": [{"slug": "remesh_avg", "file": "remesh_averaged_model_thresh0.900.stl", "family": "One-off STLs", "label": "Averaged remesh", "parts": 1, "tris": 2146, "tris_full": 2146, "dims": [103.5, 116.4, 17.2], "glb_mb": 0.0}], "voro": [{"slug": "voro_sphere", "file": "voro_sphere_2.stl", "family": "One-off STLs", "label": "Voronoi sphere", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [2.0, 2.0, 2.0], "glb_mb": 1.7}], "voro_f": [{"slug": "voro_fixed", "file": "voro_sphere_2-fixed.stl", "family": "One-off Experiments", "label": "Voronoi sphere (fixed)", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [59.1, 60.3, 60.1], "glb_mb": 1.7}]};</script>
+<script>const MODELS = {"sphere1": [{"slug": "sphere_stand_1in", "file": "sphere_stand_1.0in.3mf", "family": "Sphere Stands", "label": "1\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [20.5, 20.5, 5.1], "glb_mb": 0.0}], "sphere2": [{"slug": "sphere_stand_2in", "file": "sphere_stand_2.0in.3mf", "family": "Sphere Stands", "label": "2\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [41.3, 41.3, 9.3], "glb_mb": 0.0}], "sphere3": [{"slug": "sphere_stand_3in", "file": "sphere_stand_3.0in.3mf", "family": "Sphere Stands", "label": "3\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [61.5, 61.5, 13.4], "glb_mb": 0.0}], "vortex": [{"slug": "vortex_v3", "file": "Vortex+v3+project.3mf", "family": "Vortex v3", "label": "Vortex v3 (3 sleeves)", "parts": 3, "tris": 179996, "tris_full": 378652, "dims": [66.7, 76.7, 50.0], "glb_mb": 3.6, "cover": "models/meta/vortex_v3_project/cover.png", "photos": ["models/meta/vortex_v3_project/photo_1.webp", "models/meta/vortex_v3_project/photo_2.webp", "models/meta/vortex_v3_project/photo_3.webp"]}], "fidget": [{"slug": "mini_fidget_ball", "file": "Mini+Fidget+Ball.3mf", "family": "Passthrough series", "label": "Mini Fidget Ball", "parts": 3, "tris": 179996, "tris_full": 845530, "dims": [46.0, 67.7, 27.0], "glb_mb": 3.6, "cover": "models/meta/mini_fidget_ball/cover.png", "photos": ["models/meta/mini_fidget_ball/photo_1.webp", "models/meta/mini_fidget_ball/photo_2.webp", "models/meta/mini_fidget_ball/photo_3.webp", "models/meta/mini_fidget_ball/photo_4.webp"]}], "stackable": [{"slug": "mini_stackable", "file": "Mini+Stackable+Supports+added+back+in.3mf", "family": "Passthrough series", "label": "Mini Stackable tube", "parts": 7, "tris": 179994, "tris_full": 3731786, "dims": [90.5, 121.8, 62.2], "glb_mb": 3.6, "cover": "models/meta/mini_stackable_supports_added_back_in/cover.png", "photos": ["models/meta/mini_stackable_supports_added_back_in/photo_1.webp", "models/meta/mini_stackable_supports_added_back_in/photo_2.webp", "models/meta/mini_stackable_supports_added_back_in/photo_3.webp"]}], "top": [{"slug": "spinning_top", "file": "magic_spinning_top_+23+de+fight+d.3mf", "family": "Spinning Top", "label": "Magic spinning top", "parts": 4, "tris": 5292, "tris_full": 5292, "dims": [100.3, 152.2, 41.3], "glb_mb": 0.1, "cover": "models/meta/magic_spinning_top_23_de_fight_d/cover.png", "photos": ["models/meta/magic_spinning_top_23_de_fight_d/photo_1.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_2.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_3.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_4.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_5.webp"]}], "skull": [{"slug": "quantum_skull", "file": "Quantum+Skull.3mf", "family": "Quantum Skull", "label": "Quantum Skull halves", "parts": 2, "tris": 30692, "tris_full": 30692, "dims": [81.0, 212.6, 36.7], "glb_mb": 0.6, "cover": "models/meta/quantum_skull/cover.png", "photos": ["models/meta/quantum_skull/photo_1.webp", "models/meta/quantum_skull/photo_2.webp", "models/meta/quantum_skull/photo_3.webp"]}], "puffer": [{"slug": "pufferfish", "file": "pufferfish.3mf", "family": "Pufferfish", "label": "Pufferfish (all parts)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish/cover.png", "photos": ["models/meta/pufferfish/photo_1.webp", "models/meta/pufferfish/photo_2.webp", "models/meta/pufferfish/photo_3.webp", "models/meta/pufferfish/photo_4.webp"]}], "puffer3p": [{"slug": "pufferfish_threeplates", "file": "pufferfish-p2s-threeplates.3mf", "family": "Pufferfish", "label": "Pufferfish (3-plate re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish_p2s_threeplates/cover.png", "photos": ["models/meta/pufferfish_p2s_threeplates/photo_1.webp", "models/meta/pufferfish_p2s_threeplates/photo_2.webp", "models/meta/pufferfish_p2s_threeplates/photo_3.webp", "models/meta/pufferfish_p2s_threeplates/photo_4.webp"]}], "puffer1c": [{"slug": "pufferfish_onecolor", "file": "pufferfish-p2s-onecolor.3mf", "family": "Pufferfish", "label": "Pufferfish (one-color re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [193.4, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish_p2s_onecolor/cover.png"}], "pikachu": [{"slug": "pikachu", "file": "pikachu+more+resistant+one+color.3mf", "family": "Pikachu Flexy", "label": "Pikachu flexy keychain", "parts": 1, "tris": 34818, "tris_full": 34818, "dims": [32.5, 76.1, 14.1], "glb_mb": 0.7, "cover": "models/meta/pikachu_more_resistant_one_color/cover.png", "photos": ["models/meta/pikachu_more_resistant_one_color/photo_1.webp", "models/meta/pikachu_more_resistant_one_color/photo_2.webp", "models/meta/pikachu_more_resistant_one_color/photo_3.webp", "models/meta/pikachu_more_resistant_one_color/photo_4.webp", "models/meta/pikachu_more_resistant_one_color/photo_5.webp"]}], "staryu": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin.3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7, "cover": "models/meta/staryu_starmie_spin_spin/cover.png", "photos": ["models/meta/staryu_starmie_spin_spin/photo_1.webp", "models/meta/staryu_starmie_spin_spin/photo_2.webp", "models/meta/staryu_starmie_spin_spin/photo_3.webp"]}], "staryu_dup": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin (1).3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7, "cover": "models/meta/staryu_starmie_spin_spin_1/cover.png", "photos": ["models/meta/staryu_starmie_spin_spin_1/photo_1.webp", "models/meta/staryu_starmie_spin_spin_1/photo_2.webp", "models/meta/staryu_starmie_spin_spin_1/photo_3.webp"]}], "cone_pair_s": [{"slug": "cone_pair_small", "file": "cone-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 90 mm", "parts": 2, "tris": 179998, "tris_full": 362160, "dims": [44.7, 92.0, 90.0], "glb_mb": 3.6}], "cone_pair_d": [{"slug": "cone_pair_dubbel", "file": "cone-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 418836, "dims": [48.4, 95.5, 180.0], "glb_mb": 3.6}], "cone_solid_s": [{"slug": "cone_solid_small", "file": "cone-solid-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 184238, "dims": [44.7, 44.7, 90.0], "glb_mb": 3.6}], "cone_spiral_s": [{"slug": "cone_spiral_small", "file": "cone-spiral-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 90 mm", "parts": 1, "tris": 177922, "tris_full": 177922, "dims": [41.3, 41.4, 90.0], "glb_mb": 3.6}], "cone_solid_d": [{"slug": "cone_solid", "file": "cone-solid.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 214672, "dims": [48.4, 48.4, 180.0], "glb_mb": 3.6}], "cone_spiral_d": [{"slug": "cone_spiral", "file": "cone-spiral.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 204164, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "pyr_pair_s": [{"slug": "pyramid_pair_small", "file": "pyramid-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 90 mm (fixed)", "parts": 2, "tris": 179998, "tris_full": 401514, "dims": [46.6, 93.9, 90.0], "glb_mb": 3.6}], "pyr_pair_d": [{"slug": "pyramid_pair_dubbel", "file": "pyramid-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 432840, "dims": [47.5, 94.7, 180.0], "glb_mb": 3.6}], "pyr_solid_sf": [{"slug": "pyramid_solid_small_fixed", "file": "pyramid-solid-small-fixed.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (fixed)", "parts": 1, "tris": 180000, "tris_full": 200876, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_solid_so": [{"slug": "pyramid_solid_small_orig", "file": "pyramid-solid-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (orig, pinch)", "parts": 1, "tris": 180000, "tris_full": 200878, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_spiral_s": [{"slug": "pyramid_spiral_small", "file": "pyramid-spiral-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 200638, "dims": [41.4, 41.4, 90.0], "glb_mb": 3.6}], "pyr_solid_d": [{"slug": "pyramid_solid", "file": "pyramid-solid.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 221738, "dims": [47.5, 47.5, 180.0], "glb_mb": 3.6}], "pyr_spiral_d": [{"slug": "pyramid_spiral", "file": "pyramid-spiral.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 211102, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "nuts": [{"slug": "nuts_bolts", "file": "montessori+nuts+and+bolts.3mf", "family": "Nuts & Bolts", "label": "Montessori nuts & bolts", "parts": 6, "tris": 179994, "tris_full": 217774, "dims": [106.6, 183.4, 179.2], "glb_mb": 3.6, "cover": "models/meta/montessori_nuts_and_bolts/cover.png", "photos": ["models/meta/montessori_nuts_and_bolts/photo_1.webp", "models/meta/montessori_nuts_and_bolts/photo_2.webp", "models/meta/montessori_nuts_and_bolts/photo_3.webp"]}], "held": [{"slug": "held_sphere", "file": "held-sphere.3mf", "family": "Designed here", "label": "Held sphere (captive ball)", "parts": 2, "tris": 18260, "tris_full": 18260, "dims": [50.0, 50.0, 49.0], "glb_mb": 0.4}], "chain": [{"slug": "chain_test", "file": "chain-test-5seg.3mf", "family": "Designed here", "label": "Chain test \u2014 5 links", "parts": 5, "tris": 12320, "tris_full": 12320, "dims": [62.5, 14.6, 8.8], "glb_mb": 0.1}], "cshape": [{"slug": "c_shape", "file": "c-shape copy 16.stl", "family": "One-off STLs", "label": "C-shape (copy 16)", "parts": 1, "tris": 9770, "tris_full": 9770, "dims": [120.9, 145.7, 41.7], "glb_mb": 0.2}], "remesh": [{"slug": "remesh_avg", "file": "remesh_averaged_model_thresh0.900.stl", "family": "One-off STLs", "label": "Averaged remesh", "parts": 1, "tris": 2146, "tris_full": 2146, "dims": [103.5, 116.4, 17.2], "glb_mb": 0.0}], "voro": [{"slug": "voro_sphere", "file": "voro_sphere_2.stl", "family": "One-off STLs", "label": "Voronoi sphere", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [2.0, 2.0, 2.0], "glb_mb": 1.7}], "voro_f": [{"slug": "voro_fixed", "file": "voro_sphere_2-fixed.stl", "family": "One-off Experiments", "label": "Voronoi sphere (fixed)", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [59.1, 60.3, 60.1], "glb_mb": 1.7}]};</script>
 <script type="importmap">
 {"imports":{"three":"./vendor/three.module.js",
 "three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
@@ -1155,6 +1402,41 @@ document.querySelectorAll('.print').forEach(btn => {
 document.querySelectorAll('.fileopen').forEach(btn => {
   btn.onclick = () => openInSlicer([btn.dataset.file], btn);
 });
+document.querySelectorAll('.view').forEach(el => {
+  const entries = MODELS[el.dataset.models];
+  const entry = entries && entries[0];
+  if (!entry || !entry.cover) return;
+  const photoBox = el.parentElement;
+  const img = document.createElement('img');
+  img.className = 'coverimg'; img.loading = 'lazy'; img.src = entry.cover;
+  img.alt = 'designer photo';
+  photoBox.appendChild(img);
+  const btn = document.createElement('button');
+  btn.className = 'phototoggle'; btn.textContent = 'show photo';
+  btn.onclick = () => {
+    const on = photoBox.classList.toggle('showphoto');
+    btn.classList.toggle('on', on);
+    btn.textContent = on ? 'show 3D' : 'show photo';
+    const v = views.find(x => x.el === el);
+    if (v) v.suspend = on;
+  };
+  photoBox.appendChild(btn);
+});
+document.querySelectorAll('.gal img').forEach(g => {
+  g.onclick = () => {
+    const card = g.closest('.card');
+    const photoBox = card.querySelector('.photo');
+    const img = photoBox.querySelector('.coverimg');
+    const btn = photoBox.querySelector('.phototoggle');
+    if (!img) return;
+    img.src = g.src;
+    photoBox.classList.add('showphoto');
+    if (btn){ btn.classList.add('on'); btn.textContent = 'show 3D'; }
+    const v = views.find(x => x.el === photoBox.querySelector('.view'));
+    if (v) v.suspend = true;
+    photoBox.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  };
+});
 document.querySelectorAll('.showorig').forEach(btn => {
   btn.onclick = () => {
     const card = document.querySelector(`.card[data-cid="${btn.dataset.target}"]`);
@@ -1199,6 +1481,7 @@ fetch('/notes').then(r => r.json()).then(all => {
 
 function animate(){
   const w = innerWidth, h = innerHeight;
+  canvas.style.transform = `translate(${scrollX}px, ${scrollY}px)`;
   if (canvas.width !== w * renderer.getPixelRatio())
     renderer.setSize(w, h, false);
   renderer.setClearColor(0x000000, 0);
@@ -1206,7 +1489,7 @@ function animate(){
   renderer.clear();
   renderer.setScissorTest(true);
   for (const v of views){
-    if (!v.visible || !v.current) continue;
+    if (!v.visible || !v.current || v.suspend) continue;
     const r = v.el.getBoundingClientRect();
     if (r.bottom < 0 || r.top > h || r.width === 0) continue;
     v.controls.update();
