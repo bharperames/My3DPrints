@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build ~/Code/My3DPrints/index.html — one card per file, live 3D viewports."""
-import json, os
+import json, os, re as _re
 from build_page import FIXES, ALLFILES, COMPAT   # side effect: also rebuilds artifact html
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -110,15 +110,39 @@ SLICE = {
 }
 models_js = {}
 cards = []
+def _mslug(f): return _re.sub(r"[^a-z0-9]+", "_", f.lower().rsplit(".", 1)[0]).strip("_")
 for c in C:
     e = dict(manifest[c["glb"]])
     e["file"] = c["file"]
+    ms = _mslug(c["file"])
+    mj = os.path.join(MODELS_DIR, "meta", ms, "meta.json")
+    md = json.load(open(mj)) if os.path.exists(mj) else {}
+    base = f"models/meta/{ms}/"
+    if md.get("cover"): e["cover"] = base + md["cover"]
+    if md.get("photos"): e["photos"] = [base + p for p in md["photos"]]
+    c["_md"], c["_base"] = md, base
     models_js[c["cid"]] = [e]
     d = e["dims"]
     spec = f'{d[0]}×{d[1]}×{d[2]} mm · {e["parts"]} part{"s" if e["parts"]>1 else ""} · {e["tris_full"]:,} tris'
     sl = SLICE.get(c["cid"])
     spec += f'<br>P2S slice: {sl}' if sl else ""
     vclass, vlabel = c["v"]
+    md = c.get("_md") or {}
+    metabox = ""
+    if md:
+        rows = "".join(
+            f'<div class="mrow"><dt>{k}</dt><dd>{md[k]}</dd></div>'
+            for k in ("Designer", "License", "Origin", "ProfileTitle", "Application",
+                      "CreationDate", "slicer_weight_g", "slicer_time") if k in md)
+        desc = f'<p class="mdesc">{md["Description"]}</p>' if md.get("Description") else ""
+        gal = ""
+        if md.get("photos"):
+            gal = '<div class="gal">' + "".join(
+                f'<img src="{c["_base"]}{p}" loading="lazy" data-cid="{c["cid"]}" alt="designer photo">'
+                for p in md["photos"]) + "</div>"
+        metabox = (f'<details class="metabox"><summary>3MF metadata'
+                   f'{" · " + str(len(md.get("photos", []))) + " photos" if md.get("photos") else ""}</summary>'
+                   f'<dl class="mrows">{rows}</dl>{desc}{gal}</details>')
     cards.append(f'''
 <article class="card{' superseded' if c.get('hide') else ''}" data-cid="{c['cid']}">
   <div class="photo">
@@ -139,6 +163,7 @@ for c in C:
       {f'<button class="showorig" data-target="{c["reveals"]}" data-show-label="show {c["reveal_label"]}" data-hide-label="hide {c["reveal_label"]}">show {c["reveal_label"]}</button>' if c.get('reveals') else ''}
     </div>
     <div class="notes" data-cid="{c['cid']}"></div>
+    {metabox}
   </div>
 </article>''')
 
