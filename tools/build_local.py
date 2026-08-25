@@ -72,7 +72,7 @@ add("pyr_spiral_d", "pyramid-spiral.stl", "pyramid_spiral", "Hourglass · Pyrami
 add("nuts", "montessori+nuts+and+bolts.3mf", "nuts_bolts", "Nuts & Bolts", "carnivalcamps", "PLA",
     "Montessori Nuts & Bolts", "Toddler counting toy: five jumbo bolts in 30 mm height steps (59–179 mm) sharing one chunky thread, plus a nut — every nut fits every bolt; print as many nuts as needed. The nut mesh leaks (slicer-repairable). Non-toxic filament, brim on the tall bolts.", ("warn", "Nut not watertight"))
 add("held", "held-sphere.3mf", "held_sphere", "Designed here", "Claude · this session", "PLA",
-    "Held Sphere", "A captive Ø19 ball inside an openwork Ø50 cage — 11 round windows (Ø16, so the ball cannot escape), 3.5 mm walls, flat base. Support-free: the ball stands on a Ø2.4 mm breakaway pip; twist to snap it loose after printing. Cage–ball clearance 0.51 mm.", ("pass", "Designed · ready"))
+    "Held Sphere", "A captive Ø19 ball in a geodesic strut cage: 30 Ø3.2 struts along icosahedron edges with joint spheres — fully triangulated, so it stays rigid at a third of the old shell's material (5.8 vs 16.5 cm³). Triangular openings ≈Ø12 keep the ball captive (clearance 1.79 mm); it stands on a breakaway pip. Prints face-down on its triangle base; the six 21° equator struts may print rough — accept, or add tree supports.", ("pass", "Designed · ready"))
 add("chain", "chain-test-5seg.3mf", "chain_test", "Designed here", "Claude · this session", "PLA",
     "Chain Test — 5 Links", "Print-in-place chain: five 0.75″ stadium links with 0.125″ round cross-section, alternating ±45° tilt in a gentle coil so every link self-supports. Verified: 0.74 mm clearance at every joint, threading proven by section intersection. Print with a brim — each link touches the bed on a thin line.", ("pass", "Designed · ready"))
 LOCAL = "(local export)"
@@ -106,7 +106,7 @@ SLICE = {
  "voro": "unsliceable at Ø2 mm — print the fixed version",
  "voro_f": "1 h 22 m · 24.8 g",
  "nuts": "5 h 32 m · 228.4 g",
- "held": "39 m · 15.7 g — support-free", "chain": "9 m · 2.3 g",
+ "held": "35 m · 8.7 g — support-free strut cage", "chain": "9 m · 2.3 g",
 }
 models_js = {}
 cards = []
