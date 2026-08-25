@@ -74,7 +74,7 @@ add("nuts", "montessori+nuts+and+bolts.3mf", "nuts_bolts", "Nuts & Bolts", "carn
 add("held", "held-sphere.3mf", "held_sphere", "Designed here", "Claude · this session", "PLA",
     "Held Sphere", "A captive Ø19 ball in a geodesic strut cage: 120 Ø2.2 struts along subdivided-icosphere edges with joint spheres — fully triangulated, so it stays rigid at a third of the original shell's material (5.9 vs 16.5 cm³) while reading as a true sphere. Openings ≈Ø6 keep the ball captive (clearance 0.90 mm); it stands on a breakaway pip. Prints face-down; short struts self-support far better than the coarse version.", ("pass", "Designed · ready"))
 add("held_chain", "held-sphere-chained.3mf", "held_chained", "Designed here", "Claude · this session", "PLA",
-    "Held Sphere + Chain", "The pendant variant: the geodesic cage with a 10-link chain (0.75″ small-link style). Link 1 is fused into the cage's lower lattice — a rigid printed loop, like a cast pendant bail — and links 2–10 articulate freely (0.84 mm at every joint, verified). The fused strut becomes the top when it hangs. Prints flat in one job.", ("pass", "Designed · ready"), mate="Held Sphere (chainless version)")
+    "Held Sphere + Chain", "The pendant variant: the geodesic cage with a 10-link chain (0.75″ small-link style). A short stadium bail is welded shallow into the cage's outer shell — all 10 links articulate freely at 0.84 mm, verified. A round bail ring is geometrically impossible at ±45° print orientation; stadium geometry is why chain links are chain-link-shaped. The bail becomes the top when it hangs. Prints flat in one job.", ("pass", "Designed · ready"), mate="Held Sphere (chainless version)")
 add("chain2x", "chain-test-5seg-2x.3mf", "chain_test_2x", "Designed here", "Claude · this session", "PLA",
     "Chain Test — 5 Links · 2×", "The same chain at double scale: 1.5″ links, 0.25″ (Ø6.35 mm) cross-section, 1.28 mm joint clearance, 24.4 mm² bed contact per link — comfortably brimless. A chunkier feel and a stronger test of the interlock.", ("pass", "Designed · ready"))
 add("chain", "chain-test-5seg.3mf", "chain_test", "Designed here", "Claude · this session", "PLA",
@@ -110,7 +110,7 @@ SLICE = {
  "voro": "unsliceable at Ø2 mm — print the fixed version",
  "voro_f": "1 h 22 m · 24.8 g",
  "nuts": "5 h 32 m · 228.4 g",
- "held": "43 m · 8.9 g — bridged struts; tree supports optional", "chain2x": "32 m · 10.6 g — brimless-friendly", "held_chain": "58 m · 13.0 g — bridged struts; tree supports optional", "chain": "9 m · 2.3 g",
+ "held": "43 m · 8.9 g — bridged struts; tree supports optional", "chain2x": "32 m · 10.6 g — brimless-friendly", "held_chain": "60 m · 13.3 g — cage struts bridge; tree supports optional", "chain": "9 m · 2.3 g",
 }
 models_js = {}
 cards = []
