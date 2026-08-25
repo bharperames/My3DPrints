@@ -8,10 +8,10 @@ MODELS_DIR = os.path.expanduser("~/Code/My3DPrints/models")
 manifest = {m["slug"]: m for m in json.load(open(os.path.join(MODELS_DIR, "manifest.json")))}
 
 C = []
-def add(cid, file, glb, family, designer, mat, title, blurb, v, mate=None, hide=False, reveals=None, reveal_label=None):
+def add(cid, file, glb, family, designer, mat, title, blurb, v, mate=None, hide=False, reveals=None, reveal_label=None, pair=None):
     C.append(dict(cid=cid, file=file, glb=glb, family=family, designer=designer,
                   mat=mat, title=title, blurb=blurb, v=v, mate=mate, hide=hide,
-                  reveals=reveals, reveal_label=reveal_label))
+                  reveals=reveals, reveal_label=reveal_label, pair=pair))
 
 UNK = "(unattributed export)"
 add("sphere1", "sphere_stand_1.0in.3mf", "sphere_stand_1in", "Sphere Stands", UNK, "PLA",
@@ -48,33 +48,35 @@ add("cone_pair_s", "cone-hourglass-pair-small.3mf", "cone_pair_small", "Hourglas
 add("cone_pair_d", "cone-hourglass-pair-dubbel.3mf", "cone_pair_dubbel", "Hourglass · Cone", HG, "PETG",
     "Cone Pair Plate — dubbel 180 mm", "Built for you: the double-height pair on one plate. 8.7:1 lever ratio at 180 mm — brim is mandatory.", ("pass", "Built · both parts"))
 add("cone_solid_s", "cone-solid-small.stl", "cone_solid_small", "Hourglass · Cone", HG, "PETG",
-    "Cone Solid — 90 mm", "Hourglass body with 7 helical slots + a central channel (mesh genus 8). 100% infill per the designer; lands on 7 first-layer islands — brim.", ("pass", "Clean"), mate="Cone Spiral — 90 mm (pair plate: cone-hourglass-pair-small.3mf)")
+    "Cone Solid — 90 mm", "Hourglass body with 7 helical slots + a central channel (mesh genus 8). 100% infill per the designer; lands on 7 first-layer islands — brim.", ("pass", "Clean"), mate="Cone Spiral — 90 mm (pair plate: cone-hourglass-pair-small.3mf)", pair="cone_pair_s")
 add("cone_spiral_s", "cone-spiral-small.stl", "cone_spiral_small", "Hourglass · Cone", HG, "PETG",
-    "Cone Spiral — 90 mm", "The smooth twisted piece (genus 0) that screws through the solid's slots. 15% gyroid infill.", ("pass", "Clean"), mate="Cone Solid — 90 mm")
+    "Cone Spiral — 90 mm", "The smooth twisted piece (genus 0) that screws through the solid's slots. 15% gyroid infill.", ("pass", "Clean"), mate="Cone Solid — 90 mm", pair="cone_pair_s")
 add("cone_solid_d", "cone-solid.stl", "cone_solid", "Hourglass · Cone", HG, "PETG",
-    "Cone Solid — dubbel 180 mm", "Two hourglass cells stacked at constant Ø — same 7 slots per cell (mesh genus 15). 7.4:1 lever ratio — brim mandatory.", ("pass", "Clean"), mate="Cone Spiral — dubbel 180 mm (pair plate: cone-hourglass-pair-dubbel.3mf)")
+    "Cone Solid — dubbel 180 mm", "Two hourglass cells stacked at constant Ø — same 7 slots per cell (mesh genus 15). 7.4:1 lever ratio — brim mandatory.", ("pass", "Clean"), mate="Cone Spiral — dubbel 180 mm (pair plate: cone-hourglass-pair-dubbel.3mf)", pair="cone_pair_d")
 add("cone_spiral_d", "cone-spiral.stl", "cone_spiral", "Hourglass · Cone", HG, "PETG",
-    "Cone Spiral — dubbel 180 mm", "Double-length spiral, same Ø41 body. 8.7:1 lever ratio — brim mandatory.", ("pass", "Clean"), mate="Cone Solid — dubbel 180 mm")
+    "Cone Spiral — dubbel 180 mm", "Double-length spiral, same Ø41 body. 8.7:1 lever ratio — brim mandatory.", ("pass", "Clean"), mate="Cone Solid — dubbel 180 mm", pair="cone_pair_d")
 add("pyr_pair_s", "pyramid-hourglass-pair-small.3mf", "pyramid_pair_small", "Hourglass · Pyramid", HG, "PETG",
     "Pyramid Pair Plate — 90 mm", "Built for you: the repaired solid + spiral on one plate — the complete toy in one job. Uses the fixed body, not the broken original.", ("pass", "Built · both parts"))
 add("pyr_pair_d", "pyramid-hourglass-pair-dubbel.3mf", "pyramid_pair_dubbel", "Hourglass · Pyramid", HG, "PETG",
     "Pyramid Pair Plate — dubbel 180 mm", "Built for you: double-height pyramid pair on one plate. Brim mandatory at this height.", ("pass", "Built · both parts"))
 add("pyr_solid_sf", "pyramid-solid-small-fixed.stl", "pyramid_solid_small_fixed", "Hourglass · Pyramid", HG, "PETG",
-    "Pyramid Solid — 90 mm (fixed)", "The repaired body: zero-thickness pinch removed (2 fewer faces, watertight) — 7 slots + channel. Print this, not the original.", ("pass", "Repaired"), mate="Pyramid Spiral — 90 mm (pair plate: pyramid-hourglass-pair-small.3mf)", reveals="pyr_solid_so", reveal_label="original (pinch)")
+    "Pyramid Solid — 90 mm (fixed)", "The repaired body: zero-thickness pinch removed (2 fewer faces, watertight) — 7 slots + channel. Print this, not the original.", ("pass", "Repaired"), mate="Pyramid Spiral — 90 mm (pair plate: pyramid-hourglass-pair-small.3mf)", reveals="pyr_solid_so", reveal_label="original (pinch)", pair="pyr_pair_s")
 add("pyr_solid_so", "pyramid-solid-small.stl", "pyramid_solid_small_orig", "Hourglass · Pyramid", HG, "PETG",
     "Pyramid Solid — 90 mm (original)", "Ships with a zero-thickness pinch: one duplicated triangle on a non-manifold edge. Superseded by the -fixed file — kept for reference.", ("warn", "Pinch defect"), hide=True)
 add("pyr_spiral_s", "pyramid-spiral-small.stl", "pyramid_spiral_small", "Hourglass · Pyramid", HG, "PETG",
-    "Pyramid Spiral — 90 mm", "Twisted square-base piece (genus 0) with the set's shared 7-lobe thread. 15% gyroid infill.", ("pass", "Clean"), mate="Pyramid Solid — 90 mm (fixed)")
+    "Pyramid Spiral — 90 mm", "Twisted square-base piece (genus 0) with the set's shared 7-lobe thread. 15% gyroid infill.", ("pass", "Clean"), mate="Pyramid Solid — 90 mm (fixed)", pair="pyr_pair_s")
 add("pyr_solid_d", "pyramid-solid.stl", "pyramid_solid", "Hourglass · Pyramid", HG, "PETG",
-    "Pyramid Solid — dubbel 180 mm", "Double-height slotted body, 7 slots per cell (mesh genus 19). 100% infill and a brim.", ("pass", "Clean"), mate="Pyramid Spiral — dubbel 180 mm (pair plate: pyramid-hourglass-pair-dubbel.3mf)")
+    "Pyramid Solid — dubbel 180 mm", "Double-height slotted body, 7 slots per cell (mesh genus 19). 100% infill and a brim.", ("pass", "Clean"), mate="Pyramid Spiral — dubbel 180 mm (pair plate: pyramid-hourglass-pair-dubbel.3mf)", pair="pyr_pair_d")
 add("pyr_spiral_d", "pyramid-spiral.stl", "pyramid_spiral", "Hourglass · Pyramid", HG, "PETG",
-    "Pyramid Spiral — dubbel 180 mm", "Double-length spiral. 8.7:1 lever ratio — brim mandatory.", ("pass", "Clean"), mate="Pyramid Solid — dubbel 180 mm")
+    "Pyramid Spiral — dubbel 180 mm", "Double-length spiral. 8.7:1 lever ratio — brim mandatory.", ("pass", "Clean"), mate="Pyramid Solid — dubbel 180 mm", pair="pyr_pair_d")
 add("nuts", "montessori+nuts+and+bolts.3mf", "nuts_bolts", "Nuts & Bolts", "carnivalcamps", "PLA",
     "Montessori Nuts & Bolts", "Toddler counting toy: five jumbo bolts in 30 mm height steps (59–179 mm) sharing one chunky thread, plus a nut — every nut fits every bolt; print as many nuts as needed. The nut mesh leaks (slicer-repairable). Non-toxic filament, brim on the tall bolts.", ("warn", "Nut not watertight"))
 add("held", "held-sphere.3mf", "held_sphere", "Designed here", "Claude · this session", "PLA",
-    "Held Sphere", "A captive Ø19 ball in a geodesic strut cage: 30 Ø3.2 struts along icosahedron edges with joint spheres — fully triangulated, so it stays rigid at a third of the old shell's material (5.8 vs 16.5 cm³). Triangular openings ≈Ø12 keep the ball captive (clearance 1.79 mm); it stands on a breakaway pip. Prints face-down on its triangle base; the six 21° equator struts may print rough — accept, or add tree supports.", ("pass", "Designed · ready"))
+    "Held Sphere", "A captive Ø19 ball in a geodesic strut cage: 120 Ø2.2 struts along subdivided-icosphere edges with joint spheres — fully triangulated, so it stays rigid at a third of the original shell's material (5.9 vs 16.5 cm³) while reading as a true sphere. Openings ≈Ø6 keep the ball captive (clearance 0.90 mm); it stands on a breakaway pip. Prints face-down; short struts self-support far better than the coarse version.", ("pass", "Designed · ready"))
+add("chain2x", "chain-test-5seg-2x.3mf", "chain_test_2x", "Designed here", "Claude · this session", "PLA",
+    "Chain Test — 5 Links · 2×", "The same chain at double scale: 1.5″ links, 0.25″ (Ø6.35 mm) cross-section, 1.28 mm joint clearance, 24.4 mm² bed contact per link — comfortably brimless. A chunkier feel and a stronger test of the interlock.", ("pass", "Designed · ready"))
 add("chain", "chain-test-5seg.3mf", "chain_test", "Designed here", "Claude · this session", "PLA",
-    "Chain Test — 5 Links", "Print-in-place chain: five 0.75″ stadium links with 0.125″ round cross-section, alternating ±45° tilt in a gentle coil so every link self-supports. Verified: 0.74 mm clearance at every joint, threading proven by section intersection. Print with a brim — each link touches the bed on a thin line.", ("pass", "Designed · ready"))
+    "Chain Test — 5 Links", "Print-in-place chain: five 0.75″ stadium links with 0.125″ round cross-section, alternating ±45° tilt in a gentle coil so every link self-supports. Verified: 0.74 mm clearance at every joint, threading proven by section intersection. Brim optional: each link puts a measured 9.6 mm² on the bed — enough to try brimless on textured PEI; a detached link is the failure mode if it lets go.", ("pass", "Designed · ready"))
 LOCAL = "(local export)"
 add("cshape", "c-shape copy 16.stl", "c_shape", "One-off Experiments", LOCAL, "PLA",
     "C-Shape (copy 16)", "Arch of fused spherical lobes — 286 cm³ solid, clean and watertight.", ("pass", "Clean"))
@@ -106,7 +108,7 @@ SLICE = {
  "voro": "unsliceable at Ø2 mm — print the fixed version",
  "voro_f": "1 h 22 m · 24.8 g",
  "nuts": "5 h 32 m · 228.4 g",
- "held": "35 m · 8.7 g — support-free strut cage", "chain": "9 m · 2.3 g",
+ "held": "43 m · 8.9 g — bridged struts; tree supports optional", "chain2x": "32 m · 10.6 g — brimless-friendly", "chain": "9 m · 2.3 g",
 }
 models_js = {}
 cards = []
@@ -144,7 +146,7 @@ for c in C:
                    f'{" · " + str(len(md.get("photos", []))) + " photos" if md.get("photos") else ""}</summary>'
                    f'<dl class="mrows">{rows}</dl>{desc}{gal}</details>')
     cards.append(f'''
-<article class="card{' superseded' if c.get('hide') else ''}" data-cid="{c['cid']}">
+<article class="card{' superseded' if c.get('hide') else ''}" data-cid="{c['cid']}" id="card-{c['cid']}">
   <div class="photo">
     <div class="view" data-models="{c['cid']}"></div>
     <span class="pill {vclass}">{vlabel}</span>
@@ -155,7 +157,7 @@ for c in C:
     <p class="eyebrow">{c['family']} · {c['designer']}</p>
     <h3>{c['title']} <span class="mat">{c['mat']}</span></h3>
     <p class="principle">{c['blurb']}</p>
-    {f'<p class="mate">mates with {c["mate"]}</p>' if c.get('mate') else ''}
+    {f'<p class="mate">mates with {c["mate"]}' + (f' — <a class="pairlink" href="#card-{c["pair"]}">print both together ↓</a>' if c.get('pair') else '') + '</p>' if c.get('mate') else ''}
     <p class="specline">{spec}</p>
     <div class="actions">
       <button class="print" data-card="{c['cid']}">Open in Bambu Studio</button>

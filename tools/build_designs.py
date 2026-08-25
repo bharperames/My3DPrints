@@ -11,14 +11,14 @@ from trimesh.proximity import signed_distance
 
 M = os.path.expanduser("~/Code/My3DPrints/models")
 
-# ---------- 1. Held sphere: icosahedron strut cage with captive ball ----------
-# 30 struts along the edges of an icosahedron (fully triangulated = rigid),
-# joint spheres at the 12 vertices, printed face-down on a triangle base.
-# Ball Ø19 cannot pass the ~Ø12 triangular openings. 5.8 cm³ vs 16.5 for the
-# earlier windowed shell. The ball stands on a breakaway pip from the bed.
-R, STRUT_R, JOINT_R, BALL_R, PIP_R = 25.0, 1.6, 2.1, 9.5, 1.2
+# ---------- 1. Held sphere: geodesic strut cage with captive ball ----------
+# 120 struts along subdivided-icosphere edges (fully triangulated = rigid),
+# joint spheres at the 42 vertices, printed face-down on a triangle base.
+# Ball Ø19 cannot pass the ~Ø6 triangular openings. ~5.9 cm³ — a third of the
+# original windowed shell. The ball stands on a breakaway pip from the bed.
+R, STRUT_R, JOINT_R, BALL_R, PIP_R = 25.0, 1.1, 1.5, 9.5, 1.2
 
-ico = trimesh.creation.icosahedron()
+ico = trimesh.creation.icosphere(subdivisions=1)   # 42 verts / 120 edges — rounder cage
 V = ico.vertices / np.linalg.norm(ico.vertices, axis=1, keepdims=True) * R
 F = ico.faces
 n0 = np.cross(V[F[0][1]] - V[F[0][0]], V[F[0][2]] - V[F[0][0]])
@@ -114,39 +114,50 @@ def tube_from_loop(loop2d, tube_r, n_sec=22):
     return m
 
 
-link = tube_from_loop(stadium_path(), D / 2)
-sc2 = trimesh.Scene()
-links = []
-for i in range(5):
-    l = link.copy()
-    l.apply_transform(trimesh.transformations.rotation_matrix(
-        np.pi / 4 if i % 2 == 0 else -np.pi / 4, [1, 0, 0]))
-    th = i * PITCH / COIL_R
-    l.apply_transform(trimesh.transformations.rotation_matrix(th, [0, 0, 1]))
-    l.apply_translation([COIL_R * np.sin(th), COIL_R * (1 - np.cos(th)), 0])
-    links.append(l)
-zmin = min(l.bounds[0][2] for l in links)
-memb = trimesh.creation.box((CL_L - D - 0.3, CL_W - D - 0.3, 0.6))
-allok = True
-for i, l in enumerate(links):
-    l.apply_translation([0, 0, -zmin])
-    sc2.add_geometry(l, geom_name=f"link_{i}")
-for i in range(4):
-    cm = trimesh.collision.CollisionManager()
-    cm.add_object("a", links[i])
-    col = cm.in_collision_single(links[i + 1])
-    d = cm.min_distance_single(links[i + 1])
-    m = memb.copy()
-    m.apply_transform(trimesh.transformations.rotation_matrix(
-        np.pi / 4 if i % 2 == 0 else -np.pi / 4, [1, 0, 0]))
-    th = i * PITCH / COIL_R
-    m.apply_transform(trimesh.transformations.rotation_matrix(th, [0, 0, 1]))
-    m.apply_translation([COIL_R * np.sin(th), COIL_R * (1 - np.cos(th)), -zmin])
-    inter = m.intersection(links[i + 1])
-    threaded = (not inter.is_empty) and inter.volume > 0.5
-    print(f"  link{i}-{i+1}: collision={col} clearance={d:.2f} threaded={threaded}")
-    allok &= (not col) and d >= 0.5 and threaded
-out2 = os.path.join(M, "chain-test-5seg.3mf")
-sc2.export(out2)
-print("chain-test:", "ALL-OK" if allok else "FAILED CHECKS",
-      np.round(trimesh.load(out2, force='scene').bounds[1], 1))
+def build_chain(scale, fname):
+    link = tube_from_loop(stadium_path() * scale, D * scale / 2)
+    pitch = PITCH * scale
+    sc2 = trimesh.Scene()
+    links = []
+    for i in range(5):
+        l = link.copy()
+        l.apply_transform(trimesh.transformations.rotation_matrix(
+            np.pi / 4 if i % 2 == 0 else -np.pi / 4, [1, 0, 0]))
+        th = i * pitch / COIL_R
+        l.apply_transform(trimesh.transformations.rotation_matrix(th, [0, 0, 1]))
+        l.apply_translation([COIL_R * np.sin(th), COIL_R * (1 - np.cos(th)), 0])
+        links.append(l)
+    zmin = min(l.bounds[0][2] for l in links)
+    memb = trimesh.creation.box(((CL_L - D - 0.3) * scale, (CL_W - D - 0.3) * scale, 0.6))
+    allok = True
+    for i, l in enumerate(links):
+        l.apply_translation([0, 0, -zmin])
+        sc2.add_geometry(l, geom_name=f"link_{i}")
+    # first-layer bed contact per link: footprint of material below 0.2 mm
+    slab = trimesh.creation.box((400, 400, 0.2))
+    slab.apply_translation([100, 0, 0.1])
+    contact = links[0].intersection(slab)
+    area = 0 if contact.is_empty else contact.volume / 0.2
+    for i in range(4):
+        cm = trimesh.collision.CollisionManager()
+        cm.add_object("a", links[i])
+        col = cm.in_collision_single(links[i + 1])
+        d = cm.min_distance_single(links[i + 1])
+        m = memb.copy()
+        m.apply_transform(trimesh.transformations.rotation_matrix(
+            np.pi / 4 if i % 2 == 0 else -np.pi / 4, [1, 0, 0]))
+        th = i * pitch / COIL_R
+        m.apply_transform(trimesh.transformations.rotation_matrix(th, [0, 0, 1]))
+        m.apply_translation([COIL_R * np.sin(th), COIL_R * (1 - np.cos(th)), -zmin])
+        inter = m.intersection(links[i + 1])
+        threaded = (not inter.is_empty) and inter.volume > 0.5
+        allok &= (not col) and d >= 0.5 * scale and threaded
+    out2 = os.path.join(M, fname)
+    sc2.export(out2)
+    ext = trimesh.load(out2, force="scene")
+    print(f"{fname}: {'ALL-OK' if allok else 'FAILED'} clearance≈{d:.2f} "
+          f"bed contact/link≈{area:.1f} mm² extents {np.round(ext.bounds[1]-ext.bounds[0],1)}")
+
+
+build_chain(1.0, "chain-test-5seg.3mf")
+build_chain(2.0, "chain-test-5seg-2x.3mf")
