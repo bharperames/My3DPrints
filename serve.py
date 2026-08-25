@@ -40,6 +40,12 @@ def load_notes():
 class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         url = urlparse(self.path)
+        if url.path == "/rebuild":
+            r = subprocess.run(["make", "build"], cwd=ROOT, capture_output=True,
+                               text=True, timeout=900)
+            tail = (r.stdout + r.stderr)[-1200:]
+            return self._json(200 if r.returncode == 0 else 500,
+                              {"ok": r.returncode == 0, "log": tail})
         if url.path != "/notes":
             return self._json(404, {"ok": False})
         n = int(self.headers.get("Content-Length", 0))

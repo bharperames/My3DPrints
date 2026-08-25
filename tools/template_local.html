@@ -181,6 +181,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 <header class="top">
   <h1>The Fidget Shelf<span class="tld">.</span></h1>
   <a class="guidelink" href="guide.html">P2S Field Guide →</a>
+  <button class="guidelink" id="rebuild" title="re-run the tools pipeline: designs, metadata, previews, page">Rebuild index</button>
   <p class="sub">One card per file — every preview is the real mesh; drag to orbit.
   The four “pair plate” files were built here: both mating parts on one plate, ready to
   print as a single job. Run <code>make&nbsp;serve</code> in this folder — it serves the
@@ -470,6 +471,16 @@ document.querySelectorAll('.gal img').forEach(g => {
     photoBox.scrollIntoView({block: 'nearest', behavior: 'smooth'});
   };
 });
+document.getElementById('rebuild').onclick = async e => {
+  const b = e.target; b.disabled = true; b.textContent = 'Rebuilding… (1–3 min)';
+  try {
+    const r = await fetch('/rebuild', {method: 'POST'});
+    const j = await r.json();
+    b.textContent = j.ok ? 'Rebuilt ✓ reloading…' : 'Rebuild failed — make log';
+    if (j.ok) setTimeout(() => location.reload(), 800);
+  } catch { b.textContent = 'Run make serve first'; }
+  setTimeout(() => { b.textContent = 'Rebuild index'; b.disabled = false; }, 4000);
+};
 document.querySelectorAll('.showorig').forEach(btn => {
   btn.onclick = () => {
     const card = document.querySelector(`.card[data-cid="${btn.dataset.target}"]`);
