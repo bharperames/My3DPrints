@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Fidget Shelf — Live</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#129513;</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#14181A; --panel:#1D2327; --panel-2:#232B2F;
+  --ink:#EAF1EF; --muted:#AFBEBB; --faint:#97A7A4;
+  --line:#313B40; --accent:#4FD2C2; --accent-ink:#7FE2D5;
+  --pass:#74CD81; --pass-bg:#1E3423; --warn:#E7B75E; --warn-bg:#3A2F17;
+  --photo-bg:#171D20; --shadow:0 1px 3px rgba(0,0,0,.45),0 4px 18px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--ground);color:var(--ink);
+  font:400 15.5px/1.55 "IBM Plex Sans",system-ui,sans-serif;
+  padding:0 24px 80px}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:5}
+.wrap{max-width:1240px;margin:0 auto}
+header.top{padding:52px 0 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px}
+h1{font:700 clamp(30px,4.5vw,44px)/1.05 "Chakra Petch",sans-serif;letter-spacing:.5px}
+h1 .tld{color:var(--accent)}
+.guidelink{font:600 13px "IBM Plex Sans",sans-serif;color:var(--accent-ink);
+  text-decoration:none;border:1px solid var(--accent);border-radius:6px;padding:8px 14px;
+  align-self:center}
+.guidelink:hover{background:var(--accent);color:var(--panel)}
+.sub{color:var(--muted);max-width:62ch;text-wrap:balance;margin:10px 0 0;flex-basis:100%}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 34px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:10px 18px 8px;min-width:118px}
+.stat b{display:block;font:600 24px/1.1 "Chakra Petch",sans-serif;
+  font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.stat b em{font-style:normal;font-size:14px;color:var(--faint)}
+.dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.dia{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.dia svg{width:100%;height:auto;display:block}
+.dia .part{fill:none;stroke:var(--ink);stroke-width:2}
+.dia circle.part:first-of-type{}
+.dia .part2{fill:none;stroke:var(--muted);stroke-width:2}
+.dia .axis{stroke:var(--line);stroke-dasharray:4 4}
+.dia .dim{stroke:var(--muted);stroke-width:1.5}
+.dia .dim.acc{stroke:var(--accent);stroke-width:2}
+.dia .lbl{font:500 10px "IBM Plex Sans",sans-serif;fill:var(--muted)}
+.dia figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+.dia figcaption strong{color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3}
+.view{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
+.view:active{cursor:grabbing}
+.view .status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  color:var(--faint);font:500 13px "Chakra Petch",sans-serif}
+.pill{position:absolute;top:12px;right:12px;font:500 12px/1 "IBM Plex Mono",monospace;
+  padding:6px 10px;border-radius:99px;letter-spacing:.02em;z-index:6;pointer-events:none}
+.pill.pass{background:var(--pass-bg);color:var(--pass);border:1px solid var(--pass)}
+.pill.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
+.chips{position:absolute;left:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;z-index:6}
+.chips button{background:var(--panel);border:1px solid var(--line);color:var(--muted);
+  border-radius:99px;padding:4px 10px;font:500 11px "IBM Plex Sans",sans-serif;cursor:pointer}
+.chips button.on{color:var(--accent);border-color:var(--accent)}
+.dimtag{position:absolute;left:12px;top:14px;z-index:6;pointer-events:none;
+  font:400 11px "IBM Plex Mono",monospace;color:var(--muted)}
+.body{padding:18px 20px 16px;display:flex;flex-direction:column;gap:12px;flex:1}
+.card h3{font:600 19px/1.2 "Chakra Petch",sans-serif}
+.eyebrow{font:600 10.5px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--accent-ink)}
+.specline{font:400 12px/1.4 "IBM Plex Mono",monospace;color:var(--faint);
+  border-top:1px solid var(--line);padding-top:10px;font-variant-numeric:tabular-nums}
+.savelink{font:400 11.5px/1.4 "IBM Plex Mono",monospace;color:var(--faint);
+  text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.savelink:hover{color:var(--accent-ink);text-decoration:underline}
+.card.superseded{display:none}
+.card.superseded.revealed{display:flex;outline:2px dashed var(--warn);outline-offset:-2px}
+.showorig{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+  font:500 11.5px "IBM Plex Sans",sans-serif;padding:5px 10px;cursor:pointer}
+.showorig:hover{color:var(--warn);border-color:var(--warn)}
+.mate{font-size:13px;color:var(--accent-ink)}
+.notes{border-top:1px dashed var(--line);margin-top:10px;padding-top:8px;
+  display:flex;flex-direction:column;gap:6px}
+.notes .n{font-size:12.5px;color:var(--muted);border-left:2px solid var(--warn);padding-left:8px}
+.notes .n b{color:var(--faint);font:500 10.5px "IBM Plex Mono",monospace;display:block}
+.notes form{display:flex;gap:6px}
+.notes input{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+  color:var(--ink);font:400 12px "IBM Plex Sans",sans-serif;padding:6px 8px;min-width:0}
+.notes button{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+  font:500 11px "IBM Plex Sans",sans-serif;padding:4px 10px;cursor:pointer}
+.notes button:hover{color:var(--accent-ink);border-color:var(--accent)}
+.card h3 .mat{font:600 11px/1 "IBM Plex Mono",monospace;color:var(--accent-ink);
+  border:1px solid var(--accent);border-radius:4px;padding:3px 6px;
+  vertical-align:3px;margin-left:6px;letter-spacing:.05em}
+.designer{color:var(--muted);font-size:13px;margin-top:2px}
+.principle{font-size:14.5px}
+.card h4{font:600 11.5px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--accent-ink);margin-bottom:-4px}
+.drivers{list-style:none;padding:0;display:flex;flex-direction:column;gap:5px}
+.drivers li{font-size:13.5px;padding-left:16px;position:relative;color:var(--ink)}
+.drivers li::before{content:"";position:absolute;left:0;top:.55em;width:8px;height:2px;
+  background:var(--accent)}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:7px 14px;
+  border-top:1px solid var(--line);padding-top:12px}
+.spec dt{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+.spec dd{font:400 13px/1.35 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.note{font-size:13px;color:var(--muted);border-left:2px solid var(--accent);
+  padding:2px 0 2px 10px}
+.actions{display:flex;align-items:flex-start;flex-direction:column;gap:8px;margin-top:auto;padding-top:8px}
+.print{background:var(--accent);color:var(--ground);border:none;border-radius:6px;
+  padding:9px 16px;font:600 13px "IBM Plex Sans",sans-serif;cursor:pointer;letter-spacing:.01em}
+.print:hover{filter:brightness(1.08)}
+.print:disabled{opacity:.75;cursor:default}
+.filelist{width:100%}
+.filelist summary{cursor:pointer;font:400 11.5px "IBM Plex Mono",monospace;color:var(--faint)}
+.filelist ul{list-style:none;padding:7px 0 0;display:flex;flex-direction:column;gap:5px}
+.filelist li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  font:400 11.5px "IBM Plex Mono",monospace;color:var(--muted)}
+.filelist li>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl-act{display:flex;gap:8px;flex-shrink:0}
+.fl-act a,.fl-act button{color:var(--accent-ink);background:none;border:none;padding:0;
+  font:500 11.5px "IBM Plex Sans",sans-serif;cursor:pointer;text-decoration:none}
+.fl-act a:hover,.fl-act button:hover{text-decoration:underline}
+.ledgerwrap>summary{cursor:pointer;font:600 13px "IBM Plex Sans",sans-serif;color:var(--muted);
+  padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  list-style-position:inside}
+.ledgerwrap[open]>summary{border-radius:10px 10px 0 0;border-bottom:none}
+.ledgerwrap[open] .tablewrap{border-radius:0 0 10px 10px}
+section.block{margin-top:56px}
+section.block>h2{font:600 24px/1.2 "Chakra Petch",sans-serif;margin-bottom:6px}
+section.block>p.lede{color:var(--muted);max-width:70ch;margin-bottom:20px}
+.fixes{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.fixes li{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.fixes strong{display:block;font:600 15px "Chakra Petch",sans-serif;margin-bottom:4px}
+.fixes span{font-size:13.5px;color:var(--muted)}
+.fixes code, .note code{font:400 12px "IBM Plex Mono",monospace;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:4px;padding:1px 4px;color:var(--ink)}
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th{font:600 11px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--faint);text-align:left;padding:12px 16px;border-bottom:1px solid var(--line)}
+td{padding:9px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.mono{font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+th.num{text-align:right}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px}
+.dot.pass{background:var(--pass)}
+.dot.warn{background:var(--warn)}
+footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
+@media (max-width:640px){.specs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="wrap">
+<header class="top">
+  <h1>The Fidget Shelf<span class="tld">.</span></h1>
+  <a class="guidelink" href="guide.html">P2S Field Guide →</a>
+  <p class="sub">One card per file — every preview is the real mesh; drag to orbit.
+  The four “pair plate” files were built here: both mating parts on one plate, ready to
+  print as a single job. Run <code>make&nbsp;serve</code> in this folder — it serves the
+  page and powers the print buttons. New to the vocabulary? See <a href="#glossary" style="color:var(--accent-ink)">reading the numbers</a>.</p>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>27</b><span>files scanned</span></div>
+  <div class="stat"><b>15</b><span>distinct designs</span></div>
+  <div class="stat"><b>9<em>/15</em></b><span>fully clean designs</span></div>
+  <div class="stat"><b>6</b><span>with mesh defects</span></div>
+  <div class="stat"><b>1</b><span>repaired part</span></div>
+  <div class="stat"><b>4</b><span>pair plates built</span></div>
+  <div class="stat"><b>8.6 M</b><span>triangles checked</span></div>
+</div>
+
+
+<section class="block" id="glossary">
+  <h2>Reading the numbers</h2>
+  <p class="lede">The cards lean on a small vocabulary of measurements. First, the symbol that
+  appears everywhere: <strong style="color:var(--ink)">&#216; means diameter</strong> — the full
+  width of a circle through its center, in millimetres ("&#216;19 ball" = a ball 19&nbsp;mm
+  across). Everything else:</p>
+  <div class="dias">
+    <figure class="dia">
+      <svg viewBox="0 0 220 150" role="img" aria-label="Ball resting on a ring stand">
+        <line x1="110" y1="8" x2="110" y2="142" class="axis"/>
+        <circle cx="110" cy="62" r="40" class="part"/>
+        <path d="M60 118 L82 96 L138 96 L160 118 Z" class="part2"/>
+        <line x1="70" y1="62" x2="150" y2="62" class="dim"/>
+        <text x="110" y="56" class="lbl" text-anchor="middle">ball &#216; (diameter)</text>
+        <line x1="82" y1="96" x2="138" y2="96" class="dim acc"/>
+        <text x="110" y="132" class="lbl" text-anchor="middle">rim &#216; — the opening the ball rests on</text>
+        <path d="M110 62 L110 32 A 30 30 0 0 1 133 43" fill="none" class="dim acc"/>
+        <text x="148" y="34" class="lbl">contact angle</text>
+      </svg>
+      <figcaption><strong>Ball on a stand.</strong> The ball sits when its &#216; (diameter) exceeds the rim &#216;.
+      The contact angle is measured from the vertical axis to where the rim touches — ≈45° is a
+      shallow perch, ≥60° is a <strong>deep seat</strong> (the rim wraps well past the equator's
+      underside, so the ball can't be knocked off easily). Too small a ball simply falls through.</figcaption>
+    </figure>
+    <figure class="dia">
+      <svg viewBox="0 0 220 150" role="img" aria-label="Hourglass with waist and body diameters">
+        <path d="M70 14 L150 14 L118 75 L150 136 L70 136 L102 75 Z" class="part"/>
+        <line x1="70" y1="20" x2="150" y2="20" class="dim"/>
+        <text x="160" y="24" class="lbl">body &#216;</text>
+        <line x1="102" y1="75" x2="118" y2="75" class="dim acc"/>
+        <text x="128" y="79" class="lbl">waist &#216;</text>
+        <line x1="56" y1="14" x2="56" y2="136" class="dim"/>
+        <text x="10" y="78" class="lbl">height</text>
+      </svg>
+      <figcaption><strong>Waist &amp; lever ratio.</strong> The waist is the narrowest &#216; of an
+      hourglass body. Lever ratio = height ÷ half of the base width: at <strong>≥4:1</strong> a print
+      is tall enough that nozzle bumps can knock it over — that's when the cards say
+      "brim mandatory".</figcaption>
+    </figure>
+    <figure class="dia">
+      <svg viewBox="0 0 220 150" role="img" aria-label="Radial clearance between mating parts">
+        <circle cx="110" cy="75" r="56" fill="none" class="part"/>
+        <circle cx="110" cy="75" r="44" fill="none" class="part2"/>
+        <line x1="110" y1="19" x2="110" y2="31" class="dim acc"/>
+        <text x="120" y="28" class="lbl">radial clearance</text>
+        <text x="110" y="80" class="lbl" text-anchor="middle">inner part</text>
+      </svg>
+      <figcaption><strong>Radial clearance</strong> is the designed air gap between mating surfaces,
+      per side. On this printer 0.20–0.40&nbsp;mm works for PLA (0.30–0.40 for PETG); under
+      ~0.25&nbsp;mm parts print fused. The hourglass pairs measure 0.38&nbsp;mm; the chain test
+      0.74&nbsp;mm; the held sphere 0.51&nbsp;mm.</figcaption>
+    </figure>
+    <figure class="dia">
+      <img src="assets/genus.png" alt="Three blocks: solid, one cylinder bored through, two bored through" style="width:100%;display:block">
+      <figcaption><strong>Genus</strong> counts the tunnels through a closed solid — a ball is 0,
+      a block with one cylinder bored clear through it is 1, and every additional bore adds one. It's computed from the mesh itself,
+      so it fingerprints a part's interlock mechanism: the hourglass bodies read 7 slots + a
+      central channel; the passthrough ball's 21 channels read genus 21.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<div class="grid">{{CARDS}}</div>
+
+<section class="block">
+  <h2>Cross-design compatibility</h2>
+  <p class="lede">Where parts from different downloads can (and cannot) work together. The rule
+  of thumb that falls out of the analysis: two pieces mate when their interface genus (slot or
+  thread count) and profile radii match — diameters alone are not enough.</p>
+  <ul class="fixes">{{COMPAT}}</ul>
+</section>
+
+<section class="block">
+  <h2>Fixes &amp; swapped parts</h2>
+  <p class="lede">Verified from part names, metadata and mesh comparison, not guessed from
+  filenames.</p>
+  <ul class="fixes">{{FIXES}}</ul>
+</section>
+
+<section class="block">
+  <h2>File ledger</h2>
+  <p class="lede">All 27 files, mapped to their design family. <strong>Genus</strong> is the
+  count of tunnels passing clear through a closed solid — a ball is genus 0, a donut or ring
+  genus 1, and each extra handle or helical slot adds one. It is computed from the mesh itself
+  (Euler’s formula: vertices − edges + faces = 2 − 2·genus), so it fingerprints the interlock
+  mechanism no matter how the surface is decorated: the passthrough ball’s 21 helical channels
+  read out as genus 21, and the hourglass bodies’ slot counts as genus 8–19.</p>
+  <details class="ledgerwrap"><summary>Show all 31 files (27 scanned + 4 built)</summary>
+  <div class="tablewrap"><table>
+    <thead><tr><th>File</th><th class="num">MB</th><th>Design</th><th>Geometry verdict</th></tr></thead>
+    <tbody>{{ROWS}}</tbody>
+  </table></div></details>
+</section>
+
+<footer>P2S slice numbers are real Bambu Studio CLI slices from this session — 0.2 mm
+Standard, Bambu PLA Basic, textured PEI, 15% infill defaults. Designs that specify other
+settings (100% infill hourglass solids, PETG) will run heavier and longer. Multi-plate
+projects are labeled with the plate that was sliced.<br><br>Validated 2026-08-24 with trimesh 5.0. Previews are decimated to ≤180 k triangles
+(full counts in each card); originals live in <span class="mono">models/</span>. Weights are
+solid-PLA upper bounds at 1.24 g/cm³ except where the file embeds a slicer estimate.</footer>
+</div>
+
+<script>const MODELS = {{MODELS}};</script>
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
+"three/addons/loaders/GLTFLoader.js":"./vendor/loaders/GLTFLoader.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setScissorTest(true);
+const loader = new GLTFLoader();
+const views = [];   // {el, scene, camera, controls, entries, idx, loaded:{} , visible}
+
+function makeScene(){
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xdfe8e6, 0x394447, 1.15));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(1.2, 2, 1.4);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0x7fd8cc, 0.45); rim.position.set(-1.5, 0.6, -1);
+  scene.add(rim);
+  return scene;
+}
+
+function frameModel(v, obj){
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3()).length();
+  const r = size / 2;
+  const c = box.getCenter(new THREE.Vector3());
+  v.controls.target.copy(c);
+  const fovV = v.camera.fov * Math.PI / 180;
+  const fovH = 2 * Math.atan(Math.tan(fovV / 2) * v.camera.aspect);
+  const dist = 1.08 * r / Math.sin(Math.min(fovV, fovH) / 2);
+  const dir = new THREE.Vector3(1, 0.6, 1).normalize();
+  v.camera.position.copy(c).addScaledVector(dir, dist);
+  v.camera.near = dist/50; v.camera.far = dist*20;
+  v.camera.updateProjectionMatrix();
+}
+
+function setModel(v, i){
+  const entry = v.entries[i];
+  v.idx = i;
+  const dimtag = v.el.parentElement.querySelector('.dimtag');
+  if (dimtag) dimtag.textContent =
+    `${entry.dims[0]}×${entry.dims[1]}×${entry.dims[2]} mm · ${entry.tris.toLocaleString()} tris`;
+  if (v.loaded[entry.slug]){
+    if (v.current) v.scene.remove(v.current);
+    v.current = v.loaded[entry.slug];
+    v.scene.add(v.current); frameModel(v, v.current);
+    return;
+  }
+  const status = document.createElement('div');
+  status.className = 'status'; status.textContent = 'loading…';
+  v.el.appendChild(status);
+  loader.load('models/glb/' + entry.slug + '.glb', gltf => {
+    status.remove();
+    const obj = gltf.scene;
+    obj.rotation.x = -Math.PI/2;   // z-up sources
+    obj.traverse(o => { if (o.isMesh){
+      o.material.metalness = 0.05; o.material.roughness = 0.62;
+      o.material.side = THREE.DoubleSide; }});
+    v.loaded[entry.slug] = obj;
+    if (v.idx === i){
+      if (v.current) v.scene.remove(v.current);
+      v.current = obj; v.scene.add(obj); frameModel(v, obj);
+    }
+  }, undefined, () => { status.textContent = 'load failed — serve over http'; });
+}
+
+document.querySelectorAll('.view').forEach(el => {
+  const entries = MODELS[el.dataset.models];
+  if (!entries) return;
+  const v = {el, entries, idx: 0, loaded: {}, current: null, started: false};
+  v.scene = makeScene();
+  v.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
+  v.controls = new OrbitControls(v.camera, el);
+  v.controls.enableDamping = true; v.controls.autoRotate = true;
+  v.controls.autoRotateSpeed = 1.0;
+  v.controls.enableZoom = false; v.controls.enablePan = false;
+  views.push(v);
+  const chips = el.parentElement.querySelector('.chips');
+  if (chips && entries.length > 1){
+    entries.forEach((e, i) => {
+      const b = document.createElement('button');
+      b.textContent = e.chip || e.label; if (i === 0) b.classList.add('on');
+      b.onclick = () => { chips.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on'); setModel(v, i); };
+      chips.appendChild(b);
+    });
+  }
+});
+
+const io = new IntersectionObserver(es => es.forEach(e => {
+  const v = views.find(x => x.el === e.target);
+  if (!v) return;
+  v.visible = e.isIntersecting;
+  if (v.visible && !v.started){ v.started = true; setModel(v, 0); }
+}), {rootMargin: '200px'});
+views.forEach(v => io.observe(v.el));
+
+async function openInSlicer(files, btn){
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Opening…';
+  try{
+    for (const f of files){
+      const r = await fetch('/open?f=' + encodeURIComponent(f));
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || 'server refused');
+    }
+    btn.textContent = 'Sent to Bambu Studio ✓';
+  }catch(e){
+    btn.textContent = /fetch|network/i.test(e.message)
+      ? 'Run python3 serve.py first' : ('✗ ' + e.message);
+  }
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3500);
+}
+document.querySelectorAll('.print').forEach(btn => {
+  btn.onclick = () => {
+    const v = views.find(x => x.el.dataset.models === btn.dataset.card);
+    const entry = v ? v.entries[v.idx] : null;
+    if (entry) openInSlicer(entry.file.split(' + '), btn);
+  };
+});
+document.querySelectorAll('.fileopen').forEach(btn => {
+  btn.onclick = () => openInSlicer([btn.dataset.file], btn);
+});
+document.querySelectorAll('.showorig').forEach(btn => {
+  btn.onclick = () => {
+    const card = document.querySelector(`.card[data-cid="${btn.dataset.target}"]`);
+    if (!card) return;
+    const on = card.classList.toggle('revealed');
+    btn.textContent = on ? btn.dataset.hideLabel : btn.dataset.showLabel;
+    if (on) card.scrollIntoView({block: 'center', behavior: 'smooth'});
+  };
+});
+
+function renderNotes(box, list){
+  box.querySelectorAll('.n').forEach(n => n.remove());
+  const form = box.querySelector('form');
+  (list || []).forEach(n => {
+    const d = document.createElement('div');
+    d.className = 'n';
+    const b = document.createElement('b'); b.textContent = n.date;
+    d.appendChild(b); d.appendChild(document.createTextNode(n.text));
+    box.insertBefore(d, form);
+  });
+}
+fetch('/notes').then(r => r.json()).then(all => {
+  document.querySelectorAll('.notes').forEach(box => {
+    const cid = box.dataset.cid;
+    const form = document.createElement('form');
+    const inp = document.createElement('input');
+    inp.placeholder = 'Add a print note…'; inp.maxLength = 2000;
+    const btn = document.createElement('button'); btn.textContent = 'Note';
+    form.append(inp, btn);
+    form.onsubmit = async ev => {
+      ev.preventDefault();
+      const text = inp.value.trim(); if (!text) return;
+      const r = await fetch('/notes', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({cid, text})});
+      const j = await r.json();
+      if (j.ok){ inp.value = ''; renderNotes(box, j.notes); }
+    };
+    box.appendChild(form);
+    renderNotes(box, all[cid]);
+  });
+}).catch(() => {});
+
+function animate(){
+  const w = innerWidth, h = innerHeight;
+  if (canvas.width !== w * renderer.getPixelRatio())
+    renderer.setSize(w, h, false);
+  renderer.setClearColor(0x000000, 0);
+  renderer.setScissorTest(false);
+  renderer.clear();
+  renderer.setScissorTest(true);
+  for (const v of views){
+    if (!v.visible || !v.current) continue;
+    const r = v.el.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > h || r.width === 0) continue;
+    v.controls.update();
+    const bottom = h - r.bottom;
+    renderer.setViewport(r.left, bottom, r.width, r.height);
+    renderer.setScissor(r.left, bottom, r.width, r.height);
+    v.camera.aspect = r.width / r.height; v.camera.updateProjectionMatrix();
+    renderer.render(v.scene, v.camera);
+  }
+}
+renderer.setAnimationLoop(animate);
+</script>
+</body>
+</html>

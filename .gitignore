@@ -1,0 +1,10 @@
+models/
+*.3mf
+*.stl
+*.glb
+*.gcode
+.serve.pid
+.serve.log
+__pycache__/
+.DS_Store
+tools/index_out/
