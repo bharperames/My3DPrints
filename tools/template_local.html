@@ -249,10 +249,14 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
     <figure class="dia">
       <img src="assets/genus.png" alt="Three blocks: solid, one cylinder bored through, two bored through" style="width:100%;display:block">
         <div class="genlabels"><span>genus 0</span><span>genus 1</span><span>genus 2</span></div>
-      <figcaption><strong>Genus</strong> counts the tunnels through a closed solid — a ball is 0,
-      a block with one cylinder bored clear through it is 1, and every additional bore adds one. It's computed from the mesh itself,
-      so it fingerprints a part's interlock mechanism: the hourglass bodies read 7 slots + a
-      central channel; the passthrough ball's 21 channels read genus 21.</figcaption>
+      <figcaption><strong>Genus</strong> is a topological property: the number of handles or
+      through-holes in a solid. <strong>Why you care:</strong> a toy's mechanism <em>is</em> its
+      topology — parts interlock only when tunnels and threads line up, so genus is a fingerprint
+      read straight from the mesh. It's how this index proved the hourglass spirals all share one
+      7-slot thread, caught that the "fixed" Staryu head is still the same part, and verified the
+      held-sphere's ball truly can't escape. A ball is genus 0; bore one cylinder clear through a
+      block and it's genus 1; every extra bore adds one — the passthrough ball's 21 helical
+      channels read genus 21.</figcaption>
     </figure>
   </div>
 </section>
