@@ -973,7 +973,7 @@ For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><im
   <div class="body">
     <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
     <h3>Pyramid Pair Plate — dubbel 180 mm <span class="mat">PETG</span></h3>
-    <p class="principle">Built for you: double-height pyramid pair on one plate. Brim mandatory at this height.</p>
+    <p class="principle">Both parts on one plate — convenient, but field reports show repeated spaghetti near the top, and analysis explains why: both parts flare continuously up to 39° from vertical in their last 22 mm (≈850 mm² past the 35° curl threshold each) at an 8.7:1 lever, and pairing doubles the travel moves between parts. For the dubbel height, print the parts on separate plates (individual cards below), prefer PLA over PETG for the flare, max fan + slow outer wall up top.</p>
     
     <p class="specline">47.5×94.7×180.0 mm · 2 parts · 432,840 tris<br>P2S slice: 5 h 11 m · 147.6 g</p>
     <div class="actions">
@@ -1373,13 +1373,18 @@ function makeScene(){
 }
 
 const COIN_R = 24.26/2, COIN_T = 1.75;
+const texLoader = new THREE.TextureLoader();
+const coinHeads = texLoader.load('assets/quarter_heads.png');
+const coinTails = texLoader.load('assets/quarter_tails.png');
+coinHeads.colorSpace = coinTails.colorSpace = THREE.SRGBColorSpace;
 function makeCoin(){
   const g = new THREE.Group();
+  const side = new THREE.MeshStandardMaterial({color:0xb9bdc1, metalness:0.55, roughness:0.4});
+  const face = tex => new THREE.MeshStandardMaterial({map: tex, transparent: true,
+    color: 0xffffff, metalness: 0.35, roughness: 0.5});
   const c = new THREE.Mesh(new THREE.CylinderGeometry(COIN_R, COIN_R, COIN_T, 48),
-    new THREE.MeshStandardMaterial({color:0xd3d8dc, metalness:0.45, roughness:0.4}));
-  const rim = new THREE.Mesh(new THREE.CylinderGeometry(COIN_R+0.15, COIN_R+0.15, COIN_T*0.55, 48),
-    new THREE.MeshStandardMaterial({color:0xa9aeb2, metalness:0.5, roughness:0.38}));
-  g.add(c); g.add(rim);
+    [side, face(coinHeads), face(coinTails)]);
+  g.add(c);
   g.rotation.x = Math.PI/2;      // stand on edge, faces toward viewer
   g.rotation.y = 0.35;
   return g;
