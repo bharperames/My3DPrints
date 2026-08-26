@@ -163,63 +163,65 @@ build_chain(1.0, "chain-test-5seg.3mf")
 build_chain(2.0, "chain-test-5seg-2x.3mf")
 
 
-# ---------- 3. Held sphere + 10-link chain (pendant variant) ----------
-# A short stadium "bail" (10 mm mini-link, same tube and width as the chain)
-# is welded shallow into the cage's lower shell at +45; all 10 chain links
-# articulate freely. A round-ring bail is geometrically impossible here: its
-# transverse width exceeds what the ±45 joint tolerates — stadium geometry is
-# why chain links are chain-link-shaped. Constants from scan; re-verified.
+# ---------- 3. Held sphere + 10-link chain (pendant, fully articulated) ----------
+# Nothing is welded to the chain: a thin vertical "tag" plate (part of the
+# cage, welded via a tongue above the chain plane) carries a closed top hole
+# and a bed-level slot; link 0 pierces both perpendicular and hangs free —
+# capture is proven by a lift test. Links 1-10 are standard chain joints.
 def build_chained():
     base = trimesh.load(os.path.join(M, "held-sphere.3mf"), force="scene")
     cage2 = base.geometry["cage"].copy()
     held2 = base.geometry["ball"].copy()
     link = tube_from_loop(stadium_path(), D / 2)
+    X_P, P1 = 28.5, 11.75
 
-    def mini_path(cl_l=10.0, n_per=28):
-        s2, r2 = (cl_l - CL_W) / 2, CL_W / 2
-        pts = []
-        for t in np.linspace(-np.pi / 2, np.pi / 2, n_per):
-            pts.append([s2 + r2 * np.cos(t), r2 * np.sin(t)])
-        for t in np.linspace(np.pi / 2, 3 * np.pi / 2, n_per):
-            pts.append([-s2 + r2 * np.cos(t), r2 * np.sin(t)])
-        return np.array(pts)
-
-    mini = tube_from_loop(mini_path(), D / 2)
-    X_M, P1 = 21.0, 8.5
-
-    def place(m0, x, tilt):
-        l = m0.copy()
+    def place(x, tilt):
+        l = link.copy()
         l.apply_transform(trimesh.transformations.rotation_matrix(tilt, [1, 0, 0]))
         l.apply_translation([x, 0, 0])
         l.apply_translation([0, 0, -l.bounds[0][2]])
         return l
 
-    bailm = place(mini, X_M, np.pi / 4)
-    weld = bailm.intersection(cage2)
-    assert (not weld.is_empty) and weld.volume > 3.0, "bail weld too small"
-    body = trimesh.boolean.union([cage2, bailm], engine="manifold")
-    links = [place(link, X_M + P1 + i * PITCH,
-                   -np.pi / 4 if i % 2 == 0 else np.pi / 4) for i in range(10)]
+    link0 = place(X_P, np.pi / 4)
+    plate = trimesh.creation.box((2.5, 13.0, 13.5))
+    plate.apply_translation([X_P, 0, 13.5 / 2])
+    tophole = trimesh.creation.cylinder(radius=2.45, height=8, sections=32)
+    tophole.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0]))
+    tophole.apply_translation([X_P, 2.83, 7.24])
+    botslot = trimesh.creation.box((8, 4.9, 3.98))
+    botslot.apply_translation([X_P, -2.83, 3.98 / 2 - 0.01])
+    tongue = trimesh.creation.box((13.0, 10.0, 4.0))
+    tongue.apply_translation([16.8 + 6.5, 0, 11.4])
+    lug = trimesh.boolean.union([plate, tongue], engine="manifold")
+    lug = lug.difference(trimesh.boolean.union([tophole, botslot], engine="manifold"))
+    weld = lug.intersection(cage2)
+    assert (not weld.is_empty) and weld.volume > 8, "tag weld too small"
+    body = trimesh.boolean.union([cage2, lug], engine="manifold")
     cm = trimesh.collision.CollisionManager()
     cm.add_object("w", body)
-    assert not cm.in_collision_single(links[0])
-    d1 = cm.min_distance_single(links[0])
-    ok = d1 >= 0.45
-    for i in range(9):
+    assert not cm.in_collision_single(link0), "link0 collides"
+    assert cm.min_distance_single(link0) >= 0.5, "link0 tight"
+    esc = link0.copy()
+    esc.apply_translation([0, 0, 4])
+    assert cm.in_collision_single(esc), "link0 not captured"
+    links = [link0, place(X_P + P1, -np.pi / 4)]
+    for i in range(2, 11):
+        links.append(place(X_P + P1 + (i - 1) * PITCH,
+                           np.pi / 4 if i % 2 == 0 else -np.pi / 4))
+    ok = True
+    for i in range(1, len(links) - 1):
         c = trimesh.collision.CollisionManager()
         c.add_object("a", links[i])
         ok &= not c.in_collision_single(links[i + 1])
         ok &= c.min_distance_single(links[i + 1]) >= 0.5
-    for l in links[1:]:
-        ok &= not cm.in_collision_single(l)
     sc3 = trimesh.Scene()
-    sc3.add_geometry(body, geom_name="cage_with_bail")
+    sc3.add_geometry(body, geom_name="cage_with_tag")
     sc3.add_geometry(held2, geom_name="ball")
     for i, l in enumerate(links):
-        sc3.add_geometry(l, geom_name=f"link_{i + 1}")
+        sc3.add_geometry(l, geom_name=f"link_{i}")
     sc3.export(os.path.join(M, "held-sphere-chained.3mf"))
-    print(f"held-sphere-chained: bail weld {weld.volume:.1f} mm3, link1 "
-          f"clearance {d1:.2f}, {'ALL-OK' if ok else 'FAILED CHECKS'}")
+    print(f"held-sphere-chained: tag weld {weld.volume:.1f} mm3, all links free, "
+          f"{'ALL-OK' if ok else 'FAILED'}")
 
 
 build_chained()
