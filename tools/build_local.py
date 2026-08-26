@@ -75,10 +75,6 @@ add("held", "held-sphere.3mf", "held_sphere", "Designed here", "Claude · this s
     "Held Sphere", "A captive Ø19 ball in a geodesic strut cage: 120 Ø2.2 struts along subdivided-icosphere edges with joint spheres — fully triangulated, so it stays rigid at a third of the original shell's material (5.9 vs 16.5 cm³) while reading as a true sphere. Openings ≈Ø6 keep the ball captive (clearance 0.90 mm); it stands on a breakaway pip. Prints face-down; short struts self-support far better than the coarse version.", ("pass", "Designed · ready"))
 add("held_chain", "held-sphere-chained.3mf", "held_chained", "Designed here", "Claude · this session", "PLA",
     "Held Sphere + Chain", "Chainmail onto the untouched lattice: the hook is simply a longer, wider chain link — 20×12 mm with a thin Ø2.4 tube, standard 45° tilt — threaded through one stock lattice opening and wrapped around a low strut. No cage modifications, nothing welded, no extra hardware; capture proven by ray-escape test, 0.52 mm running clearance, chain joints ≥0.48 mm. Prints flat in one job.", ("pass", "Designed · ready"), mate="Held Sphere (chainless version)")
-add("chain2x", "chain-test-5seg-2x.3mf", "chain_test_2x", "Designed here", "Claude · this session", "PLA",
-    "Chain Test — 5 Links · 2×", "The same chain at double scale: 1.5″ links, 0.25″ (Ø6.35 mm) cross-section, 1.28 mm joint clearance, 24.4 mm² bed contact per link — comfortably brimless. A chunkier feel and a stronger test of the interlock.", ("pass", "Designed · ready"))
-add("chain", "chain-test-5seg.3mf", "chain_test", "Designed here", "Claude · this session", "PLA",
-    "Chain Test — 5 Links", "Print-in-place chain: five 0.75″ stadium links with 0.125″ round cross-section, alternating ±45° tilt in a gentle coil so every link self-supports. Verified: 0.74 mm clearance at every joint, threading proven by section intersection. Brim optional: each link puts a measured 9.6 mm² on the bed — enough to try brimless on textured PEI; a detached link is the failure mode if it lets go.", ("pass", "Designed · ready"))
 LOCAL = "(local export)"
 add("cshape", "c-shape copy 16.stl", "c_shape", "One-off Experiments", LOCAL, "PLA",
     "C-Shape (copy 16)", "Arch of fused spherical lobes — 286 cm³ solid, clean and watertight.", ("pass", "Clean"))
@@ -109,7 +105,7 @@ SLICE = {
  "cshape": "2 h 54 m · 93.1 g", "remesh": "1 h 26 m · 37.4 g",
  "voro": "unsliceable at Ø2 mm — print the fixed version",
  "voro_f": "1 h 22 m · 24.8 g",
- "nuts": "5 h 32 m · 228.4 g",
+ "nuts": "5 h 32 m · 228.4 g (Studio on the P2S: 6 h 56 m · 225.05 g)",
  "held": "43 m · 8.9 g — bridged struts; tree supports optional", "chain2x": "32 m · 10.6 g — brimless-friendly", "held_chain": "1 h 01 m · 13.5 g (Studio on the P2S: 1 h 06 m · 12.72 g)", "chain": "9 m · 2.3 g",
 }
 models_js = {}
@@ -170,6 +166,36 @@ for c in C:
     {metabox}
   </div>
 </article>''')
+
+PARAM_CARD = """
+<article class="card" id="card-chain_param" data-cid="chain_param">
+  <div class="photo">
+    <div class="view" data-models="__param_chain"></div>
+    <span class="pill pass">Parametric · live</span>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · parametric</p>
+    <h3>Parametric Chain <span class="mat">PLA</span></h3>
+    <p class="principle">The chain, generalized: print-in-place stadium links at alternating
+    ±45° tilt, generated on the fly. Drag the sliders — the model rebuilds instantly in the
+    viewer. Link width follows the cross-section so the joints always clear; the download
+    button runs the server generator, which FCL-verifies every joint before handing you the
+    3MF (the two fixed test chains this card replaces live on in the file ledger).</p>
+    <div class="params">
+      <label>links <input type="range" id="pc-links" min="2" max="25" step="1" value="5"><b id="pc-links-v">5</b></label>
+      <label>link length <input type="range" id="pc-len" min="14" max="60" step="1" value="19"><b id="pc-len-v">19 mm</b></label>
+      <label>cross-section <input type="range" id="pc-dia" min="2" max="8" step="0.25" value="3.25"><b id="pc-dia-v">Ø3.25 mm</b></label>
+    </div>
+    <p class="specline" id="pc-stats"></p>
+    <div class="actions">
+      <button class="print" id="pc-print">Generate + open in Bambu Studio</button>
+      <a class="savelink" id="pc-dl" href="#">generate &amp; download the verified 3MF</a>
+    </div>
+    <div class="notes" data-cid="chain_param"></div>
+  </div>
+</article>"""
+cards.insert(next(i for i, c in enumerate(cards) if "held-sphere-chained" in c) + 1, PARAM_CARD)
 
 fixes = "".join(f'<li><strong>{t}</strong><span>{d}</span></li>' for t, d in FIXES)
 compat = "".join(f'<li><strong><span class="dot {c}"></span>{t}</strong><span>{d}</span></li>' for c, t, d in COMPAT)

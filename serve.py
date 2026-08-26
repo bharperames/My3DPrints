@@ -40,6 +40,30 @@ def load_notes():
 class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         url = urlparse(self.path)
+        if url.path == "/generate":
+            q = parse_qs(url.query)
+            try:
+                links = int(q["links"][0]); ln = float(q["len"][0]); dia = float(q["dia"][0])
+            except Exception:
+                return self._json(400, {"ok": False, "error": "bad params"})
+            fname = f"chain-N{links}-L{ln:g}-D{dia:g}.3mf"
+            out = os.path.join(MODELS, "custom", fname)
+            if os.path.exists(out):
+                return self._json(200, {"ok": True, "file": "custom/" + fname, "cached": True})
+            py = os.path.expanduser("~/.claude/skills/3d-print-check/.venv/bin/python")
+            if not os.path.exists(py):
+                py = "python3"
+            r = subprocess.run([py, os.path.join(ROOT, "tools", "gen_chain.py"),
+                                "--links", str(links), "--len", str(ln),
+                                "--dia", str(dia), "--out", out],
+                               capture_output=True, text=True, timeout=180)
+            try:
+                j = json.loads(r.stdout.strip().splitlines()[-1])
+            except Exception:
+                return self._json(500, {"ok": False, "error": (r.stderr or "generator failed")[-300:]})
+            if j.get("ok"):
+                j["file"] = "custom/" + fname
+            return self._json(200 if j.get("ok") else 422, j)
         if url.path == "/rebuild":
             r = subprocess.run(["make", "build"], cwd=ROOT, capture_output=True,
                                text=True, timeout=900)
@@ -67,6 +91,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == "/generate":
+            return self.do_POST()
         if url.path == "/notes":
             return self._json(200, load_notes())
         if url.path != "/open":
