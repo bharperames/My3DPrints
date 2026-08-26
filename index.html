@@ -50,7 +50,7 @@ h1 .tld{color:var(--accent)}
   font:600 13px "IBM Plex Mono",monospace;color:var(--ink);margin-top:6px}
 .dia figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
 .dia figcaption strong{color:var(--ink)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px;align-items:start}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3}
@@ -817,7 +817,7 @@ For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><im
   <div class="body">
     <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
     <h3>Cone Pair Plate — 90 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Solid + spiral on one plate. Measured failure anatomy for the repeated top failures: the slotted solid’s wall is ~3.3 mm mid-body but thins to 1–2 mm where the helical slots taper out at the rim (14% of the top band under 2 mm), and that thin ribbon sits on a 35–39° flare — in PETG it cracks and lifts as the top closes; the spiral (5–6 mm walls) is innocent. Badge flipped to PLA over the designer’s PETG. Either material: 100% infill + ≥4 walls on the solid, 100% fan up top, brim on. The spiral in this plate is the eased version — 0.05 mm radial relief growing to 0.15 mm at the tips, so it starts and threads with less force on those thin ribbons.</p>
+    <p class="principle">Solid + eased spiral (0.05–0.15 mm entry lead-in) on one plate. Known failure: the solid’s wall thins to 1–2 mm where the slots taper at the rim, on a 35–39° flare — cracks in PETG as the top closes (spiral is innocent). Print PLA, 100% infill + ≥4 walls on the solid, 100% fan up top, brim. Full measurements in the print notes.</p>
     
     <p class="specline">44.7×92.0×90.0 mm · 2 parts · 362,160 tris<br>P2S slice: 2 h 19 m · 60.5 g</p>
     <div class="actions">
@@ -955,7 +955,7 @@ For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><im
   <div class="body">
     <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
     <h3>Pyramid Pair Plate — 90 mm <span class="mat">PLA</span></h3>
-    <p class="principle">The repaired solid + spiral on one plate. Field-confirmed failure mode at any scale: every part in this set flares to 39° from vertical in its last 22 mm (~850 mm² past the 35° continuous-curl threshold) — in PETG the curled edges fuse poorly and invite nozzle strikes right as the tops close. Prefer PLA; if PETG, dry filament, 100% fan and slow outer walls above the waist, and consider painted supports under the top corners.</p>
+    <p class="principle">The repaired solid + eased spiral on one plate. Same thin-rim + 35–39° flare failure anatomy as the cone set — print PLA, 100% infill + ≥4 walls on the solid, 100% fan up top, brim. Details in the print notes.</p>
     
     <p class="specline">46.6×93.9×90.0 mm · 2 parts · 401,514 tris<br>P2S slice: 2 h 37 m · 75.5 g</p>
     <div class="actions">
@@ -978,7 +978,7 @@ For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><im
   <div class="body">
     <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
     <h3>Pyramid Pair Plate — dubbel 180 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Both parts on one plate — convenient, but field reports show repeated spaghetti near the top, and analysis explains why: both parts flare continuously up to 39° from vertical in their last 22 mm (≈850 mm² past the 35° curl threshold each) at an 8.7:1 lever, and pairing doubles the travel moves between parts. The same failure is field-confirmed on the 90 mm parts (3.9:1 lever), so the flare curl — not height — is the primary cause. Print the parts on separate plates (individual cards below), prefer PLA over PETG for the flare, max fan + slow outer wall up top.</p>
+    <p class="principle">Both parts on one plate. Same failure anatomy as the 90 mm set (thin rim ribbons on a 35–39° flare — field-confirmed at both scales), amplified here by the 8.7:1 lever and doubled travels. Prefer the individual cards on separate plates; PLA, max fan + slow outer wall up top, brim. Details in the print notes.</p>
     
     <p class="specline">47.5×94.7×180.0 mm · 2 parts · 432,840 tris<br>P2S slice: 5 h 11 m · 147.6 g</p>
     <div class="actions">
