@@ -55,6 +55,11 @@ class Handler(SimpleHTTPRequestHandler):
                     fname = f"cage-D{cd:g}-F{fr}-T{st:g}-B{ball:g}.3mf"
                     args = ["gen_cage.py", "--dia", str(cd), "--freq", str(fr),
                             "--strut", str(st), "--ball", str(ball)]
+                elif kind == "dice":
+                    cd = float(q["dia"][0]); fr = int(q["freq"][0]); st = float(q["strut"][0])
+                    fname = f"dice-D{cd:g}-F{fr}-T{st:g}.3mf"
+                    args = ["gen_dice_cage.py", "--dia", str(cd), "--freq", str(fr),
+                            "--strut", str(st)]
                 else:
                     return self._json(400, {"ok": False, "error": "unknown type"})
             except Exception:

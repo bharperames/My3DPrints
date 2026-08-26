@@ -712,6 +712,54 @@ if (pcEl){
   };
 }
 
+function geodesic(nu){
+  const phi = (1 + Math.sqrt(5))/2;
+  const IV = [[-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],
+              [0,-1,-phi],[0,1,-phi],[phi,0,-1],[phi,0,1],[-phi,0,-1],[-phi,0,1]]
+    .map(v => { const l = Math.hypot(...v); return v.map(x => x/l); });
+  const IF = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],
+              [10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],
+              [2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+  const verts = [], index = new Map();
+  const vid = p => {
+    const l = Math.hypot(...p); p = p.map(x => x/l);
+    const k = p.map(x => x.toFixed(6)).join(',');
+    if (!index.has(k)) index.set(k, verts.push(p) - 1);
+    return index.get(k);
+  };
+  const edges = new Set();
+  for (const fa of IF){
+    const [A, B, C] = fa.map(i => IV[i]);
+    const grid = {};
+    for (let i = 0; i <= nu; i++)
+      for (let j = 0; j <= nu - i; j++){
+        const k2 = nu - i - j;
+        grid[i + '_' + j] = vid(A.map((x, d) => (k2*x + i*B[d] + j*C[d]) / nu));
+      }
+    for (let i = 0; i < nu; i++)
+      for (let j = 0; j < nu - i; j++){
+        const a1 = grid[i+'_'+j], b1 = grid[(i+1)+'_'+j], c1 = grid[i+'_'+(j+1)];
+        for (const [p, q] of [[a1,b1],[b1,c1],[c1,a1]])
+          edges.add(Math.min(p,q) + '_' + Math.max(p,q));
+      }
+  }
+  const eList = [...edges].map(k => k.split('_').map(Number));
+  let eMaxU = 0;
+  for (const [p, q] of eList)
+    eMaxU = Math.max(eMaxU, Math.hypot(...verts[p].map((x, d) => x - verts[q][d])));
+  // orient parent face 0 downward (-y), matching the generator's bed face
+  const A = IV[IF[0][0]], B = IV[IF[0][1]], C = IV[IF[0][2]];
+  const u = B.map((x,d) => x - A[d]), w = C.map((x,d) => x - A[d]);
+  let n = [u[1]*w[2]-u[2]*w[1], u[2]*w[0]-u[0]*w[2], u[0]*w[1]-u[1]*w[0]];
+  const nl = Math.hypot(...n); n = n.map(x => x/nl);
+  const q0 = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(...n), new THREE.Vector3(0, -1, 0));
+  const vv = new THREE.Vector3();
+  const oriented = verts.map(v => { vv.set(...v).applyQuaternion(q0); return [vv.x, vv.y, vv.z]; });
+  return { verts: oriented, edges: eList, eMaxU };
+}
+const CAGE_MAT = new THREE.MeshStandardMaterial({color:0xd9a45c, metalness:0.05, roughness:0.62});
+const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
 // ---- parametric held-sphere card ----
 const cgEl = document.querySelector('.view[data-models="__param_cage"]');
 if (cgEl){
@@ -722,52 +770,6 @@ if (cgEl){
   cv.controls.enableDamping = true; cv.controls.autoRotate = true;
   cv.controls.autoRotateSpeed = 1.0; cv.controls.enableZoom = false;
   views.push(cv);
-  function geodesic(nu){
-    const phi = (1 + Math.sqrt(5))/2;
-    const IV = [[-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],
-                [0,-1,-phi],[0,1,-phi],[phi,0,-1],[phi,0,1],[-phi,0,-1],[-phi,0,1]]
-      .map(v => { const l = Math.hypot(...v); return v.map(x => x/l); });
-    const IF = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],
-                [10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],
-                [2,4,11],[6,2,10],[8,6,7],[9,8,1]];
-    const verts = [], index = new Map();
-    const vid = p => {
-      const l = Math.hypot(...p); p = p.map(x => x/l);
-      const k = p.map(x => x.toFixed(6)).join(',');
-      if (!index.has(k)) index.set(k, verts.push(p) - 1);
-      return index.get(k);
-    };
-    const edges = new Set();
-    for (const fa of IF){
-      const [A, B, C] = fa.map(i => IV[i]);
-      const grid = {};
-      for (let i = 0; i <= nu; i++)
-        for (let j = 0; j <= nu - i; j++){
-          const k2 = nu - i - j;
-          grid[i + '_' + j] = vid(A.map((x, d) => (k2*x + i*B[d] + j*C[d]) / nu));
-        }
-      for (let i = 0; i < nu; i++)
-        for (let j = 0; j < nu - i; j++){
-          const a1 = grid[i+'_'+j], b1 = grid[(i+1)+'_'+j], c1 = grid[i+'_'+(j+1)];
-          for (const [p, q] of [[a1,b1],[b1,c1],[c1,a1]])
-            edges.add(Math.min(p,q) + '_' + Math.max(p,q));
-        }
-    }
-    const eList = [...edges].map(k => k.split('_').map(Number));
-    let eMaxU = 0;
-    for (const [p, q] of eList)
-      eMaxU = Math.max(eMaxU, Math.hypot(...verts[p].map((x, d) => x - verts[q][d])));
-    // orient parent face 0 downward (-y), matching the generator's bed face
-    const A = IV[IF[0][0]], B = IV[IF[0][1]], C = IV[IF[0][2]];
-    const u = B.map((x,d) => x - A[d]), w = C.map((x,d) => x - A[d]);
-    let n = [u[1]*w[2]-u[2]*w[1], u[2]*w[0]-u[0]*w[2], u[0]*w[1]-u[1]*w[0]];
-    const nl = Math.hypot(...n); n = n.map(x => x/nl);
-    const q0 = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(...n), new THREE.Vector3(0, -1, 0));
-    const vv = new THREE.Vector3();
-    const oriented = verts.map(v => { vv.set(...v).applyQuaternion(q0); return [vv.x, vv.y, vv.z]; });
-    return { verts: oriented, edges: eList, eMaxU };
-  }
   function cgParams(){
     const hasBall = document.getElementById('pg-hasball').checked;
     return { dia: +document.getElementById('pg-dia').value,
@@ -775,8 +777,6 @@ if (cgEl){
              strut: +document.getElementById('pg-strut').value,
              ball: hasBall ? +document.getElementById('pg-ball').value : 0 };
   }
-  const CAGE_MAT = new THREE.MeshStandardMaterial({color:0xd9a45c, metalness:0.05, roughness:0.62});
-  const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
   function cgRebuild(){
     let {dia, sub, strut, ball} = cgParams();
     const cageOnly = ball === 0;
@@ -921,6 +921,143 @@ if (cgEl){
     try {
       const j = await cgGenerate();
       stop();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      a.textContent = 'download ' + j.file.split('/').pop();
+      const link = document.createElement('a');
+      link.href = 'models/' + j.file; link.download = '';
+      document.body.appendChild(link); link.click(); link.remove();
+    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
+    setTimeout(() => { a.textContent = orig; }, 5000);
+  };
+}
+
+// ---- parametric dice cage card ----
+const pdEl = document.querySelector('.view[data-models="__param_dice"]');
+if (pdEl){
+  const dv = { el: pdEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
+  dv.scene = makeScene();
+  dv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
+  dv.controls = new OrbitControls(dv.camera, pdEl);
+  dv.controls.enableDamping = true; dv.controls.autoRotate = true;
+  dv.controls.autoRotateSpeed = 1.0; dv.controls.enableZoom = false;
+  views.push(dv);
+  const DIE_MAT = new THREE.MeshStandardMaterial({color:0xc75a5a, metalness:0.05, roughness:0.55});
+  function pdParams(){
+    return { dia: +document.getElementById('pd-dia').value,
+             sub: +document.getElementById('pd-sub').value,
+             strut: +document.getElementById('pd-strut').value };
+  }
+  function pdRebuild(){
+    let {dia, sub, strut} = pdParams();
+    let geo = geodesic(sub);
+    for (let guard = 0; guard < 8; guard++){
+      const eTest = (dia/2) * geo.eMaxU;
+      if (eTest > 16 && sub < 6){ sub++; document.getElementById('pd-sub').value = sub; geo = geodesic(sub); continue; }
+      if (eTest / strut > 8){ strut = Math.min(4, Math.ceil(eTest/8*5)/5);
+        document.getElementById('pd-strut').value = strut; continue; }
+      break;
+    }
+    const R = dia/2, sr = strut/2, jr = sr*1.42;
+    const {verts, edges} = geo;
+    const eLen = R * geo.eMaxU;
+    document.getElementById('pd-dia-v').textContent = 'Ø' + dia + ' mm';
+    document.getElementById('pd-sub-v').textContent = edges.length + ' struts';
+    document.getElementById('pd-strut-v').textContent = 'Ø' + strut.toFixed(1) + ' mm';
+    const oR = eLen/(2*Math.sqrt(3)) - sr;
+    const faceIn = oR + sr + 1.2;
+    const dieCr = 0.9511 * faceIn * 2 * Math.sqrt(3);
+    const tooBig = dieCr > R - sr - 3.5;
+    if (dv.current){ dv.scene.remove(dv.current); dv.current = null; }
+    const pedR = Math.min(7, 0.34*R - 3.5, faceIn - 1.0);
+    const winR = pedR + 3.5;
+    const yLow = -R + 0.4*R;
+    const segAxis = (a, b) => {
+      const ax = verts[a][0]*R, az = verts[a][2]*R;
+      const dx = verts[b][0]*R - ax, dz = verts[b][2]*R - az;
+      const L2 = dx*dx + dz*dz;
+      const tq = L2 === 0 ? 0 : Math.min(1, Math.max(0, -(ax*dx + az*dz)/L2));
+      return Math.hypot(ax + tq*dx, az + tq*dz);
+    };
+    const kept = tooBig ? edges : edges.filter(([a, b]) =>
+      !(Math.max(verts[a][1], verts[b][1]) * R < yLow && segAxis(a, b) < winR));
+    const group = new THREE.Group();
+    const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
+    for (const [a, b] of kept){
+      const P = new THREE.Vector3(verts[a][0]*R, verts[a][1]*R, verts[a][2]*R);
+      const Q = new THREE.Vector3(verts[b][0]*R, verts[b][1]*R, verts[b][2]*R);
+      const m = new THREE.Mesh(cyl, CAGE_MAT);
+      const d = Q.clone().sub(P);
+      m.scale.set(sr, d.length(), sr);
+      m.position.copy(P).add(Q).multiplyScalar(0.5);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
+      group.add(m);
+    }
+    const js = new THREE.SphereGeometry(1, 12, 8);
+    for (const i of new Set(kept.flat())){
+      const m = new THREE.Mesh(js, CAGE_MAT);
+      m.scale.setScalar(jr);
+      m.position.set(verts[i][0]*R, verts[i][1]*R, verts[i][2]*R);
+      group.add(m);
+    }
+    if (!tooBig){
+      const yBed = -R - sr;
+      const die = new THREE.Mesh(new THREE.IcosahedronGeometry(dieCr), DIE_MAT);
+      // rest flat: icosahedron face-down = rotate so a face normal points -y
+      die.geometry.computeVertexNormals();
+      die.rotation.set(Math.atan(1/1.618)+Math.PI/2, 0, 0);  // approx face-down
+      const inR = 0.7558 * (dieCr/0.9511);
+      die.position.y = yBed + 5.4 + inR;
+      group.add(die);
+      const pd = new THREE.Mesh(new THREE.CylinderGeometry(pedR, pedR, 4, 32), DIE_MAT);
+      pd.position.y = yBed + 2; group.add(pd);
+      const nk = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 1.6, 16), DIE_MAT);
+      nk.position.y = yBed + 4.7; group.add(nk);
+    }
+    dv.current = group; dv.scene.add(group);
+    const b2 = new THREE.Box3().setFromObject(group);
+    placeCoin(dv, b2);
+    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
+    const size = b2.getSize(new THREE.Vector3()).length();
+    const c = b2.getCenter(new THREE.Vector3());
+    dv.controls.target.copy(c);
+    const fovV = dv.camera.fov*Math.PI/180;
+    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*dv.camera.aspect))/2);
+    dv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
+    dv.camera.near = dist/50; dv.camera.far = dist*20; dv.camera.updateProjectionMatrix();
+    const stats = document.getElementById('pd-stats');
+    stats.textContent = tooBig
+      ? '⚠ seat rule needs a Ø' + (2*dieCr).toFixed(0) + ' die — too big for this cage; finer lattice or bigger Ø'
+      : 'd20 Ø' + (2*dieCr).toFixed(0) + ' mm, face edge ' + (faceIn*2*Math.sqrt(3)).toFixed(0) + ' mm · openings Ø' + (2*oR).toFixed(1) + ' · spans ' + eLen.toFixed(0) + ' mm ✓ (numerals in the generated file)';
+    const dt = pdEl.parentElement.querySelector('.dimtag');
+    if (dt) dt.textContent = 'Ø' + dia + ' · live';
+  }
+  ['pd-dia','pd-sub','pd-strut'].forEach(id =>
+    document.getElementById(id).addEventListener('input', pdRebuild));
+  pdRebuild();
+  async function pdGenerate(){
+    const {dia, sub, strut} = pdParams();
+    const r = await fetch(`/generate?type=dice&dia=${dia}&freq=${sub}&strut=${strut}`);
+    return await r.json();
+  }
+  document.getElementById('pd-print').onclick = async e => {
+    const b = e.target; b.disabled = true;
+    const stop = startTicker(b, 'Generating + engraving + verifying');
+    try {
+      const j = await pdGenerate(); stop();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
+      const j2 = await r2.json();
+      if (!j2.ok) throw new Error(j2.error || 'open failed');
+      b.textContent = 'Sent to Bambu Studio ✓ (die Ø' + j.die_dia + ')';
+    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
+    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
+  };
+  document.getElementById('pd-dl').onclick = async e => {
+    e.preventDefault();
+    const a = e.target; const orig = a.textContent;
+    const stop = startTicker(a, 'generating + engraving + verifying');
+    try {
+      const j = await pdGenerate(); stop();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       a.textContent = 'download ' + j.file.split('/').pop();
       const link = document.createElement('a');
