@@ -50,10 +50,10 @@ class Handler(SimpleHTTPRequestHandler):
                     args = ["gen_chain.py", "--links", str(links),
                             "--len", str(ln), "--dia", str(dia)]
                 elif kind == "cage":
-                    cd = float(q["dia"][0]); sub = int(q["subdiv"][0])
+                    cd = float(q["dia"][0]); fr = int(q["freq"][0])
                     st = float(q["strut"][0]); ball = float(q["ball"][0])
-                    fname = f"cage-D{cd:g}-S{sub}-T{st:g}-B{ball:g}-v2.3mf"
-                    args = ["gen_cage.py", "--dia", str(cd), "--subdiv", str(sub),
+                    fname = f"cage-D{cd:g}-F{fr}-T{st:g}-B{ball:g}.3mf"
+                    args = ["gen_cage.py", "--dia", str(cd), "--freq", str(fr),
                             "--strut", str(st), "--ball", str(ball)]
                 else:
                     return self._json(400, {"ok": False, "error": "unknown type"})

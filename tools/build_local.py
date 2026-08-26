@@ -217,7 +217,7 @@ PARAM_CAGE = """
     watertightness before handing you the 3MF.</p>
     <div class="params">
       <label>cage Ø <input type="range" id="pg-dia" min="34" max="84" step="2" value="50"><b id="pg-dia-v">Ø50 mm</b></label>
-      <label>lattice <input type="range" id="pg-sub" min="0" max="2" step="1" value="1"><b id="pg-sub-v">120 struts</b></label>
+      <label>lattice <input type="range" id="pg-sub" min="1" max="6" step="1" value="2"><b id="pg-sub-v">120 struts</b></label>
       <label>strut Ø <input type="range" id="pg-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pg-strut-v">Ø2.2 mm</b></label>
       <label>ball Ø <input type="range" id="pg-ball" min="6" max="60" step="1" value="19"><b id="pg-ball-v">Ø19 mm</b></label>
     </div>

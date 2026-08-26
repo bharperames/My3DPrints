@@ -20,7 +20,7 @@ from trimesh.proximity import signed_distance
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dia", type=float, required=True)
-    ap.add_argument("--subdiv", type=int, required=True)
+    ap.add_argument("--freq", type=int, required=True)
     ap.add_argument("--strut", type=float, required=True)
     ap.add_argument("--ball", type=float, required=True)
     ap.add_argument("--out", required=True)
@@ -32,25 +32,51 @@ def main():
     err = None
     if not 30 <= a.dia <= 90:
         err = "cage Ø must be 30-90 mm"
-    elif a.subdiv not in (0, 1, 2):
-        err = "subdiv must be 0, 1 or 2"
+    elif not 1 <= a.freq <= 6:
+        err = "lattice frequency must be 1-6"
     elif not 1.4 <= a.strut <= 4.5:
         err = "strut Ø must be 1.4-4.5 mm"
     if err:
         print(json.dumps({"ok": False, "error": err}))
         return 1
 
-    ico = trimesh.creation.icosphere(subdivisions=a.subdiv)
-    V = ico.vertices / np.linalg.norm(ico.vertices, axis=1, keepdims=True) * R
-    F = ico.faces
+    # class-I geodesic tessellation: 30*freq^2 struts (30/120/270/480/750/1080)
+    ico = trimesh.creation.icosahedron()
+    IV = ico.vertices / np.linalg.norm(ico.vertices, axis=1, keepdims=True)
+    verts, index = [], {}
+
+    def vid(p):
+        p = p / np.linalg.norm(p)
+        key = tuple(np.round(p, 6))
+        if key not in index:
+            index[key] = len(verts)
+            verts.append(p)
+        return index[key]
+
+    nu = a.freq
+    edges, F = set(), []
+    for fa in ico.faces:
+        A, B, C = IV[fa[0]], IV[fa[1]], IV[fa[2]]
+        grid = {}
+        for i in range(nu + 1):
+            for j in range(nu + 1 - i):
+                k = nu - i - j
+                grid[(i, j)] = vid((k * A + i * B + j * C) / nu)
+        for i in range(nu):
+            for j in range(nu - i):
+                a1, b1, c1 = grid[(i, j)], grid[(i + 1, j)], grid[(i, j + 1)]
+                F.append((a1, b1, c1))
+                for e in ((a1, b1), (b1, c1), (c1, a1)):
+                    edges.add((min(e), max(e)))
+                if i + j < nu - 1:
+                    d1 = grid[(i + 1, j + 1)]
+                    F.append((b1, d1, c1))
+    V = np.array(verts) * R
+    F = np.array(F)
     n0 = np.cross(V[F[0][1]] - V[F[0][0]], V[F[0][2]] - V[F[0][0]])
     V = trimesh.transform_points(
         V, trimesh.geometry.align_vectors(n0 / np.linalg.norm(n0), [0, 0, -1]))
-    edges = set()
-    for f in F:
-        for p, q in ((f[0], f[1]), (f[1], f[2]), (f[2], f[0])):
-            edges.add((min(p, q), max(p, q)))
-    e_len = float(np.linalg.norm(V[F[0][0]] - V[F[0][1]]))
+    e_len = float(max(np.linalg.norm(V[p] - V[q]) for p, q in edges))
     # stability envelope, bracketed by field prints (13 mm good / 22 mm fail):
     if e_len > 16.0:
         print(json.dumps({"ok": False, "error":

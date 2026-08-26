@@ -1208,7 +1208,7 @@ Watch them delight in stacking, screwing, and creating the…</p><div class="gal
     watertightness before handing you the 3MF.</p>
     <div class="params">
       <label>cage Ø <input type="range" id="pg-dia" min="34" max="84" step="2" value="50"><b id="pg-dia-v">Ø50 mm</b></label>
-      <label>lattice <input type="range" id="pg-sub" min="0" max="2" step="1" value="1"><b id="pg-sub-v">120 struts</b></label>
+      <label>lattice <input type="range" id="pg-sub" min="1" max="6" step="1" value="2"><b id="pg-sub-v">120 struts</b></label>
       <label>strut Ø <input type="range" id="pg-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pg-strut-v">Ø2.2 mm</b></label>
       <label>ball Ø <input type="range" id="pg-ball" min="6" max="60" step="1" value="19"><b id="pg-ball-v">Ø19 mm</b></label>
     </div>
@@ -1764,36 +1764,42 @@ if (cgEl){
   cv.controls.enableDamping = true; cv.controls.autoRotate = true;
   cv.controls.autoRotateSpeed = 1.0; cv.controls.enableZoom = false;
   views.push(cv);
-  function icosphere(sub){
+  function geodesic(nu){
     const phi = (1 + Math.sqrt(5))/2;
-    let verts = [[-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],
-                 [0,-1,-phi],[0,1,-phi],[phi,0,-1],[phi,0,1],[-phi,0,-1],[-phi,0,1]]
+    const IV = [[-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],
+                [0,-1,-phi],[0,1,-phi],[phi,0,-1],[phi,0,1],[-phi,0,-1],[-phi,0,1]]
       .map(v => { const l = Math.hypot(...v); return v.map(x => x/l); });
-    let faces = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],
-                 [10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],
-                 [2,4,11],[6,2,10],[8,6,7],[9,8,1]];
-    for (let s = 0; s < sub; s++){
-      const cache = new Map(), nf = [];
-      const mid = (a, b) => {
-        const k = Math.min(a,b) + '_' + Math.max(a,b);
-        if (!cache.has(k)){
-          const p = verts[a].map((x,i) => (x + verts[b][i])/2);
-          const l = Math.hypot(...p);
-          cache.set(k, verts.push(p.map(x => x/l)) - 1);
-        }
-        return cache.get(k);
-      };
-      for (const [a,b,c] of faces){
-        const ab = mid(a,b), bc = mid(b,c), ca = mid(c,a);
-        nf.push([a,ab,ca],[ab,b,bc],[bc,c,ca],[ab,bc,ca]);
-      }
-      faces = nf;
-    }
+    const IF = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],
+                [10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],
+                [2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+    const verts = [], index = new Map();
+    const vid = p => {
+      const l = Math.hypot(...p); p = p.map(x => x/l);
+      const k = p.map(x => x.toFixed(6)).join(',');
+      if (!index.has(k)) index.set(k, verts.push(p) - 1);
+      return index.get(k);
+    };
     const edges = new Set();
-    for (const [a,b,c] of faces)
-      for (const [p,q] of [[a,b],[b,c],[c,a]])
-        edges.add(Math.min(p,q) + '_' + Math.max(p,q));
-    return { verts, edges: [...edges].map(k => k.split('_').map(Number)) };
+    for (const fa of IF){
+      const [A, B, C] = fa.map(i => IV[i]);
+      const grid = {};
+      for (let i = 0; i <= nu; i++)
+        for (let j = 0; j <= nu - i; j++){
+          const k2 = nu - i - j;
+          grid[i + '_' + j] = vid(A.map((x, d) => (k2*x + i*B[d] + j*C[d]) / nu));
+        }
+      for (let i = 0; i < nu; i++)
+        for (let j = 0; j < nu - i; j++){
+          const a1 = grid[i+'_'+j], b1 = grid[(i+1)+'_'+j], c1 = grid[i+'_'+(j+1)];
+          for (const [p, q] of [[a1,b1],[b1,c1],[c1,a1]])
+            edges.add(Math.min(p,q) + '_' + Math.max(p,q));
+        }
+    }
+    const eList = [...edges].map(k => k.split('_').map(Number));
+    let eMaxU = 0;
+    for (const [p, q] of eList)
+      eMaxU = Math.max(eMaxU, Math.hypot(...verts[p].map((x, d) => x - verts[q][d])));
+    return { verts, edges: eList, eMaxU };
   }
   function cgParams(){
     return { dia: +document.getElementById('pg-dia').value,
@@ -1806,9 +1812,10 @@ if (cgEl){
   function cgRebuild(){
     let {dia, sub, strut, ball} = cgParams();
     // stability envelope: spans ≤16 mm (field-bracketed), slenderness ≤8
-    for (let guard = 0; guard < 3; guard++){
-      const eTest = (dia/2) * [1.0515, 0.5465, 0.2759][sub];
-      if (eTest > 16 && sub < 2){ sub++; document.getElementById('pg-sub').value = sub; continue; }
+    let geo = geodesic(sub);
+    for (let guard = 0; guard < 8; guard++){
+      const eTest = (dia/2) * geo.eMaxU;
+      if (eTest > 16 && sub < 6){ sub++; document.getElementById('pg-sub').value = sub; geo = geodesic(sub); continue; }
       if (eTest / strut > 8){
         strut = Math.min(4, Math.ceil(eTest/8*5)/5);
         document.getElementById('pg-strut').value = strut; continue;
@@ -1816,8 +1823,8 @@ if (cgEl){
       break;
     }
     const R = dia/2, sr = strut/2, jr = sr*1.35, br = ball/2;
-    const {verts, edges} = icosphere(sub);
-    const eLen = R * Math.hypot(...verts[edges[0][0]].map((x,i) => x - verts[edges[0][1]][i]));
+    const {verts, edges} = geo;
+    const eLen = R * geo.eMaxU;
     const opening = 2*(eLen/(2*Math.sqrt(3)) - sr);
     document.getElementById('pg-dia-v').textContent = 'Ø' + dia + ' mm';
     document.getElementById('pg-sub-v').textContent = edges.length + ' struts';
@@ -1883,7 +1890,7 @@ if (cgEl){
   cgRebuild();
   async function cgGenerate(){
     const {dia, sub, strut, ball} = cgParams();
-    const r = await fetch(`/generate?type=cage&dia=${dia}&subdiv=${sub}&strut=${strut}&ball=${ball}`);
+    const r = await fetch(`/generate?type=cage&dia=${dia}&freq=${sub}&strut=${strut}&ball=${ball}`);
     return await r.json();
   }
   document.getElementById('pg-print').onclick = async e => {
