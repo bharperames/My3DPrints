@@ -101,7 +101,12 @@ def main():
     wt = all(g.is_watertight for g in chk.geometry.values())
     ext = chk.bounds[1] - chk.bounds[0]
     vol = (cage.volume + held.volume) / 1000.0
+    advisory = None
+    if e_len > 16:
+        advisory = (f"strut bridges span {e_len:.0f} mm at this size — expect some "
+                    f"droop on the horizontal ones; use a finer lattice or tree supports")
     print(json.dumps({"ok": True, "file": os.path.basename(a.out),
+                      "span_mm": round(e_len, 1), "advisory": advisory,
                       "struts": len(edges), "opening": round(opening, 1),
                       "clearance": round(d, 2), "watertight": wt,
                       "dims": [round(float(x), 1) for x in ext],

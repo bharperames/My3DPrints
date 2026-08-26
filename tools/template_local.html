@@ -814,8 +814,11 @@ if (cgEl){
       stats.textContent = '⚠ ball escapes: openings Ø' + opening.toFixed(1) + ' — ball needs ≥ ' + (opening+1).toFixed(0) + ' mm';
     else if (wontFit)
       stats.textContent = '⚠ ball won\u2019t fit: max ≈ ' + (2*(R - sr - 2)).toFixed(0) + ' mm in this cage';
-    else
+    else {
       stats.textContent = edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
+      if (eLen > 16)
+        stats.textContent += ' · ⚠ ' + eLen.toFixed(0) + ' mm strut bridges — finer lattice or tree supports advised';
+    }
     const dt = cgEl.parentElement.querySelector('.dimtag');
     if (dt) dt.textContent = 'Ø' + dia + ' · live';
   }
