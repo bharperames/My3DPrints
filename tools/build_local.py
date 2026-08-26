@@ -224,6 +224,7 @@ PARAM_CAGE = """
       <label>lattice <input type="range" id="pg-sub" min="1" max="6" step="1" value="2"><b id="pg-sub-v">120 struts</b></label>
       <label>strut Ø <input type="range" id="pg-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pg-strut-v">Ø2.2 mm</b></label>
       <label>ball Ø <input type="range" id="pg-ball" min="13" max="60" step="1" value="19"><b id="pg-ball-v">Ø19 mm</b></label>
+      <label>ball <input type="checkbox" id="pg-hasball" checked style="justify-self:start"><b id="pg-hasball-v">included</b></label>
     </div>
     <p class="specline" id="pg-stats"></p>
     <div class="actions">
