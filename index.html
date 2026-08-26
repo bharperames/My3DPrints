@@ -55,6 +55,11 @@ h1 .tld{color:var(--accent)}
   overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3}
 .view{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
+.axisbtn{position:absolute;top:12px;left:46px;z-index:6;background:var(--panel);
+  border:1px solid var(--line);color:var(--muted);border-radius:6px;height:28px;
+  padding:0 9px;font:600 11px "IBM Plex Sans",sans-serif;cursor:pointer;display:none}
+.photo:hover .axisbtn{display:block}
+.axisbtn.on{display:block;color:#7ea3e0;border-color:#3a6fd8}
 .expand{position:absolute;top:12px;left:12px;z-index:6;background:var(--panel);
   border:1px solid var(--line);color:var(--muted);border-radius:6px;width:28px;height:28px;
   font:600 14px/1 "IBM Plex Sans",sans-serif;cursor:pointer;display:none}
@@ -950,7 +955,7 @@ For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><im
   <div class="body">
     <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
     <h3>Pyramid Pair Plate — 90 mm <span class="mat">PETG</span></h3>
-    <p class="principle">Built for you: the repaired solid + spiral on one plate — the complete toy in one job. Uses the fixed body, not the broken original.</p>
+    <p class="principle">The repaired solid + spiral on one plate. Field-confirmed failure mode at any scale: every part in this set flares to 39° from vertical in its last 22 mm (~850 mm² past the 35° continuous-curl threshold) — in PETG the curled edges fuse poorly and invite nozzle strikes right as the tops close. Prefer PLA; if PETG, dry filament, 100% fan and slow outer walls above the waist, and consider painted supports under the top corners.</p>
     
     <p class="specline">46.6×93.9×90.0 mm · 2 parts · 401,514 tris<br>P2S slice: 2 h 37 m · 75.5 g</p>
     <div class="actions">
@@ -973,7 +978,7 @@ For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><im
   <div class="body">
     <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
     <h3>Pyramid Pair Plate — dubbel 180 mm <span class="mat">PETG</span></h3>
-    <p class="principle">Both parts on one plate — convenient, but field reports show repeated spaghetti near the top, and analysis explains why: both parts flare continuously up to 39° from vertical in their last 22 mm (≈850 mm² past the 35° curl threshold each) at an 8.7:1 lever, and pairing doubles the travel moves between parts. For the dubbel height, print the parts on separate plates (individual cards below), prefer PLA over PETG for the flare, max fan + slow outer wall up top.</p>
+    <p class="principle">Both parts on one plate — convenient, but field reports show repeated spaghetti near the top, and analysis explains why: both parts flare continuously up to 39° from vertical in their last 22 mm (≈850 mm² past the 35° curl threshold each) at an 8.7:1 lever, and pairing doubles the travel moves between parts. The same failure is field-confirmed on the 90 mm parts (3.9:1 lever), so the flare curl — not height — is the primary cause. Print the parts on separate plates (individual cards below), prefer PLA over PETG for the flare, max fan + slow outer wall up top.</p>
     
     <p class="specline">47.5×94.7×180.0 mm · 2 parts · 432,840 tris<br>P2S slice: 5 h 11 m · 147.6 g</p>
     <div class="actions">
@@ -1377,6 +1382,8 @@ const texLoader = new THREE.TextureLoader();
 const coinHeads = texLoader.load('assets/quarter_heads.png');
 const coinTails = texLoader.load('assets/quarter_tails.png');
 coinHeads.colorSpace = coinTails.colorSpace = THREE.SRGBColorSpace;
+coinHeads.center.set(0.5, 0.5); coinHeads.rotation = Math.PI/2;
+coinTails.center.set(0.5, 0.5); coinTails.rotation = -Math.PI/2;
 function makeCoin(){
   const g = new THREE.Group();
   const side = new THREE.MeshStandardMaterial({color:0xb9bdc1, metalness:0.55, roughness:0.4});
@@ -1389,10 +1396,81 @@ function makeCoin(){
   g.rotation.y = 0.35;
   return g;
 }
+const INCH = 25.4;
+function graphTexture(nIn){
+  const px = 96, W = nIn * px;
+  const cv = document.createElement('canvas'); cv.width = cv.height = W;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#f2f7ff'; ctx.fillRect(0, 0, W, W);
+  const line = (i, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, W); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke(); };
+  for (let k = 0; k <= nIn * 8; k++){
+    const i = k * px / 8;
+    if (k % 8 === 0) continue;
+    line(i, k % 4 === 0 ? 1.6 : 0.7, k % 4 === 0 ? '#8fb0e4' : '#c3d5f2');
+  }
+  for (let k = 0; k <= nIn; k++) line(k * px, 2.6, '#3a6fd8');
+  ctx.fillStyle = '#3a6fd8'; ctx.font = '600 22px IBM Plex Sans, sans-serif';
+  for (let k = 1; k < nIn; k++){
+    ctx.fillText(k + '\u2033', k * px + 5, W - 8);
+    ctx.fillText(k + '\u2033', 5, W - k * px - 6);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const graphTexCache = {};
+function graphPlane(nIn){
+  if (!graphTexCache[nIn]) graphTexCache[nIn] = graphTexture(nIn);
+  const s = nIn * INCH;
+  return new THREE.Mesh(new THREE.PlaneGeometry(s, s),
+    new THREE.MeshBasicMaterial({map: graphTexCache[nIn], side: THREE.DoubleSide}));
+}
+function buildGraph(box){
+  const g = new THREE.Group();
+  const span = Math.max(box.max.x - Math.min(box.min.x, 0), box.max.y,
+                        box.max.z - Math.min(box.min.z, 0)) + COIN_R * 2 + 14;
+  const nIn = Math.max(2, Math.ceil(span / INCH));
+  const s = nIn * INCH;
+  const ox = Math.floor((box.min.x - COIN_R * 2 - 12) / INCH) * INCH;
+  const oz = Math.floor(box.min.z / INCH) * INCH;
+  const floor = graphPlane(nIn);                       // model-XY plane
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(ox + s / 2, -0.05, oz + s / 2);
+  const back = graphPlane(nIn);                        // model-XZ plane
+  back.position.set(ox + s / 2, s / 2, oz - 0.05);
+  const side = graphPlane(nIn);                        // model-YZ plane
+  side.rotation.y = Math.PI / 2;
+  side.position.set(ox - 0.05, s / 2, oz + s / 2);
+  g.add(floor); g.add(back); g.add(side);
+  g.userData.origin = [ox, oz];
+  return g;
+}
+function refreshGraph(v){
+  if (v.graph){ v.scene.remove(v.graph); v.graph = null; }
+  if (v.graphOn && v.lastBox){
+    v.graph = buildGraph(v.lastBox);
+    v.scene.add(v.graph);
+  }
+  poseCoin(v);
+}
+function poseCoin(v){
+  if (!v.coin || !v.lastBox) return;
+  const box = v.lastBox;
+  if (v.graphOn && v.graph){
+    const [ox, oz] = v.graph.userData.origin;
+    v.coin.rotation.set(0, 0.4, 0);                    // lying flat, heads up
+    v.coin.position.set(box.min.x - COIN_R - 8, COIN_T / 2, Math.max(oz + COIN_R + 4, box.min.z));
+  } else {
+    v.coin.rotation.set(Math.PI / 2, 0.35, 0);         // standing on edge
+    v.coin.position.set(box.min.x - COIN_R - 6, COIN_R, (box.min.z + box.max.z) / 2);
+  }
+}
 function placeCoin(v, box){
   if (!v.coin){ v.coin = makeCoin(); v.scene.add(v.coin); }
-  v.coin.position.set(box.min.x - COIN_R - 6, COIN_R, (box.min.z + box.max.z)/2);
   v.coin.visible = true;
+  v.lastBox = box.clone();
+  refreshGraph(v);
 }
 function frameModel(v, obj){
   const box = new THREE.Box3().setFromObject(obj);
@@ -1505,7 +1583,21 @@ document.querySelectorAll('.view').forEach(el => {
   b.className = 'expand'; b.textContent = '⤢'; b.title = 'open large viewer';
   b.onclick = ev => { ev.stopPropagation(); openLightbox(v0); };
   el.parentElement.appendChild(b);
+  const gb = document.createElement('button');
+  gb.className = 'axisbtn'; gb.textContent = 'graph';
+  gb.title = 'graph-paper axes (1\u2033 / \u215b\u2033 rulings)';
+  gb.onclick = ev => { ev.stopPropagation();
+    v0.graphOn = !v0.graphOn; gb.classList.toggle('on', v0.graphOn); refreshGraph(v0); };
+  el.parentElement.appendChild(gb);
 });
+{
+  const gb = document.createElement('button');
+  gb.className = 'lb-close'; gb.style.width = 'auto'; gb.style.padding = '0 12px';
+  gb.style.font = '600 12px IBM Plex Sans, sans-serif'; gb.textContent = 'graph';
+  gb.onclick = () => { lbV.graphOn = !lbV.graphOn;
+    gb.style.color = lbV.graphOn ? '#7ea3e0' : ''; refreshGraph(lbV); };
+  lbRoot.querySelector('.lb-chrome').insertBefore(gb, lbRoot.querySelector('.lb-close'));
+}
 
 // ---- parametric chain card ----
 const pcEl = document.querySelector('.view[data-models="__param_chain"]');
