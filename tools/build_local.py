@@ -197,6 +197,37 @@ PARAM_CARD = """
 </article>"""
 cards.insert(next(i for i, c in enumerate(cards) if "held-sphere-chained" in c) + 1, PARAM_CARD)
 
+PARAM_DICE = """
+<article class="card" id="card-dice_param" data-cid="dice_param">
+  <div class="photo">
+    <div class="view" data-models="__param_dice"></div>
+    <span class="pill pass">Parametric · live</span>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · parametric</p>
+    <h3>Dice Cage <span class="mat">PLA</span></h3>
+    <p class="principle">A d20 inside the d20: shake the icosahedral cage and the die lands
+    readable in the spherical bowl of the bottom. The die is auto-sized by the seat rule —
+    its face inradius equals the lattice opening plus strut radius plus margin, so a landed
+    face always bridges the floor openings and rests level on the surrounding struts.
+    Faces engraved 1–20 (antipodal pairs sum to 21); prints flat-face-down on the breakaway
+    pedestal. Unvalidated until printed.</p>
+    <div class="params">
+      <label>cage Ø <input type="range" id="pd-dia" min="44" max="88" step="2" value="60"><b id="pd-dia-v">Ø60 mm</b></label>
+      <label>lattice <input type="range" id="pd-sub" min="2" max="6" step="1" value="3"><b id="pd-sub-v">270 struts</b></label>
+      <label>strut Ø <input type="range" id="pd-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pd-strut-v">Ø2.2 mm</b></label>
+    </div>
+    <p class="specline" id="pd-stats"></p>
+    <div class="actions">
+      <button class="print" id="pd-print">Generate + open in Bambu Studio</button>
+      <a class="savelink" id="pd-dl" href="#">generate &amp; download the verified 3MF</a>
+    </div>
+    <div class="notes" data-cid="dice_param"></div>
+  </div>
+</article>"""
+cards.insert(next(i for i, c in enumerate(cards) if 'card-chain_param' in c) + 1, PARAM_DICE)
+
 PARAM_CAGE = """
 <article class="card" id="card-cage_param" data-cid="cage_param">
   <div class="photo">
