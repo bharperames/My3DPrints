@@ -163,64 +163,123 @@ build_chain(1.0, "chain-test-5seg.3mf")
 build_chain(2.0, "chain-test-5seg-2x.3mf")
 
 
-# ---------- 3. Held sphere + 10-link chain (pendant, fully articulated) ----------
-# Nothing is welded to the chain: a thin vertical "tag" plate (part of the
-# cage, welded via a tongue above the chain plane) carries a closed top hole
-# and a bed-level slot; link 0 pierces both perpendicular and hangs free —
-# capture is proven by a lift test. Links 1-10 are standard chain joints.
+# ---------- 3. Held sphere + 10-link chain (chainmail pendant) ----------
+# The chain hooks DIRECTLY into the lattice, nothing welded, no extra
+# hardware: the cage gets one "attachment window" (the 3 inner struts of one
+# subdivided face removed, merging 4 openings into one ~O13) and link 0 is a
+# longer, wider, thinner-tubed chain link (20x12, O2.4 tube) at the standard
+# 45-degree tilt that threads the window and wraps its sill strut. Capture is
+# proven by ray-escape testing. Constants from scan; re-verified every build.
 def build_chained():
+    R2, SR, JR = 25.0, 1.1, 1.5
+    ico = trimesh.creation.icosahedron()
+    V0 = ico.vertices / np.linalg.norm(ico.vertices, axis=1, keepdims=True) * R2
+    F0 = ico.faces
+    nn0 = np.cross(V0[F0[0][1]] - V0[F0[0][0]], V0[F0[0][2]] - V0[F0[0][0]])
+    V0 = trimesh.transform_points(
+        V0, trimesh.geometry.align_vectors(nn0 / np.linalg.norm(nn0), [0, 0, -1]))
+    mid, verts = {}, list(V0)
+
+    def midpoint(a, b):
+        key = (min(a, b), max(a, b))
+        if key not in mid:
+            p = (verts[a] + verts[b]) / 2
+            mid[key] = len(verts)
+            verts.append(p / np.linalg.norm(p) * R2)
+        return mid[key]
+
+    edges, parent_inner = set(), {}
+    for fi, f in enumerate(F0):
+        a, b, c = f
+        ab, bc, ca = midpoint(a, b), midpoint(b, c), midpoint(c, a)
+        for e in [(a, ab), (ab, b), (b, bc), (bc, c), (c, ca), (ca, a),
+                  (ab, bc), (bc, ca), (ca, ab)]:
+            edges.add((min(e), max(e)))
+        parent_inner[fi] = [(min(x), max(x)) for x in [(ab, bc), (bc, ca), (ca, ab)]]
+    V2 = np.array(verts)
+    cents = np.array([V0[f].mean(axis=0) for f in F0])
+    win = max((c[0], i) for i, c in enumerate(cents) if c[2] < -8 and c[0] > 5)[1]
+    skip = set(parent_inner[win])
+    parts2, used = [], set()
+    for (a, b) in edges:
+        if (a, b) in skip:
+            continue
+        used.update((a, b))
+        p, q = V2[a], V2[b]
+        d = q - p
+        L = np.linalg.norm(d)
+        cyl = trimesh.creation.cylinder(radius=SR, height=L, sections=20)
+        cyl.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d / L))
+        cyl.apply_translation((p + q) / 2)
+        parts2.append(cyl)
+    for vi in used:
+        sph = trimesh.creation.icosphere(subdivisions=2, radius=JR)
+        sph.apply_translation(V2[vi])
+        parts2.append(sph)
+    wcage = trimesh.boolean.union(parts2, engine="manifold")
+    wcage.apply_translation([0, 0, -wcage.bounds[0][2]])
     base = trimesh.load(os.path.join(M, "held-sphere.3mf"), force="scene")
-    cage2 = base.geometry["cage"].copy()
     held2 = base.geometry["ball"].copy()
-    link = tube_from_loop(stadium_path(), D / 2)
-    X_P, P1 = 28.5, 11.75
 
-    def place(x, tilt):
-        l = link.copy()
-        l.apply_transform(trimesh.transformations.rotation_matrix(tilt, [1, 0, 0]))
-        l.apply_translation([x, 0, 0])
-        l.apply_translation([0, 0, -l.bounds[0][2]])
-        return l
+    TH, CU, LAT, P1 = np.radians(23.9), 21.5, -3.0, 12.5
+    u = np.array([np.cos(TH), np.sin(TH)])
+    perp = np.array([-u[1], u[0]])
 
-    link0 = place(X_P, np.pi / 4)
-    plate = trimesh.creation.box((2.5, 13.0, 13.5))
-    plate.apply_translation([X_P, 0, 13.5 / 2])
-    tophole = trimesh.creation.cylinder(radius=2.45, height=8, sections=32)
-    tophole.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [0, 1, 0]))
-    tophole.apply_translation([X_P, 2.83, 7.24])
-    botslot = trimesh.creation.box((8, 4.9, 3.98))
-    botslot.apply_translation([X_P, -2.83, 3.98 / 2 - 0.01])
-    tongue = trimesh.creation.box((13.0, 10.0, 4.0))
-    tongue.apply_translation([16.8 + 6.5, 0, 11.4])
-    lug = trimesh.boolean.union([plate, tongue], engine="manifold")
-    lug = lug.difference(trimesh.boolean.union([tophole, botslot], engine="manifold"))
-    weld = lug.intersection(cage2)
-    assert (not weld.is_empty) and weld.volume > 8, "tag weld too small"
-    body = trimesh.boolean.union([cage2, lug], engine="manifold")
+    def hook_or_link(cl_l, cl_w, tr, cu_pos, tilt):
+        m = tube_from_loop(np.array(
+            [[p[0], p[1]] for p in _stad(cl_l, cl_w)]), tr)
+        m.apply_transform(trimesh.transformations.rotation_matrix(tilt, [1, 0, 0]))
+        m.apply_transform(trimesh.transformations.rotation_matrix(TH, [0, 0, 1]))
+        p = u * cu_pos + perp * LAT
+        c0 = m.bounds.mean(axis=0)
+        m.apply_translation([p[0] - c0[0], p[1] - c0[1], -m.bounds[0][2]])
+        return m
+
+    def _stad(cl_l, cl_w, n_per=26):
+        s2, r2 = (cl_l - cl_w) / 2, cl_w / 2
+        pts = []
+        for t in np.linspace(-np.pi / 2, np.pi / 2, n_per):
+            pts.append([s2 + r2 * np.cos(t), r2 * np.sin(t)])
+        for t in np.linspace(np.pi / 2, 3 * np.pi / 2, n_per):
+            pts.append([-s2 + r2 * np.cos(t), r2 * np.sin(t)])
+        return np.array(pts)
+
+    hook = hook_or_link(20.0, 12.0, 1.2, CU, np.pi / 4)
     cm = trimesh.collision.CollisionManager()
-    cm.add_object("w", body)
-    assert not cm.in_collision_single(link0), "link0 collides"
-    assert cm.min_distance_single(link0) >= 0.5, "link0 tight"
-    esc = link0.copy()
-    esc.apply_translation([0, 0, 4])
-    assert cm.in_collision_single(esc), "link0 not captured"
-    links = [link0, place(X_P + P1, -np.pi / 4)]
-    for i in range(2, 11):
-        links.append(place(X_P + P1 + (i - 1) * PITCH,
-                           np.pi / 4 if i % 2 == 0 else -np.pi / 4))
+    cm.add_object("c", wcage)
+    assert not cm.in_collision_single(hook) and cm.min_distance_single(hook) >= 0.45
+    for dv in [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1),
+               (0.7, 0, 0.7), (-0.7, 0, 0.7), (0, 0.7, 0.7), (0, -0.7, 0.7)]:
+        blocked = False
+        for t in np.arange(1.5, 40, 1.5):
+            e = hook.copy()
+            e.apply_translation(np.array(dv) * t)
+            if cm.in_collision_single(e):
+                blocked = True
+                break
+        assert blocked, f"hook escapes along {dv}"
+    links = [hook_or_link(CL_L, CL_W, D / 2, CU + P1 + i * PITCH,
+                          -np.pi / 4 if i % 2 == 0 else np.pi / 4) for i in range(10)]
+    cmH = trimesh.collision.CollisionManager()
+    cmH.add_object("h", hook)
+    assert not cmH.in_collision_single(links[0])
+    assert cmH.min_distance_single(links[0]) >= 0.45
     ok = True
-    for i in range(1, len(links) - 1):
-        c = trimesh.collision.CollisionManager()
-        c.add_object("a", links[i])
-        ok &= not c.in_collision_single(links[i + 1])
-        ok &= c.min_distance_single(links[i + 1]) >= 0.5
+    for i in range(9):
+        c2 = trimesh.collision.CollisionManager()
+        c2.add_object("a", links[i])
+        ok &= not c2.in_collision_single(links[i + 1])
+        ok &= c2.min_distance_single(links[i + 1]) >= 0.5
+    for l in links:
+        ok &= not cm.in_collision_single(l)
     sc3 = trimesh.Scene()
-    sc3.add_geometry(body, geom_name="cage_with_tag")
+    sc3.add_geometry(wcage, geom_name="cage")
     sc3.add_geometry(held2, geom_name="ball")
+    sc3.add_geometry(hook, geom_name="hook_link")
     for i, l in enumerate(links):
-        sc3.add_geometry(l, geom_name=f"link_{i}")
+        sc3.add_geometry(l, geom_name=f"link_{i + 1}")
     sc3.export(os.path.join(M, "held-sphere-chained.3mf"))
-    print(f"held-sphere-chained: tag weld {weld.volume:.1f} mm3, all links free, "
+    print(f"held-sphere-chained: chainmail hook captured, "
           f"{'ALL-OK' if ok else 'FAILED'}")
 
 
