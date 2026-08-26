@@ -1,46 +1,56 @@
 # My3DPrints
 
-A local "Fidget Shelf": scans ~/Downloads for toy-print 3MF/STL files, validates their
-geometry, and builds a dark-mode card index with live 3D previews, real slicer
-estimates, print notes, and one-click hand-off to Bambu Studio.
+A local "Fidget Shelf": scans toy-print 3MF/STLs, validates their geometry,
+and serves a dark-mode card index with live 3D previews, parametric
+generators, calibrated slicer estimates, print notes, and one-click hand-off
+to Bambu Studio. **Harness only — `models/` (the data plane) is untracked.**
 
-**This repo holds the harness only** — model geometry (`models/`) is intentionally
-untracked for now.
-
-## Running
+## Run
 
 ```
-make serve   # http://localhost:8742  (make stop / make open / make log)
+make serve   # http://localhost:8742   (stop / open / log)
+make build   # re-run the whole pipeline (also: the page's Rebuild button)
 ```
 
-`serve.py` serves the page and provides two endpoints the page depends on:
+## Architecture
 
-- `GET /open?f=<file>` — opens `models/<file>` in Bambu Studio (`open -a BambuStudio`)
-- `GET|POST /notes` — per-card print notes, persisted to `models/notes.json`
+Three layers:
 
-## Pipeline (tools/)
+**1. Pipeline (`tools/`)** — idempotent stages, each re-proving invariants:
 
-| Script | Role |
+| Stage | Role |
 |---|---|
-| `index_3mf.py` | scan Downloads, validate meshes with trimesh (watertight, genus, dup faces), extract embedded thumbnails |
-| `make_glbs.py` | export decimated (≤180k tri) colored GLB previews + `models/manifest.json` |
-| `build_designs.py` | parametric parts designed in-session (captive held-sphere, 45° print-in-place chain) with clearance/threading verification |
-| `build_page.py` | curated per-design analysis data; run directly to build the shareable artifact page |
-| `build_local.py` | renders `index.html` from `template_local.html` + manifest + analysis data |
-| `render_pairs.py` | side-by-side render of mating hourglass pairs |
+| `build_designs.py` | regenerates the in-session designs (geodesic cage, chains, chainmail pendant); FCL clearances, ray-escape captivity and threading re-asserted every run |
+| `ease_spirals.py` | derives `-eased` spirals (0.05–0.15 mm lead-in) and rebuilds the hourglass pair plates |
+| `extract_meta.py` | unpacks 3MF-embedded designer photos/metadata to `models/meta/<slug>/` (never overwrites — custom covers survive) |
+| `make_glbs.py` | decimated ≤180k-tri GLB previews + `manifest.json` |
+| `build_local.py` | renders `index.html` from `template_local.html`; also the knowledge base: card analyses, materials, calibrated slice numbers, pair/supersede links |
+| `gen_chain.py` / `gen_cage.py` | on-demand parametric generators; refuse to emit until verification passes |
 
-Python deps live in a venv (trimesh, numpy, scipy, shapely, rtree, manifold3d,
-python-fcl, pillow, matplotlib, fast-simplification). Slicing uses the BambuStudio
-CLI via the 3d-print-check skill's `bambu_slice.mjs`.
+**2. Server (`serve.py`)** — stdlib only; static files plus:
+`/open` (hand a model to Bambu Studio), `/notes` (print log →
+`models/notes.json`), `/rebuild` (run the pipeline), `/generate`
+(parametric chain/cage, cached by parameter key, returns verified metrics).
 
-## Pages
+**3. Frontend (`index.html`, generated)** — no framework. One shared WebGL
+canvas scissor-renders every card viewport (scroll-synced); GLBs lazy-load;
+parametric cards mirror the generator math in JS for instant slider feedback
+(live captivity warnings) while downloads always come from the server
+generator. Per card: designer-photo overlay, 3MF metadata + gallery, print
+notes, "show original" toggles for superseded files, pair-plate links, a
+true-scale US quarter, graph-paper axis mode (inch rulings), and a
+fullscreen lightbox.
 
-- `index.html` — the card index (generated; committed for convenience)
-- `guide.html` — P2S Field Guide: materials, geometry risk gates, settings recipes,
-  PETG failure chain, 3MF portability notes
-- `vendor/` — vendored three.js (page works offline)
+## Principle
 
-## Not yet committed
+Nothing on a card is decorative: verdicts come from mesh measurement
+(watertightness, genus, clearances), slice numbers from real BambuStudio CLI
+runs calibrated against the actual printer (mass ±6%; time reads low by
+8–25%, growing with print length), material badges from measured geometry
+over designer defaults, and every generated or repaired file re-proves its
+invariants before it reaches the user.
 
-`models/` — original 3MFs/STLs, decimated GLB previews, `manifest.json`, and
-`notes.json` (print log). A future iteration will add curated models.
+## Not committed
+
+`models/` — source 3MF/STLs, `-fixed`/`-eased` derivatives, pair plates,
+`glb/` previews, `meta/` photos, `custom/` parametric output, `notes.json`.
