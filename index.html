@@ -1599,6 +1599,16 @@ document.querySelectorAll('.view').forEach(el => {
   lbRoot.querySelector('.lb-chrome').insertBefore(gb, lbRoot.querySelector('.lb-close'));
 }
 
+function startTicker(el, label){
+  const t0 = Date.now();
+  el.textContent = label + '\u2026';
+  const iv = setInterval(() => {
+    const s = Math.round((Date.now() - t0) / 1000);
+    el.textContent = label + '\u2026 ' + s + 's' +
+      (s > 20 ? ' (boolean union grinding — normal for fine lattices)' : '');
+  }, 1000);
+  return () => clearInterval(iv);
+}
 // ---- parametric chain card ----
 const pcEl = document.querySelector('.view[data-models="__param_chain"]');
 if (pcEl){
@@ -1681,28 +1691,32 @@ if (pcEl){
     return await r.json();
   }
   document.getElementById('pc-print').onclick = async e => {
-    const b = e.target; b.disabled = true; b.textContent = 'Generating + verifying…';
+    const b = e.target; b.disabled = true;
+    const stop = startTicker(b, 'Generating + verifying');
     try {
       const j = await generate();
+      stop();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
       const j2 = await r2.json();
       if (!j2.ok) throw new Error(j2.error || 'open failed');
       b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm joints)` : '');
-    } catch(err){ b.textContent = '✗ ' + err.message; }
+    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
     setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4000);
   };
   document.getElementById('pc-dl').onclick = async e => {
     e.preventDefault();
-    const a = e.target; const orig = a.textContent; a.textContent = 'generating + verifying…';
+    const a = e.target; const orig = a.textContent;
+    const stop = startTicker(a, 'generating + verifying');
     try {
       const j = await generate();
+      stop();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       a.textContent = 'download ' + j.file.split('/').pop() + (j.clearance ? ` · ${j.clearance} mm joints` : '');
       const link = document.createElement('a');
       link.href = 'models/' + j.file; link.download = '';
       document.body.appendChild(link); link.click(); link.remove();
-    } catch(err){ a.textContent = '✗ ' + err.message; }
+    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
     setTimeout(() => { a.textContent = orig; }, 5000);
   };
 }
@@ -1823,28 +1837,32 @@ if (cgEl){
     return await r.json();
   }
   document.getElementById('pg-print').onclick = async e => {
-    const b = e.target; b.disabled = true; b.textContent = 'Generating + verifying…';
+    const b = e.target; b.disabled = true;
+    const stop = startTicker(b, 'Generating + verifying');
     try {
       const j = await cgGenerate();
+      stop();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
       const j2 = await r2.json();
       if (!j2.ok) throw new Error(j2.error || 'open failed');
       b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm clear)` : '');
-    } catch(err){ b.textContent = '✗ ' + err.message; }
+    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
     setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
   };
   document.getElementById('pg-dl').onclick = async e => {
     e.preventDefault();
-    const a = e.target; const orig = a.textContent; a.textContent = 'generating + verifying…';
+    const a = e.target; const orig = a.textContent;
+    const stop = startTicker(a, 'generating + verifying');
     try {
       const j = await cgGenerate();
+      stop();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       a.textContent = 'download ' + j.file.split('/').pop();
       const link = document.createElement('a');
       link.href = 'models/' + j.file; link.download = '';
       document.body.appendChild(link); link.click(); link.remove();
-    } catch(err){ a.textContent = '✗ ' + err.message; }
+    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
     setTimeout(() => { a.textContent = orig; }, 5000);
   };
 }
@@ -1874,6 +1892,7 @@ async function openInSlicer(files, btn){
   setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3500);
 }
 document.querySelectorAll('.print').forEach(btn => {
+  if (!btn.dataset.card) return;   // parametric cards bind their own handlers
   btn.onclick = () => {
     const v = views.find(x => x.el.dataset.models === btn.dataset.card);
     const entry = v ? v.entries[v.idx] : null;
@@ -1919,13 +1938,15 @@ document.querySelectorAll('.gal img').forEach(g => {
   };
 });
 document.getElementById('rebuild').onclick = async e => {
-  const b = e.target; b.disabled = true; b.textContent = 'Rebuilding… (1–3 min)';
+  const b = e.target; b.disabled = true;
+  const stop = startTicker(b, 'Rebuilding (1\u20133 min)');
   try {
     const r = await fetch('/rebuild', {method: 'POST'});
+    stop();
     const j = await r.json();
     b.textContent = j.ok ? 'Rebuilt ✓ reloading…' : 'Rebuild failed — make log';
     if (j.ok) setTimeout(() => location.reload(), 800);
-  } catch { b.textContent = 'Run make serve first'; }
+  } catch { stop(); b.textContent = 'Run make serve first'; }
   setTimeout(() => { b.textContent = 'Rebuild index'; b.disabled = false; }, 4000);
 };
 document.querySelectorAll('.showorig').forEach(btn => {
