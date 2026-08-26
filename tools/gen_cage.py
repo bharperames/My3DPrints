@@ -77,6 +77,36 @@ def main():
     V = trimesh.transform_points(
         V, trimesh.geometry.align_vectors(n0 / np.linalg.norm(n0), [0, 0, -1]))
     e_len = float(max(np.linalg.norm(V[p] - V[q]) for p, q in edges))
+    # bottom window: clear the central bottom struts so a wide, stiff pedestal
+    # can rise from the bed. A O2.4 pip cannot brace a growing ball against
+    # nozzle drag (field-proven, twice) — foundation stiffness scales as d^4.
+    ped_r = min(br - 3.5, max(4.0, br * 0.45))
+    if ped_r < 3.0:
+        print(json.dumps({"ok": False, "error":
+              f"ball Ø{a.ball:g} too small for a stable pedestal (needs ≥ 13 mm)"}))
+        return 1
+    win_r = ped_r + 3.5
+    zlow = V[:, 2].min() + R * 0.4
+
+    def seg_axis_dist(p, q):
+        # min distance from segment pq (xy projection) to the z axis
+        a, b = V[p][:2], V[q][:2]
+        d = b - a
+        L2 = float(d @ d)
+        t = 0.0 if L2 == 0 else float(np.clip(-(a @ d) / L2, 0, 1))
+        return float(np.linalg.norm(a + t * d))
+
+    edges = {(p, q) for (p, q) in edges
+             if not (max(V[p][2], V[q][2]) < zlow and seg_axis_dist(p, q) < win_r)}
+    # the window is a potential escape route: ball must not fit through it
+    low_d = [seg_axis_dist(p, q) for (p, q) in edges
+             if max(V[p][2], V[q][2]) < zlow + 4]
+    win_open = 2 * (min(low_d) - sr) if low_d else 2 * win_r
+    if a.ball < win_open + 1.0:
+        print(json.dumps({"ok": False, "error":
+              f"ball Ø{a.ball:g} could escape through the pedestal window "
+              f"(Ø{win_open:.1f}) — ball needs ≥ {win_open + 1:.0f} mm at this size"}))
+        return 1
     # stability envelope, bracketed by field prints (13 mm good / 22 mm fail):
     if e_len > 16.0:
         print(json.dumps({"ok": False, "error":
@@ -111,32 +141,33 @@ def main():
         cyl.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d / L))
         cyl.apply_translation((P + Q) / 2)
         parts.append(cyl)
-    for v in V:
+    used = {i for e in edges for i in e}
+    for i in used:
         s = trimesh.creation.icosphere(subdivisions=2, radius=jr)
-        s.apply_translation(v)
+        s.apply_translation(V[i])
         parts.append(s)
     cage = trimesh.boolean.union(parts, engine="manifold")
     zbed = cage.bounds[0][2]
-    # teardrop bottom: 45-deg cone tangent to the sphere, apex on the pip —
-    # a bare sphere bottom prints near-horizontal rings in air and strands
-    z_apex = zbed + 3.0
+    # wide bed-anchored pedestal through the window + breakaway neck + teardrop
+    ped_h = 4.0
+    neck_h = 1.4
+    z_apex = zbed + ped_h + neck_h
     zc = z_apex + br * np.sqrt(2)
     ball = trimesh.creation.icosphere(subdivisions=4, radius=br)
     ball.apply_translation([0, 0, zc])
     cone = trimesh.creation.cone(radius=br / np.sqrt(2), height=br * np.sqrt(2),
                                  sections=48)
     cone.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
-    cone.apply_translation([0, 0, zc - br / np.sqrt(2) + br * np.sqrt(2) - br * np.sqrt(2)])
-    # cone() puts base at z=0, apex at z=h; flipped: apex at -h. Position apex at z_apex:
     cone.apply_translation([0, 0, z_apex - cone.bounds[0][2]])
-    pip = trimesh.creation.cylinder(radius=1.2, height=(z_apex + 1.0) - zbed,
-                                    sections=24)
-    pip.apply_translation([0, 0, (zbed + z_apex + 1.0) / 2])
-    held = trimesh.boolean.union([ball, cone, pip], engine="manifold")
+    ped = trimesh.creation.cylinder(radius=ped_r, height=ped_h, sections=48)
+    ped.apply_translation([0, 0, zbed + ped_h / 2])
+    neck = trimesh.creation.cylinder(radius=1.9, height=neck_h + 1.0, sections=24)
+    neck.apply_translation([0, 0, zbed + ped_h + (neck_h + 1.0) / 2 - 0.2])
+    held = trimesh.boolean.union([ball, cone, ped, neck], engine="manifold")
     d = float((-signed_distance(cage, held.vertices[::11])).min())
-    if d < 0.5:
+    if d < 0.8:
         print(json.dumps({"ok": False, "error":
-              f"ball too tight against the cage: {d:.2f} mm (needs ≥ 0.5)"}))
+              f"ball/pedestal too close to the cage: {d:.2f} mm (needs ≥ 0.8)"}))
         return 1
     cage.apply_translation([0, 0, -zbed])
     held.apply_translation([0, 0, -zbed])

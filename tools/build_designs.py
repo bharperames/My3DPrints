@@ -29,7 +29,27 @@ edges = set()
 for f in F:
     for a, b in ((f[0], f[1]), (f[1], f[2]), (f[2], f[0])):
         edges.add((min(a, b), max(a, b)))
+# pedestal window (mirrors gen_cage): clear central bottom struts so a wide
+# bed-anchored pedestal can rise — the O2.4 pip let the ball wobble into
+# spaghetti (field-proven).
+PED_R = min(BALL_R - 3.5, max(4.0, BALL_R * 0.45))
+WIN_R = PED_R + 3.5
+_zlow = V[:, 2].min() + R * 0.4
+
+def _segax(p, q):
+    a2, b2 = V[p][:2], V[q][:2]
+    d2 = b2 - a2
+    L2 = float(d2 @ d2)
+    t2 = 0.0 if L2 == 0 else float(np.clip(-(a2 @ d2) / L2, 0, 1))
+    return float(np.linalg.norm(a2 + t2 * d2))
+
+edges = {(p, q) for (p, q) in edges
+         if not (max(V[p][2], V[q][2]) < _zlow and _segax(p, q) < WIN_R)}
+_lowd = [_segax(p, q) for (p, q) in edges if max(V[p][2], V[q][2]) < _zlow + 4]
+_winopen = 2 * (min(_lowd) - STRUT_R) if _lowd else 0
+assert 2 * BALL_R >= _winopen + 1.0, "ball would escape the pedestal window"
 parts = []
+_used = {i for e in edges for i in e}
 for a, b in edges:
     p, q = V[a], V[b]
     d = q - p
@@ -38,15 +58,15 @@ for a, b in edges:
     cyl.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d / L))
     cyl.apply_translation((p + q) / 2)
     parts.append(cyl)
-for v in V:
+for vi in _used:
     s = trimesh.creation.icosphere(subdivisions=2, radius=JOINT_R)
-    s.apply_translation(v)
+    s.apply_translation(V[vi])
     parts.append(s)
 # one batch union — folding pairwise leaves hairline cracks
 cage = trimesh.boolean.union(parts, engine="manifold")
 
 zbed = cage.bounds[0][2]
-z_apex = zbed + 3.0
+z_apex = zbed + 5.4                            # pedestal 4 + neck 1.4
 zc = z_apex + BALL_R * np.sqrt(2)              # teardrop: 45-deg cone bottom
 ball = trimesh.creation.icosphere(subdivisions=4, radius=BALL_R)
 ball.apply_translation([0, 0, zc])
@@ -54,10 +74,11 @@ cone = trimesh.creation.cone(radius=BALL_R / np.sqrt(2),
                              height=BALL_R * np.sqrt(2), sections=48)
 cone.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
 cone.apply_translation([0, 0, z_apex - cone.bounds[0][2]])
-pip = trimesh.creation.cylinder(radius=PIP_R, height=(z_apex + 1.0) - zbed,
-                                sections=24)
-pip.apply_translation([0, 0, (zbed + z_apex + 1.0) / 2])
-held = trimesh.boolean.union([ball, cone, pip], engine="manifold")
+ped = trimesh.creation.cylinder(radius=PED_R, height=4.0, sections=48)
+ped.apply_translation([0, 0, zbed + 2.0])
+neck = trimesh.creation.cylinder(radius=1.9, height=2.4, sections=24)
+neck.apply_translation([0, 0, zbed + 4.0 + 1.2 - 0.2])
+held = trimesh.boolean.union([ball, cone, ped, neck], engine="manifold")
 clearance = float((-signed_distance(cage, held.vertices[::9])).min())
 
 cage.apply_translation([0, 0, -zbed])
@@ -205,7 +226,19 @@ def build_chained():
                   (ab, bc), (bc, ca), (ca, ab)]:
             edges2.add((min(e), max(e)))
     V2 = np.array(verts2)
+    _zl2 = V2[:, 2].min() + R2 * 0.4
+
+    def _sax2(p, q):
+        a3, b3 = V2[p][:2], V2[q][:2]
+        d3 = b3 - a3
+        L3 = float(d3 @ d3)
+        t3 = 0.0 if L3 == 0 else float(np.clip(-(a3 @ d3) / L3, 0, 1))
+        return float(np.linalg.norm(a3 + t3 * d3))
+
+    edges2 = {(p, q) for (p, q) in edges2
+              if not (max(V2[p][2], V2[q][2]) < _zl2 and _sax2(p, q) < PED_R + 3.5)}
     parts2 = []
+    _used2 = {i for e in edges2 for i in e}
     for (a, b) in edges2:
         p, q = V2[a], V2[b]
         d2v = q - p
@@ -214,13 +247,13 @@ def build_chained():
         cyl.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d2v / L))
         cyl.apply_translation((p + q) / 2)
         parts2.append(cyl)
-    for v in V2:
+    for vi in _used2:
         sph = trimesh.creation.icosphere(subdivisions=2, radius=JR)
-        sph.apply_translation(v)
+        sph.apply_translation(V2[vi])
         parts2.append(sph)
     cage2 = trimesh.boolean.union(parts2, engine="manifold")
     zb = cage2.bounds[0][2]
-    za = zb + 3.0
+    za = zb + 5.4
     zc2 = za + BALL_R * np.sqrt(2)
     ball2 = trimesh.creation.icosphere(subdivisions=4, radius=BALL_R)
     ball2.apply_translation([0, 0, zc2])
@@ -228,10 +261,11 @@ def build_chained():
                                   height=BALL_R * np.sqrt(2), sections=48)
     cone2.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
     cone2.apply_translation([0, 0, za - cone2.bounds[0][2]])
-    pip2 = trimesh.creation.cylinder(radius=PIP_R, height=(za + 1.0) - zb,
-                                     sections=24)
-    pip2.apply_translation([0, 0, (zb + za + 1.0) / 2])
-    held2 = trimesh.boolean.union([ball2, cone2, pip2], engine="manifold")
+    ped2 = trimesh.creation.cylinder(radius=PED_R, height=4.0, sections=48)
+    ped2.apply_translation([0, 0, zb + 2.0])
+    neck2 = trimesh.creation.cylinder(radius=1.9, height=2.4, sections=24)
+    neck2.apply_translation([0, 0, zb + 5.0])
+    held2 = trimesh.boolean.union([ball2, cone2, ped2, neck2], engine="manifold")
     cage2.apply_translation([0, 0, -zb])
     held2.apply_translation([0, 0, -zb])
     TH, CU, LAT, P1 = np.radians(23.9), 21.5, -3.0, 12.5
@@ -286,6 +320,10 @@ def build_chained():
         ok &= c2.min_distance_single(links[i + 1]) >= 0.5
     for l in links:
         ok &= not cm.in_collision_single(l)
+    cmB2 = trimesh.collision.CollisionManager()
+    cmB2.add_object("c", cage2)
+    assert not cmB2.in_collision_single(held2), "pedestal intersects cage"
+    assert cmB2.min_distance_single(held2) >= 0.8, "pedestal too close to cage"
     sc3 = trimesh.Scene()
     sc3.add_geometry(cage2, geom_name="cage")
     sc3.add_geometry(held2, geom_name="ball")
