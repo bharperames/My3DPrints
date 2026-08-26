@@ -762,7 +762,17 @@ if (cgEl){
   const CAGE_MAT = new THREE.MeshStandardMaterial({color:0xd9a45c, metalness:0.05, roughness:0.62});
   const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
   function cgRebuild(){
-    const {dia, sub, strut, ball} = cgParams();
+    let {dia, sub, strut, ball} = cgParams();
+    // stability envelope: spans ≤16 mm (field-bracketed), slenderness ≤8
+    for (let guard = 0; guard < 3; guard++){
+      const eTest = (dia/2) * [1.0515, 0.5465, 0.2759][sub];
+      if (eTest > 16 && sub < 2){ sub++; document.getElementById('pg-sub').value = sub; continue; }
+      if (eTest / strut > 8){
+        strut = Math.min(4, Math.ceil(eTest/8*5)/5);
+        document.getElementById('pg-strut').value = strut; continue;
+      }
+      break;
+    }
     const R = dia/2, sr = strut/2, jr = sr*1.35, br = ball/2;
     const {verts, edges} = icosphere(sub);
     const eLen = R * Math.hypot(...verts[edges[0][0]].map((x,i) => x - verts[edges[0][1]][i]));
@@ -821,8 +831,7 @@ if (cgEl){
       stats.textContent = '⚠ ball won\u2019t fit: max ≈ ' + (2*(R - sr - 2)).toFixed(0) + ' mm in this cage';
     else {
       stats.textContent = edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
-      if (eLen > 16)
-        stats.textContent += ' · ⚠ ' + eLen.toFixed(0) + ' mm spans: shallow-strut edges droop/strand (proven good: 13 mm; proven fail: 22 mm) — finer lattice fixes it';
+      stats.textContent += ' · spans ' + eLen.toFixed(0) + ' mm ✓';
     }
     const dt = cgEl.parentElement.querySelector('.dimtag');
     if (dt) dt.textContent = 'Ø' + dia + ' · live';

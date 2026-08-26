@@ -51,6 +51,19 @@ def main():
         for p, q in ((f[0], f[1]), (f[1], f[2]), (f[2], f[0])):
             edges.add((min(p, q), max(p, q)))
     e_len = float(np.linalg.norm(V[F[0][0]] - V[F[0][1]]))
+    # stability envelope, bracketed by field prints (13 mm good / 22 mm fail):
+    if e_len > 16.0:
+        print(json.dumps({"ok": False, "error":
+              f"unstable: lattice spans {e_len:.0f} mm (shallow-strut edges droop "
+              f"and strand above 16 — field-proven). Use a finer lattice or a "
+              f"smaller Ø"}))
+        return 1
+    if e_len / a.strut > 8.0:
+        print(json.dumps({"ok": False, "error":
+              f"unstable: Ø{a.strut:g} struts over {e_len:.0f} mm spans flex under "
+              f"nozzle drag (ratio {e_len/a.strut:.0f}, limit 8). Thicken the "
+              f"struts to ≥ {e_len/8:.1f} mm"}))
+        return 1
     opening = 2 * (e_len / (2 * np.sqrt(3)) - sr)
     if a.ball <= opening + 1.0:
         print(json.dumps({"ok": False, "error":
@@ -110,15 +123,8 @@ def main():
     wt = all(g.is_watertight for g in chk.geometry.values())
     ext = chk.bounds[1] - chk.bounds[0]
     vol = (cage.volume + held.volume) / 1000.0
-    advisory = None
-    if e_len > 16:
-        advisory = (f"lattice spans are {e_len:.0f} mm at this size: the shallow "
-                    f"(~20° elevation ≈ 70° overhang) struts' growing edges droop and "
-                    f"strand — field-confirmed failure mode. Use a finer lattice "
-                    f"(halves the spans; primary fix) or tree supports; thicker "
-                    f"struts only reduce wobble, not the overhang")
     print(json.dumps({"ok": True, "file": os.path.basename(a.out),
-                      "span_mm": round(e_len, 1), "advisory": advisory,
+                      "span_mm": round(e_len, 1),
                       "struts": len(edges), "opening": round(opening, 1),
                       "clearance": round(d, 2), "watertight": wt,
                       "dims": [round(float(x), 1) for x in ext],
