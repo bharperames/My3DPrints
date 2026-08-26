@@ -210,9 +210,11 @@ PARAM_CAGE = """
     <p class="principle">The captive-ball cage, generalized: a geodesic strut sphere with a
     ball inside on a breakaway pip, generated on the fly. The ball has a 45° teardrop bottom so it prints support-free on its
     breakaway pip (a snap-off pedestal wide enough to support a bare sphere could never be
-    extracted through the openings). Field-confirmed print limit: above ~16 mm lattice spans,
-    the shallow struts' growing edges droop and strand — the live stats warn and finer
-    lattice is the fix. The viewer flags impossible
+    extracted through the openings). The sliders cannot produce unstable shapes: spans are capped at the field-proven 16 mm
+    and the lattice auto-densifies as the cage grows. Bambu Studio will still show a
+    floating-regions warning on any strut globe — every strut starts as a bridge anchored at
+    its end joints; within the envelope that prints fine (the successful Ø50 print carried
+    the same warning). It is not the failure signal. The viewer flags impossible
     combinations live and the server generator re-proves captivity, clearance and
     watertightness before handing you the 3MF.</p>
     <div class="params">
