@@ -71,8 +71,6 @@ add("pyr_spiral_d", "pyramid-spiral.stl", "pyramid_spiral", "Hourglass · Pyrami
     "Pyramid Spiral — dubbel 180 mm", "Double-length spiral. 8.7:1 lever ratio — brim mandatory.", ("pass", "Clean"), mate="Pyramid Solid — dubbel 180 mm", pair="pyr_pair_d")
 add("nuts", "montessori+nuts+and+bolts.3mf", "nuts_bolts", "Nuts & Bolts", "carnivalcamps", "PLA",
     "Montessori Nuts & Bolts", "Toddler counting toy: five jumbo bolts in 30 mm height steps (59–179 mm) sharing one chunky thread, plus a nut — every nut fits every bolt; print as many nuts as needed. The nut mesh leaks (slicer-repairable). Non-toxic filament, brim on the tall bolts.", ("warn", "Nut not watertight"))
-add("held", "held-sphere.3mf", "held_sphere", "Designed here", "Claude · this session", "PLA",
-    "Held Sphere", "A captive Ø19 ball in a geodesic strut cage: 120 Ø2.2 struts along subdivided-icosphere edges with joint spheres — fully triangulated, so it stays rigid at a third of the original shell's material (5.9 vs 16.5 cm³) while reading as a true sphere. Openings ≈Ø6 keep the ball captive (clearance 0.90 mm); it stands on a breakaway pip. Prints face-down; short struts self-support far better than the coarse version.", ("pass", "Designed · ready"))
 add("held_chain", "held-sphere-chained.3mf", "held_chained", "Designed here", "Claude · this session", "PLA",
     "Held Sphere + Chain", "Chainmail onto the untouched lattice: the hook is simply a longer, wider chain link — 20×12 mm with a thin Ø2.4 tube, standard 45° tilt — threaded through one stock lattice opening and wrapped around a low strut. No cage modifications, nothing welded, no extra hardware; capture proven by ray-escape test, 0.52 mm running clearance, chain joints ≥0.48 mm. Prints flat in one job.", ("pass", "Designed · ready"), mate="Held Sphere (chainless version)")
 LOCAL = "(local export)"
@@ -196,6 +194,37 @@ PARAM_CARD = """
   </div>
 </article>"""
 cards.insert(next(i for i, c in enumerate(cards) if "held-sphere-chained" in c) + 1, PARAM_CARD)
+
+PARAM_CAGE = """
+<article class="card" id="card-cage_param" data-cid="cage_param">
+  <div class="photo">
+    <div class="view" data-models="__param_cage"></div>
+    <span class="pill pass">Parametric · live</span>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · parametric</p>
+    <h3>Parametric Held Sphere <span class="mat">PLA</span></h3>
+    <p class="principle">The captive-ball cage, generalized: a geodesic strut sphere with a
+    ball inside on a breakaway pip, generated on the fly. The viewer flags impossible
+    combinations live (a ball smaller than the openings escapes; too big won't fit) and the
+    server generator re-proves captivity, clearance and watertightness before handing you
+    the 3MF. Defaults reproduce the shipped Held Sphere.</p>
+    <div class="params">
+      <label>cage Ø <input type="range" id="pg-dia" min="34" max="84" step="2" value="50"><b id="pg-dia-v">Ø50 mm</b></label>
+      <label>lattice <input type="range" id="pg-sub" min="0" max="2" step="1" value="1"><b id="pg-sub-v">120 struts</b></label>
+      <label>strut Ø <input type="range" id="pg-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pg-strut-v">Ø2.2 mm</b></label>
+      <label>ball Ø <input type="range" id="pg-ball" min="6" max="60" step="1" value="19"><b id="pg-ball-v">Ø19 mm</b></label>
+    </div>
+    <p class="specline" id="pg-stats"></p>
+    <div class="actions">
+      <button class="print" id="pg-print">Generate + open in Bambu Studio</button>
+      <a class="savelink" id="pg-dl" href="#">generate &amp; download the verified 3MF</a>
+    </div>
+    <div class="notes" data-cid="cage_param"></div>
+  </div>
+</article>"""
+cards.insert(next(i for i, c in enumerate(cards) if "held-sphere-chained" in c) + 1, PARAM_CAGE)
 
 fixes = "".join(f'<li><strong>{t}</strong><span>{d}</span></li>' for t, d in FIXES)
 compat = "".join(f'<li><strong><span class="dot {c}"></span>{t}</strong><span>{d}</span></li>' for c, t, d in COMPAT)
