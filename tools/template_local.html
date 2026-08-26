@@ -55,6 +55,23 @@ h1 .tld{color:var(--accent)}
   overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3}
 .view{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
+.expand{position:absolute;top:12px;left:12px;z-index:6;background:var(--panel);
+  border:1px solid var(--line);color:var(--muted);border-radius:6px;width:28px;height:28px;
+  font:600 14px/1 "IBM Plex Sans",sans-serif;cursor:pointer;display:none}
+.photo:hover .expand{display:block}
+.expand:hover{color:var(--accent-ink);border-color:var(--accent)}
+#lightbox{position:fixed;inset:0;z-index:3;display:none}
+#lightbox.open{display:block}
+.lb-backdrop{position:absolute;inset:0;background:rgba(10,13,14,.94)}
+.lb-view{position:absolute;inset:6vh 6vw;cursor:grab;z-index:6}
+.lb-view:active{cursor:grabbing}
+.lb-chrome{position:absolute;top:14px;left:0;right:0;display:flex;justify-content:space-between;
+  align-items:center;padding:0 24px;z-index:7}
+.lb-title{font:600 17px "Chakra Petch",sans-serif;color:var(--ink)}
+.lb-hint{font:400 12px "IBM Plex Mono",monospace;color:var(--faint)}
+.lb-close{background:var(--panel);border:1px solid var(--line);color:var(--muted);
+  border-radius:6px;width:34px;height:34px;font:600 15px/1 sans-serif;cursor:pointer}
+.lb-close:hover{color:var(--warn);border-color:var(--warn)}
 .coverimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:5}
 .photo.showphoto .coverimg{display:block}
 .phototoggle{position:absolute;left:10px;bottom:10px;z-index:6;background:var(--panel);
@@ -177,6 +194,10 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 </head>
 <body>
 <canvas id="gl"></canvas>
+<div id="lightbox"><div class="lb-backdrop"></div><div class="lb-view"></div>
+  <div class="lb-chrome"><span class="lb-title"></span>
+  <span class="lb-hint">drag to orbit · scroll to zoom · Esc to close</span>
+  <button class="lb-close" aria-label="close">✕</button></div></div>
 <div class="wrap">
 <header class="top">
   <h1>The Fidget Shelf<span class="tld">.</span></h1>
@@ -400,6 +421,48 @@ document.querySelectorAll('.view').forEach(el => {
       chips.appendChild(b);
     });
   }
+});
+
+// ---- lightbox: one reusable large view ----
+const lbRoot = document.getElementById('lightbox');
+const lbEl = lbRoot.querySelector('.lb-view');
+const lbV = { el: lbEl, entries: null, idx: 0, loaded: {}, current: null, visible: false };
+lbV.scene = makeScene();
+lbV.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
+lbV.controls = new OrbitControls(lbV.camera, lbEl);
+lbV.controls.enableDamping = true; lbV.controls.autoRotate = true;
+lbV.controls.autoRotateSpeed = 0.8; lbV.controls.enableZoom = true;
+let lbSuspended = [];
+function openLightbox(v){
+  const entry = v.entries[v.idx];
+  lbV.entries = [entry]; lbV.idx = 0;
+  lbRoot.classList.add('open'); lbV.visible = true;
+  lbRoot.querySelector('.lb-title').textContent =
+    v.el.closest('.card').querySelector('h3').textContent.trim();
+  lbSuspended = views.filter(x => x !== lbV && !x.suspend);
+  lbSuspended.forEach(x => x.suspend = true);
+  setModel(lbV, 0);
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox(){
+  lbRoot.classList.remove('open'); lbV.visible = false;
+  if (lbV.current){ lbV.scene.remove(lbV.current); lbV.current = null; }
+  lbSuspended.forEach(x => x.suspend = false); lbSuspended = [];
+  document.body.style.overflow = '';
+}
+lbRoot.querySelector('.lb-close').onclick = closeLightbox;
+lbRoot.querySelector('.lb-backdrop').onclick = closeLightbox;
+addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+views.push(lbV);
+
+document.querySelectorAll('.view').forEach(el => {
+  if (el === lbEl) return;
+  const v0 = views.find(x => x.el === el);
+  if (!v0) return;
+  const b = document.createElement('button');
+  b.className = 'expand'; b.textContent = '⤢'; b.title = 'open large viewer';
+  b.onclick = ev => { ev.stopPropagation(); openLightbox(v0); };
+  el.parentElement.appendChild(b);
 });
 
 const io = new IntersectionObserver(es => es.forEach(e => {
