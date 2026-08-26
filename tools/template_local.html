@@ -769,10 +769,11 @@ if (cgEl){
     return { verts: oriented, edges: eList, eMaxU };
   }
   function cgParams(){
+    const hasBall = document.getElementById('pg-hasball').checked;
     return { dia: +document.getElementById('pg-dia').value,
              sub: +document.getElementById('pg-sub').value,
              strut: +document.getElementById('pg-strut').value,
-             ball: +document.getElementById('pg-ball').value };
+             ball: hasBall ? +document.getElementById('pg-ball').value : 0 };
   }
   const CAGE_MAT = new THREE.MeshStandardMaterial({color:0xd9a45c, metalness:0.05, roughness:0.62});
   const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
@@ -797,9 +798,12 @@ if (cgEl){
     document.getElementById('pg-sub-v').textContent = edges.length + ' struts';
     document.getElementById('pg-strut-v').textContent = 'Ø' + strut.toFixed(1) + ' mm';
     document.getElementById('pg-ball-v').textContent = 'Ø' + ball + ' mm';
-    const escapes = ball <= opening + 1.0;
-    const wontFit = br > R - sr - 2.0;
+    const escapes = !cageOnly && ball <= opening + 1.0;
+    const wontFit = !cageOnly && br > R - sr - 2.0;
     if (cv.current){ cv.scene.remove(cv.current); cv.current = null; }
+    const cageOnly = ball === 0;
+    document.getElementById('pg-hasball-v').textContent = cageOnly ? 'cage only' : 'included';
+    document.getElementById('pg-ball').disabled = cageOnly;
     // pedestal window: same segment rule as the generator
     const pedR = Math.min(7, 0.34 * R - 3.5, br - 3.5, Math.max(4, br * 0.45));
     const winR = pedR + 3.5;
@@ -811,7 +815,7 @@ if (cgEl){
       const tq = L2 === 0 ? 0 : Math.min(1, Math.max(0, -(ax*dx + az*dz)/L2));
       return Math.hypot(ax + tq*dx, az + tq*dz);
     };
-    const kept = edges.filter(([a, b]) =>
+    const kept = cageOnly ? edges : edges.filter(([a, b]) =>
       !(Math.max(verts[a][1], verts[b][1]) * R < yLow && segAxis(a, b) < winR));
     let winOpen = 0;
     { let dmin = Infinity;
@@ -880,13 +884,15 @@ if (cgEl){
     else if (wontFit)
       stats.textContent = '⚠ ball won\u2019t fit: max ≈ ' + (2*(R - sr - 2)).toFixed(0) + ' mm in this cage';
     else {
-      stats.textContent = edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
+      stats.textContent = cageOnly
+        ? kept.length + ' struts · cage only, no window carved'
+        : edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
       stats.textContent += ' · spans ' + eLen.toFixed(0) + ' mm ✓';
     }
     const dt = cgEl.parentElement.querySelector('.dimtag');
     if (dt) dt.textContent = 'Ø' + dia + ' · live';
   }
-  ['pg-dia','pg-sub','pg-strut','pg-ball'].forEach(id =>
+  ['pg-dia','pg-sub','pg-strut','pg-ball','pg-hasball'].forEach(id =>
     document.getElementById(id).addEventListener('input', cgRebuild));
   cgRebuild();
   async function cgGenerate(){

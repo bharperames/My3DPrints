@@ -77,6 +77,51 @@ def main():
     V = trimesh.transform_points(
         V, trimesh.geometry.align_vectors(n0 / np.linalg.norm(n0), [0, 0, -1]))
     e_len = float(max(np.linalg.norm(V[p] - V[q]) for p, q in edges))
+    cage_only = a.ball == 0
+    # stability envelope, bracketed by field prints (13 mm good / 22 mm fail):
+    if e_len > 16.0:
+        print(json.dumps({"ok": False, "error":
+              f"unstable: lattice spans {e_len:.0f} mm (shallow-strut edges droop "
+              f"and strand above 16 — field-proven). Use a finer lattice or a "
+              f"smaller Ø"}))
+        return 1
+    if e_len / a.strut > 8.0:
+        print(json.dumps({"ok": False, "error":
+              f"unstable: Ø{a.strut:g} struts over {e_len:.0f} mm spans flex under "
+              f"nozzle drag (ratio {e_len/a.strut:.0f}, limit 8). Thicken the "
+              f"struts to ≥ {e_len/8:.1f} mm"}))
+        return 1
+    if cage_only:
+        # pure geodesic sphere: no ball, no pedestal, no window
+        parts = []
+        for p, q in edges:
+            P, Q = V[p], V[q]
+            d = Q - P
+            L = np.linalg.norm(d)
+            cyl = trimesh.creation.cylinder(radius=sr, height=L, sections=20)
+            cyl.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d / L))
+            cyl.apply_translation((P + Q) / 2)
+            parts.append(cyl)
+        for i in {i for e in edges for i in e}:
+            sph = trimesh.creation.icosphere(subdivisions=2, radius=jr)
+            sph.apply_translation(V[i])
+            parts.append(sph)
+        cage = trimesh.boolean.union(parts, engine="manifold")
+        cage.apply_translation([0, 0, -cage.bounds[0][2]])
+        sc = trimesh.Scene()
+        sc.add_geometry(cage, geom_name="cage")
+        os.makedirs(os.path.dirname(a.out), exist_ok=True)
+        sc.export(a.out)
+        chk = trimesh.load(a.out, force="scene")
+        ext = chk.bounds[1] - chk.bounds[0]
+        vol = cage.volume / 1000.0
+        print(json.dumps({"ok": True, "file": os.path.basename(a.out),
+                          "span_mm": round(e_len, 1), "struts": len(edges),
+                          "watertight": all(g.is_watertight for g in chk.geometry.values()),
+                          "dims": [round(float(x), 1) for x in ext],
+                          "volume_cm3": round(float(vol), 1),
+                          "est_g": round(float(vol) * 1.24, 1)}))
+        return 0
     # bottom window: clear the central bottom struts so a wide, stiff pedestal
     # can rise from the bed. A O2.4 pip cannot brace a growing ball against
     # nozzle drag (field-proven, twice) — foundation stiffness scales as d^4.
@@ -108,19 +153,6 @@ def main():
         print(json.dumps({"ok": False, "error":
               f"ball Ø{a.ball:g} could escape through the pedestal window "
               f"(Ø{win_open:.1f}) — ball needs ≥ {win_open + 1:.0f} mm at this size"}))
-        return 1
-    # stability envelope, bracketed by field prints (13 mm good / 22 mm fail):
-    if e_len > 16.0:
-        print(json.dumps({"ok": False, "error":
-              f"unstable: lattice spans {e_len:.0f} mm (shallow-strut edges droop "
-              f"and strand above 16 — field-proven). Use a finer lattice or a "
-              f"smaller Ø"}))
-        return 1
-    if e_len / a.strut > 8.0:
-        print(json.dumps({"ok": False, "error":
-              f"unstable: Ø{a.strut:g} struts over {e_len:.0f} mm spans flex under "
-              f"nozzle drag (ratio {e_len/a.strut:.0f}, limit 8). Thicken the "
-              f"struts to ≥ {e_len/8:.1f} mm"}))
         return 1
     opening = 2 * (e_len / (2 * np.sqrt(3)) - sr)
     if a.ball <= opening + 1.0:
