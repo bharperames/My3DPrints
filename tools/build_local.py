@@ -208,10 +208,13 @@ PARAM_CAGE = """
     <p class="eyebrow">Designed here · Claude · parametric</p>
     <h3>Parametric Held Sphere <span class="mat">PLA</span></h3>
     <p class="principle">The captive-ball cage, generalized: a geodesic strut sphere with a
-    ball inside on a breakaway pip, generated on the fly. The viewer flags impossible
-    combinations live (a ball smaller than the openings escapes; too big won't fit) and the
-    server generator re-proves captivity, clearance and watertightness before handing you
-    the 3MF. Defaults reproduce the shipped Held Sphere.</p>
+    ball inside on a breakaway pip, generated on the fly. The ball has a 45° teardrop bottom so it prints support-free on its
+    breakaway pip (a snap-off pedestal wide enough to support a bare sphere could never be
+    extracted through the openings). Field-confirmed print limit: above ~16 mm lattice spans,
+    the shallow struts' growing edges droop and strand — the live stats warn and finer
+    lattice is the fix. The viewer flags impossible
+    combinations live and the server generator re-proves captivity, clearance and
+    watertightness before handing you the 3MF.</p>
     <div class="params">
       <label>cage Ø <input type="range" id="pg-dia" min="34" max="84" step="2" value="50"><b id="pg-dia-v">Ø50 mm</b></label>
       <label>lattice <input type="range" id="pg-sub" min="0" max="2" step="1" value="1"><b id="pg-sub-v">120 struts</b></label>

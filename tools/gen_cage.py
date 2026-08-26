@@ -78,14 +78,23 @@ def main():
         parts.append(s)
     cage = trimesh.boolean.union(parts, engine="manifold")
     zbed = cage.bounds[0][2]
-    zc = zbed + br + 3.0
+    # teardrop bottom: 45-deg cone tangent to the sphere, apex on the pip —
+    # a bare sphere bottom prints near-horizontal rings in air and strands
+    z_apex = zbed + 3.0
+    zc = z_apex + br * np.sqrt(2)
     ball = trimesh.creation.icosphere(subdivisions=4, radius=br)
     ball.apply_translation([0, 0, zc])
-    pip = trimesh.creation.cylinder(radius=1.2, height=(zc - br + 0.4) - zbed,
+    cone = trimesh.creation.cone(radius=br / np.sqrt(2), height=br * np.sqrt(2),
+                                 sections=48)
+    cone.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
+    cone.apply_translation([0, 0, zc - br / np.sqrt(2) + br * np.sqrt(2) - br * np.sqrt(2)])
+    # cone() puts base at z=0, apex at z=h; flipped: apex at -h. Position apex at z_apex:
+    cone.apply_translation([0, 0, z_apex - cone.bounds[0][2]])
+    pip = trimesh.creation.cylinder(radius=1.2, height=(z_apex + 1.0) - zbed,
                                     sections=24)
-    pip.apply_translation([0, 0, (zbed + zc - br + 0.4) / 2])
-    held = trimesh.boolean.union([ball, pip], engine="manifold")
-    d = float((-signed_distance(cage, ball.vertices[::9])).min())
+    pip.apply_translation([0, 0, (zbed + z_apex + 1.0) / 2])
+    held = trimesh.boolean.union([ball, cone, pip], engine="manifold")
+    d = float((-signed_distance(cage, held.vertices[::11])).min())
     if d < 0.5:
         print(json.dumps({"ok": False, "error":
               f"ball too tight against the cage: {d:.2f} mm (needs ≥ 0.5)"}))
@@ -103,8 +112,11 @@ def main():
     vol = (cage.volume + held.volume) / 1000.0
     advisory = None
     if e_len > 16:
-        advisory = (f"strut bridges span {e_len:.0f} mm at this size — expect some "
-                    f"droop on the horizontal ones; use a finer lattice or tree supports")
+        advisory = (f"lattice spans are {e_len:.0f} mm at this size: the shallow "
+                    f"(~20° elevation ≈ 70° overhang) struts' growing edges droop and "
+                    f"strand — field-confirmed failure mode. Use a finer lattice "
+                    f"(halves the spans; primary fix) or tree supports; thicker "
+                    f"struts only reduce wobble, not the overhang")
     print(json.dumps({"ok": True, "file": os.path.basename(a.out),
                       "span_mm": round(e_len, 1), "advisory": advisory,
                       "struts": len(edges), "opening": round(opening, 1),
