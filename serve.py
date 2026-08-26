@@ -42,21 +42,32 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/generate":
             q = parse_qs(url.query)
+            kind = q.get("type", ["chain"])[0]
             try:
-                links = int(q["links"][0]); ln = float(q["len"][0]); dia = float(q["dia"][0])
+                if kind == "chain":
+                    links = int(q["links"][0]); ln = float(q["len"][0]); dia = float(q["dia"][0])
+                    fname = f"chain-N{links}-L{ln:g}-D{dia:g}.3mf"
+                    args = ["gen_chain.py", "--links", str(links),
+                            "--len", str(ln), "--dia", str(dia)]
+                elif kind == "cage":
+                    cd = float(q["dia"][0]); sub = int(q["subdiv"][0])
+                    st = float(q["strut"][0]); ball = float(q["ball"][0])
+                    fname = f"cage-D{cd:g}-S{sub}-T{st:g}-B{ball:g}.3mf"
+                    args = ["gen_cage.py", "--dia", str(cd), "--subdiv", str(sub),
+                            "--strut", str(st), "--ball", str(ball)]
+                else:
+                    return self._json(400, {"ok": False, "error": "unknown type"})
             except Exception:
                 return self._json(400, {"ok": False, "error": "bad params"})
-            fname = f"chain-N{links}-L{ln:g}-D{dia:g}.3mf"
             out = os.path.join(MODELS, "custom", fname)
             if os.path.exists(out):
                 return self._json(200, {"ok": True, "file": "custom/" + fname, "cached": True})
             py = os.path.expanduser("~/.claude/skills/3d-print-check/.venv/bin/python")
             if not os.path.exists(py):
                 py = "python3"
-            r = subprocess.run([py, os.path.join(ROOT, "tools", "gen_chain.py"),
-                                "--links", str(links), "--len", str(ln),
-                                "--dia", str(dia), "--out", out],
-                               capture_output=True, text=True, timeout=180)
+            r = subprocess.run([py, os.path.join(ROOT, "tools", args[0])]
+                               + args[1:] + ["--out", out],
+                               capture_output=True, text=True, timeout=300)
             try:
                 j = json.loads(r.stdout.strip().splitlines()[-1])
             except Exception:

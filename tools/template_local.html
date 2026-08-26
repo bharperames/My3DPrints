@@ -363,8 +363,26 @@ function makeScene(){
   return scene;
 }
 
+const COIN_R = 24.26/2, COIN_T = 1.75;
+function makeCoin(){
+  const g = new THREE.Group();
+  const c = new THREE.Mesh(new THREE.CylinderGeometry(COIN_R, COIN_R, COIN_T, 48),
+    new THREE.MeshStandardMaterial({color:0xd3d8dc, metalness:0.45, roughness:0.4}));
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(COIN_R+0.15, COIN_R+0.15, COIN_T*0.55, 48),
+    new THREE.MeshStandardMaterial({color:0xa9aeb2, metalness:0.5, roughness:0.38}));
+  g.add(c); g.add(rim);
+  g.rotation.x = Math.PI/2;      // stand on edge, faces toward viewer
+  g.rotation.y = 0.35;
+  return g;
+}
+function placeCoin(v, box){
+  if (!v.coin){ v.coin = makeCoin(); v.scene.add(v.coin); }
+  v.coin.position.set(box.min.x - COIN_R - 6, COIN_R, (box.min.z + box.max.z)/2);
+  v.coin.visible = true;
+}
 function frameModel(v, obj){
   const box = new THREE.Box3().setFromObject(obj);
+  box.min.x -= (COIN_R*2 + 10); box.min.y = Math.min(box.min.y, 0);
   const size = box.getSize(new THREE.Vector3()).length();
   const r = size / 2;
   const c = box.getCenter(new THREE.Vector3());
@@ -388,6 +406,7 @@ function setModel(v, i){
     if (v.current) v.scene.remove(v.current);
     v.current = v.loaded[entry.slug];
     v.scene.add(v.current); frameModel(v, v.current);
+    placeCoin(v, new THREE.Box3().setFromObject(v.current));
     return;
   }
   const status = document.createElement('div');
@@ -404,6 +423,7 @@ function setModel(v, i){
     if (v.idx === i){
       if (v.current) v.scene.remove(v.current);
       v.current = obj; v.scene.add(obj); frameModel(v, obj);
+      placeCoin(v, new THREE.Box3().setFromObject(obj));
     }
   }, undefined, () => { status.textContent = 'load failed — serve over http'; });
 }
@@ -529,6 +549,8 @@ if (pcEl){
     group.rotation.x = -Math.PI/2;   // z-up convention like the GLBs
     pv.current = group; pv.scene.add(group);
     const b2 = new THREE.Box3().setFromObject(group);
+    placeCoin(pv, b2);
+    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
     const size = b2.getSize(new THREE.Vector3()).length();
     const c = b2.getCenter(new THREE.Vector3());
     pv.controls.target.copy(c);
@@ -571,6 +593,148 @@ if (pcEl){
       const j = await generate();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       a.textContent = 'download ' + j.file.split('/').pop() + (j.clearance ? ` · ${j.clearance} mm joints` : '');
+      const link = document.createElement('a');
+      link.href = 'models/' + j.file; link.download = '';
+      document.body.appendChild(link); link.click(); link.remove();
+    } catch(err){ a.textContent = '✗ ' + err.message; }
+    setTimeout(() => { a.textContent = orig; }, 5000);
+  };
+}
+
+// ---- parametric held-sphere card ----
+const cgEl = document.querySelector('.view[data-models="__param_cage"]');
+if (cgEl){
+  const cv = { el: cgEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
+  cv.scene = makeScene();
+  cv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
+  cv.controls = new OrbitControls(cv.camera, cgEl);
+  cv.controls.enableDamping = true; cv.controls.autoRotate = true;
+  cv.controls.autoRotateSpeed = 1.0; cv.controls.enableZoom = false;
+  views.push(cv);
+  function icosphere(sub){
+    const phi = (1 + Math.sqrt(5))/2;
+    let verts = [[-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],
+                 [0,-1,-phi],[0,1,-phi],[phi,0,-1],[phi,0,1],[-phi,0,-1],[-phi,0,1]]
+      .map(v => { const l = Math.hypot(...v); return v.map(x => x/l); });
+    let faces = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],
+                 [10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],
+                 [2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+    for (let s = 0; s < sub; s++){
+      const cache = new Map(), nf = [];
+      const mid = (a, b) => {
+        const k = Math.min(a,b) + '_' + Math.max(a,b);
+        if (!cache.has(k)){
+          const p = verts[a].map((x,i) => (x + verts[b][i])/2);
+          const l = Math.hypot(...p);
+          cache.set(k, verts.push(p.map(x => x/l)) - 1);
+        }
+        return cache.get(k);
+      };
+      for (const [a,b,c] of faces){
+        const ab = mid(a,b), bc = mid(b,c), ca = mid(c,a);
+        nf.push([a,ab,ca],[ab,b,bc],[bc,c,ca],[ab,bc,ca]);
+      }
+      faces = nf;
+    }
+    const edges = new Set();
+    for (const [a,b,c] of faces)
+      for (const [p,q] of [[a,b],[b,c],[c,a]])
+        edges.add(Math.min(p,q) + '_' + Math.max(p,q));
+    return { verts, edges: [...edges].map(k => k.split('_').map(Number)) };
+  }
+  function cgParams(){
+    return { dia: +document.getElementById('pg-dia').value,
+             sub: +document.getElementById('pg-sub').value,
+             strut: +document.getElementById('pg-strut').value,
+             ball: +document.getElementById('pg-ball').value };
+  }
+  const CAGE_MAT = new THREE.MeshStandardMaterial({color:0xd9a45c, metalness:0.05, roughness:0.62});
+  const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
+  function cgRebuild(){
+    const {dia, sub, strut, ball} = cgParams();
+    const R = dia/2, sr = strut/2, jr = sr*1.35, br = ball/2;
+    const {verts, edges} = icosphere(sub);
+    const eLen = R * Math.hypot(...verts[edges[0][0]].map((x,i) => x - verts[edges[0][1]][i]));
+    const opening = 2*(eLen/(2*Math.sqrt(3)) - sr);
+    document.getElementById('pg-dia-v').textContent = 'Ø' + dia + ' mm';
+    document.getElementById('pg-sub-v').textContent = edges.length + ' struts';
+    document.getElementById('pg-strut-v').textContent = 'Ø' + strut.toFixed(1) + ' mm';
+    document.getElementById('pg-ball-v').textContent = 'Ø' + ball + ' mm';
+    const escapes = ball <= opening + 1.0;
+    const wontFit = br > R - sr - 2.0;
+    if (cv.current){ cv.scene.remove(cv.current); cv.current = null; }
+    const group = new THREE.Group();
+    const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
+    for (const [a, b] of edges){
+      const P = new THREE.Vector3(...verts[a]).multiplyScalar(R);
+      const Q = new THREE.Vector3(...verts[b]).multiplyScalar(R);
+      const m = new THREE.Mesh(cyl, CAGE_MAT);
+      const d = Q.clone().sub(P);
+      m.scale.set(sr, d.length(), sr);
+      m.position.copy(P).add(Q).multiplyScalar(0.5);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
+      group.add(m);
+    }
+    const js = new THREE.SphereGeometry(1, 12, 8);
+    for (const v0 of verts){
+      const m = new THREE.Mesh(js, CAGE_MAT);
+      m.scale.setScalar(jr);
+      m.position.set(...v0).multiplyScalar ? m.position.set(v0[0]*R, v0[1]*R, v0[2]*R) : 0;
+      group.add(m);
+    }
+    if (!escapes && !wontFit){
+      const bm = new THREE.Mesh(new THREE.SphereGeometry(br, 24, 16), BALL_MAT);
+      bm.position.y = -R + sr + br + 1.5;   // roughly on the pip inside
+      group.add(bm);
+    }
+    cv.current = group; cv.scene.add(group);
+    const b2 = new THREE.Box3().setFromObject(group);
+    placeCoin(cv, b2);
+    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
+    const size = b2.getSize(new THREE.Vector3()).length();
+    const c = b2.getCenter(new THREE.Vector3());
+    cv.controls.target.copy(c);
+    const fovV = cv.camera.fov*Math.PI/180;
+    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*cv.camera.aspect))/2);
+    cv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
+    cv.camera.near = dist/50; cv.camera.far = dist*20; cv.camera.updateProjectionMatrix();
+    const stats = document.getElementById('pg-stats');
+    if (escapes)
+      stats.textContent = '⚠ ball escapes: openings Ø' + opening.toFixed(1) + ' — ball needs ≥ ' + (opening+1).toFixed(0) + ' mm';
+    else if (wontFit)
+      stats.textContent = '⚠ ball won\u2019t fit: max ≈ ' + (2*(R - sr - 2)).toFixed(0) + ' mm in this cage';
+    else
+      stats.textContent = edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
+    const dt = cgEl.parentElement.querySelector('.dimtag');
+    if (dt) dt.textContent = 'Ø' + dia + ' · live';
+  }
+  ['pg-dia','pg-sub','pg-strut','pg-ball'].forEach(id =>
+    document.getElementById(id).addEventListener('input', cgRebuild));
+  cgRebuild();
+  async function cgGenerate(){
+    const {dia, sub, strut, ball} = cgParams();
+    const r = await fetch(`/generate?type=cage&dia=${dia}&subdiv=${sub}&strut=${strut}&ball=${ball}`);
+    return await r.json();
+  }
+  document.getElementById('pg-print').onclick = async e => {
+    const b = e.target; b.disabled = true; b.textContent = 'Generating + verifying…';
+    try {
+      const j = await cgGenerate();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
+      const j2 = await r2.json();
+      if (!j2.ok) throw new Error(j2.error || 'open failed');
+      b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm clear)` : '');
+    } catch(err){ b.textContent = '✗ ' + err.message; }
+    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
+  };
+  document.getElementById('pg-dl').onclick = async e => {
+    e.preventDefault();
+    const a = e.target; const orig = a.textContent; a.textContent = 'generating + verifying…';
+    try {
+      const j = await cgGenerate();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      a.textContent = 'download ' + j.file.split('/').pop();
       const link = document.createElement('a');
       link.href = 'models/' + j.file; link.download = '';
       document.body.appendChild(link); link.click(); link.remove();

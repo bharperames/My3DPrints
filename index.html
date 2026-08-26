@@ -1131,29 +1131,6 @@ Watch them delight in stacking, screwing, and creating the…</p><div class="gal
   </div>
 </article>
 
-<article class="card" data-cid="held" id="card-held">
-  <div class="photo">
-    <div class="view" data-models="held"></div>
-    <span class="pill pass">Designed · ready</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Designed here · Claude · this session</p>
-    <h3>Held Sphere <span class="mat">PLA</span></h3>
-    <p class="principle">A captive Ø19 ball in a geodesic strut cage: 120 Ø2.2 struts along subdivided-icosphere edges with joint spheres — fully triangulated, so it stays rigid at a third of the original shell's material (5.9 vs 16.5 cm³) while reading as a true sphere. Openings ≈Ø6 keep the ball captive (clearance 0.90 mm); it stands on a breakaway pip. Prints face-down; short struts self-support far better than the coarse version.</p>
-    
-    <p class="specline">51.1×51.7×50.2 mm · 2 parts · 39,244 tris<br>P2S slice: 43 m · 8.9 g — bridged struts; tree supports optional</p>
-    <div class="actions">
-      <button class="print" data-card="held">Open in Bambu Studio</button>
-      <a class="savelink" href="models/held-sphere.3mf" download title="held-sphere.3mf">save · held-sphere.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="held"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
 <article class="card" data-cid="held_chain" id="card-held_chain">
   <div class="photo">
     <div class="view" data-models="held_chain"></div>
@@ -1174,6 +1151,35 @@ Watch them delight in stacking, screwing, and creating the…</p><div class="gal
     </div>
     <div class="notes" data-cid="held_chain"></div>
     <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
+  </div>
+</article>
+
+<article class="card" id="card-cage_param" data-cid="cage_param">
+  <div class="photo">
+    <div class="view" data-models="__param_cage"></div>
+    <span class="pill pass">Parametric · live</span>
+    <div class="dimtag"></div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · parametric</p>
+    <h3>Parametric Held Sphere <span class="mat">PLA</span></h3>
+    <p class="principle">The captive-ball cage, generalized: a geodesic strut sphere with a
+    ball inside on a breakaway pip, generated on the fly. The viewer flags impossible
+    combinations live (a ball smaller than the openings escapes; too big won't fit) and the
+    server generator re-proves captivity, clearance and watertightness before handing you
+    the 3MF. Defaults reproduce the shipped Held Sphere.</p>
+    <div class="params">
+      <label>cage Ø <input type="range" id="pg-dia" min="34" max="84" step="2" value="50"><b id="pg-dia-v">Ø50 mm</b></label>
+      <label>lattice <input type="range" id="pg-sub" min="0" max="2" step="1" value="1"><b id="pg-sub-v">120 struts</b></label>
+      <label>strut Ø <input type="range" id="pg-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pg-strut-v">Ø2.2 mm</b></label>
+      <label>ball Ø <input type="range" id="pg-ball" min="6" max="60" step="1" value="19"><b id="pg-ball-v">Ø19 mm</b></label>
+    </div>
+    <p class="specline" id="pg-stats"></p>
+    <div class="actions">
+      <button class="print" id="pg-print">Generate + open in Bambu Studio</button>
+      <a class="savelink" id="pg-dl" href="#">generate &amp; download the verified 3MF</a>
+    </div>
+    <div class="notes" data-cid="cage_param"></div>
   </div>
 </article>
 
@@ -1338,7 +1344,7 @@ projects are labeled with the plate that was sliced.<br><br>Validated 2026-08-24
 solid-PLA upper bounds at 1.24 g/cm³ except where the file embeds a slicer estimate.</footer>
 </div>
 
-<script>const MODELS = {"sphere1": [{"slug": "sphere_stand_1in", "file": "sphere_stand_1.0in.3mf", "family": "Sphere Stands", "label": "1\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [20.5, 20.5, 5.1], "glb_mb": 0.0}], "sphere2": [{"slug": "sphere_stand_2in", "file": "sphere_stand_2.0in.3mf", "family": "Sphere Stands", "label": "2\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [41.3, 41.3, 9.3], "glb_mb": 0.0}], "sphere3": [{"slug": "sphere_stand_3in", "file": "sphere_stand_3.0in.3mf", "family": "Sphere Stands", "label": "3\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [61.5, 61.5, 13.4], "glb_mb": 0.0}], "vortex": [{"slug": "vortex_v3", "file": "Vortex+v3+project.3mf", "family": "Vortex v3", "label": "Vortex v3 (3 sleeves)", "parts": 3, "tris": 179996, "tris_full": 378652, "dims": [66.7, 76.7, 50.0], "glb_mb": 3.6, "cover": "models/meta/vortex_v3_project/cover.png", "photos": ["models/meta/vortex_v3_project/photo_1.webp", "models/meta/vortex_v3_project/photo_2.webp", "models/meta/vortex_v3_project/photo_3.webp"]}], "fidget": [{"slug": "mini_fidget_ball", "file": "Mini+Fidget+Ball.3mf", "family": "Passthrough series", "label": "Mini Fidget Ball", "parts": 3, "tris": 179996, "tris_full": 845530, "dims": [46.0, 67.7, 27.0], "glb_mb": 3.6, "cover": "models/meta/mini_fidget_ball/cover.png", "photos": ["models/meta/mini_fidget_ball/photo_1.webp", "models/meta/mini_fidget_ball/photo_2.webp", "models/meta/mini_fidget_ball/photo_3.webp", "models/meta/mini_fidget_ball/photo_4.webp"]}], "stackable": [{"slug": "mini_stackable", "file": "Mini+Stackable+Supports+added+back+in.3mf", "family": "Passthrough series", "label": "Mini Stackable tube", "parts": 7, "tris": 179994, "tris_full": 3731786, "dims": [90.5, 121.8, 62.2], "glb_mb": 3.6, "cover": "models/meta/mini_stackable_supports_added_back_in/cover.png", "photos": ["models/meta/mini_stackable_supports_added_back_in/photo_1.webp", "models/meta/mini_stackable_supports_added_back_in/photo_2.webp", "models/meta/mini_stackable_supports_added_back_in/photo_3.webp"]}], "top": [{"slug": "spinning_top", "file": "magic_spinning_top_+23+de+fight+d.3mf", "family": "Spinning Top", "label": "Magic spinning top", "parts": 4, "tris": 5292, "tris_full": 5292, "dims": [100.3, 152.2, 41.3], "glb_mb": 0.1, "cover": "models/meta/magic_spinning_top_23_de_fight_d/cover.png", "photos": ["models/meta/magic_spinning_top_23_de_fight_d/photo_1.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_2.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_3.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_4.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_5.webp"]}], "skull": [{"slug": "quantum_skull", "file": "Quantum+Skull.3mf", "family": "Quantum Skull", "label": "Quantum Skull halves", "parts": 2, "tris": 30692, "tris_full": 30692, "dims": [81.0, 212.6, 36.7], "glb_mb": 0.6, "cover": "models/meta/quantum_skull/cover.png", "photos": ["models/meta/quantum_skull/photo_1.webp", "models/meta/quantum_skull/photo_2.webp", "models/meta/quantum_skull/photo_3.webp"]}], "puffer": [{"slug": "pufferfish", "file": "pufferfish.3mf", "family": "Pufferfish", "label": "Pufferfish (all parts)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish/cover.png", "photos": ["models/meta/pufferfish/photo_1.webp", "models/meta/pufferfish/photo_2.webp", "models/meta/pufferfish/photo_3.webp", "models/meta/pufferfish/photo_4.webp"]}], "puffer3p": [{"slug": "pufferfish_threeplates", "file": "pufferfish-p2s-threeplates.3mf", "family": "Pufferfish", "label": "Pufferfish (3-plate re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish_p2s_threeplates/cover.png", "photos": ["models/meta/pufferfish_p2s_threeplates/photo_1.webp", "models/meta/pufferfish_p2s_threeplates/photo_2.webp", "models/meta/pufferfish_p2s_threeplates/photo_3.webp", "models/meta/pufferfish_p2s_threeplates/photo_4.webp"]}], "puffer1c": [{"slug": "pufferfish_onecolor", "file": "pufferfish-p2s-onecolor.3mf", "family": "Pufferfish", "label": "Pufferfish (one-color re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [193.4, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish_p2s_onecolor/cover.png"}], "pikachu": [{"slug": "pikachu", "file": "pikachu+more+resistant+one+color.3mf", "family": "Pikachu Flexy", "label": "Pikachu flexy keychain", "parts": 1, "tris": 34818, "tris_full": 34818, "dims": [32.5, 76.1, 14.1], "glb_mb": 0.7, "cover": "models/meta/pikachu_more_resistant_one_color/cover.png", "photos": ["models/meta/pikachu_more_resistant_one_color/photo_1.webp", "models/meta/pikachu_more_resistant_one_color/photo_2.webp", "models/meta/pikachu_more_resistant_one_color/photo_3.webp", "models/meta/pikachu_more_resistant_one_color/photo_4.webp", "models/meta/pikachu_more_resistant_one_color/photo_5.webp"]}], "staryu": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin.3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7, "cover": "models/meta/staryu_starmie_spin_spin/cover.png", "photos": ["models/meta/staryu_starmie_spin_spin/photo_1.webp", "models/meta/staryu_starmie_spin_spin/photo_2.webp", "models/meta/staryu_starmie_spin_spin/photo_3.webp"]}], "staryu_dup": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin (1).3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7, "cover": "models/meta/staryu_starmie_spin_spin_1/cover.png", "photos": ["models/meta/staryu_starmie_spin_spin_1/photo_1.webp", "models/meta/staryu_starmie_spin_spin_1/photo_2.webp", "models/meta/staryu_starmie_spin_spin_1/photo_3.webp"]}], "cone_pair_s": [{"slug": "cone_pair_small", "file": "cone-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 90 mm", "parts": 2, "tris": 179998, "tris_full": 362160, "dims": [44.7, 92.0, 90.0], "glb_mb": 3.6}], "cone_pair_d": [{"slug": "cone_pair_dubbel", "file": "cone-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 418836, "dims": [48.4, 95.5, 180.0], "glb_mb": 3.6}], "cone_solid_s": [{"slug": "cone_solid_small", "file": "cone-solid-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 184238, "dims": [44.7, 44.7, 90.0], "glb_mb": 3.6}], "cone_spiral_s": [{"slug": "cone_spiral_small", "file": "cone-spiral-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 90 mm", "parts": 1, "tris": 177922, "tris_full": 177922, "dims": [41.3, 41.4, 90.0], "glb_mb": 3.6}], "cone_solid_d": [{"slug": "cone_solid", "file": "cone-solid.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 214672, "dims": [48.4, 48.4, 180.0], "glb_mb": 3.6}], "cone_spiral_d": [{"slug": "cone_spiral", "file": "cone-spiral.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 204164, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "pyr_pair_s": [{"slug": "pyramid_pair_small", "file": "pyramid-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 90 mm (fixed)", "parts": 2, "tris": 179998, "tris_full": 401514, "dims": [46.6, 93.9, 90.0], "glb_mb": 3.6}], "pyr_pair_d": [{"slug": "pyramid_pair_dubbel", "file": "pyramid-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 432840, "dims": [47.5, 94.7, 180.0], "glb_mb": 3.6}], "pyr_solid_sf": [{"slug": "pyramid_solid_small_fixed", "file": "pyramid-solid-small-fixed.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (fixed)", "parts": 1, "tris": 180000, "tris_full": 200876, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_solid_so": [{"slug": "pyramid_solid_small_orig", "file": "pyramid-solid-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (orig, pinch)", "parts": 1, "tris": 180000, "tris_full": 200878, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_spiral_s": [{"slug": "pyramid_spiral_small", "file": "pyramid-spiral-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 200638, "dims": [41.4, 41.4, 90.0], "glb_mb": 3.6}], "pyr_solid_d": [{"slug": "pyramid_solid", "file": "pyramid-solid.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 221738, "dims": [47.5, 47.5, 180.0], "glb_mb": 3.6}], "pyr_spiral_d": [{"slug": "pyramid_spiral", "file": "pyramid-spiral.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 211102, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "nuts": [{"slug": "nuts_bolts", "file": "montessori+nuts+and+bolts.3mf", "family": "Nuts & Bolts", "label": "Montessori nuts & bolts", "parts": 6, "tris": 179994, "tris_full": 217774, "dims": [106.6, 183.4, 179.2], "glb_mb": 3.6, "cover": "models/meta/montessori_nuts_and_bolts/cover.png", "photos": ["models/meta/montessori_nuts_and_bolts/photo_1.webp", "models/meta/montessori_nuts_and_bolts/photo_2.webp", "models/meta/montessori_nuts_and_bolts/photo_3.webp"]}], "held": [{"slug": "held_sphere", "file": "held-sphere.3mf", "family": "Designed here", "label": "Held sphere (captive ball)", "parts": 2, "tris": 39244, "tris_full": 39244, "dims": [51.1, 51.7, 50.2], "glb_mb": 0.8}], "held_chain": [{"slug": "held_chained", "file": "held-sphere-chained.3mf", "family": "Designed here", "label": "Held sphere + chain", "parts": 13, "tris": 60678, "tris_full": 60678, "dims": [158.1, 83.2, 49.7], "glb_mb": 0.9}], "cshape": [{"slug": "c_shape", "file": "c-shape copy 16.stl", "family": "One-off STLs", "label": "C-shape (copy 16)", "parts": 1, "tris": 9770, "tris_full": 9770, "dims": [120.9, 145.7, 41.7], "glb_mb": 0.2}], "remesh": [{"slug": "remesh_avg", "file": "remesh_averaged_model_thresh0.900.stl", "family": "One-off STLs", "label": "Averaged remesh", "parts": 1, "tris": 2146, "tris_full": 2146, "dims": [103.5, 116.4, 17.2], "glb_mb": 0.0}], "voro": [{"slug": "voro_sphere", "file": "voro_sphere_2.stl", "family": "One-off STLs", "label": "Voronoi sphere", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [2.0, 2.0, 2.0], "glb_mb": 1.7}], "voro_f": [{"slug": "voro_fixed", "file": "voro_sphere_2-fixed.stl", "family": "One-off Experiments", "label": "Voronoi sphere (fixed)", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [59.1, 60.3, 60.1], "glb_mb": 1.7}]};</script>
+<script>const MODELS = {"sphere1": [{"slug": "sphere_stand_1in", "file": "sphere_stand_1.0in.3mf", "family": "Sphere Stands", "label": "1\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [20.5, 20.5, 5.1], "glb_mb": 0.0}], "sphere2": [{"slug": "sphere_stand_2in", "file": "sphere_stand_2.0in.3mf", "family": "Sphere Stands", "label": "2\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [41.3, 41.3, 9.3], "glb_mb": 0.0}], "sphere3": [{"slug": "sphere_stand_3in", "file": "sphere_stand_3.0in.3mf", "family": "Sphere Stands", "label": "3\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [61.5, 61.5, 13.4], "glb_mb": 0.0}], "vortex": [{"slug": "vortex_v3", "file": "Vortex+v3+project.3mf", "family": "Vortex v3", "label": "Vortex v3 (3 sleeves)", "parts": 3, "tris": 179996, "tris_full": 378652, "dims": [66.7, 76.7, 50.0], "glb_mb": 3.6, "cover": "models/meta/vortex_v3_project/cover.png", "photos": ["models/meta/vortex_v3_project/photo_1.webp", "models/meta/vortex_v3_project/photo_2.webp", "models/meta/vortex_v3_project/photo_3.webp"]}], "fidget": [{"slug": "mini_fidget_ball", "file": "Mini+Fidget+Ball.3mf", "family": "Passthrough series", "label": "Mini Fidget Ball", "parts": 3, "tris": 179996, "tris_full": 845530, "dims": [46.0, 67.7, 27.0], "glb_mb": 3.6, "cover": "models/meta/mini_fidget_ball/cover.png", "photos": ["models/meta/mini_fidget_ball/photo_1.webp", "models/meta/mini_fidget_ball/photo_2.webp", "models/meta/mini_fidget_ball/photo_3.webp", "models/meta/mini_fidget_ball/photo_4.webp"]}], "stackable": [{"slug": "mini_stackable", "file": "Mini+Stackable+Supports+added+back+in.3mf", "family": "Passthrough series", "label": "Mini Stackable tube", "parts": 7, "tris": 179994, "tris_full": 3731786, "dims": [90.5, 121.8, 62.2], "glb_mb": 3.6, "cover": "models/meta/mini_stackable_supports_added_back_in/cover.png", "photos": ["models/meta/mini_stackable_supports_added_back_in/photo_1.webp", "models/meta/mini_stackable_supports_added_back_in/photo_2.webp", "models/meta/mini_stackable_supports_added_back_in/photo_3.webp"]}], "top": [{"slug": "spinning_top", "file": "magic_spinning_top_+23+de+fight+d.3mf", "family": "Spinning Top", "label": "Magic spinning top", "parts": 4, "tris": 5292, "tris_full": 5292, "dims": [100.3, 152.2, 41.3], "glb_mb": 0.1, "cover": "models/meta/magic_spinning_top_23_de_fight_d/cover.png", "photos": ["models/meta/magic_spinning_top_23_de_fight_d/photo_1.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_2.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_3.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_4.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_5.webp"]}], "skull": [{"slug": "quantum_skull", "file": "Quantum+Skull.3mf", "family": "Quantum Skull", "label": "Quantum Skull halves", "parts": 2, "tris": 30692, "tris_full": 30692, "dims": [81.0, 212.6, 36.7], "glb_mb": 0.6, "cover": "models/meta/quantum_skull/cover.png", "photos": ["models/meta/quantum_skull/photo_1.webp", "models/meta/quantum_skull/photo_2.webp", "models/meta/quantum_skull/photo_3.webp"]}], "puffer": [{"slug": "pufferfish", "file": "pufferfish.3mf", "family": "Pufferfish", "label": "Pufferfish (all parts)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish/cover.png", "photos": ["models/meta/pufferfish/photo_1.webp", "models/meta/pufferfish/photo_2.webp", "models/meta/pufferfish/photo_3.webp", "models/meta/pufferfish/photo_4.webp"]}], "puffer3p": [{"slug": "pufferfish_threeplates", "file": "pufferfish-p2s-threeplates.3mf", "family": "Pufferfish", "label": "Pufferfish (3-plate re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish_p2s_threeplates/cover.png", "photos": ["models/meta/pufferfish_p2s_threeplates/photo_1.webp", "models/meta/pufferfish_p2s_threeplates/photo_2.webp", "models/meta/pufferfish_p2s_threeplates/photo_3.webp", "models/meta/pufferfish_p2s_threeplates/photo_4.webp"]}], "puffer1c": [{"slug": "pufferfish_onecolor", "file": "pufferfish-p2s-onecolor.3mf", "family": "Pufferfish", "label": "Pufferfish (one-color re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [193.4, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish_p2s_onecolor/cover.png"}], "pikachu": [{"slug": "pikachu", "file": "pikachu+more+resistant+one+color.3mf", "family": "Pikachu Flexy", "label": "Pikachu flexy keychain", "parts": 1, "tris": 34818, "tris_full": 34818, "dims": [32.5, 76.1, 14.1], "glb_mb": 0.7, "cover": "models/meta/pikachu_more_resistant_one_color/cover.png", "photos": ["models/meta/pikachu_more_resistant_one_color/photo_1.webp", "models/meta/pikachu_more_resistant_one_color/photo_2.webp", "models/meta/pikachu_more_resistant_one_color/photo_3.webp", "models/meta/pikachu_more_resistant_one_color/photo_4.webp", "models/meta/pikachu_more_resistant_one_color/photo_5.webp"]}], "staryu": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin.3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7, "cover": "models/meta/staryu_starmie_spin_spin/cover.png", "photos": ["models/meta/staryu_starmie_spin_spin/photo_1.webp", "models/meta/staryu_starmie_spin_spin/photo_2.webp", "models/meta/staryu_starmie_spin_spin/photo_3.webp"]}], "staryu_dup": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin (1).3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7, "cover": "models/meta/staryu_starmie_spin_spin_1/cover.png", "photos": ["models/meta/staryu_starmie_spin_spin_1/photo_1.webp", "models/meta/staryu_starmie_spin_spin_1/photo_2.webp", "models/meta/staryu_starmie_spin_spin_1/photo_3.webp"]}], "cone_pair_s": [{"slug": "cone_pair_small", "file": "cone-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 90 mm", "parts": 2, "tris": 179998, "tris_full": 362160, "dims": [44.7, 92.0, 90.0], "glb_mb": 3.6}], "cone_pair_d": [{"slug": "cone_pair_dubbel", "file": "cone-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 418836, "dims": [48.4, 95.5, 180.0], "glb_mb": 3.6}], "cone_solid_s": [{"slug": "cone_solid_small", "file": "cone-solid-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 184238, "dims": [44.7, 44.7, 90.0], "glb_mb": 3.6}], "cone_spiral_s": [{"slug": "cone_spiral_small", "file": "cone-spiral-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 90 mm", "parts": 1, "tris": 177922, "tris_full": 177922, "dims": [41.3, 41.4, 90.0], "glb_mb": 3.6}], "cone_solid_d": [{"slug": "cone_solid", "file": "cone-solid.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 214672, "dims": [48.4, 48.4, 180.0], "glb_mb": 3.6}], "cone_spiral_d": [{"slug": "cone_spiral", "file": "cone-spiral.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 204164, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "pyr_pair_s": [{"slug": "pyramid_pair_small", "file": "pyramid-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 90 mm (fixed)", "parts": 2, "tris": 179998, "tris_full": 401514, "dims": [46.6, 93.9, 90.0], "glb_mb": 3.6}], "pyr_pair_d": [{"slug": "pyramid_pair_dubbel", "file": "pyramid-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 432840, "dims": [47.5, 94.7, 180.0], "glb_mb": 3.6}], "pyr_solid_sf": [{"slug": "pyramid_solid_small_fixed", "file": "pyramid-solid-small-fixed.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (fixed)", "parts": 1, "tris": 180000, "tris_full": 200876, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_solid_so": [{"slug": "pyramid_solid_small_orig", "file": "pyramid-solid-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (orig, pinch)", "parts": 1, "tris": 180000, "tris_full": 200878, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_spiral_s": [{"slug": "pyramid_spiral_small", "file": "pyramid-spiral-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 200638, "dims": [41.4, 41.4, 90.0], "glb_mb": 3.6}], "pyr_solid_d": [{"slug": "pyramid_solid", "file": "pyramid-solid.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 221738, "dims": [47.5, 47.5, 180.0], "glb_mb": 3.6}], "pyr_spiral_d": [{"slug": "pyramid_spiral", "file": "pyramid-spiral.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 211102, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "nuts": [{"slug": "nuts_bolts", "file": "montessori+nuts+and+bolts.3mf", "family": "Nuts & Bolts", "label": "Montessori nuts & bolts", "parts": 6, "tris": 179994, "tris_full": 217774, "dims": [106.6, 183.4, 179.2], "glb_mb": 3.6, "cover": "models/meta/montessori_nuts_and_bolts/cover.png", "photos": ["models/meta/montessori_nuts_and_bolts/photo_1.webp", "models/meta/montessori_nuts_and_bolts/photo_2.webp", "models/meta/montessori_nuts_and_bolts/photo_3.webp"]}], "held_chain": [{"slug": "held_chained", "file": "held-sphere-chained.3mf", "family": "Designed here", "label": "Held sphere + chain", "parts": 13, "tris": 60678, "tris_full": 60678, "dims": [158.1, 83.2, 49.7], "glb_mb": 0.9}], "cshape": [{"slug": "c_shape", "file": "c-shape copy 16.stl", "family": "One-off STLs", "label": "C-shape (copy 16)", "parts": 1, "tris": 9770, "tris_full": 9770, "dims": [120.9, 145.7, 41.7], "glb_mb": 0.2}], "remesh": [{"slug": "remesh_avg", "file": "remesh_averaged_model_thresh0.900.stl", "family": "One-off STLs", "label": "Averaged remesh", "parts": 1, "tris": 2146, "tris_full": 2146, "dims": [103.5, 116.4, 17.2], "glb_mb": 0.0}], "voro": [{"slug": "voro_sphere", "file": "voro_sphere_2.stl", "family": "One-off STLs", "label": "Voronoi sphere", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [2.0, 2.0, 2.0], "glb_mb": 1.7}], "voro_f": [{"slug": "voro_fixed", "file": "voro_sphere_2-fixed.stl", "family": "One-off Experiments", "label": "Voronoi sphere (fixed)", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [59.1, 60.3, 60.1], "glb_mb": 1.7}]};</script>
 <script type="importmap">
 {"imports":{"three":"./vendor/three.module.js",
 "three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
@@ -1366,8 +1372,26 @@ function makeScene(){
   return scene;
 }
 
+const COIN_R = 24.26/2, COIN_T = 1.75;
+function makeCoin(){
+  const g = new THREE.Group();
+  const c = new THREE.Mesh(new THREE.CylinderGeometry(COIN_R, COIN_R, COIN_T, 48),
+    new THREE.MeshStandardMaterial({color:0xd3d8dc, metalness:0.45, roughness:0.4}));
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(COIN_R+0.15, COIN_R+0.15, COIN_T*0.55, 48),
+    new THREE.MeshStandardMaterial({color:0xa9aeb2, metalness:0.5, roughness:0.38}));
+  g.add(c); g.add(rim);
+  g.rotation.x = Math.PI/2;      // stand on edge, faces toward viewer
+  g.rotation.y = 0.35;
+  return g;
+}
+function placeCoin(v, box){
+  if (!v.coin){ v.coin = makeCoin(); v.scene.add(v.coin); }
+  v.coin.position.set(box.min.x - COIN_R - 6, COIN_R, (box.min.z + box.max.z)/2);
+  v.coin.visible = true;
+}
 function frameModel(v, obj){
   const box = new THREE.Box3().setFromObject(obj);
+  box.min.x -= (COIN_R*2 + 10); box.min.y = Math.min(box.min.y, 0);
   const size = box.getSize(new THREE.Vector3()).length();
   const r = size / 2;
   const c = box.getCenter(new THREE.Vector3());
@@ -1391,6 +1415,7 @@ function setModel(v, i){
     if (v.current) v.scene.remove(v.current);
     v.current = v.loaded[entry.slug];
     v.scene.add(v.current); frameModel(v, v.current);
+    placeCoin(v, new THREE.Box3().setFromObject(v.current));
     return;
   }
   const status = document.createElement('div');
@@ -1407,6 +1432,7 @@ function setModel(v, i){
     if (v.idx === i){
       if (v.current) v.scene.remove(v.current);
       v.current = obj; v.scene.add(obj); frameModel(v, obj);
+      placeCoin(v, new THREE.Box3().setFromObject(obj));
     }
   }, undefined, () => { status.textContent = 'load failed — serve over http'; });
 }
@@ -1532,6 +1558,8 @@ if (pcEl){
     group.rotation.x = -Math.PI/2;   // z-up convention like the GLBs
     pv.current = group; pv.scene.add(group);
     const b2 = new THREE.Box3().setFromObject(group);
+    placeCoin(pv, b2);
+    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
     const size = b2.getSize(new THREE.Vector3()).length();
     const c = b2.getCenter(new THREE.Vector3());
     pv.controls.target.copy(c);
@@ -1574,6 +1602,148 @@ if (pcEl){
       const j = await generate();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       a.textContent = 'download ' + j.file.split('/').pop() + (j.clearance ? ` · ${j.clearance} mm joints` : '');
+      const link = document.createElement('a');
+      link.href = 'models/' + j.file; link.download = '';
+      document.body.appendChild(link); link.click(); link.remove();
+    } catch(err){ a.textContent = '✗ ' + err.message; }
+    setTimeout(() => { a.textContent = orig; }, 5000);
+  };
+}
+
+// ---- parametric held-sphere card ----
+const cgEl = document.querySelector('.view[data-models="__param_cage"]');
+if (cgEl){
+  const cv = { el: cgEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
+  cv.scene = makeScene();
+  cv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
+  cv.controls = new OrbitControls(cv.camera, cgEl);
+  cv.controls.enableDamping = true; cv.controls.autoRotate = true;
+  cv.controls.autoRotateSpeed = 1.0; cv.controls.enableZoom = false;
+  views.push(cv);
+  function icosphere(sub){
+    const phi = (1 + Math.sqrt(5))/2;
+    let verts = [[-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],
+                 [0,-1,-phi],[0,1,-phi],[phi,0,-1],[phi,0,1],[-phi,0,-1],[-phi,0,1]]
+      .map(v => { const l = Math.hypot(...v); return v.map(x => x/l); });
+    let faces = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],
+                 [10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],
+                 [2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+    for (let s = 0; s < sub; s++){
+      const cache = new Map(), nf = [];
+      const mid = (a, b) => {
+        const k = Math.min(a,b) + '_' + Math.max(a,b);
+        if (!cache.has(k)){
+          const p = verts[a].map((x,i) => (x + verts[b][i])/2);
+          const l = Math.hypot(...p);
+          cache.set(k, verts.push(p.map(x => x/l)) - 1);
+        }
+        return cache.get(k);
+      };
+      for (const [a,b,c] of faces){
+        const ab = mid(a,b), bc = mid(b,c), ca = mid(c,a);
+        nf.push([a,ab,ca],[ab,b,bc],[bc,c,ca],[ab,bc,ca]);
+      }
+      faces = nf;
+    }
+    const edges = new Set();
+    for (const [a,b,c] of faces)
+      for (const [p,q] of [[a,b],[b,c],[c,a]])
+        edges.add(Math.min(p,q) + '_' + Math.max(p,q));
+    return { verts, edges: [...edges].map(k => k.split('_').map(Number)) };
+  }
+  function cgParams(){
+    return { dia: +document.getElementById('pg-dia').value,
+             sub: +document.getElementById('pg-sub').value,
+             strut: +document.getElementById('pg-strut').value,
+             ball: +document.getElementById('pg-ball').value };
+  }
+  const CAGE_MAT = new THREE.MeshStandardMaterial({color:0xd9a45c, metalness:0.05, roughness:0.62});
+  const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
+  function cgRebuild(){
+    const {dia, sub, strut, ball} = cgParams();
+    const R = dia/2, sr = strut/2, jr = sr*1.35, br = ball/2;
+    const {verts, edges} = icosphere(sub);
+    const eLen = R * Math.hypot(...verts[edges[0][0]].map((x,i) => x - verts[edges[0][1]][i]));
+    const opening = 2*(eLen/(2*Math.sqrt(3)) - sr);
+    document.getElementById('pg-dia-v').textContent = 'Ø' + dia + ' mm';
+    document.getElementById('pg-sub-v').textContent = edges.length + ' struts';
+    document.getElementById('pg-strut-v').textContent = 'Ø' + strut.toFixed(1) + ' mm';
+    document.getElementById('pg-ball-v').textContent = 'Ø' + ball + ' mm';
+    const escapes = ball <= opening + 1.0;
+    const wontFit = br > R - sr - 2.0;
+    if (cv.current){ cv.scene.remove(cv.current); cv.current = null; }
+    const group = new THREE.Group();
+    const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
+    for (const [a, b] of edges){
+      const P = new THREE.Vector3(...verts[a]).multiplyScalar(R);
+      const Q = new THREE.Vector3(...verts[b]).multiplyScalar(R);
+      const m = new THREE.Mesh(cyl, CAGE_MAT);
+      const d = Q.clone().sub(P);
+      m.scale.set(sr, d.length(), sr);
+      m.position.copy(P).add(Q).multiplyScalar(0.5);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
+      group.add(m);
+    }
+    const js = new THREE.SphereGeometry(1, 12, 8);
+    for (const v0 of verts){
+      const m = new THREE.Mesh(js, CAGE_MAT);
+      m.scale.setScalar(jr);
+      m.position.set(...v0).multiplyScalar ? m.position.set(v0[0]*R, v0[1]*R, v0[2]*R) : 0;
+      group.add(m);
+    }
+    if (!escapes && !wontFit){
+      const bm = new THREE.Mesh(new THREE.SphereGeometry(br, 24, 16), BALL_MAT);
+      bm.position.y = -R + sr + br + 1.5;   // roughly on the pip inside
+      group.add(bm);
+    }
+    cv.current = group; cv.scene.add(group);
+    const b2 = new THREE.Box3().setFromObject(group);
+    placeCoin(cv, b2);
+    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
+    const size = b2.getSize(new THREE.Vector3()).length();
+    const c = b2.getCenter(new THREE.Vector3());
+    cv.controls.target.copy(c);
+    const fovV = cv.camera.fov*Math.PI/180;
+    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*cv.camera.aspect))/2);
+    cv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
+    cv.camera.near = dist/50; cv.camera.far = dist*20; cv.camera.updateProjectionMatrix();
+    const stats = document.getElementById('pg-stats');
+    if (escapes)
+      stats.textContent = '⚠ ball escapes: openings Ø' + opening.toFixed(1) + ' — ball needs ≥ ' + (opening+1).toFixed(0) + ' mm';
+    else if (wontFit)
+      stats.textContent = '⚠ ball won\u2019t fit: max ≈ ' + (2*(R - sr - 2)).toFixed(0) + ' mm in this cage';
+    else
+      stats.textContent = edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
+    const dt = cgEl.parentElement.querySelector('.dimtag');
+    if (dt) dt.textContent = 'Ø' + dia + ' · live';
+  }
+  ['pg-dia','pg-sub','pg-strut','pg-ball'].forEach(id =>
+    document.getElementById(id).addEventListener('input', cgRebuild));
+  cgRebuild();
+  async function cgGenerate(){
+    const {dia, sub, strut, ball} = cgParams();
+    const r = await fetch(`/generate?type=cage&dia=${dia}&subdiv=${sub}&strut=${strut}&ball=${ball}`);
+    return await r.json();
+  }
+  document.getElementById('pg-print').onclick = async e => {
+    const b = e.target; b.disabled = true; b.textContent = 'Generating + verifying…';
+    try {
+      const j = await cgGenerate();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
+      const j2 = await r2.json();
+      if (!j2.ok) throw new Error(j2.error || 'open failed');
+      b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm clear)` : '');
+    } catch(err){ b.textContent = '✗ ' + err.message; }
+    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
+  };
+  document.getElementById('pg-dl').onclick = async e => {
+    e.preventDefault();
+    const a = e.target; const orig = a.textContent; a.textContent = 'generating + verifying…';
+    try {
+      const j = await cgGenerate();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      a.textContent = 'download ' + j.file.split('/').pop();
       const link = document.createElement('a');
       link.href = 'models/' + j.file; link.download = '';
       document.body.appendChild(link); link.click(); link.remove();
