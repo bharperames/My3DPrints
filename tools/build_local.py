@@ -69,8 +69,10 @@ add("pyr_solid_d", "pyramid-solid.stl", "pyramid_solid", "Hourglass · Pyramid",
     "Pyramid Solid — dubbel 180 mm", "Double-height slotted body, 7 slots per cell (mesh genus 19). 100% infill and a brim.", ("pass", "Clean"), mate="Pyramid Spiral — dubbel 180 mm (pair plate: pyramid-hourglass-pair-dubbel.3mf)", pair="pyr_pair_d")
 add("pyr_spiral_d", "pyramid-spiral.stl", "pyramid_spiral", "Hourglass · Pyramid", HG, "PLA",
     "Pyramid Spiral — dubbel 180 mm", "Double-length spiral. 8.7:1 lever ratio — brim mandatory.", ("pass", "Clean"), mate="Pyramid Solid — dubbel 180 mm", pair="pyr_pair_d")
-add("nuts", "montessori+nuts+and+bolts.3mf", "nuts_bolts", "Nuts & Bolts", "carnivalcamps", "PLA",
-    "Montessori Nuts & Bolts", "Toddler counting toy: five jumbo bolts in 30 mm height steps (59–179 mm) sharing one chunky thread, plus a nut — every nut fits every bolt; print as many nuts as needed. The nut mesh leaks (slicer-repairable). Non-toxic filament, brim on the tall bolts.", ("warn", "Nut not watertight"))
+add("nuts", "montessori+nuts+and+bolts-fixed.3mf", "nuts_bolts", "Nuts & Bolts", "carnivalcamps", "PLA",
+    "Montessori Nuts & Bolts", "Toddler counting toy: five jumbo bolts in 30 mm height steps (59–179 mm) sharing one chunky thread, plus a nut — every nut fits every bolt; print as many nuts as needed. The nut mesh shipped leaky (4 non-manifold edges from 5 zero-area slivers); repaired here — volume unchanged to 0.01 cm³, all six objects watertight. Non-toxic filament, brim on the tall bolts.", ("pass", "Repaired"), reveals="nuts_orig", reveal_label="original (leaky nut)")
+add("nuts_orig", "montessori+nuts+and+bolts.3mf", "nuts_bolts", "Nuts & Bolts", "carnivalcamps", "PLA",
+    "Montessori Nuts & Bolts — original", "As downloaded: the nut object carries 5 degenerate faces creating 4 non-manifold edges. Superseded by the repaired file — kept for reference.", ("warn", "Nut not watertight"), hide=True)
 add("held_chain", "held-sphere-chained.3mf", "held_chained", "Designed here", "Claude · this session", "PLA",
     "Held Sphere + Chain", "Chainmail onto the untouched lattice: the hook is simply a longer, wider chain link — 20×12 mm with a thin Ø2.4 tube, standard 45° tilt — threaded through one stock lattice opening and wrapped around a low strut. No cage modifications, nothing welded, no extra hardware; capture proven by ray-escape test, 0.52 mm running clearance, chain joints ≥0.48 mm. Prints flat in one job.", ("pass", "Designed · ready"), mate="Held Sphere (chainless version)")
 LOCAL = "(local export)"
@@ -103,7 +105,7 @@ SLICE = {
  "cshape": "2 h 54 m · 93.1 g", "remesh": "1 h 26 m · 37.4 g",
  "voro": "unsliceable at Ø2 mm — print the fixed version",
  "voro_f": "1 h 22 m · 24.8 g",
- "nuts": "5 h 32 m · 228.4 g (Studio on the P2S: 6 h 56 m · 225.05 g)",
+ "nuts": "5 h 32 m · 228.4 g (Studio on the P2S: 6 h 56 m · 225.05 g)", "nuts_orig": "5 h 32 m · 228.4 g",
  "held": "43 m · 8.9 g — bridged struts; tree supports optional", "chain2x": "32 m · 10.6 g — brimless-friendly", "held_chain": "1 h 01 m · 13.5 g (Studio on the P2S: 1 h 06 m · 12.72 g)", "chain": "9 m · 2.3 g",
 }
 models_js = {}
