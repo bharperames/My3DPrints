@@ -8,3 +8,4 @@ models/
 __pycache__/
 .DS_Store
 tools/index_out/
+models/custom/

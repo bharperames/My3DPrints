@@ -124,6 +124,11 @@ h1 .tld{color:var(--accent)}
   display:flex;flex-direction:column;gap:6px}
 .notes .n{font-size:12.5px;color:var(--muted);border-left:2px solid var(--warn);padding-left:8px}
 .notes .n b{color:var(--faint);font:500 10.5px "IBM Plex Mono",monospace;display:block}
+.params{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.params label{display:grid;grid-template-columns:92px 1fr 84px;align-items:center;gap:10px;
+  font:500 12px "IBM Plex Sans",sans-serif;color:var(--muted)}
+.params b{font:500 12px "IBM Plex Mono",monospace;color:var(--ink);text-align:right}
+.params input[type=range]{accent-color:var(--accent);min-width:0}
 .notes form{display:flex;gap:6px}
 .notes input{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
   color:var(--ink);font:400 12px "IBM Plex Sans",sans-serif;padding:6px 8px;min-width:0}
@@ -320,9 +325,10 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 </section>
 
 <footer>P2S slice numbers are real Bambu Studio CLI slices — 0.2 mm Standard, Bambu PLA
-Basic, textured PEI, 15% infill defaults. Calibration against Bambu Studio on the actual
-printer (held-sphere-chained, 2026-08-25): Studio read +8% time and −6% filament vs the
-harness — treat card numbers as ±10%. Designs that specify other
+Basic, textured PEI, 15% infill defaults. Calibration against Bambu Studio on the actual printer
+(2026-08-25, two parts): filament is reliable (Studio −1.5% to −6% vs harness) but the
+harness underestimates time, and more so on long prints — +8% on a 1-hour part, +25% on a
+7-hour one. Read masses as ±6% and add 10–25% to times, scaling with print length. Designs that specify other
 settings (100% infill hourglass solids, PETG) will run heavier and longer. Multi-plate
 projects are labeled with the plate that was sliced.<br><br>Validated 2026-08-24 with trimesh 5.0. Previews are decimated to ≤180 k triangles
 (full counts in each card); originals live in <span class="mono">models/</span>. Weights are
@@ -466,6 +472,112 @@ document.querySelectorAll('.view').forEach(el => {
   b.onclick = ev => { ev.stopPropagation(); openLightbox(v0); };
   el.parentElement.appendChild(b);
 });
+
+// ---- parametric chain card ----
+const pcEl = document.querySelector('.view[data-models="__param_chain"]');
+if (pcEl){
+  const pv = { el: pcEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
+  pv.scene = makeScene();
+  pv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
+  pv.controls = new OrbitControls(pv.camera, pcEl);
+  pv.controls.enableDamping = true; pv.controls.autoRotate = true;
+  pv.controls.autoRotateSpeed = 1.0; pv.controls.enableZoom = false;
+  views.push(pv);
+  const PAL = [0xe97a3c, 0x40a096, 0x6c82c8, 0xd4aa42, 0xaa64aa, 0x64aa5a, 0xc85a64];
+  function stadiumPts(clL, clW, nPer){
+    const s = (clL - clW)/2, r = clW/2, pts = [];
+    for (let k = 0; k < nPer; k++){ const t = -Math.PI/2 + Math.PI*k/(nPer-1); pts.push([s + r*Math.cos(t), r*Math.sin(t)]); }
+    for (let k = 0; k < nPer; k++){ const t = Math.PI/2 + Math.PI*k/(nPer-1); pts.push([-s + r*Math.cos(t), r*Math.sin(t)]); }
+    return pts;
+  }
+  function linkGeometry(clL, clW, dia){
+    const path = stadiumPts(clL, clW, 20).map(p => new THREE.Vector3(p[0], p[1], 0));
+    const curve = new THREE.CatmullRomCurve3(path, true);
+    return new THREE.TubeGeometry(curve, 90, dia/2, 12, true);
+  }
+  function params(){
+    return { n: +document.getElementById('pc-links').value,
+             len: +document.getElementById('pc-len').value,
+             dia: +document.getElementById('pc-dia').value };
+  }
+  function rebuild(){
+    const {n, len, dia} = params();
+    const clW = 2.5*dia + 1.0, clL = len - dia;
+    const short = clL < clW + 2;
+    document.getElementById('pc-links-v').textContent = n;
+    document.getElementById('pc-len-v').textContent = len + ' mm';
+    document.getElementById('pc-dia-v').textContent = 'Ø' + dia + ' mm';
+    if (pv.current){ pv.scene.remove(pv.current); pv.current = null; }
+    if (short){
+      document.getElementById('pc-stats').textContent =
+        'link too short for Ø' + dia + ' — needs ≥ ' + (clW + 2 + dia).toFixed(0) + ' mm';
+      return;
+    }
+    const pitch = (clL - clW) + 0.30*(clW + dia);
+    const geo = linkGeometry(clL, clW, dia);
+    const group = new THREE.Group();
+    for (let i = 0; i < n; i++){
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+        color: PAL[i % PAL.length], metalness: 0.05, roughness: 0.62 }));
+      m.rotation.x = (i % 2 === 0 ? 1 : -1) * Math.PI/4;
+      m.position.x = i * pitch;
+      group.add(m);
+    }
+    const box = new THREE.Box3().setFromObject(group);
+    group.position.y = -(box.min.y + box.max.y)/2;
+    group.position.z = -box.min.z;
+    group.rotation.x = -Math.PI/2;   // z-up convention like the GLBs
+    pv.current = group; pv.scene.add(group);
+    const b2 = new THREE.Box3().setFromObject(group);
+    const size = b2.getSize(new THREE.Vector3()).length();
+    const c = b2.getCenter(new THREE.Vector3());
+    pv.controls.target.copy(c);
+    const fovV = pv.camera.fov*Math.PI/180;
+    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*pv.camera.aspect))/2);
+    pv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
+    pv.camera.near = dist/50; pv.camera.far = dist*20; pv.camera.updateProjectionMatrix();
+    const per = 2*(clL - clW) + Math.PI*clW;
+    const vol = per*Math.PI*(dia/2)**2*n/1000;
+    const totalLen = (n-1)*pitch + len;
+    document.getElementById('pc-stats').textContent =
+      totalLen.toFixed(0) + ' mm long · pitch ' + pitch.toFixed(1) + ' mm · ≈' + (vol*1.24).toFixed(1) + ' g solid PLA';
+    const dt = pcEl.parentElement.querySelector('.dimtag');
+    if (dt) dt.textContent = n + ' links · live';
+  }
+  ['pc-links','pc-len','pc-dia'].forEach(id =>
+    document.getElementById(id).addEventListener('input', rebuild));
+  rebuild();
+  async function generate(){
+    const {n, len, dia} = params();
+    const r = await fetch(`/generate?links=${n}&len=${len}&dia=${dia}`);
+    return await r.json();
+  }
+  document.getElementById('pc-print').onclick = async e => {
+    const b = e.target; b.disabled = true; b.textContent = 'Generating + verifying…';
+    try {
+      const j = await generate();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
+      const j2 = await r2.json();
+      if (!j2.ok) throw new Error(j2.error || 'open failed');
+      b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm joints)` : '');
+    } catch(err){ b.textContent = '✗ ' + err.message; }
+    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4000);
+  };
+  document.getElementById('pc-dl').onclick = async e => {
+    e.preventDefault();
+    const a = e.target; const orig = a.textContent; a.textContent = 'generating + verifying…';
+    try {
+      const j = await generate();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      a.textContent = 'download ' + j.file.split('/').pop() + (j.clearance ? ` · ${j.clearance} mm joints` : '');
+      const link = document.createElement('a');
+      link.href = 'models/' + j.file; link.download = '';
+      document.body.appendChild(link); link.click(); link.remove();
+    } catch(err){ a.textContent = '✗ ' + err.message; }
+    setTimeout(() => { a.textContent = orig; }, 5000);
+  };
+}
 
 const io = new IntersectionObserver(es => es.forEach(e => {
   const v = views.find(x => x.el === e.target);
