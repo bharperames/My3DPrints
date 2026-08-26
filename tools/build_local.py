@@ -210,8 +210,12 @@ PARAM_CAGE = """
     <p class="principle">The captive-ball cage, generalized: a geodesic strut sphere with a
     ball inside on a breakaway pip, generated on the fly. The ball has a 45° teardrop bottom so it prints support-free on its
     breakaway pip (a snap-off pedestal wide enough to support a bare sphere could never be
-    extracted through the openings). The sliders cannot produce unstable shapes: spans are capped at the field-proven 16 mm
-    and the lattice auto-densifies as the cage grows. Bambu Studio will still show a
+    extracted through the openings). Rebuilt after two field failures, honestly unvalidated until printed: the ball now stands
+    on a wide bed-anchored pedestal (Ø8–13, ~300× stiffer than the pip that let the ball wobble
+    into spaghetti) rising through a designed bottom window, with a breakaway neck under the
+    45° teardrop; the stub exits through its own window. Sliders cannot produce unstable
+    shapes: spans capped at the field-proven 16 mm, lattice auto-densifies, and the ball must
+    be too big for both the lattice openings and the window. Bambu Studio will still show a
     floating-regions warning on any strut globe — every strut starts as a bridge anchored at
     its end joints; within the envelope that prints fine (the successful Ø50 print carried
     the same warning). It is not the failure signal. The viewer flags impossible
@@ -221,7 +225,7 @@ PARAM_CAGE = """
       <label>cage Ø <input type="range" id="pg-dia" min="34" max="84" step="2" value="50"><b id="pg-dia-v">Ø50 mm</b></label>
       <label>lattice <input type="range" id="pg-sub" min="1" max="6" step="1" value="2"><b id="pg-sub-v">120 struts</b></label>
       <label>strut Ø <input type="range" id="pg-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pg-strut-v">Ø2.2 mm</b></label>
-      <label>ball Ø <input type="range" id="pg-ball" min="6" max="60" step="1" value="19"><b id="pg-ball-v">Ø19 mm</b></label>
+      <label>ball Ø <input type="range" id="pg-ball" min="13" max="60" step="1" value="19"><b id="pg-ball-v">Ø19 mm</b></label>
     </div>
     <p class="specline" id="pg-stats"></p>
     <div class="actions">
