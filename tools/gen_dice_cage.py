@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
-"""Parametric dice cage: a d20 inside the geodesic sphere.
+"""Dice cage: a standard-size d20 captive inside a geodesic shaker sphere.
 
-Usage: gen_dice_cage.py --dia D --freq N --strut S --out FILE.3mf
-The die is auto-sized by the seat rule: its face inradius = lattice opening
-inradius + strut radius + 1.2 mm, so a landed face always bridges the floor
-openings and rests level on the surrounding struts (the spherical bottom
-self-centers it). Faces engraved 1-20, antipodal pairs summing 21. Die
-prints flat-face-down on the windowed pedestal with a breakaway neck.
+Fixed design — no user parameters. The optimizer picked Ø58 / frequency-4 /
+Ø2.0 struts because the seat rule (die face inradius = opening inradius +
+strut radius + 1.2 mm, so a landed face always rests level across the floor
+struts) then yields a die of 20.5 mm face-to-face — a standard d20 — with
+the cage 2.8x the die for shaking room, spans 9.4 mm (field envelope: <=16,
+slenderness 4.7 vs limit 8).
+
+Die support: a thin triangular sleeve rises from the bed under the die's
+bottom-face perimeter, stopping 1.4 mm short of the face; three 3.0 x 0.9 mm
+breakaway tabs at the edge midpoints carry the face. The numeral on the
+landing face (the "1") stays untouched, and rim sag while bridging is
+self-limited to 1.4 mm by the wall below. Faces engraved 1-20, antipodal
+pairs summing 21; 6 and 9 carry underlines.
+
+Usage: gen_dice_cage.py --out FILE.3mf
 """
 import argparse
 import json
@@ -16,6 +25,10 @@ import sys
 import numpy as np
 import trimesh
 from trimesh.proximity import signed_distance
+
+DIA, FREQ, STRUT = 58.0, 4, 2.0
+WALL_T, TAB_L, TAB_W, TAB_H = 1.5, 3.0, 0.9, 1.4
+Z_FACE = 5.4                      # die bottom-face height above the bed
 
 
 def geodesic(nu, R):
@@ -57,7 +70,7 @@ def geodesic(nu, R):
 def numeral_mesh(text, cap_height, depth):
     from matplotlib.textpath import TextPath
     from matplotlib.font_manager import FontProperties
-    from shapely.geometry import Polygon
+    from shapely.geometry import Polygon, box
     from shapely.ops import unary_union
     tp = TextPath((0, 0), text, size=10,
                   prop=FontProperties(family="DejaVu Sans", weight="bold"))
@@ -73,6 +86,11 @@ def numeral_mesh(text, cap_height, depth):
     shape = unary_union(solids)
     if holes:
         shape = shape.difference(unary_union(holes))
+    if text in ("6", "9"):
+        x0, y0, x1, y1 = shape.bounds
+        h = y1 - y0
+        shape = unary_union([shape, box(x0 + 0.1 * (x1 - x0), y0 - 0.30 * h,
+                                        x1 - 0.1 * (x1 - x0), y0 - 0.16 * h)])
     geoms = list(shape.geoms) if shape.geom_type == "MultiPolygon" else [shape]
     m = trimesh.util.concatenate(
         [trimesh.creation.extrude_polygon(g, depth) for g in geoms])
@@ -86,47 +104,27 @@ def numeral_mesh(text, cap_height, depth):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dia", type=float, required=True)
-    ap.add_argument("--freq", type=int, required=True)
-    ap.add_argument("--strut", type=float, required=True)
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
-    R, sr = a.dia / 2, a.strut / 2
+    R, sr = DIA / 2, STRUT / 2
     jr = sr * 1.42
-    if not 44 <= a.dia <= 90:
-        print(json.dumps({"ok": False, "error": "dice cage Ø must be 44-90 mm"}))
-        return 1
-    if not (1 <= a.freq <= 6 and 1.4 <= a.strut <= 4.5):
-        print(json.dumps({"ok": False, "error": "freq 1-6, strut Ø 1.4-4.5"}))
-        return 1
 
-    V, F, edges = geodesic(a.freq, R)
+    V, F, edges = geodesic(FREQ, R)
     e_len = float(max(np.linalg.norm(V[p] - V[q]) for p, q in edges))
-    if e_len > 16.0:
-        print(json.dumps({"ok": False, "error":
-              f"unstable: lattice spans {e_len:.0f} mm (>16, field-proven) — "
-              f"finer lattice or smaller Ø"}))
-        return 1
-    if e_len / a.strut > 8.0:
-        print(json.dumps({"ok": False, "error":
-              f"struts too slender ({e_len / a.strut:.0f}, limit 8) — "
-              f"thicken to ≥ {e_len / 8:.1f} mm"}))
-        return 1
+    assert e_len <= 16.0 and e_len / STRUT <= 8.0, "envelope regression"
 
     # seat rule: die face bridges any floor opening and rests on its struts
     o_r = e_len / (2 * np.sqrt(3)) - sr
     face_in = o_r + sr + 1.2
     a_d = face_in * 2 * np.sqrt(3)             # d20 face edge
     die_cr = 0.9511 * a_d                      # circumradius
-    if die_cr > R - sr - 3.5:
-        print(json.dumps({"ok": False, "error":
-              f"seat rule needs a Ø{2 * die_cr:.0f} die, too big for this cage — "
-              f"use a finer lattice (smaller openings → smaller die) or a bigger Ø"}))
-        return 1
+    die_f2f = 2 * face_in * 2.618              # in-sphere (min width)
+    assert die_cr <= R - sr - 3.5, "die does not fit"
 
-    # cage with pedestal window
-    ped_r = min(7.0, 0.34 * R - 3.5, face_in - 1.0)
-    win_r = ped_r + 3.5
+    # window for the support sleeve (capped: the cage structure is inviolable)
+    ci = face_in - 1.6                 # sleeve wall centerline inradius
+    win_r = 2 * (ci + WALL_T / 2) + 1.8
+    assert win_r <= 0.34 * R, "sleeve window over structural cap"
     zlow = V[:, 2].min() + R * 0.4
 
     def seg_ax(p, q):
@@ -140,11 +138,10 @@ def main():
              if not (max(V[p][2], V[q][2]) < zlow and seg_ax(p, q) < win_r)}
     low_d = [seg_ax(p, q) for (p, q) in edges if max(V[p][2], V[q][2]) < zlow + 4]
     win_open = 2 * (min(low_d) - sr) if low_d else 2 * win_r
-    die_minwidth = 2 * face_in * 2.618         # d20 in-sphere Ø (face-to-face)
-    if die_minwidth < win_open + 1.0:
+    if die_f2f < win_open + 1.0:
         print(json.dumps({"ok": False, "error":
-              f"die (min width {die_minwidth:.0f}) could escape the pedestal "
-              f"window (Ø{win_open:.0f})"}))
+              f"die (min width {die_f2f:.0f}) could escape the sleeve window "
+              f"(Ø{win_open:.0f})"}))
         return 1
 
     parts = []
@@ -170,8 +167,12 @@ def main():
     # the d20, face-down, numerals engraved (antipodal faces sum to 21)
     die = trimesh.creation.icosahedron()
     die.apply_scale(die_cr / np.linalg.norm(die.vertices[0]))
-    dn = die.face_normals[0]
-    die.apply_transform(trimesh.geometry.align_vectors(dn, [0, 0, -1]))
+    die.apply_transform(trimesh.geometry.align_vectors(
+        die.face_normals[0], [0, 0, -1]))
+    # bottom-face corners from the plain 12-vertex die (the engraved mesh's
+    # lowest vertices are numeral-groove points — a degenerate triangle)
+    pv = die.vertices
+    lowv3 = pv[np.argsort(pv[:, 2])[:3]]
     cents = die.triangles_center.copy()
     normals = die.face_normals.copy()
     order = [None] * 20
@@ -185,12 +186,12 @@ def main():
         order[anti] = 21 - n_lo
         used.update((fi, anti))
         n_lo += 1
-    engraved = die
-    depth = 0.8
+    depth = 0.6
     try:
         cutters = []
         for fi in range(20):
-            nm = numeral_mesh(str(order[fi]), cap_height=face_in * 0.85, depth=depth + 0.4)
+            nm = numeral_mesh(str(order[fi]), cap_height=face_in * 0.85,
+                              depth=depth + 0.4)
             if nm is None:
                 continue
             n = normals[fi]
@@ -205,31 +206,50 @@ def main():
             M[:3, 3] = c + n * (depth * 0.5 - 0.05)
             nm.apply_transform(M)
             cutters.append(nm)
-        engraved = die.difference(trimesh.boolean.union(cutters, engine="manifold"))
+        engraved = die.difference(
+            trimesh.boolean.union(cutters, engine="manifold"))
         engrave_note = "numerals engraved"
     except Exception as exc:
         engraved = die
         engrave_note = f"plain faces (engraving failed: {str(exc)[:60]})"
 
-    ped_h, neck_h = 4.0, 1.4
     die_lo = engraved.bounds[0][2]
-    engraved.apply_translation([0, 0, zbed + ped_h + neck_h - die_lo])
-    ped = trimesh.creation.cylinder(radius=ped_r, height=ped_h, sections=48)
-    ped.apply_translation([0, 0, zbed + ped_h / 2])
-    neck = trimesh.creation.cylinder(radius=2.6, height=neck_h + 1.0, sections=24)
-    neck.apply_translation([0, 0, zbed + ped_h + (neck_h + 1.0) / 2 - 0.3])
-    held = trimesh.boolean.union([engraved, ped, neck], engine="manifold")
+    engraved.apply_translation([0, 0, zbed + Z_FACE - die_lo])
+    lowv = lowv3[:, :2] + 0.0          # bottom-face corner XY (die is centered)
+    cen = lowv.mean(axis=0)
+    from shapely.geometry import Polygon as ShapelyPoly
+
+    def tri_ring(t):
+        outer = ShapelyPoly(cen + (lowv - cen) * ((ci + t / 2) / face_in))
+        inner = ShapelyPoly(cen + (lowv - cen) * ((ci - t / 2) / face_in))
+        return outer.difference(inner)
+
+    wall = trimesh.creation.extrude_polygon(tri_ring(WALL_T), Z_FACE - TAB_H)
+    wall.apply_translation([0, 0, zbed])
+    corners = [cen + (lv - cen) * (ci / face_in) for lv in lowv]
+    tabs = []
+    for i in range(3):
+        p, q = corners[i], corners[(i + 1) % 3]
+        mid = (p + q) / 2
+        ang = float(np.arctan2(q[1] - p[1], q[0] - p[0]))
+        tab = trimesh.creation.box(extents=[TAB_L, TAB_W, TAB_H + 0.4])
+        tab.apply_transform(trimesh.transformations.rotation_matrix(
+            ang, [0, 0, 1]))
+        tab.apply_translation([mid[0], mid[1],
+                               zbed + Z_FACE - TAB_H + (TAB_H + 0.4) / 2])
+        tabs.append(tab)
+    held = trimesh.boolean.union([engraved, wall] + tabs, engine="manifold")
 
     from mech_audit import wobble_index
     wob, wz = wobble_index(held)
     if wob > 8.0:
         print(json.dumps({"ok": False, "error":
-              f"die too heavy for its neck while printing (wobble {wob}, limit 8)"}))
+              f"die too heavy for its tabs while printing (wobble {wob})"}))
         return 1
-    d = float((-signed_distance(cage, held.vertices[::11])).min())
+    d = float((-signed_distance(cage, held.vertices[::7])).min())
     if d < 0.8:
         print(json.dumps({"ok": False, "error":
-              f"die/pedestal too close to cage: {d:.2f} mm (needs ≥ 0.8)"}))
+              f"die/sleeve too close to cage: {d:.2f} mm (needs ≥ 0.8)"}))
         return 1
 
     cage.apply_translation([0, 0, -zbed])
@@ -244,11 +264,16 @@ def main():
     ext = chk.bounds[1] - chk.bounds[0]
     vol = (cage.volume + held.volume) / 1000.0
     print(json.dumps({"ok": True, "file": os.path.basename(a.out),
+                      "dia": DIA, "freq": FREQ, "strut": STRUT,
                       "span_mm": round(e_len, 1), "die_edge": round(a_d, 1),
-                      "die_dia": round(2 * die_cr, 1), "face_in": round(face_in, 1),
-                      "opening": round(2 * o_r, 1), "wobble": wob,
-                      "clearance": round(d, 2), "watertight": wt,
-                      "engraving": engrave_note,
+                      "die_dia": round(2 * die_cr, 1),
+                      "die_f2f": round(die_f2f, 1),
+                      "face_in": round(face_in, 1),
+                      "opening": round(2 * o_r, 1),
+                      "win_open": round(win_open, 1),
+                      "tab_mm2": round(3 * TAB_L * TAB_W, 1),
+                      "wobble": wob, "clearance": round(d, 2),
+                      "watertight": wt, "engraving": engrave_note,
                       "dims": [round(float(x), 1) for x in ext],
                       "volume_cm3": round(float(vol), 1),
                       "est_g": round(float(vol) * 1.24, 1)}))
