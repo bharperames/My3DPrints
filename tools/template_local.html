@@ -779,6 +779,7 @@ if (cgEl){
   const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
   function cgRebuild(){
     let {dia, sub, strut, ball} = cgParams();
+    const cageOnly = ball === 0;
     // stability envelope: spans ≤16 mm (field-bracketed), slenderness ≤8
     let geo = geodesic(sub);
     for (let guard = 0; guard < 8; guard++){
@@ -801,7 +802,6 @@ if (cgEl){
     const escapes = !cageOnly && ball <= opening + 1.0;
     const wontFit = !cageOnly && br > R - sr - 2.0;
     if (cv.current){ cv.scene.remove(cv.current); cv.current = null; }
-    const cageOnly = ball === 0;
     document.getElementById('pg-hasball-v').textContent = cageOnly ? 'cage only' : 'included';
     document.getElementById('pg-ball').disabled = cageOnly;
     // pedestal window: same segment rule as the generator
@@ -822,10 +822,10 @@ if (cgEl){
       for (const [a2, b2] of kept)
         if (Math.max(verts[a2][1], verts[b2][1]) * R < yLow + 4) dmin = Math.min(dmin, segAxis(a2, b2));
       winOpen = isFinite(dmin) ? 2 * (dmin - sr) : 0; }
-    const winEscape = !escapes && !wontFit && ball < winOpen + 1.0;
+    const winEscape = !cageOnly && !escapes && !wontFit && ball < winOpen + 1.0;
     // wobble estimate calibrated to the generator (Ø28 -> 7.13); server is authoritative
     const wobbleEst = ball >= 24 ? 7.13 * ball / 28 : 9.9 * Math.pow(ball / 28, 3);
-    const tooHeavy = !escapes && !wontFit && !winEscape && wobbleEst > 8.0;
+    const tooHeavy = !cageOnly && !escapes && !wontFit && !winEscape && wobbleEst > 8.0;
     const group = new THREE.Group();
     const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
     for (const [a, b] of kept){
@@ -846,7 +846,7 @@ if (cgEl){
       m.position.set(verts[i][0]*R, verts[i][1]*R, verts[i][2]*R);
       group.add(m);
     }
-    if (!escapes && !wontFit && !winEscape && !tooHeavy){
+    if (!cageOnly && !escapes && !wontFit && !winEscape && !tooHeavy){
       const yBed = -R - sr;
       const yA = yBed + 5.4;                   // pedestal 4 + neck 1.4
       const bm = new THREE.Mesh(new THREE.SphereGeometry(br, 24, 16), BALL_MAT);
