@@ -161,9 +161,19 @@ def main():
     cone.apply_translation([0, 0, z_apex - cone.bounds[0][2]])
     ped = trimesh.creation.cylinder(radius=ped_r, height=ped_h, sections=48)
     ped.apply_translation([0, 0, zbed + ped_h / 2])
-    neck = trimesh.creation.cylinder(radius=1.9, height=neck_h + 1.0, sections=24)
+    neck_r = max(1.9, br * 0.16)      # neck scales with ball mass
+    neck = trimesh.creation.cylinder(radius=neck_r, height=neck_h + 1.0, sections=24)
     neck.apply_translation([0, 0, zbed + ped_h + (neck_h + 1.0) / 2 - 0.2])
     held = trimesh.boolean.union([ball, cone, ped, neck], engine="manifold")
+    # print-time mechanics gate (field-calibrated: failed print 28, survived 8.9)
+    from mech_audit import wobble_index
+    wob, wz = wobble_index(held)
+    if wob > 8.0:
+        print(json.dumps({"ok": False, "error":
+              f"unstable while printing: wobble index {wob} at z={wz:.0f} "
+              f"(a survived print measured 8.9, a failed one 28) — the ball is "
+              f"too heavy for its neck at this size"}))
+        return 1
     d = float((-signed_distance(cage, held.vertices[::11])).min())
     if d < 0.8:
         print(json.dumps({"ok": False, "error":
@@ -181,7 +191,7 @@ def main():
     ext = chk.bounds[1] - chk.bounds[0]
     vol = (cage.volume + held.volume) / 1000.0
     print(json.dumps({"ok": True, "file": os.path.basename(a.out),
-                      "span_mm": round(e_len, 1),
+                      "span_mm": round(e_len, 1), "wobble": wob,
                       "struts": len(edges), "opening": round(opening, 1),
                       "clearance": round(d, 2), "watertight": wt,
                       "dims": [round(float(x), 1) for x in ext],

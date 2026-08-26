@@ -76,9 +76,13 @@ cone.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
 cone.apply_translation([0, 0, z_apex - cone.bounds[0][2]])
 ped = trimesh.creation.cylinder(radius=PED_R, height=4.0, sections=48)
 ped.apply_translation([0, 0, zbed + 2.0])
-neck = trimesh.creation.cylinder(radius=1.9, height=2.4, sections=24)
+neck = trimesh.creation.cylinder(radius=max(1.9, BALL_R * 0.32), height=2.4,
+                                 sections=24)
 neck.apply_translation([0, 0, zbed + 4.0 + 1.2 - 0.2])
 held = trimesh.boolean.union([ball, cone, ped, neck], engine="manifold")
+from mech_audit import wobble_index as _wi
+_w, _ = _wi(held)
+assert _w <= 8.0, f"held body wobble index {_w} exceeds field-calibrated 8.0"
 clearance = float((-signed_distance(cage, held.vertices[::9])).min())
 
 cage.apply_translation([0, 0, -zbed])
