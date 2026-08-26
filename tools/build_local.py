@@ -110,7 +110,7 @@ SLICE = {
  "voro": "unsliceable at Ø2 mm — print the fixed version",
  "voro_f": "1 h 22 m · 24.8 g",
  "nuts": "5 h 32 m · 228.4 g",
- "held": "43 m · 8.9 g — bridged struts; tree supports optional", "chain2x": "32 m · 10.6 g — brimless-friendly", "held_chain": "60 m · 13.3 g — cage struts bridge; tree supports optional", "chain": "9 m · 2.3 g",
+ "held": "43 m · 8.9 g — bridged struts; tree supports optional", "chain2x": "32 m · 10.6 g — brimless-friendly", "held_chain": "1 h 01 m · 13.5 g (Studio on the P2S: 1 h 06 m · 12.72 g)", "chain": "9 m · 2.3 g",
 }
 models_js = {}
 cards = []
