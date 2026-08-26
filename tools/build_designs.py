@@ -164,76 +164,69 @@ build_chain(2.0, "chain-test-5seg-2x.3mf")
 
 
 # ---------- 3. Held sphere + 10-link chain (chainmail pendant) ----------
-# The chain hooks DIRECTLY into the lattice, nothing welded, no extra
-# hardware: the cage gets one "attachment window" (the 3 inner struts of one
-# subdivided face removed, merging 4 openings into one ~O13) and link 0 is a
-# longer, wider, thinner-tubed chain link (20x12, O2.4 tube) at the standard
-# 45-degree tilt that threads the window and wraps its sill strut. Capture is
-# proven by ray-escape testing. Constants from scan; re-verified every build.
+# The chain hooks DIRECTLY into the unmodified lattice: link 0 is a longer,
+# wider, thin-tubed chain link (20x12 mm, O2.4 tube) at the standard 45-deg
+# tilt, threaded through one stock lattice opening and wrapped around a low
+# strut. The O2.4 tube is what makes this possible — a standard O3.2 chain
+# tube was proven not to fit any stock opening. Capture is proven by
+# ray-escape testing on every build. No cage modifications at all.
 def build_chained():
+    # full lattice, but in the parent-face-down frame the hook was verified in
     R2, SR, JR = 25.0, 1.1, 1.5
-    ico = trimesh.creation.icosahedron()
-    V0 = ico.vertices / np.linalg.norm(ico.vertices, axis=1, keepdims=True) * R2
-    F0 = ico.faces
-    nn0 = np.cross(V0[F0[0][1]] - V0[F0[0][0]], V0[F0[0][2]] - V0[F0[0][0]])
+    ico2 = trimesh.creation.icosahedron()
+    V0 = ico2.vertices / np.linalg.norm(ico2.vertices, axis=1, keepdims=True) * R2
+    F00 = ico2.faces
+    nn0 = np.cross(V0[F00[0][1]] - V0[F00[0][0]], V0[F00[0][2]] - V0[F00[0][0]])
     V0 = trimesh.transform_points(
         V0, trimesh.geometry.align_vectors(nn0 / np.linalg.norm(nn0), [0, 0, -1]))
-    mid, verts = {}, list(V0)
+    mid2, verts2 = {}, list(V0)
 
-    def midpoint(a, b):
+    def mp(a, b):
         key = (min(a, b), max(a, b))
-        if key not in mid:
-            p = (verts[a] + verts[b]) / 2
-            mid[key] = len(verts)
-            verts.append(p / np.linalg.norm(p) * R2)
-        return mid[key]
+        if key not in mid2:
+            p = (verts2[a] + verts2[b]) / 2
+            mid2[key] = len(verts2)
+            verts2.append(p / np.linalg.norm(p) * R2)
+        return mid2[key]
 
-    edges, parent_inner = set(), {}
-    for fi, f in enumerate(F0):
+    # If a print ever shows the hook binding, the lever is here: perturb the
+    # vertices bounding the threaded opening (push them 0.5-1 mm outward along
+    # their radial direction before strut construction) to widen the passage.
+    edges2 = set()
+    for f in F00:
         a, b, c = f
-        ab, bc, ca = midpoint(a, b), midpoint(b, c), midpoint(c, a)
+        ab, bc, ca = mp(a, b), mp(b, c), mp(c, a)
         for e in [(a, ab), (ab, b), (b, bc), (bc, c), (c, ca), (ca, a),
                   (ab, bc), (bc, ca), (ca, ab)]:
-            edges.add((min(e), max(e)))
-        parent_inner[fi] = [(min(x), max(x)) for x in [(ab, bc), (bc, ca), (ca, ab)]]
-    V2 = np.array(verts)
-    cents = np.array([V0[f].mean(axis=0) for f in F0])
-    win = max((c[0], i) for i, c in enumerate(cents) if c[2] < -8 and c[0] > 5)[1]
-    skip = set(parent_inner[win])
-    parts2, used = [], set()
-    for (a, b) in edges:
-        if (a, b) in skip:
-            continue
-        used.update((a, b))
+            edges2.add((min(e), max(e)))
+    V2 = np.array(verts2)
+    parts2 = []
+    for (a, b) in edges2:
         p, q = V2[a], V2[b]
-        d = q - p
-        L = np.linalg.norm(d)
+        d2v = q - p
+        L = np.linalg.norm(d2v)
         cyl = trimesh.creation.cylinder(radius=SR, height=L, sections=20)
-        cyl.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d / L))
+        cyl.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d2v / L))
         cyl.apply_translation((p + q) / 2)
         parts2.append(cyl)
-    for vi in used:
+    for v in V2:
         sph = trimesh.creation.icosphere(subdivisions=2, radius=JR)
-        sph.apply_translation(V2[vi])
+        sph.apply_translation(v)
         parts2.append(sph)
-    wcage = trimesh.boolean.union(parts2, engine="manifold")
-    wcage.apply_translation([0, 0, -wcage.bounds[0][2]])
-    base = trimesh.load(os.path.join(M, "held-sphere.3mf"), force="scene")
-    held2 = base.geometry["ball"].copy()
-
+    cage2 = trimesh.boolean.union(parts2, engine="manifold")
+    zb = cage2.bounds[0][2]
+    zc2 = zb + BALL_R + 3.0
+    ball2 = trimesh.creation.icosphere(subdivisions=4, radius=BALL_R)
+    ball2.apply_translation([0, 0, zc2])
+    pip2 = trimesh.creation.cylinder(radius=PIP_R, height=(zc2 - BALL_R + 0.4) - zb,
+                                     sections=24)
+    pip2.apply_translation([0, 0, (zb + zc2 - BALL_R + 0.4) / 2])
+    held2 = trimesh.boolean.union([ball2, pip2], engine="manifold")
+    cage2.apply_translation([0, 0, -zb])
+    held2.apply_translation([0, 0, -zb])
     TH, CU, LAT, P1 = np.radians(23.9), 21.5, -3.0, 12.5
     u = np.array([np.cos(TH), np.sin(TH)])
     perp = np.array([-u[1], u[0]])
-
-    def hook_or_link(cl_l, cl_w, tr, cu_pos, tilt):
-        m = tube_from_loop(np.array(
-            [[p[0], p[1]] for p in _stad(cl_l, cl_w)]), tr)
-        m.apply_transform(trimesh.transformations.rotation_matrix(tilt, [1, 0, 0]))
-        m.apply_transform(trimesh.transformations.rotation_matrix(TH, [0, 0, 1]))
-        p = u * cu_pos + perp * LAT
-        c0 = m.bounds.mean(axis=0)
-        m.apply_translation([p[0] - c0[0], p[1] - c0[1], -m.bounds[0][2]])
-        return m
 
     def _stad(cl_l, cl_w, n_per=26):
         s2, r2 = (cl_l - cl_w) / 2, cl_w / 2
@@ -244,10 +237,21 @@ def build_chained():
             pts.append([-s2 + r2 * np.cos(t), r2 * np.sin(t)])
         return np.array(pts)
 
+    def hook_or_link(cl_l, cl_w, tr, cu_pos, tilt):
+        m = tube_from_loop(_stad(cl_l, cl_w), tr)
+        m.apply_transform(trimesh.transformations.rotation_matrix(tilt, [1, 0, 0]))
+        m.apply_transform(trimesh.transformations.rotation_matrix(TH, [0, 0, 1]))
+        p = u * cu_pos + perp * LAT
+        c0 = m.bounds.mean(axis=0)
+        m.apply_translation([p[0] - c0[0], p[1] - c0[1], -m.bounds[0][2]])
+        return m
+
     hook = hook_or_link(20.0, 12.0, 1.2, CU, np.pi / 4)
     cm = trimesh.collision.CollisionManager()
-    cm.add_object("c", wcage)
-    assert not cm.in_collision_single(hook) and cm.min_distance_single(hook) >= 0.45
+    cm.add_object("c", cage2)
+    assert not cm.in_collision_single(hook), "hook collides with lattice"
+    dh = cm.min_distance_single(hook)
+    assert dh >= 0.45, f"hook tight: {dh:.2f}"
     for dv in [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1),
                (0.7, 0, 0.7), (-0.7, 0, 0.7), (0, 0.7, 0.7), (0, -0.7, 0.7)]:
         blocked = False
@@ -273,13 +277,13 @@ def build_chained():
     for l in links:
         ok &= not cm.in_collision_single(l)
     sc3 = trimesh.Scene()
-    sc3.add_geometry(wcage, geom_name="cage")
+    sc3.add_geometry(cage2, geom_name="cage")
     sc3.add_geometry(held2, geom_name="ball")
     sc3.add_geometry(hook, geom_name="hook_link")
     for i, l in enumerate(links):
         sc3.add_geometry(l, geom_name=f"link_{i + 1}")
     sc3.export(os.path.join(M, "held-sphere-chained.3mf"))
-    print(f"held-sphere-chained: chainmail hook captured, "
+    print(f"held-sphere-chained: hook through stock lattice, clearance {dh:.2f}, "
           f"{'ALL-OK' if ok else 'FAILED'}")
 
 
