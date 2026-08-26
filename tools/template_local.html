@@ -801,7 +801,7 @@ if (cgEl){
     const wontFit = br > R - sr - 2.0;
     if (cv.current){ cv.scene.remove(cv.current); cv.current = null; }
     // pedestal window: same segment rule as the generator
-    const pedR = Math.min(br - 3.5, Math.max(4, br * 0.45));
+    const pedR = Math.min(7, 0.34 * R - 3.5, br - 3.5, Math.max(4, br * 0.45));
     const winR = pedR + 3.5;
     const yLow = -R + 0.4 * R;
     const segAxis = (a, b) => {
@@ -819,6 +819,9 @@ if (cgEl){
         if (Math.max(verts[a2][1], verts[b2][1]) * R < yLow + 4) dmin = Math.min(dmin, segAxis(a2, b2));
       winOpen = isFinite(dmin) ? 2 * (dmin - sr) : 0; }
     const winEscape = !escapes && !wontFit && ball < winOpen + 1.0;
+    // wobble estimate calibrated to the generator (Ø28 -> 7.13); server is authoritative
+    const wobbleEst = ball >= 24 ? 7.13 * ball / 28 : 9.9 * Math.pow(ball / 28, 3);
+    const tooHeavy = !escapes && !wontFit && !winEscape && wobbleEst > 8.0;
     const group = new THREE.Group();
     const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
     for (const [a, b] of kept){
@@ -839,7 +842,7 @@ if (cgEl){
       m.position.set(verts[i][0]*R, verts[i][1]*R, verts[i][2]*R);
       group.add(m);
     }
-    if (!escapes && !wontFit && !winEscape){
+    if (!escapes && !wontFit && !winEscape && !tooHeavy){
       const yBed = -R - sr;
       const yA = yBed + 5.4;                   // pedestal 4 + neck 1.4
       const bm = new THREE.Mesh(new THREE.SphereGeometry(br, 24, 16), BALL_MAT);
@@ -868,7 +871,9 @@ if (cgEl){
     cv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
     cv.camera.near = dist/50; cv.camera.far = dist*20; cv.camera.updateProjectionMatrix();
     const stats = document.getElementById('pg-stats');
-    if (winEscape)
+    if (tooHeavy)
+      stats.textContent = '⚠ ball too heavy to print on its breakaway neck (est. wobble ' + wobbleEst.toFixed(0) + ', limit 8 — max ≈ Ø31)';
+    else if (winEscape)
       stats.textContent = '⚠ ball escapes through the pedestal window (Ø' + winOpen.toFixed(1) + ') — ball needs ≥ ' + (winOpen+1).toFixed(0) + ' mm';
     else if (escapes)
       stats.textContent = '⚠ ball escapes: openings Ø' + opening.toFixed(1) + ' — ball needs ≥ ' + (opening+1).toFixed(0) + ' mm';

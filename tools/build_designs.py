@@ -32,7 +32,7 @@ for f in F:
 # pedestal window (mirrors gen_cage): clear central bottom struts so a wide
 # bed-anchored pedestal can rise — the O2.4 pip let the ball wobble into
 # spaghetti (field-proven).
-PED_R = min(BALL_R - 3.5, max(4.0, BALL_R * 0.45))
+PED_R = min(7.0, 0.34 * R - 3.5, BALL_R - 3.5, max(4.0, BALL_R * 0.45))
 WIN_R = PED_R + 3.5
 _zlow = V[:, 2].min() + R * 0.4
 

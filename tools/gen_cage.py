@@ -80,7 +80,9 @@ def main():
     # bottom window: clear the central bottom struts so a wide, stiff pedestal
     # can rise from the bed. A O2.4 pip cannot brace a growing ball against
     # nozzle drag (field-proven, twice) — foundation stiffness scales as d^4.
-    ped_r = min(br - 3.5, max(4.0, br * 0.45))
+    # pedestal is capped: the cage's structure is fixed — the window may only
+    # claim the central bottom region, never grow with the ball
+    ped_r = min(7.0, 0.34 * R - 3.5, br - 3.5, max(4.0, br * 0.45))
     if ped_r < 3.0:
         print(json.dumps({"ok": False, "error":
               f"ball Ø{a.ball:g} too small for a stable pedestal (needs ≥ 13 mm)"}))
