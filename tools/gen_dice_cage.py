@@ -26,7 +26,7 @@ import numpy as np
 import trimesh
 from trimesh.proximity import signed_distance
 
-DIA, FREQ, STRUT = 58.0, 4, 2.0
+DIA, FREQ, STRUT = 58.0, 4, 1.6
 WALL_T, TAB_L, TAB_W, TAB_H = 1.5, 3.0, 0.9, 1.4
 Z_FACE = 5.4                      # die bottom-face height above the bed
 

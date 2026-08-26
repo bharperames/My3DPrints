@@ -943,7 +943,7 @@ if (pdEl){
   views.push(dv);
   const DIE_MAT = new THREE.MeshStandardMaterial({color:0xc75a5a, metalness:0.05, roughness:0.55});
   function pdRebuild(){
-    const dia = 58, sub = 4, strut = 2.0;      // fixed design (mirrors generator)
+    const dia = 58, sub = 4, strut = 1.6;      // fixed design (mirrors generator)
     const geo = geodesic(sub);
     const R = dia/2, sr = strut/2, jr = sr*1.42;
     const {verts, edges} = geo;
@@ -1010,8 +1010,8 @@ if (pdEl){
     dv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
     dv.camera.near = dist/50; dv.camera.far = dist*20; dv.camera.updateProjectionMatrix();
     const stats = document.getElementById('pd-stats');
-    stats.textContent = 'Ø58 cage, 480 struts Ø2.0 · d20 Ø' + (2*dieCr).toFixed(0)
-      + ' mm (20.5 face-to-face, standard) · sliced 1h31m CLI (expect ~1¾–2 h), ~16 g';
+    stats.textContent = 'Ø58 cage, 480 struts Ø1.6 · d20 Ø' + (2*dieCr).toFixed(0)
+      + ' mm (20.5 face-to-face, standard) · sliced 1h18m CLI (expect ~1½–1¾ h), ~11 g';
     const dt = pdEl.parentElement.querySelector('.dimtag');
     if (dt) dt.textContent = 'Ø' + dia + ' · fixed';
   }
