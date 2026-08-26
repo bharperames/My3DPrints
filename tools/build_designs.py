@@ -46,14 +46,19 @@ for v in V:
 cage = trimesh.boolean.union(parts, engine="manifold")
 
 zbed = cage.bounds[0][2]
-zc = zbed + BALL_R + 3.0                       # 3 mm pip under the ball
+z_apex = zbed + 3.0
+zc = z_apex + BALL_R * np.sqrt(2)              # teardrop: 45-deg cone bottom
 ball = trimesh.creation.icosphere(subdivisions=4, radius=BALL_R)
 ball.apply_translation([0, 0, zc])
-pip = trimesh.creation.cylinder(radius=PIP_R, height=(zc - BALL_R + 0.4) - zbed,
+cone = trimesh.creation.cone(radius=BALL_R / np.sqrt(2),
+                             height=BALL_R * np.sqrt(2), sections=48)
+cone.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
+cone.apply_translation([0, 0, z_apex - cone.bounds[0][2]])
+pip = trimesh.creation.cylinder(radius=PIP_R, height=(z_apex + 1.0) - zbed,
                                 sections=24)
-pip.apply_translation([0, 0, (zbed + zc - BALL_R + 0.4) / 2])
-held = trimesh.boolean.union([ball, pip], engine="manifold")
-clearance = float((-signed_distance(cage, ball.vertices[::7])).min())
+pip.apply_translation([0, 0, (zbed + z_apex + 1.0) / 2])
+held = trimesh.boolean.union([ball, cone, pip], engine="manifold")
+clearance = float((-signed_distance(cage, held.vertices[::9])).min())
 
 cage.apply_translation([0, 0, -zbed])
 held.apply_translation([0, 0, -zbed])
@@ -215,13 +220,18 @@ def build_chained():
         parts2.append(sph)
     cage2 = trimesh.boolean.union(parts2, engine="manifold")
     zb = cage2.bounds[0][2]
-    zc2 = zb + BALL_R + 3.0
+    za = zb + 3.0
+    zc2 = za + BALL_R * np.sqrt(2)
     ball2 = trimesh.creation.icosphere(subdivisions=4, radius=BALL_R)
     ball2.apply_translation([0, 0, zc2])
-    pip2 = trimesh.creation.cylinder(radius=PIP_R, height=(zc2 - BALL_R + 0.4) - zb,
+    cone2 = trimesh.creation.cone(radius=BALL_R / np.sqrt(2),
+                                  height=BALL_R * np.sqrt(2), sections=48)
+    cone2.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]))
+    cone2.apply_translation([0, 0, za - cone2.bounds[0][2]])
+    pip2 = trimesh.creation.cylinder(radius=PIP_R, height=(za + 1.0) - zb,
                                      sections=24)
-    pip2.apply_translation([0, 0, (zb + zc2 - BALL_R + 0.4) / 2])
-    held2 = trimesh.boolean.union([ball2, pip2], engine="manifold")
+    pip2.apply_translation([0, 0, (zb + za + 1.0) / 2])
+    held2 = trimesh.boolean.union([ball2, cone2, pip2], engine="manifold")
     cage2.apply_translation([0, 0, -zb])
     held2.apply_translation([0, 0, -zb])
     TH, CU, LAT, P1 = np.radians(23.9), 21.5, -3.0, 12.5

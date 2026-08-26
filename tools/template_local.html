@@ -794,9 +794,14 @@ if (cgEl){
       group.add(m);
     }
     if (!escapes && !wontFit){
+      const yA = -R + 3;                       // teardrop apex height
       const bm = new THREE.Mesh(new THREE.SphereGeometry(br, 24, 16), BALL_MAT);
-      bm.position.y = -R + sr + br + 1.5;   // roughly on the pip inside
+      bm.position.y = yA + br*Math.SQRT2;
       group.add(bm);
+      const cn = new THREE.Mesh(new THREE.ConeGeometry(br/Math.SQRT2, br*Math.SQRT2, 32), BALL_MAT);
+      cn.rotation.x = Math.PI;                 // apex down
+      cn.position.y = yA + br*Math.SQRT2/2;
+      group.add(cn);
     }
     cv.current = group; cv.scene.add(group);
     const b2 = new THREE.Box3().setFromObject(group);
@@ -817,7 +822,7 @@ if (cgEl){
     else {
       stats.textContent = edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
       if (eLen > 16)
-        stats.textContent += ' · ⚠ ' + eLen.toFixed(0) + ' mm strut bridges — finer lattice or tree supports advised';
+        stats.textContent += ' · ⚠ ' + eLen.toFixed(0) + ' mm spans: shallow-strut edges droop/strand (proven good: 13 mm; proven fail: 22 mm) — finer lattice fixes it';
     }
     const dt = cgEl.parentElement.querySelector('.dimtag');
     if (dt) dt.textContent = 'Ø' + dia + ' · live';

@@ -52,7 +52,7 @@ class Handler(SimpleHTTPRequestHandler):
                 elif kind == "cage":
                     cd = float(q["dia"][0]); sub = int(q["subdiv"][0])
                     st = float(q["strut"][0]); ball = float(q["ball"][0])
-                    fname = f"cage-D{cd:g}-S{sub}-T{st:g}-B{ball:g}.3mf"
+                    fname = f"cage-D{cd:g}-S{sub}-T{st:g}-B{ball:g}-v2.3mf"
                     args = ["gen_cage.py", "--dia", str(cd), "--subdiv", str(sub),
                             "--strut", str(st), "--ball", str(ball)]
                 else:
