@@ -10,6 +10,7 @@ to Bambu Studio. **Harness only — `models/` (the data plane) is untracked.**
 ```
 make serve   # http://localhost:8742   (stop / open / log)
 make build   # re-run the whole pipeline (also: the page's Rebuild button)
+make test    # unit tests (tests/: generators, gates, audits, embedding)
 ```
 
 ## Architecture
@@ -25,7 +26,8 @@ Three layers:
 | `extract_meta.py` | unpacks 3MF-embedded designer photos/metadata to `models/meta/<slug>/` (never overwrites — custom covers survive) |
 | `make_glbs.py` | decimated ≤180k-tri GLB previews + `manifest.json` |
 | `build_local.py` | renders `index.html` from `template_local.html`; also the knowledge base: card analyses, materials, calibrated slice numbers, pair/supersede links |
-| `gen_chain.py` / `gen_cage.py` | on-demand parametric generators; refuse to emit until verification passes |
+| `gen_chain.py` / `gen_cage.py` / `gen_dice_cage.py` / `gen_spiral.py` | on-demand generators; refuse to emit until verification passes (gen_spiral simulates the full screw-in path with FCL) |
+| `embed_settings.py` | stamps generated 3MFs as Bambu projects with the P2S presets + outer brim baked in |
 
 **2. Server (`serve.py`)** — stdlib only; static files plus:
 `/open` (hand a model to Bambu Studio), `/notes` (print log →

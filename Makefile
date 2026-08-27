@@ -23,3 +23,7 @@ PY := $(HOME)/.claude/skills/3d-print-check/.venv/bin/python
 .PHONY: build
 build:
 	cd tools && $(PY) build_designs.py && $(PY) extract_meta.py && $(PY) make_glbs.py && $(PY) build_local.py
+
+.PHONY: test
+test:
+	$(PY) -m unittest discover -s tests
