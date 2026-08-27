@@ -201,7 +201,7 @@ PARAM_DICE = """
 <article class="card" id="card-dice_param" data-cid="dice_param">
   <div class="photo">
     <div class="view" data-models="__param_dice"></div>
-    <span class="pill pass">Fixed design · optimized</span>
+    <span class="pill pass">Printed · field-proven</span>
     <div class="dimtag"></div>
   </div>
   <div class="body">
@@ -220,7 +220,8 @@ PARAM_DICE = """
     than the first cut. The die prints face-down on a triangular sleeve standing
     on its own printed-in brim disc; three tapered anchors meet the face out at
     its corners, 2.2 mm clear of the numeral, so the landing face stays readable.
-    Print without supports.</p>
+    <b>Printed successfully in PLA</b> — outer brim on (5 mm, 0.1 gap, baked into
+    the 3MF), supports off.</p>
     <p class="specline" id="pd-stats"></p>
     <div class="actions">
       <button class="print" id="pd-print">Generate + open in Bambu Studio</button>
