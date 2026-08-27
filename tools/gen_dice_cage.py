@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Dice cage: a standard-size d20 captive inside a geodesic shaker sphere.
+"""Dice orb: a standard-size d20 captive inside a rib-and-ring shaker sphere.
 
-Fixed design — no user parameters. The optimizer picked Ø58 / frequency-4 /
-Ø2.0 struts because the seat rule (die face inradius = opening inradius +
-strut radius + 1.2 mm, so a landed face always rests level across the floor
-struts) then yields a die of 20.5 mm face-to-face — a standard d20 — with
-the cage 2.8x the die for shaking room, spans 9.4 mm (field envelope: <=16,
-slenderness 4.7 vs limit 8).
+Fixed design, no user parameters. The triangle-lattice version proved both
+too dense to read the die and unprintable without supports at see-through
+strut sizes (field: Ø1.6 struts stranded; Ø2.2 lattice is opaque). This
+topology solves both: 14 meridian ribs + latitude rings every 25°, all at
+the only field-proven strut Ø (2.2), with every unsupported arc <= 13 mm —
+the span the Ø50 cage printed clean at. Openings are ~11 x 10 mm windows
+(die min width 20.5 mm: captive), and the cage stands on a full bed-contact
+ring instead of lattice fingertips.
 
-Die support: a thin triangular sleeve rises from the bed under the die's
-bottom-face perimeter, stopping 1.4 mm short of the face; three 3.0 x 0.9 mm
-breakaway tabs at the edge midpoints carry the face. The numeral on the
-landing face (the "1") stays untouched, and rim sag while bridging is
-self-limited to 1.4 mm by the wall below. Faces engraved 1-20, antipodal
-pairs summing 21; 6 and 9 carry underlines.
+Die: standard d20 (13.5 mm edges, 20.4 mm face-to-face), faces engraved
+1-20, antipodal pairs summing 21, 6/9 underlined. It prints face-down on a
+thin triangular sleeve under the face perimeter; three 3.0 x 0.9 mm tabs at
+the edge midpoints break away with a twist, and rim sag while bridging is
+self-limited by the wall 1.4 mm below. The sleeve exits through the polar
+window after snap-off.
 
 Usage: gen_dice_cage.py --out FILE.3mf
 """
@@ -26,45 +28,11 @@ import numpy as np
 import trimesh
 from trimesh.proximity import signed_distance
 
-DIA, FREQ, STRUT = 58.0, 4, 1.6
+DIA, STRUT, RIBS = 58.0, 2.2, 14
+A_D = 13.5                        # standard d20 edge length
 WALL_T, TAB_L, TAB_W, TAB_H = 1.5, 3.0, 0.9, 1.4
 Z_FACE = 5.4                      # die bottom-face height above the bed
-
-
-def geodesic(nu, R):
-    ico = trimesh.creation.icosahedron()
-    IV = ico.vertices / np.linalg.norm(ico.vertices, axis=1, keepdims=True)
-    verts, index = [], {}
-
-    def vid(p):
-        p = p / np.linalg.norm(p)
-        key = tuple(np.round(p, 6))
-        if key not in index:
-            index[key] = len(verts)
-            verts.append(p)
-        return index[key]
-
-    edges = set()
-    F = []
-    for fa in ico.faces:
-        A, B, C = IV[fa[0]], IV[fa[1]], IV[fa[2]]
-        grid = {}
-        for i in range(nu + 1):
-            for j in range(nu + 1 - i):
-                k = nu - i - j
-                grid[(i, j)] = vid((k * A + i * B + j * C) / nu)
-        for i in range(nu):
-            for j in range(nu - i):
-                a1, b1, c1 = grid[(i, j)], grid[(i + 1, j)], grid[(i, j + 1)]
-                F.append((a1, b1, c1))
-                for e in ((a1, b1), (b1, c1), (c1, a1)):
-                    edges.add((min(e), max(e)))
-    V = np.array(verts) * R
-    F = np.array(F)
-    n0 = np.cross(V[F[0][1]] - V[F[0][0]], V[F[0][2]] - V[F[0][0]])
-    V = trimesh.transform_points(
-        V, trimesh.geometry.align_vectors(n0 / np.linalg.norm(n0), [0, 0, -1]))
-    return V, F, edges
+SPAN_LIMIT = 13.5                 # proven-clean arc (13 mm printed, 17 failed)
 
 
 def numeral_mesh(text, cap_height, depth):
@@ -102,6 +70,25 @@ def numeral_mesh(text, cap_height, depth):
     return m
 
 
+def tube(points, sr, parts):
+    """Polyline of cylinders welded by knot spheres."""
+    for i in range(len(points) - 1):
+        P, Q = points[i], points[i + 1]
+        d = Q - P
+        L = np.linalg.norm(d)
+        if L < 1e-6:
+            continue
+        c = trimesh.creation.cylinder(radius=sr, height=L, sections=13)
+        c.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d / L))
+        c.apply_translation((P + Q) / 2)
+        parts.append(c)
+        # slightly proud of the cylinder wall: an exact-radius sphere is
+        # tangent along near-collinear segments and welds nonmanifold
+        s = trimesh.creation.icosphere(subdivisions=1, radius=sr * 1.06)
+        s.apply_translation(P)
+        parts.append(s)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
@@ -109,59 +96,83 @@ def main():
     R, sr = DIA / 2, STRUT / 2
     jr = sr * 1.42
 
-    V, F, edges = geodesic(FREQ, R)
-    e_len = float(max(np.linalg.norm(V[p] - V[q]) for p, q in edges))
-    assert e_len <= 16.0 and e_len / STRUT <= 8.0, "envelope regression"
+    # standard die, fixed directly (no lattice to nest in any more)
+    face_in = A_D / (2 * np.sqrt(3))
+    die_cr = 0.9511 * A_D
+    die_f2f = 2 * face_in * 2.618
 
-    # seat rule: die face bridges any floor opening and rests on its struts
-    o_r = e_len / (2 * np.sqrt(3)) - sr
-    face_in = o_r + sr + 1.2
-    a_d = face_in * 2 * np.sqrt(3)             # d20 face edge
-    die_cr = 0.9511 * a_d                      # circumradius
-    die_f2f = 2 * face_in * 2.618              # in-sphere (min width)
-    assert die_cr <= R - sr - 3.5, "die does not fit"
-
-    # window for the support sleeve (capped: the cage structure is inviolable)
-    ci = face_in - 1.6                 # sleeve wall centerline inradius
-    win_r = 2 * (ci + WALL_T / 2) + 1.8
-    assert win_r <= 0.34 * R, "sleeve window over structural cap"
-    zlow = V[:, 2].min() + R * 0.4
-
-    def seg_ax(p, q):
-        a2, b2 = V[p][:2], V[q][:2]
-        d2 = b2 - a2
-        L2 = float(d2 @ d2)
-        t2 = 0.0 if L2 == 0 else float(np.clip(-(a2 @ d2) / L2, 0, 1))
-        return float(np.linalg.norm(a2 + t2 * d2))
-
-    edges = {(p, q) for (p, q) in edges
-             if not (max(V[p][2], V[q][2]) < zlow and seg_ax(p, q) < win_r)}
-    low_d = [seg_ax(p, q) for (p, q) in edges if max(V[p][2], V[q][2]) < zlow + 4]
-    win_open = 2 * (min(low_d) - sr) if low_d else 2 * win_r
-    if die_f2f < win_open + 1.0:
+    # polar window sized to pass the snapped-off sleeve with FCL margin
+    ci = face_in - 1.6
+    tube_outer_cr = 2 * (ci + WALL_T / 2)
+    win_r = tube_outer_cr + sr + 0.9           # rim-ring centerline radius
+    win_open = 2 * (win_r - sr)
+    if not win_open + 1.0 <= die_f2f:
         print(json.dumps({"ok": False, "error":
-              f"die (min width {die_f2f:.0f}) could escape the sleeve window "
-              f"(Ø{win_open:.0f})"}))
+              f"die (min width {die_f2f:.1f}) could escape the polar window "
+              f"(Ø{win_open:.1f})"}))
+        return 1
+
+    # graticule: rim ring at the window, rings every 25°, ribs to a pole cap
+    lat_s = -np.degrees(np.arccos(win_r / R))  # south rim latitude
+    ring_lats = [lat_s, -50, -25, 0, 25, 50, 75]
+    arcs = {"rib max": np.radians(max(np.diff(ring_lats + [90]))) * R,
+            "ring max": 2 * np.pi * R / RIBS}
+    span = max(arcs.values())
+    if span > SPAN_LIMIT:
+        print(json.dumps({"ok": False, "error":
+              f"unsupported arc {span:.1f} mm over the proven span "
+              f"{SPAN_LIMIT} (field: 13 printed clean, 17 stranded)"}))
+        return 1
+    # captivity: worst window is the equator slot between ribs
+    slot_w = 2 * np.pi * R / RIBS - STRUT
+    slot_h = np.radians(25) * R - STRUT
+    if not max(slot_w, slot_h) + 1.0 <= die_f2f:
+        print(json.dumps({"ok": False, "error": "die could escape a window"}))
         return 1
 
     parts = []
-    for p, q in edges:
-        P, Q = V[p], V[q]
-        d = Q - P
-        L = np.linalg.norm(d)
-        cyl = trimesh.creation.cylinder(radius=sr, height=L, sections=21)
-        cyl.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d / L))
-        cyl.apply_translation((P + Q) / 2)
-        parts.append(cyl)
-    for i in {i for e in edges for i in e}:
-        sph = trimesh.creation.icosphere(subdivisions=2, radius=jr)
-        sph.apply_translation(V[i])
-        parts.append(sph)
+    # rings are lathed: diamond section (45° underside — round horizontal
+    # struts loop strands off their bellies, field-observed), except the rim
+    # ring which needs a flat bottom on the bed
+    hw = 1.4                                   # diamond half-diagonal
+    for lat in ring_lats:
+        rr = R * np.cos(np.radians(lat))
+        z = R * np.sin(np.radians(lat))
+        if lat == lat_s:
+            # flat bottom below every sphere on this latitude (crossing
+            # joints reach z - jr) so the print starts on a full circle,
+            # not 14 floating dots
+            prof = [(rr - sr, z - jr - 0.25), (rr + sr, z - jr - 0.25),
+                    (rr + sr, z + sr), (rr - sr, z + sr)]
+        else:
+            prof = [(rr - hw, z), (rr, z - hw), (rr + hw, z), (rr, z + hw)]
+        ring = trimesh.creation.revolve(np.array(prof + prof[:1]),
+                                        sections=96)
+        parts.append(ring)
+    for k in range(RIBS):
+        phi = 2 * np.pi * k / RIBS
+        lats = np.radians(np.arange(lat_s, 88.0, 4.0))
+        pts = np.column_stack([R * np.cos(lats) * np.cos(phi),
+                               R * np.cos(lats) * np.sin(phi),
+                               R * np.sin(lats)])
+        tube(pts, sr, parts)
+        for lat in ring_lats:                  # crossing joints
+            s = trimesh.creation.icosphere(subdivisions=1, radius=jr)
+            s.apply_translation([R * np.cos(np.radians(lat)) * np.cos(phi),
+                                 R * np.cos(np.radians(lat)) * np.sin(phi),
+                                 R * np.sin(np.radians(lat))])
+            parts.append(s)
+    cap = trimesh.creation.icosphere(subdivisions=2, radius=jr * 1.6)
+    cap.apply_translation([0, 0, R])
+    parts.append(cap)
     cage = trimesh.boolean.union(parts, engine="manifold")
-    if not cage.is_watertight:
-        cage.merge_vertices()
-        cage.update_faces(cage.nondegenerate_faces())
-        cage.process(validate=True)
+    # quantize to export precision, then drop the duplicate faces that
+    # coincident weld surfaces collapse into on the 3MF round-trip
+    cage.vertices = cage.vertices.round(4)
+    cage.merge_vertices(digits_vertex=5)
+    cage.update_faces(cage.unique_faces())
+    cage.update_faces(cage.nondegenerate_faces())
+    cage.process(validate=True)
     zbed = cage.bounds[0][2]
 
     # the d20, face-down, numerals engraved (antipodal faces sum to 21)
@@ -264,12 +275,11 @@ def main():
     ext = chk.bounds[1] - chk.bounds[0]
     vol = (cage.volume + held.volume) / 1000.0
     print(json.dumps({"ok": True, "file": os.path.basename(a.out),
-                      "dia": DIA, "freq": FREQ, "strut": STRUT,
-                      "span_mm": round(e_len, 1), "die_edge": round(a_d, 1),
+                      "dia": DIA, "ribs": RIBS, "strut": STRUT,
+                      "span_mm": round(span, 1), "die_edge": round(A_D, 1),
                       "die_dia": round(2 * die_cr, 1),
                       "die_f2f": round(die_f2f, 1),
-                      "face_in": round(face_in, 1),
-                      "opening": round(2 * o_r, 1),
+                      "window_mm": [round(slot_w, 1), round(slot_h, 1)],
                       "win_open": round(win_open, 1),
                       "tab_mm2": round(3 * TAB_L * TAB_W, 1),
                       "wobble": wob, "clearance": round(d, 2),

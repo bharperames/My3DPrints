@@ -206,15 +206,18 @@ PARAM_DICE = """
   </div>
   <div class="body">
     <p class="eyebrow">Designed here · Claude · fixed geometry</p>
-    <h3>Dice Cage <span class="mat">PLA</span></h3>
-    <p class="principle">A d20 inside the d20: shake the Ø58 icosahedral cage and the
-    standard-size die (20.5 mm face to face) lands readable in the spherical bowl. No
-    knobs — the seat rule fixes everything: die face inradius = lattice opening +
-    strut radius + 1.2 mm, and only Ø58/ν4/Ø2.0 satisfies it at a standard d20 with
-    ~3× shaking room. Faces engraved 1–20 (antipodal pairs sum to 21, 6 and 9
-    underlined). The die prints face-down on a triangular breakaway sleeve under the
-    face perimeter — the numeral on the landing face stays clean, and three 8 mm²
-    edge tabs snap with a twist. Unvalidated until printed.</p>
+    <h3>Dice Orb <span class="mat">PLA</span></h3>
+    <p class="principle">A standard d20 (20.4 mm face to face) captive in a Ø58
+    rib-and-ring shaker sphere. The triangle lattice proved unreadable and, at
+    see-through strut sizes, unprintable (field: Ø1.6 struts stranded) — this
+    graticule is 14 meridian ribs + latitude rings every 25°, all Ø2.2 (the only
+    field-proven strut), every unsupported arc ≤ 13 mm (the proven span), windows
+    ~11×10 mm so the die reads through the cage. Rings have a diamond section —
+    45° undersides, no drooped-loop strands off horizontal round struts — and the
+    orb stands on a full bed-contact circle. Die faces engraved 1–20 (antipodal
+    pairs sum 21, 6/9 underlined); prints face-down on the triangular breakaway
+    sleeve, numeral on the landing face untouched. Print without supports.
+    Unvalidated until printed.</p>
     <p class="specline" id="pd-stats"></p>
     <div class="actions">
       <button class="print" id="pd-print">Generate + open in Bambu Studio</button>
