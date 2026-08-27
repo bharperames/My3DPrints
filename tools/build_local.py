@@ -208,17 +208,19 @@ PARAM_DICE = """
     <p class="eyebrow">Designed here · Claude · fixed geometry</p>
     <h3>Dice Orb <span class="mat">PLA</span></h3>
     <p class="principle">A standard d20 (20.4 mm face to face) captive in a Ø58
-    rib-and-ring shaker sphere. The triangle lattice proved unreadable and, at
-    see-through strut sizes, unprintable (field: Ø1.6 struts stranded) — this
-    graticule is 14 meridian ribs + latitude rings every 25°, all Ø2.2 (the only
-    field-proven strut), every unsupported arc ≤ 13 mm (the proven span), windows
-    ~11×10 mm so the die reads through the cage. Rings have a diamond section —
-    45° undersides, no drooped-loop strands off horizontal round struts — and the
-    orb stands on a full bed-contact circle. Die faces engraved 1–20 (antipodal
-    pairs sum 21, 6/9 underlined); prints face-down on the triangular breakaway
-    sleeve, numeral on the landing face untouched; the sleeve stands on an
-    integral Ø12 base disc (a built-in brim that snaps off with it). Print without supports.
-    Unvalidated until printed.</p>
+    rib-and-ring shaker orb, open at both poles. 14 meridian ribs + 7 latitude
+    rings, all Ø2.2 (the only field-proven strut), every unsupported arc ≤ 13 mm
+    (the proven span), diamond-section rings so nothing droops loops off a
+    horizontal belly. Alternate ribs stop a ring short of the north rim, so the
+    top ends in an open aperture instead of a converging cap — and three chords
+    across it form a seat the size of a die face: peer straight down at the die's
+    upward face, or invert the orb and the die settles into it. Numerals are set
+    in a grotesque whose “1” is a bare stem (no base serif), sized to each face's
+    own triangle at a 4.3 mm cap with 0.91 mm strokes — 28% larger and 44% fatter
+    than the first cut. The die prints face-down on a triangular sleeve standing
+    on its own printed-in brim disc; three tapered anchors meet the face out at
+    its corners, 2.2 mm clear of the numeral, so the landing face stays readable.
+    Print without supports.</p>
     <p class="specline" id="pd-stats"></p>
     <div class="actions">
       <button class="print" id="pd-print">Generate + open in Bambu Studio</button>
