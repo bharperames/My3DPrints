@@ -237,6 +237,11 @@ def main():
 
     wall = trimesh.creation.extrude_polygon(tri_ring(WALL_T), Z_FACE - TAB_H)
     wall.apply_translation([0, 0, zbed])
+    # integral brim: a thin base disc under the whole sleeve — snaps off and
+    # exits with it (Ø must clear the rim ring by 0.8 and pass the window)
+    base_r = win_r - sr - 0.9
+    base = trimesh.creation.cylinder(radius=base_r, height=0.6, sections=64)
+    base.apply_translation([0, 0, zbed + 0.3])
     corners = [cen + (lv - cen) * (ci / face_in) for lv in lowv]
     tabs = []
     for i in range(3):
@@ -249,7 +254,8 @@ def main():
         tab.apply_translation([mid[0], mid[1],
                                zbed + Z_FACE - TAB_H + (TAB_H + 0.4) / 2])
         tabs.append(tab)
-    held = trimesh.boolean.union([engraved, wall] + tabs, engine="manifold")
+    held = trimesh.boolean.union([engraved, wall, base] + tabs,
+                                 engine="manifold")
 
     from mech_audit import wobble_index
     wob, wz = wobble_index(held)

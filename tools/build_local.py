@@ -216,7 +216,8 @@ PARAM_DICE = """
     45° undersides, no drooped-loop strands off horizontal round struts — and the
     orb stands on a full bed-contact circle. Die faces engraved 1–20 (antipodal
     pairs sum 21, 6/9 underlined); prints face-down on the triangular breakaway
-    sleeve, numeral on the landing face untouched. Print without supports.
+    sleeve, numeral on the landing face untouched; the sleeve stands on an
+    integral Ø12 base disc (a built-in brim that snaps off with it). Print without supports.
     Unvalidated until printed.</p>
     <p class="specline" id="pd-stats"></p>
     <div class="actions">
