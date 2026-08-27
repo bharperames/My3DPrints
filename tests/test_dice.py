@@ -145,13 +145,16 @@ class TestGeometry(unittest.TestCase):
 
 
 class TestPrimitives(unittest.TestCase):
-    def test_tube_polyline_is_solid(self):
-        pts = np.array([[0, 0, 0], [10, 0, 0], [10, 10, 0]], float)
-        parts = []
-        G.tube(pts, 1.0, parts)
-        self.assertEqual(len(parts), 4)      # 2 cylinders + 2 knot spheres
-        self.assertTrue(trimesh.boolean.union(
-            parts, engine="manifold").is_watertight)
+    def test_rib_is_one_smooth_capped_arc(self):
+        m = G.rib_tube(29.0, 1.1, -73.8, 77.3, 0.0)
+        self.assertTrue(m.is_watertight)
+        v = m.vertices
+        lat = np.degrees(np.arctan2(v[:, 2], np.hypot(v[:, 0], v[:, 1])))
+        self.assertAlmostEqual(lat.min(), -73.8, delta=1.5)
+        self.assertAlmostEqual(lat.max(), 77.3, delta=1.5)
+        # every point sits on the sphere: no beads standing proud of it
+        rad = np.linalg.norm(v, axis=1)
+        self.assertLess(rad.max(), 29.0 + 1.1 + 0.02)
 
     def test_taper_narrows_upward(self):
         m = G.taper(np.array([5.0, 0.0]), np.array([1.0, 0.0]), 0.0, 2.0,

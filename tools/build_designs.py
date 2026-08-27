@@ -5,6 +5,7 @@ Both are verified after building: watertightness through 3MF round-trip,
 captivity/threading, and mating clearances. Requires manifold3d + python-fcl.
 """
 import os
+import sys
 import numpy as np
 import trimesh
 from trimesh.proximity import signed_distance
@@ -340,3 +341,17 @@ def build_chained():
 
 
 build_chained()
+
+
+def build_dice_orb():
+    """The dice orb is fully generated; keep it fresh for the GLB preview."""
+    import subprocess
+    out = os.path.join(M, "custom", "dice-cage.3mf")
+    r = subprocess.run([sys.executable, os.path.join(os.path.dirname(
+        os.path.abspath(__file__)), "gen_dice_cage.py"), "--out", out],
+        capture_output=True, text=True)
+    line = (r.stdout.strip().splitlines() or ["(no output)"])[-1]
+    print(f"dice-orb: {line[:150]}")
+
+
+build_dice_orb()

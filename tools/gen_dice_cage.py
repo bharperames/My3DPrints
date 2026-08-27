@@ -188,23 +188,25 @@ def numeral_mesh(shape, depth):
         [trimesh.creation.extrude_polygon(g, depth) for g in geoms])
 
 
-def tube(points, sr, parts):
-    """Polyline of cylinders welded by knot spheres."""
-    for i in range(len(points) - 1):
-        P, Q = points[i], points[i + 1]
-        d = Q - P
-        L = np.linalg.norm(d)
-        if L < 1e-6:
-            continue
-        c = trimesh.creation.cylinder(radius=sr, height=L, sections=13)
-        c.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], d / L))
-        c.apply_translation((P + Q) / 2)
-        parts.append(c)
-        # slightly proud of the cylinder wall: an exact-radius sphere is
-        # tangent along near-collinear segments and welds nonmanifold
-        s = trimesh.creation.icosphere(subdivisions=1, radius=sr * 1.14)
-        s.apply_translation(P)
-        parts.append(s)
+def rib_tube(R, sr, lat0, lat1, phi, ring=14):
+    """A meridian rib as one smooth capped torus segment.
+
+    Chaining short cylinders needs a knot sphere at every joint to close the
+    union, and a sphere proud enough to weld reliably reads as a beaded
+    chain on the print. A single revolve has no joints to hide.
+    """
+    t = np.linspace(0, 2 * np.pi, ring, endpoint=False)
+    prof = np.column_stack([R + sr * np.cos(t), sr * np.sin(t)])
+    prof = np.vstack([prof, prof[:1]])
+    arc = lat1 - lat0
+    m = trimesh.creation.revolve(prof, angle=np.radians(arc), cap=True,
+                                 sections=max(24, int(round(arc / 2.5))))
+    m.apply_transform(trimesh.transformations.rotation_matrix(
+        np.pi / 2, [1, 0, 0]))
+    m.apply_transform(trimesh.transformations.rotation_matrix(
+        -np.radians(lat0), [0, 1, 0]))
+    m.apply_transform(trimesh.transformations.rotation_matrix(phi, [0, 0, 1]))
+    return m
 
 
 def taper(center, axis, z_lo, z_hi, length, w_lo, w_hi):
@@ -303,11 +305,7 @@ def main():
         # alternate ribs stop one ring short: 7 meeting the north rim keeps
         # the top open, where 14 would converge into a solid collar
         top_lat = lat_n if k % 2 == 0 else ring_lats[-2]
-        lats = np.radians(np.append(np.arange(lat_s, top_lat, 4.0), top_lat))
-        pts = np.column_stack([R * np.cos(lats) * np.cos(phi),
-                               R * np.cos(lats) * np.sin(phi),
-                               R * np.sin(lats)])
-        tube(pts, sr, parts)
+        parts.append(rib_tube(R, sr, lat_s, top_lat, phi))
         for lat in ring_lats:                  # crossing joints
             if lat > top_lat + 1e-6:
                 continue

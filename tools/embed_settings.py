@@ -27,6 +27,12 @@ PROCESS = "0.20mm Standard @BBL P2S"
 FILAMENT = "Bambu PLA Basic @BBL P2S"
 META_KEYS = {"type", "name", "inherits", "from", "instantiation",
              "setting_id", "filament_id", "info_file"}
+# Studio treats `different_settings_to_system` as the list of keys that
+# really differ from the named system preset; anything not listed is reset
+# to the preset value on load. Overrides must be declared there or the GUI
+# silently drops them (the CLI applies the raw config either way).
+PROCESS_OVERRIDES = ("brim_type", "brim_width", "brim_object_gap",
+                     "enable_support")
 OVERRIDES = {
     "curr_bed_type": "Textured PEI Plate",
     "brim_type": "outer_only",
@@ -67,6 +73,15 @@ def embed(path, overrides=None):
     cfg = base_config()
     cfg.update(OVERRIDES)
     cfg.update(overrides or {})
+    dsts = list(cfg.get("different_settings_to_system") or [])
+    while len(dsts) < 3:
+        dsts.append("")
+    declared = [k for k in str(dsts[0]).split(";") if k]
+    for k in list(PROCESS_OVERRIDES) + [k for k in (overrides or {})]:
+        if k not in declared and k in cfg:
+            declared.append(k)
+    dsts[0] = ";".join(declared)
+    cfg["different_settings_to_system"] = dsts
     version = cfg.get("version", "02.02.02.56")
     with zipfile.ZipFile(path) as z:
         items = {n: z.read(n) for n in z.namelist()}

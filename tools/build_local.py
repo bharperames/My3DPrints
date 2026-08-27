@@ -200,9 +200,9 @@ cards.insert(next(i for i, c in enumerate(cards) if "held-sphere-chained" in c) 
 PARAM_DICE = """
 <article class="card" id="card-dice_param" data-cid="dice_param">
   <div class="photo">
-    <div class="view" data-models="__param_dice"></div>
+    <div class="view" data-models="dice_param"></div>
     <span class="pill pass">Printed · field-proven</span>
-    <div class="dimtag"></div>
+    <div class="dimtag">Ø58 · fixed</div>
   </div>
   <div class="body">
     <p class="eyebrow">Designed here · Claude · fixed geometry</p>
@@ -222,7 +222,7 @@ PARAM_DICE = """
     its corners, 2.2 mm clear of the numeral, so the landing face stays readable.
     <b>Printed successfully in PLA</b> — outer brim on (5 mm, 0.1 gap, baked into
     the 3MF), supports off.</p>
-    <p class="specline" id="pd-stats"></p>
+    <p class="specline" id="pd-stats">Ø58 orb, 14 ribs + 7 rings Ø2.2 · open at both poles · numerals 4.3 mm, 0.91 mm strokes · d20 20.4 mm face-to-face (standard) · sliced 57m CLI (expect ~1h10m), ~11 g</p>
     <div class="actions">
       <button class="print" id="pd-print">Generate + open in Bambu Studio</button>
       <a class="savelink" id="pd-dl" href="#">generate &amp; download the verified 3MF</a>
@@ -231,6 +231,9 @@ PARAM_DICE = """
   </div>
 </article>"""
 cards.insert(next(i for i, c in enumerate(cards) if 'card-chain_param' in c) + 1, PARAM_DICE)
+# the dice orb has no parameters: its viewport renders the generated file
+# itself, so preview and download can never drift apart
+models_js['dice_param'] = [dict(manifest['dice_orb'], file='custom/dice-cage.3mf')]
 
 PARAM_CAGE = """
 <article class="card" id="card-cage_param" data-cid="cage_param">
