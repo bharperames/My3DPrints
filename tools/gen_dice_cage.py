@@ -270,6 +270,8 @@ def main():
     sc.add_geometry(held, geom_name="die")
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     sc.export(a.out)
+    from embed_settings import embed
+    embed(a.out)                       # P2S presets + outer brim baked in
     chk = trimesh.load(a.out, force="scene")
     wt = all(g.is_watertight for g in chk.geometry.values())
     ext = chk.bounds[1] - chk.bounds[0]
