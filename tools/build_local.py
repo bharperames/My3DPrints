@@ -300,7 +300,7 @@ MONT_CARDS = """
     actual bolt is screwed into the generated thread and must find a
     collision-free rotation window at every depth: it does, 18–21°, the same
     window the original nut gives, advancing 11.66 mm per turn. A waist groove
-    marks the halves and gives fingers purchase. 43 min, 26 g, no brim, no slicer
+    marks the halves and gives fingers purchase, and the hex ends carry the same chamfer the original nut has — the square-edged prism read as unfinished. 43 min, 26 g, no brim, no slicer
     warnings. Unvalidated until printed.</p>
     <p class="specline">hex across corners 57.1 mm · 42 mm tall · through-threaded,
     chamfered both ends · ~19 mm engagement per bolt (1.6 turns) · no brim</p>
@@ -315,7 +315,7 @@ MONT_CARDS = """
   <div class="photo">
     <div class="view" data-models="mont_plate"></div>
     <span class="pill warn">Designed · unprinted</span>
-    <div class="dimtag">141 × 205 mm</div>
+    <div class="dimtag">141 × 205 × 33 mm</div>
   </div>
   <div class="body">
     <p class="eyebrow">Designed here · Claude · fits the original set</p>
@@ -325,13 +325,13 @@ MONT_CARDS = """
     to play on. Sockets are blind — bolts seat against a 5 mm floor instead of
     passing through and fouling the table — and each is cut with the same cast
     of the original nut's bore, chamfered at the mouth so a bolt starts without
-    hunting. 20 mm of thread engagement, about 1.7 turns. Verified the same way
+    hunting. 27.7 mm of thread engagement — 2.4 turns, a full rotation deeper than the first cut, which was thin for a toy that gets levered on. Each socket lip carries the same chamfer the designer's nut has on its hex ends. Verified the same way
     as the coupler: the designer's real bolt screws into a socket with an 18–21°
     free window advancing 11.67 mm per turn. Prints flat with no supports and no
     slicer warnings — every socket wall is vertical and the thread's overhangs
     are the ones the original nut already prints. 2 h 50 m, 127 g, no brim.
     Unvalidated until printed.</p>
-    <p class="specline">141 × 205 × 21 mm · 6 sockets, 64 mm pitch · 15 mm bosses
+    <p class="specline">141 × 205 × 33 mm · 6 sockets, 64 mm pitch · 27 mm bosses
     on a 6 mm base · 289 cm² bed contact, rounded corners — no brim</p>
     <div class="actions">
       <button class="print" id="mp-print">Generate + open in Bambu Studio</button>

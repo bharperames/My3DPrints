@@ -43,6 +43,7 @@ CHAMFER = 2.2
 # the source, and reused here so the coupler reads as the same family of
 # part rather than a raw prism with square edges.
 FACE_R, CHAM_H = 22.56, 5.26
+BOSS_CHAM = 2.5      # radial chamfer on each socket lip
 
 
 def source_parts():
@@ -151,8 +152,11 @@ def build_double_nut(nut, height=42.0, lead=LEAD):
     return body.difference(cut, engine="manifold")
 
 
-def build_plate(nut, cols=2, rows=3, pitch=64.0, base=6.0, boss=15.0,
+def build_plate(nut, cols=2, rows=3, pitch=64.0, base=6.0, boss=15.0 + LEAD,
                 floor=5.0):
+    # boss height carries one more full turn of thread than the first cut:
+    # 16 mm of socket was 1.4 turns, which is thin for a toy that gets
+    # levered on. One lead deeper makes it 2.4.
     socket = boss + base - floor
     xs = (np.arange(cols) - (cols - 1) / 2) * pitch
     ys = (np.arange(rows) - (rows - 1) / 2) * pitch
@@ -163,9 +167,17 @@ def build_plate(nut, cols=2, rows=3, pitch=64.0, base=6.0, boss=15.0,
     parts = [plate]
     for x in xs:
         for y in ys:
-            b = trimesh.creation.cylinder(radius=BORE_ROOT + 4.0,
-                                          height=boss, sections=96)
-            b.apply_translation([x, y, base + boss / 2])
+            # a revolve, not a cylinder, so the boss can carry the same
+            # chamfered lip the source nut has — a square rim is what reads
+            # as unfinished
+            br = BORE_ROOT + 4.0
+            slope = (HEX_CR - FACE_R) / CHAM_H          # the nut's own angle
+            cz = BOSS_CHAM / slope
+            prof = np.array([(1.0, base), (br, base), (br, base + boss - cz),
+                             (br - BOSS_CHAM, base + boss),
+                             (1.0, base + boss), (1.0, base)])
+            b = trimesh.creation.revolve(prof, sections=128)
+            b.apply_translation([x, y, 0])
             parts.append(b)
     solid = trimesh.boolean.union(parts, engine="manifold")
     top = base + boss
@@ -179,6 +191,22 @@ def build_plate(nut, cols=2, rows=3, pitch=64.0, base=6.0, boss=15.0,
             cuts += [p, ch]
     return solid.difference(trimesh.boolean.union(cuts, engine="manifold"),
                             engine="manifold"), (w, d, base + boss)
+
+
+def prep_for_export(m):
+    """3MF stores coordinates to finite precision, so surfaces that meet
+    tangentially come back as duplicate faces and read non-manifold. Quantise
+    to that precision and drop the duplicates — but keep the original if the
+    pass does not actually help, since a coarse vertex merge can weld a fine
+    chamfer's corners and break a solid that was sound.
+    """
+    q = m.copy()
+    q.vertices = q.vertices.round(4)
+    q.merge_vertices(digits_vertex=5)
+    q.update_faces(q.unique_faces())
+    q.update_faces(q.nondegenerate_faces())
+    q.process(validate=True)
+    return q if q.is_watertight else m
 
 
 def main():
@@ -197,9 +225,11 @@ def main():
     else:
         m, (w, d, h) = build_plate(nut)
         rep.update(plate_mm=[round(w + 12, 1), round(d + 12, 1), round(h, 1)],
-                   socket_depth=16.0, floor_mm=5.0,
+                   socket_depth=round(6.0 + (15.0 + LEAD) - 5.0, 1),
+                   socket_turns=round((6.0 + (15.0 + LEAD) - 5.0) / LEAD, 2),
+                   floor_mm=5.0,
                    sockets=6, pitch_mm=64.0)
-        depths = [6.0, 9.0, 12.0, 15.0]
+        depths = [8.0, 13.0, 18.0, 23.0]
         probe, at = m, (-32.0, -64.0)      # a real socket, not the origin
     # Only repair what is broken. An unconditional merge_vertices welds the
     # chamfer revolve's near-coincident vertices near the hex corners and
@@ -210,7 +240,7 @@ def main():
         m.update_faces(m.nondegenerate_faces())
         m.process(validate=True)
     m.apply_translation([0, 0, -m.bounds[0][2]])      # stand it on the bed
-    rep["watertight"] = bool(m.is_watertight)
+    m = prep_for_export(m)
     rep["bodies"] = int(len(m.split(only_watertight=False)))
     lead, windows = screw_test(probe, shank, depths, at=at)
     if lead is None:
@@ -231,21 +261,26 @@ def main():
         rep["bed_mm2"] = round(sum(p.area for p in p2.polygons_full))
     rep["volume_cm3"] = round(float(m.volume) / 1000, 1)
     rep["est_g"] = round(float(m.volume) / 1000 * 1.24, 1)
-    ok = rep["watertight"] and rep["bodies"] == 1
+    ok = rep["bodies"] == 1
     if a.out and ok:
         os.makedirs(os.path.dirname(a.out), exist_ok=True)
         sc = trimesh.Scene()
         sc.add_geometry(m, geom_name=a.part.replace("-", "_"))
         sc.export(a.out)
         from embed_settings import embed
-        # the plate already lands ~290 cm2 on the plate with rounded
-        # corners; a brim there is 700 mm of skirt to peel for nothing.
-        # The coupler's footprint is one small hex, so it keeps its brim.
         # neither part wants a brim: both land a large flat footprint
-        # (the coupler a 11 cm2 hex, the plate ~290 cm2) and the skirt is
+        # (the coupler an 11 cm2 hex, the plate ~290 cm2) and the skirt is
         # only cleanup — field-reported
         embed(a.out, brim=False)
+        # the honest check is the exported file, not the mesh in memory:
+        # 3MF precision collapses tangent surfaces into duplicate faces
+        chk = trimesh.load(a.out, force="scene")
+        rep["watertight"] = all(g.is_watertight
+                                for g in chk.geometry.values())
+        ok = ok and rep["watertight"]
         rep["file"] = os.path.basename(a.out)
+    else:
+        rep["watertight"] = bool(m.is_watertight)
     print(json.dumps({"ok": ok, **rep}))
     return 0 if ok else 1
 
