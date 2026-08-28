@@ -32,6 +32,52 @@ class TestBedPlacement(unittest.TestCase):
                                    msg=f"{fn} does not sit on the bed")
 
 
+class TestExportedFilesAreCleanByConstruction(unittest.TestCase):
+    """No quantise-and-dedupe pass: the geometry has to come out manifold.
+
+    Both generators used to repair the mesh on the way out, and both repairs
+    were hiding a real defect — a socket lip chamfered past a knife edge,
+    and seat bar caps grazing the ring they should sit inside. The repair is
+    gone; these guard the design instead.
+    """
+
+    BASE = os.path.expanduser("~/Code/My3DPrints/models/custom")
+
+    def _check(self, fn):
+        import meshcheck
+        p = os.path.join(self.BASE, fn)
+        if not os.path.exists(p):
+            self.skipTest(f"{fn} not generated")
+        self.assertEqual(meshcheck.export_defects(p), {})
+
+    def test_plate_file_is_clean(self):
+        self._check("montessori-plate-2x3.3mf")
+
+    def test_double_nut_file_is_clean(self):
+        self._check("montessori-double-nut.3mf")
+
+    def test_dice_orb_file_is_clean(self):
+        self._check("dice-cage.3mf")
+
+    def test_socket_lip_keeps_a_flat_land(self):
+        # the two chamfers approach the top face from opposite sides; if they
+        # meet, the rim is a knife edge and the mesh slivers along it
+        land = (GM.BOSS_R - GM.BOSS_CHAM) - (GM.BORE_ROOT + GM.CHAMFER)
+        self.assertGreaterEqual(land, GM.LAND_MIN)
+
+    def test_a_knife_edged_lip_is_refused(self):
+        if not HAVE_SRC:
+            self.skipTest("source model not present")
+        nut, _ = GM.source_parts()
+        old = GM.BOSS_CHAM
+        try:
+            GM.BOSS_CHAM = 5.0          # chamfers now cross
+            with self.assertRaisesRegex(ValueError, "knife"):
+                GM.build_plate(nut)
+        finally:
+            GM.BOSS_CHAM = old
+
+
 class TestHex(unittest.TestCase):
     def test_hexagon_circumradius(self):
         h = GM.hexagon(10.0)

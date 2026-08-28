@@ -43,7 +43,12 @@ CHAMFER = 2.2
 # the source, and reused here so the coupler reads as the same family of
 # part rather than a raw prism with square edges.
 FACE_R, CHAM_H = 22.56, 5.26
-BOSS_CHAM = 2.5      # radial chamfer on each socket lip
+BOSS_R = BORE_ROOT + 5.0   # socket boss outer radius
+BOSS_CHAM = 1.6            # radial chamfer on each socket lip
+LAND_MIN = 1.0             # flat rim that must survive between the two
+                           # chamfers: let them cross and the lip becomes a
+                           # knife edge, which slivers the mesh and prints
+                           # as a feather
 
 
 def source_parts():
@@ -170,7 +175,7 @@ def build_plate(nut, cols=2, rows=3, pitch=64.0, base=6.0, boss=15.0 + LEAD,
             # a revolve, not a cylinder, so the boss can carry the same
             # chamfered lip the source nut has — a square rim is what reads
             # as unfinished
-            br = BORE_ROOT + 4.0
+            br = BOSS_R
             slope = (HEX_CR - FACE_R) / CHAM_H          # the nut's own angle
             cz = BOSS_CHAM / slope
             prof = np.array([(1.0, base), (br, base), (br, base + boss - cz),
@@ -180,6 +185,16 @@ def build_plate(nut, cols=2, rows=3, pitch=64.0, base=6.0, boss=15.0 + LEAD,
             b.apply_translation([x, y, 0])
             parts.append(b)
     solid = trimesh.boolean.union(parts, engine="manifold")
+    # The lip's outer chamfer and the bore's entry chamfer approach the top
+    # face from opposite sides. If they meet, the rim is a knife edge: the
+    # two cones intersect at a shallow angle, the tessellation slivers along
+    # that curve, and those slivers are what collapse into duplicate faces
+    # at 3MF precision. Leave a flat land instead of repairing the mesh after.
+    land = (BOSS_R - BOSS_CHAM) - (BORE_ROOT + CHAMFER)
+    if land < LAND_MIN:
+        raise ValueError(f"socket lip land {land:.2f} mm (min {LAND_MIN}) — "
+                         f"the outer and bore chamfers cross into a knife "
+                         f"edge; widen the boss or ease a chamfer")
     top = base + boss
     cuts = []
     for x in xs:
@@ -189,24 +204,9 @@ def build_plate(nut, cols=2, rows=3, pitch=64.0, base=6.0, boss=15.0 + LEAD,
             ch = entry_chamfer(top, True)
             ch.apply_translation([x, y, 0])
             cuts += [p, ch]
-    return solid.difference(trimesh.boolean.union(cuts, engine="manifold"),
-                            engine="manifold"), (w, d, base + boss)
-
-
-def prep_for_export(m):
-    """3MF stores coordinates to finite precision, so surfaces that meet
-    tangentially come back as duplicate faces and read non-manifold. Quantise
-    to that precision and drop the duplicates — but keep the original if the
-    pass does not actually help, since a coarse vertex merge can weld a fine
-    chamfer's corners and break a solid that was sound.
-    """
-    q = m.copy()
-    q.vertices = q.vertices.round(4)
-    q.merge_vertices(digits_vertex=5)
-    q.update_faces(q.unique_faces())
-    q.update_faces(q.nondegenerate_faces())
-    q.process(validate=True)
-    return q if q.is_watertight else m
+    return (solid.difference(trimesh.boolean.union(cuts, engine="manifold"),
+                             engine="manifold"),
+            (w, d, base + boss), round(land, 2))
 
 
 def main():
@@ -223,11 +223,11 @@ def main():
         depths = [13.0, 17.0, 21.0, 25.0, 29.0]
         probe, at = m, (0.0, 0.0)
     else:
-        m, (w, d, h) = build_plate(nut)
+        m, (w, d, h), land = build_plate(nut)
         rep.update(plate_mm=[round(w + 12, 1), round(d + 12, 1), round(h, 1)],
                    socket_depth=round(6.0 + (15.0 + LEAD) - 5.0, 1),
                    socket_turns=round((6.0 + (15.0 + LEAD) - 5.0) / LEAD, 2),
-                   floor_mm=5.0,
+                   lip_land_mm=land, floor_mm=5.0,
                    sockets=6, pitch_mm=64.0)
         depths = [8.0, 13.0, 18.0, 23.0]
         probe, at = m, (-32.0, -64.0)      # a real socket, not the origin
@@ -240,7 +240,7 @@ def main():
         m.update_faces(m.nondegenerate_faces())
         m.process(validate=True)
     m.apply_translation([0, 0, -m.bounds[0][2]])      # stand it on the bed
-    m = prep_for_export(m)
+
     rep["bodies"] = int(len(m.split(only_watertight=False)))
     lead, windows = screw_test(probe, shank, depths, at=at)
     if lead is None:
@@ -274,10 +274,12 @@ def main():
         embed(a.out, brim=False)
         # the honest check is the exported file, not the mesh in memory:
         # 3MF precision collapses tangent surfaces into duplicate faces
-        chk = trimesh.load(a.out, force="scene")
-        rep["watertight"] = all(g.is_watertight
-                                for g in chk.geometry.values())
-        ok = ok and rep["watertight"]
+        from meshcheck import export_defects
+        bad = export_defects(a.out)
+        rep["watertight"] = not bad
+        if bad:
+            rep["defects"] = bad
+            ok = False
         rep["file"] = os.path.basename(a.out)
     else:
         rep["watertight"] = bool(m.is_watertight)

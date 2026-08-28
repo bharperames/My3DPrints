@@ -352,18 +352,20 @@ def main():
     for i in range(3):
         p, q = seat[i], seat[(i + 1) % 3]
         d = (q - p) / np.linalg.norm(q - p)
-        parts.append(diamond_bar(np.array([*(p - d * 1.6), z_n - 0.12]),
-                                 np.array([*(q + d * 1.6), z_n - 0.12]),
+        # End the bars ON the rim circle, not past it. Extending them pushes
+        # the end caps out to the ring's own outer surface, where cap and
+        # ring graze each other and the union slivers; ending on the circle
+        # buries each cap in the middle of the ring's section instead.
+        parts.append(diamond_bar(np.array([*p, z_n - 0.12]),
+                                 np.array([*q, z_n - 0.12]),
                                  RING_HW * 0.88))
 
     cage = trimesh.boolean.union(parts, engine="manifold")
     # quantize to export precision, then drop the duplicate faces that
     # coincident weld surfaces collapse into on the 3MF round-trip
-    cage.vertices = cage.vertices.round(4)
-    cage.merge_vertices(digits_vertex=5)
-    cage.update_faces(cage.unique_faces())
-    cage.update_faces(cage.nondegenerate_faces())
-    cage.process(validate=True)
+    # No cleanup pass here on purpose — see meshcheck.py. The seat bars end
+    # on the rim circle so their caps are buried in the ring's section, and
+    # the union comes out manifold without help.
     zbed = cage.bounds[0][2]
 
     depth = 0.6
@@ -474,8 +476,10 @@ def main():
     sc.export(a.out)
     from embed_settings import embed
     embed(a.out)                       # P2S presets + outer brim baked in
+    from meshcheck import export_defects
+    defects = export_defects(a.out)
+    wt = not defects
     chk = trimesh.load(a.out, force="scene")
-    wt = all(g.is_watertight for g in chk.geometry.values())
     ext = chk.bounds[1] - chk.bounds[0]
     vol = (cage.volume + held.volume) / 1000.0
     print(json.dumps({"ok": True, "file": os.path.basename(a.out),
@@ -495,7 +499,7 @@ def main():
                       "stroke_min": round(min(strokes), 2),
                       "counter_min": round(min(counters), 2),
                       "wobble": wob, "clearance": round(d, 2),
-                      "watertight": wt, "engraving": engrave_note,
+                      "watertight": wt, "defects": defects or None, "engraving": engrave_note,
                       "dims": [round(float(x), 1) for x in ext],
                       "volume_cm3": round(float(vol), 1),
                       "est_g": round(float(vol) * 1.24, 1)}))
