@@ -14,6 +14,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, unquote
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
 MODELS = os.path.join(ROOT, "models")
 PORT = 8742
 APP_CANDIDATES = ["BambuStudio", "Bambu Studio"]
@@ -37,9 +38,60 @@ def load_notes():
         return {}
 
 
+def _shop_modules():
+    """Imported lazily: they pull in trimesh, which is slow to load."""
+    import catalog
+    import plateshop
+    return catalog, plateshop
+
+
 class Handler(SimpleHTTPRequestHandler):
+    def _read_json(self, limit=200_000):
+        n = int(self.headers.get("Content-Length", 0))
+        if n > limit:
+            raise ValueError("payload too large")
+        return json.loads(self.rfile.read(n) or b"{}")
+
     def do_POST(self):
         url = urlparse(self.path)
+        if url.path in ("/shop/layout", "/shop/build"):
+            cat, ps = _shop_modules()
+            try:
+                body = self._read_json()
+                order = [ln for ln in body.get("order", [])
+                         if int(ln.get("qty", 0)) > 0]
+                if not order:
+                    return self._json(400, {"ok": False,
+                                            "error": "nothing selected"})
+                items, reports = ps.order_items(order)
+                bed = cat.PRINTERS[body.get("printer", cat.DEFAULT_PRINTER)]
+                plates, over = ps.pack(items, bed=bed["bed"],
+                                       height=bed["height"])
+            except KeyError as e:
+                return self._json(400, {"ok": False,
+                                        "error": f"unknown part {e}"})
+            except Exception as e:
+                return self._json(422, {"ok": False, "error": str(e)[:300]})
+            out = {"ok": True, "reports": reports,
+                   "oversized": [dict(name=o["name"], reason=o["reason"])
+                                 for o in over],
+                   "plates": [dict(index=p["index"], util=round(p["util"], 3),
+                                   items=[dict(key=i["key"], name=i["name"],
+                                               x=round(i["x"], 2),
+                                               y=round(i["y"], 2),
+                                               w=round(i["pw"], 2),
+                                               d=round(i["pd"], 2),
+                                               h=round(i["h"], 2),
+                                               rot=i["rot"])
+                                          for i in p["items"]])
+                              for p in plates],
+                   "bed": bed["bed"], "margin": ps.MARGIN}
+            if url.path == "/shop/build":
+                name = "print-shop-order.zip"
+                ps.build_zip(plates, os.path.join(MODELS, "custom", name),
+                             oversized=over)
+                out["file"] = "custom/" + name
+            return self._json(200, out)
         if url.path == "/generate":
             q = parse_qs(url.query)
             kind = q.get("type", ["chain"])[0]
@@ -117,6 +169,14 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == "/shop/catalog":
+            cat, _ = _shop_modules()
+            return self._json(200, {"ok": True, **cat.catalogue()})
+        if url.path == "/shop/scan":
+            cat, _ = _shop_modules()
+            lib = cat.library()
+            return self._json(200, {"ok": True, "count": len(lib),
+                                    "items": lib})
         if url.path == "/generate":
             return self.do_POST()
         if url.path == "/notes":

@@ -213,6 +213,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dia", type=float, default=3.25,
                     help="chain cross-section this clasp mates with")
+    ap.add_argument("--part", choices=["both", "clasp", "ring"],
+                    default="both",
+                    help="the ring threads the clasp's eye and the chain's "
+                         "link bore, so both are sized from the same --dia")
     ap.add_argument("--out")
     a = ap.parse_args()
     if not 2.0 <= a.dia <= 8.0:
@@ -226,16 +230,21 @@ def main():
     cm = trimesh.creation.extrude_polygon(clasp, th)
     rm = trimesh.creation.extrude_polygon(ring, th)
     rm.apply_translation([clasp.bounds[2] - ring.bounds[0] + 4.0, 0, 0])
+    wanted = {"both": (("clasp", cm), ("ring", rm)),
+              "clasp": (("clasp", cm),), "ring": (("ring", rm),)}[a.part]
     for name, m in (("clasp", cm), ("ring", rm)):
         rep[f"{name}_watertight"] = bool(m.is_watertight)
         rep[f"{name}_bodies"] = int(len(m.split(only_watertight=False)))
     rep["bed_mm2"] = round(clasp.area + ring.area)
     ok = (cm.is_watertight and rm.is_watertight
           and rep["clasp_bodies"] == 1 and rep["ring_bodies"] == 1)
+    rep["emitted"] = [n for n, _ in wanted]
     if a.out and ok:
         sc = trimesh.Scene()
-        sc.add_geometry(cm, geom_name="clasp")
-        sc.add_geometry(rm, geom_name="jump_ring")
+        for name, m in wanted:
+            mm = m.copy()
+            mm.apply_translation([-mm.bounds[0][0], -mm.bounds[0][1], 0])
+            sc.add_geometry(mm, geom_name=name)
         os.makedirs(os.path.dirname(a.out), exist_ok=True)
         sc.export(a.out)
         from embed_settings import embed

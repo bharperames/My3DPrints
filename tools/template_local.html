@@ -200,6 +200,53 @@ th.num{text-align:right}
 .dot.warn{background:var(--warn)}
 footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 @media (max-width:640px){.specs{grid-template-columns:1fr}}
+
+/* ---- print shop ---- */
+.shop{margin:18px 0 26px}
+.shopwrap{display:grid;grid-template-columns:minmax(320px,1fr) minmax(340px,1.15fr);
+  gap:18px;align-items:start}
+@media (max-width:900px){.shopwrap{grid-template-columns:1fr}}
+.shopcol{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.shopcol h3{margin:0 0 4px;font-size:14px;letter-spacing:.02em}
+.shopcol .hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+.kit{border:1px solid var(--line);border-radius:10px;padding:10px;margin:0 0 12px;
+  background:var(--panel-2)}
+.kit>b{font-size:13px;color:var(--ink)}
+.kit .blurb{font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.45}
+.shared{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 8px;padding:8px;
+  border-radius:8px;background:rgba(255,255,255,.03)}
+.shared label{font:500 11.5px/1.3 "IBM Plex Mono",monospace;color:var(--muted);
+  display:flex;align-items:center;gap:6px}
+.shared input[type=range]{width:104px}
+.shared b{color:var(--accent-ink);font-weight:600;min-width:52px}
+.srow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+  padding:5px 0;border-top:1px dashed var(--line)}
+.srow:first-of-type{border-top:0}
+.srow .nm{font-size:12.5px;color:var(--ink)}
+.srow .dim{display:block;font:400 11px/1.4 "IBM Plex Mono",monospace;color:var(--faint)}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);
+  background:var(--panel-2);color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
+.step button:hover{color:var(--accent-ink);border-color:var(--accent)}
+.step input{width:44px;height:24px;text-align:center;border-radius:6px;
+  border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+  font:500 12px "IBM Plex Mono",monospace}
+.plates{display:flex;flex-wrap:wrap;gap:10px}
+.platebox{position:relative}
+.platebox canvas{display:block;border-radius:8px;background:#101418;
+  border:1px solid var(--line)}
+.platecap{font:500 11px "IBM Plex Mono",monospace;color:var(--muted);
+  margin:4px 0 0;text-align:center}
+.shopsum{font:500 12.5px "IBM Plex Mono",monospace;color:var(--accent-ink);
+  margin:0 0 10px;min-height:18px}
+.shopwarn{font-size:12px;color:var(--warn);margin:6px 0 0}
+.libgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:8px;max-height:330px;overflow:auto;padding-right:4px}
+.libitem{border:1px solid var(--line);border-radius:8px;padding:7px 9px;
+  background:var(--panel-2)}
+.libitem b{display:block;font-size:12px;color:var(--ink);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.libitem span{font:400 10.5px "IBM Plex Mono",monospace;color:var(--faint)}
 </style>
 </head>
 <body>
@@ -210,14 +257,63 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
   <button class="lb-close" aria-label="close">✕</button></div></div>
 <div class="wrap">
 <header class="top">
-  <h1>The Fidget Shelf<span class="tld">.</span></h1>
+  <h1>My Print Shop<span class="tld">.</span></h1>
   <a class="guidelink" href="guide.html">P2S Field Guide →</a>
   <button class="guidelink" id="rebuild" title="re-run the tools pipeline: designs, metadata, previews, page">Rebuild index</button>
-  <p class="sub">One card per file — every preview is the real mesh; drag to orbit.
-  The four “pair plate” files were built here: both mating parts on one plate, ready to
-  print as a single job. Run <code>make&nbsp;serve</code> in this folder — it serves the
-  page and powers the print buttons. New to the vocabulary? See <a href="#glossary" style="color:var(--accent-ink)">reading the numbers</a>.</p>
+  <p class="sub">Everything this machine knows how to print: a shop that
+  generates parts to order and packs them onto plates, a library of every
+  printable file it can see, and a card per design with the measurements
+  behind it. Run <code>make&nbsp;serve</code> in this folder — it serves the
+  page and powers the buttons. New to the vocabulary? See
+  <a href="#glossary" style="color:var(--accent-ink)">reading the numbers</a>.</p>
+  <p class="sub" id="printerline" style="font:500 12px 'IBM Plex Mono',monospace;
+     color:var(--faint)">printer: <b style="color:var(--accent-ink)">Bambu Lab P2S</b>
+     · bed 256 × 256 × 256 mm · 0.4 nozzle · one machine for now, read from
+     <code>tools/catalog.py</code></p>
 </header>
+
+<section class="block shop" id="shop">
+  <h2>Print Shop</h2>
+  <p class="lede">Pick what you want and how many; the shop generates each part,
+  packs the copies onto as many 256&nbsp;&times;&nbsp;256 plates as it takes, and hands
+  back one 3MF per plate in a zip — each already carrying the P2S profile.
+  Parts whose sizes have to agree are sold as <em>kits</em>: the chain's
+  cross-section is also the clasp's mouth and the jump ring's section, so
+  ordering them at different diameters is not a choice worth offering.</p>
+  <div class="shopwrap">
+    <div class="shopcol">
+      <h3>Catalogue</h3>
+      <p class="hint">Kits first — their shared dials drive every member.</p>
+      <div id="shop-kits"></div>
+      <div id="shop-parts"></div>
+    </div>
+    <div class="shopcol">
+      <h3>Plates</h3>
+      <p class="hint">Top-down, to scale. Dashed line is the usable area
+      (5&nbsp;mm off each edge); parts are spaced 3&nbsp;mm apart.</p>
+      <p class="shopsum" id="shop-sum">nothing selected</p>
+      <div class="plates" id="shop-plates"></div>
+      <p class="shopwarn" id="shop-warn"></p>
+      <div class="actions" style="margin-top:12px;align-items:center">
+        <button class="print" id="shop-build">Build plates &rarr; zip</button>
+        <a class="savelink" id="shop-clear" href="#">clear the order</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="library">
+  <h2>My Library</h2>
+  <p class="lede">Every printable file this machine can see — the curated
+  models in <code>models/</code> plus whatever has landed in
+  <code>~/Downloads</code>. Scanning re-reads both.</p>
+  <div class="actions" style="margin-bottom:10px">
+    <button class="guidelink" id="lib-scan">Scan Downloads for 3MF files</button>
+    <span class="shopsum" id="lib-sum" style="margin:0"></span>
+  </div>
+  <div class="libgrid" id="lib-grid"></div>
+</section>
+
 
 <div class="stats">
   <div class="stat"><b>27</b><span>files scanned</span></div>
@@ -1181,6 +1277,221 @@ function animate(){
   }
 }
 renderer.setAnimationLoop(animate);
+
+// ================= print shop =================
+// Catalogue -> quantities -> server-side pack -> top-down plate preview.
+// The layout is never computed here: the same packer that writes the 3MFs
+// draws the preview, so what you see is what gets exported.
+(async function shop(){
+  const $ = id => document.getElementById(id);
+  if (!$('shop-kits')) return;
+  const qty = new Map();            // part id -> count
+  const shared = new Map();         // kit id -> {key: value}
+  const own = new Map();            // part id -> {key: value}
+  let cat = null, plates = [], bed = [256,256], margin = 5;
+
+  const num = v => (Math.round(v*100)/100).toString();
+  function paramVals(part){
+    const o = Object.assign({}, own.get(part.id) || {});
+    for (const [kid, sh] of shared){
+      const kit = cat.kits.find(k => k.id === kid);
+      if (kit && kit.members.some(m => m.part === part.id)) Object.assign(o, sh);
+    }
+    return o;
+  }
+  function order(){
+    return [...qty].filter(([,n]) => n > 0).map(([id,n]) => {
+      const part = cat.parts.find(p => p.id === id);
+      return {part: id, qty: n, params: paramVals(part)};
+    });
+  }
+  function stepper(id){
+    const d = document.createElement('div'); d.className = 'step';
+    d.innerHTML = '<button data-d="-1">&minus;</button>' +
+      '<input type="number" min="0" max="99" value="' + (qty.get(id)||0) + '">' +
+      '<button data-d="1">+</button>';
+    const inp = d.querySelector('input');
+    const set = n => { n = Math.max(0, Math.min(99, n|0)); qty.set(id, n);
+      inp.value = n; schedule(); };
+    d.querySelectorAll('button').forEach(b => b.onclick = () =>
+      set((qty.get(id)||0) + Number(b.dataset.d)));
+    inp.onchange = () => set(Number(inp.value));
+    return d;
+  }
+  function slider(p, get, set){
+    const l = document.createElement('label');
+    const val = document.createElement('b');
+    const r = document.createElement('input');
+    r.type = 'range'; r.min = p.min; r.max = p.max; r.step = p.step;
+    r.value = get();
+    const show = () => val.textContent = num(r.value) + (p.unit ? ' '+p.unit : '');
+    r.oninput = () => { show(); set(Number(r.value)); schedule(); };
+    show();
+    l.append(p.label + ' ', r, val);
+    return l;
+  }
+  function partRow(part, label){
+    const row = document.createElement('div'); row.className = 'srow';
+    const left = document.createElement('div');
+    left.innerHTML = '<span class="nm">' + (label || part.name) + '</span>' +
+      '<span class="dim" data-dim="' + part.id + '">' + (part.blurb||'') + '</span>';
+    row.append(left, stepper(part.id));
+    return row;
+  }
+
+  cat = await (await fetch('/shop/catalog')).json();
+  const byId = Object.fromEntries(cat.parts.map(p => [p.id, p]));
+
+  for (const kit of cat.kits){
+    const box = document.createElement('div'); box.className = 'kit';
+    box.innerHTML = '<b>' + kit.name + '</b><p class="blurb">' + kit.blurb + '</p>';
+    if (kit.shared.length){
+      const sh = document.createElement('div'); sh.className = 'shared';
+      const store = {}; kit.shared.forEach(p => store[p.key] = p.val);
+      shared.set(kit.id, store);
+      kit.shared.forEach(p => sh.append(slider(p, () => store[p.key],
+        v => { store[p.key] = v; })));
+      box.append(sh);
+    }
+    for (const m of kit.members){
+      const part = byId[m.part];
+      if (!part) continue;
+      box.append(partRow(part, m.label));
+      if (m.own){
+        const sh = document.createElement('div'); sh.className = 'shared';
+        const store = own.get(part.id) || {}; own.set(part.id, store);
+        m.own.forEach(p => { store[p.key] = p.val;
+          sh.append(slider(p, () => store[p.key], v => { store[p.key] = v; })); });
+        box.append(sh);
+      }
+    }
+    $('shop-kits').append(box);
+  }
+
+  const kitParts = new Set(cat.kits.flatMap(k => k.members.map(m => m.part)));
+  const solo = cat.parts.filter(p => !kitParts.has(p.id));
+  if (solo.length){
+    const box = document.createElement('div'); box.className = 'kit';
+    box.innerHTML = '<b>Individual parts</b>';
+    for (const part of solo){
+      box.append(partRow(part));
+      if (part.params){
+        const sh = document.createElement('div'); sh.className = 'shared';
+        const store = own.get(part.id) || {}; own.set(part.id, store);
+        part.params.forEach(p => { store[p.key] = p.val;
+          sh.append(slider(p, () => store[p.key], v => { store[p.key] = v; })); });
+        box.append(sh);
+      }
+    }
+    $('shop-parts').append(box);
+  }
+
+  function draw(){
+    const host = $('shop-plates'); host.innerHTML = '';
+    const PX = 210, sc = PX / bed[0];
+    for (const p of plates){
+      const wrap = document.createElement('div'); wrap.className = 'platebox';
+      const cv = document.createElement('canvas');
+      cv.width = PX * devicePixelRatio; cv.height = PX * devicePixelRatio;
+      cv.style.width = cv.style.height = PX + 'px';
+      const g = cv.getContext('2d'); g.scale(devicePixelRatio, devicePixelRatio);
+      g.strokeStyle = '#2b333a'; g.lineWidth = 1;
+      g.strokeRect(.5, .5, PX-1, PX-1);
+      g.setLineDash([3,3]); g.strokeStyle = '#3c464e';
+      g.strokeRect(margin*sc, margin*sc, (bed[0]-2*margin)*sc, (bed[1]-2*margin)*sc);
+      g.setLineDash([]);
+      for (const it of p.items){
+        const x = (it.x + bed[0]/2 - it.w/2) * sc;
+        const y = PX - (it.y + bed[1]/2 + it.d/2) * sc;   // canvas y is flipped
+        g.fillStyle = 'rgba(233,122,60,.32)'; g.strokeStyle = '#e97a3c';
+        g.fillRect(x, y, it.w*sc, it.d*sc); g.strokeRect(x, y, it.w*sc, it.d*sc);
+        if (it.w*sc > 26 && it.d*sc > 12){
+          g.fillStyle = '#f0d9c6'; g.font = '9px "IBM Plex Mono",monospace';
+          g.save(); g.beginPath(); g.rect(x, y, it.w*sc, it.d*sc); g.clip();
+          g.fillText(it.name.split(' ')[0], x+3, y+11); g.restore();
+        }
+      }
+      wrap.append(cv);
+      const cap = document.createElement('p'); cap.className = 'platecap';
+      cap.textContent = 'Plate ' + p.index + ' · ' + p.items.length + ' parts · '
+        + Math.round(p.util*100) + '%';
+      wrap.append(cap); host.append(wrap);
+    }
+  }
+
+  let timer = null, busy = false;
+  function schedule(){ clearTimeout(timer); timer = setTimeout(layout, 350); }
+  async function layout(){
+    const o = order();
+    if (!o.length){ plates = []; draw(); $('shop-sum').textContent = 'nothing selected';
+      $('shop-warn').textContent = ''; return; }
+    if (busy) { schedule(); return; }
+    busy = true; $('shop-sum').textContent = 'packing…';
+    try {
+      const r = await fetch('/shop/layout', {method:'POST',
+        body: JSON.stringify({order: o})});
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'layout failed');
+      plates = j.plates; bed = j.bed; margin = j.margin; draw();
+      const n = plates.reduce((s,p) => s + p.items.length, 0);
+      const avg = plates.length ? plates.reduce((s,p)=>s+p.util,0)/plates.length : 0;
+      $('shop-sum').textContent = plates.length + ' plate' +
+        (plates.length===1?'':'s') + ' · ' + n + ' parts · ' +
+        Math.round(avg*100) + '% avg fill';
+      $('shop-warn').textContent = (j.oversized||[]).map(o =>
+        '! ' + o.name + ' does not fit the plate (' + o.reason + ')').join('  ');
+      for (const [id, rep] of Object.entries(j.reports||{})){
+        const el = document.querySelector('[data-dim="' + id + '"]');
+        if (el && rep.w) el.textContent =
+          rep.w.toFixed(0)+'×'+rep.d.toFixed(0)+'×'+rep.h.toFixed(0)+' mm each';
+      }
+    } catch(e){ $('shop-sum').textContent = '✗ ' + e.message; plates = []; draw(); }
+    busy = false;
+  }
+
+  $('shop-clear').onclick = (ev) => {
+    ev.preventDefault();
+    qty.clear();
+    document.querySelectorAll('.step input').forEach(i => i.value = 0);
+    layout();
+  };
+  $('shop-build').onclick = async e => {
+    const b = e.target, o = order();
+    if (!o.length) return;
+    b.disabled = true;
+    const stop = startTicker(b, 'Generating, packing, writing plates');
+    try {
+      const r = await fetch('/shop/build', {method:'POST',
+        body: JSON.stringify({order: o})});
+      const j = await r.json(); stop();
+      if (!j.ok) throw new Error(j.error || 'build failed');
+      b.textContent = 'Downloaded ' + j.plates.length + ' plate(s) ✓';
+      const a = document.createElement('a');
+      a.href = 'models/' + j.file; a.download = '';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
+    setTimeout(() => { b.textContent = 'Build plates → zip'; b.disabled = false; }, 4500);
+  };
+
+  // ---- library ----
+  $('lib-scan').onclick = async e => {
+    const b = e.target; b.disabled = true;
+    const stop = startTicker(b, 'Scanning');
+    try {
+      const j = await (await fetch('/shop/scan')).json(); stop();
+      $('lib-sum').textContent = j.count + ' printable files';
+      const g = $('lib-grid'); g.innerHTML = '';
+      for (const it of j.items){
+        const d = document.createElement('div'); d.className = 'libitem';
+        d.innerHTML = '<b title="' + it.path + '">' + it.name + '</b>' +
+          '<span>' + it.where + ' · ' + (it.size/1048576).toFixed(1) + ' MB</span>';
+        g.append(d);
+      }
+    } catch(err){ stop(); $('lib-sum').textContent = '✗ ' + err.message; }
+    b.textContent = 'Scan Downloads for 3MF files'; b.disabled = false;
+  };
+})();
+
 </script>
 </body>
 </html>

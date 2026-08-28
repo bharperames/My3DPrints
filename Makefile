@@ -1,10 +1,11 @@
+PY := $(HOME)/.claude/skills/3d-print-check/.venv/bin/python
 PORT := 8742
 PID  := .serve.pid
 
 .PHONY: serve stop open log
 
 serve: stop
-	@nohup python3 serve.py > .serve.log 2>&1 & echo $$! > $(PID)
+	@nohup $(PY) serve.py > .serve.log 2>&1 & echo $$! > $(PID)
 	@sleep 1
 	@echo "Fidget Shelf -> http://localhost:$(PORT)   (make stop to end, make log to tail)"
 
