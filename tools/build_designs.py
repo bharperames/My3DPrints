@@ -355,3 +355,16 @@ def build_dice_orb():
 
 
 build_dice_orb()
+
+
+def build_clasp():
+    """Lobster clasp + jump ring for the default chain cross-section."""
+    import subprocess
+    out = os.path.join(M, "custom", "clasp-D3.25.3mf")
+    r = subprocess.run([sys.executable, os.path.join(os.path.dirname(
+        os.path.abspath(__file__)), "gen_clasp.py"), "--dia", "3.25",
+        "--out", out], capture_output=True, text=True)
+    print(f"clasp: {(r.stdout.strip().splitlines() or ['(none)'])[-1][:150]}")
+
+
+build_clasp()

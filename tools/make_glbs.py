@@ -15,6 +15,7 @@ PALETTE = [(233, 122, 60), (64, 160, 150), (108, 130, 200), (212, 170, 66),
 ITEMS = [
  ("held_sphere", "held-sphere.3mf", "Designed here", "Held sphere (captive ball)"),
  ("dice_orb", "custom/dice-cage.3mf", "Designed here", "Dice Orb (captive d20)"),
+ ("clasp", "custom/clasp-D3.25.3mf", "Designed here", "Lobster clasp + jump ring"),
  ("chain_test", "chain-test-5seg.3mf", "Designed here", "Chain test — 5 links"),
  ("held_chained", "held-sphere-chained.3mf", "Designed here", "Held sphere + chain"),
  ("chain_test_2x", "chain-test-5seg-2x.3mf", "Designed here", "Chain test — 5 links · 2×"),
@@ -67,7 +68,7 @@ for slug, fname, family, label in ITEMS:
     total = sum(len(m.faces) for m in meshes)
     # compact display layout: re-pack multi-part models into wrapped rows
     if len(meshes) > 1 and slug not in ("held_sphere", "held_chained", "chain_test",
-                                       "chain_test_2x", "dice_orb"):
+                                       "chain_test_2x", "dice_orb", "clasp"):
         GAP = 6.0
         widths = [(m.bounds[1][0] - m.bounds[0][0]) for m in meshes]
         target_w = max(max(widths) + GAP,

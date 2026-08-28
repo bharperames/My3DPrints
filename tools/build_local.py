@@ -235,6 +235,43 @@ cards.insert(next(i for i, c in enumerate(cards) if 'card-chain_param' in c) + 1
 # itself, so preview and download can never drift apart
 models_js['dice_param'] = [dict(manifest['dice_orb'], file='custom/dice-cage.3mf')]
 
+PARAM_CLASP = """
+<article class="card" id="card-clasp_param" data-cid="clasp_param">
+  <div class="photo">
+    <div class="view" data-models="clasp_param"></div>
+    <span class="pill warn">Designed · unprinted</span>
+    <div class="dimtag">Ø3.25 chain</div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · fixed geometry</p>
+    <h3>Lobster Clasp + Jump Ring <span class="mat">PLA</span></h3>
+    <p class="principle">Ends the parametric chain. Both parts are flat profiles
+    extruded in Z, so they print with no supports, no bridges and no overhangs —
+    and every flexure bends <em>within</em> its layers rather than across them,
+    which is the direction PLA survives. The gate is a flexure, not a
+    pin-and-spring: a 1.0 mm curved beam anchored opposite the mouth, spanning it
+    to trap the link. Press the thumb tab — set at the mouth's edge so it never
+    blocks the passage — and the beam bends inward, opening 3.65 mm for a Ø3.25
+    link; closed it leaves 1.69 mm, half what the link needs to escape. Peak
+    strain at the weld root is 1.4%, computed from beam theory against a 1.5%
+    ceiling for repeated flexure. The jump ring is a butt C-ring, as a metal one
+    is: radially thinner than it is tall so it springs open in-plane, 1.1% strain
+    at the width needed to thread a link. A ball-and-socket snap was tried first
+    and does not fit — a socket with walls needs more section than the ring can
+    spare. 2m42s, 1 g, no slicer warnings. Unvalidated until printed.</p>
+    <p class="specline">clasp 25.4 mm · bowl Ø16.9 · gate 1.0 mm beam, 2.35 mm tab
+    travel · ring Ø12.4 × 1.3 mm section · both parts one plate, 173 mm² bed</p>
+    <div class="actions">
+      <button class="print" id="cl-print">Generate + open in Bambu Studio</button>
+      <a class="savelink" id="cl-dl" href="#">generate &amp; download the verified 3MF</a>
+    </div>
+    <div class="notes" data-cid="clasp_param"></div>
+  </div>
+</article>"""
+cards.insert(next(i for i, c in enumerate(cards) if 'card-chain_param' in c) + 1, PARAM_CLASP)
+models_js['clasp_param'] = [dict(manifest['clasp'], file='custom/clasp-D3.25.3mf')]
+
+
 PARAM_CAGE = """
 <article class="card" id="card-cage_param" data-cid="cage_param">
   <div class="photo">

@@ -931,6 +931,41 @@ if (cgEl){
   };
 }
 
+// ---- lobster clasp card (geometry from the generated 3MF, via GLB) ----
+if (document.getElementById('cl-print')){
+  async function clGenerate(){
+    const r = await fetch('/generate?type=clasp', {method: 'POST'});
+    return await r.json();
+  }
+  document.getElementById('cl-print').onclick = async e => {
+    const b = e.target; b.disabled = true;
+    const stop = startTicker(b, 'Generating + verifying flexures');
+    try {
+      const j = await clGenerate(); stop();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
+      const j2 = await r2.json();
+      if (!j2.ok) throw new Error(j2.error || 'open failed');
+      b.textContent = 'Sent to Bambu Studio ✓';
+    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
+    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
+  };
+  document.getElementById('cl-dl').onclick = async e => {
+    e.preventDefault();
+    const a = e.target; const orig = a.textContent;
+    const stop = startTicker(a, 'generating + verifying');
+    try {
+      const j = await clGenerate(); stop();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      a.textContent = 'download ' + j.file.split('/').pop();
+      const link = document.createElement('a');
+      link.href = 'models/' + j.file; link.download = '';
+      document.body.appendChild(link); link.click(); link.remove();
+    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
+    setTimeout(() => { a.textContent = orig; }, 5000);
+  };
+}
+
 // ---- dice orb card (geometry comes from the generated 3MF, via GLB) ----
 if (document.getElementById('pd-print')){
   async function pdGenerate(){

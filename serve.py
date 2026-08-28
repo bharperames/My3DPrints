@@ -55,6 +55,10 @@ class Handler(SimpleHTTPRequestHandler):
                     fname = f"cage-D{cd:g}-F{fr}-T{st:g}-B{ball:g}.3mf"
                     args = ["gen_cage.py", "--dia", str(cd), "--freq", str(fr),
                             "--strut", str(st), "--ball", str(ball)]
+                elif kind == "clasp":
+                    cd = float(q.get("dia", ["3.25"])[0])
+                    fname = f"clasp-D{cd:g}.3mf"
+                    args = ["gen_clasp.py", "--dia", str(cd)]
                 elif kind == "dice":
                     # fixed design: the generator owns the geometry
                     fname = "dice-cage.3mf"
