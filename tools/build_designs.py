@@ -368,3 +368,20 @@ def build_clasp():
 
 
 build_clasp()
+
+
+def build_montessori():
+    """Coupler nut and 2x3 socket board for the Montessori set."""
+    import subprocess
+    here = os.path.dirname(os.path.abspath(__file__))
+    for part, fn in (("double-nut", "montessori-double-nut.3mf"),
+                     ("plate", "montessori-plate-2x3.3mf")):
+        r = subprocess.run([sys.executable, os.path.join(here,
+                            "gen_montessori.py"), "--part", part, "--out",
+                            os.path.join(M, "custom", fn)],
+                           capture_output=True, text=True)
+        print(f"montessori {part}: "
+              f"{(r.stdout.strip().splitlines() or ['(none)'])[-1][:150]}")
+
+
+build_montessori()

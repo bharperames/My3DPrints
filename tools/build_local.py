@@ -271,6 +271,73 @@ PARAM_CLASP = """
 cards.insert(next(i for i, c in enumerate(cards) if 'card-chain_param' in c) + 1, PARAM_CLASP)
 models_js['clasp_param'] = [dict(manifest['clasp'], file='custom/clasp-D3.25.3mf')]
 
+MONT_CARDS = """
+<article class="card" id="card-mont_double" data-cid="mont_double">
+  <div class="photo">
+    <div class="view" data-models="mont_double"></div>
+    <span class="pill warn">Designed · unprinted</span>
+    <div class="dimtag">Ø57 × 42 mm</div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · fits the original set</p>
+    <h3>Double Nut — coupler <span class="mat">PLA</span></h3>
+    <p class="principle">Joins two Montessori bolts end to end: one screws in
+    from each side and they meet in the middle. The thread is not re-invented —
+    it is <em>cast from the designer's own nut</em>. A cylinder minus that nut
+    leaves a solid replica of the bore, thread profile and running clearance
+    included, and translating that cast by exactly one lead maps the helix onto
+    itself, so copies stack into a thread of any length. Measured off the source
+    three independent ways, all agreeing: 11.66 mm lead, right-hand, single
+    start, 0.50 mm radial clearance. Proof is not a drawing — the designer's
+    actual bolt is screwed into the generated thread and must find a
+    collision-free rotation window at every depth: it does, 18–21°, the same
+    window the original nut gives, advancing 11.66 mm per turn. A waist groove
+    marks the halves and gives fingers purchase. 24 min, 14 g, no slicer
+    warnings. Unvalidated until printed.</p>
+    <p class="specline">hex across corners 57.1 mm · 42 mm tall · through-threaded,
+    chamfered both ends · ~19 mm engagement per bolt (1.6 turns)</p>
+    <div class="actions">
+      <button class="print" id="mn-print">Generate + open in Bambu Studio</button>
+      <a class="savelink" id="mn-dl" href="#">generate &amp; download the verified 3MF</a>
+    </div>
+    <div class="notes" data-cid="mont_double"></div>
+  </div>
+</article>
+<article class="card" id="card-mont_plate" data-cid="mont_plate">
+  <div class="photo">
+    <div class="view" data-models="mont_plate"></div>
+    <span class="pill warn">Designed · unprinted</span>
+    <div class="dimtag">141 × 205 mm</div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · fits the original set</p>
+    <h3>Threaded Base Plate — 2×3 <span class="mat">PLA</span></h3>
+    <p class="principle">Six threaded sockets on a 64 mm grid: the bolts screw
+    in and stand up, so the set has somewhere to live between games and a board
+    to play on. Sockets are blind — bolts seat against a 5 mm floor instead of
+    passing through and fouling the table — and each is cut with the same cast
+    of the original nut's bore, chamfered at the mouth so a bolt starts without
+    hunting. 20 mm of thread engagement, about 1.7 turns. Verified the same way
+    as the coupler: the designer's real bolt screws into a socket with an 18–21°
+    free window advancing 11.67 mm per turn. Prints flat with no supports and no
+    slicer warnings — every socket wall is vertical and the thread's overhangs
+    are the ones the original nut already prints. 2 h 52 m, 128 g.
+    Unvalidated until printed.</p>
+    <p class="specline">141 × 205 × 21 mm · 6 sockets, 64 mm pitch · 15 mm bosses
+    on a 6 mm base · 289 cm² bed contact — brim not needed, but it is a big
+    first layer</p>
+    <div class="actions">
+      <button class="print" id="mp-print">Generate + open in Bambu Studio</button>
+      <a class="savelink" id="mp-dl" href="#">generate &amp; download the verified 3MF</a>
+    </div>
+    <div class="notes" data-cid="mont_plate"></div>
+  </div>
+</article>"""
+cards.insert(next(i for i, c in enumerate(cards) if 'card-nuts' in c) + 1, MONT_CARDS)
+models_js['mont_double'] = [dict(manifest['mont_double'], file='custom/montessori-double-nut.3mf')]
+models_js['mont_plate'] = [dict(manifest['mont_plate'], file='custom/montessori-plate-2x3.3mf')]
+
+
 
 PARAM_CAGE = """
 <article class="card" id="card-cage_param" data-cid="cage_param">

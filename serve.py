@@ -55,6 +55,13 @@ class Handler(SimpleHTTPRequestHandler):
                     fname = f"cage-D{cd:g}-F{fr}-T{st:g}-B{ball:g}.3mf"
                     args = ["gen_cage.py", "--dia", str(cd), "--freq", str(fr),
                             "--strut", str(st), "--ball", str(ball)]
+                elif kind == "montessori":
+                    part = q.get("part", ["double-nut"])[0]
+                    if part not in ("double-nut", "plate"):
+                        return self._json(400, {"ok": False, "error": "bad part"})
+                    fname = ("montessori-double-nut.3mf" if part == "double-nut"
+                             else "montessori-plate-2x3.3mf")
+                    args = ["gen_montessori.py", "--part", part]
                 elif kind == "clasp":
                     cd = float(q.get("dia", ["3.25"])[0])
                     fname = f"clasp-D{cd:g}.3mf"

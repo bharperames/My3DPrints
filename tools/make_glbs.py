@@ -16,6 +16,8 @@ ITEMS = [
  ("held_sphere", "held-sphere.3mf", "Designed here", "Held sphere (captive ball)"),
  ("dice_orb", "custom/dice-cage.3mf", "Designed here", "Dice Orb (captive d20)"),
  ("clasp", "custom/clasp-D3.25.3mf", "Designed here", "Lobster clasp + jump ring"),
+ ("mont_double", "custom/montessori-double-nut.3mf", "Nuts & Bolts", "Double nut (coupler)"),
+ ("mont_plate", "custom/montessori-plate-2x3.3mf", "Nuts & Bolts", "Threaded base plate 2x3"),
  ("chain_test", "chain-test-5seg.3mf", "Designed here", "Chain test — 5 links"),
  ("held_chained", "held-sphere-chained.3mf", "Designed here", "Held sphere + chain"),
  ("chain_test_2x", "chain-test-5seg-2x.3mf", "Designed here", "Chain test — 5 links · 2×"),

@@ -931,6 +931,40 @@ if (cgEl){
   };
 }
 
+// ---- Montessori companion parts (geometry from the generated 3MFs) ----
+for (const [btn, dl, part] of [['mn-print','mn-dl','double-nut'],
+                               ['mp-print','mp-dl','plate']]){
+  if (!document.getElementById(btn)) continue;
+  const gen = async () => (await fetch('/generate?type=montessori&part=' + part,
+                                       {method: 'POST'})).json();
+  document.getElementById(btn).onclick = async e => {
+    const b = e.target; b.disabled = true;
+    const stop = startTicker(b, 'Generating + screwing a real bolt in');
+    try {
+      const j = await gen(); stop();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      const j2 = await (await fetch('/open?f=' + encodeURIComponent(j.file))).json();
+      if (!j2.ok) throw new Error(j2.error || 'open failed');
+      b.textContent = 'Sent to Bambu Studio ✓';
+    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
+    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
+  };
+  document.getElementById(dl).onclick = async e => {
+    e.preventDefault();
+    const a = e.target; const orig = a.textContent;
+    const stop = startTicker(a, 'generating + verifying the thread');
+    try {
+      const j = await gen(); stop();
+      if (!j.ok) throw new Error(j.error || 'generation failed');
+      a.textContent = 'download ' + j.file.split('/').pop();
+      const link = document.createElement('a');
+      link.href = 'models/' + j.file; link.download = '';
+      document.body.appendChild(link); link.click(); link.remove();
+    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
+    setTimeout(() => { a.textContent = orig; }, 5000);
+  };
+}
+
 // ---- lobster clasp card (geometry from the generated 3MF, via GLB) ----
 if (document.getElementById('cl-print')){
   async function clGenerate(){
