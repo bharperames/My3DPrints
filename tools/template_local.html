@@ -223,6 +223,11 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
   padding:5px 0;border-top:1px dashed var(--line)}
 .srow:first-of-type{border-top:0}
 .srow .nm{font-size:12.5px;color:var(--ink)}
+.ver{font:500 10px/1 "IBM Plex Mono",monospace;color:var(--faint);
+  border:1px solid var(--line);border-radius:5px;padding:2px 5px;margin-left:6px;
+  white-space:nowrap;vertical-align:1px}
+.ver.stale{color:var(--warn);border-color:var(--warn)}
+.kit>b .ver{margin-left:8px}
 .srow .dim{display:block;font:400 11px/1.4 "IBM Plex Mono",monospace;color:var(--faint)}
 .step{display:flex;align-items:center;gap:4px}
 .step button{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);
@@ -1330,10 +1335,22 @@ renderer.setAnimationLoop(animate);
     l.append(p.label + ' ', r, val);
     return l;
   }
+  // The useful signal is not 'changed recently' — most things change on the
+  // same day — it is whether the cached file predates the design that made
+  // it. That is the one state you can act on: order it and it rebuilds.
+  const badge = (v, d, built) => {
+    const stale = d && (!built || built < d);
+    return '<span class="ver' + (stale ? ' stale' : '') + '" title="version '
+      + v + (d ? ', design last changed ' + d : '')
+      + (built ? ', file built ' + built : ', not built yet')
+      + (stale ? ' — will rebuild when ordered' : '') + '">v' + v
+      + (d ? ' · ' + d.slice(5) : '') + (stale ? ' ⟳' : '') + '</span>';
+  };
   function partRow(part, label){
     const row = document.createElement('div'); row.className = 'srow';
     const left = document.createElement('div');
     left.innerHTML = '<span class="nm">' + (label || part.name) + '</span>' +
+      badge(part.version, part.changed, part.built) +
       '<span class="dim" data-dim="' + part.id + '">' + (part.blurb||'') + '</span>';
     row.append(left, stepper(part.id));
     return row;
@@ -1344,7 +1361,8 @@ renderer.setAnimationLoop(animate);
 
   for (const kit of cat.kits){
     const box = document.createElement('div'); box.className = 'kit';
-    box.innerHTML = '<b>' + kit.name + '</b><p class="blurb">' + kit.blurb + '</p>';
+    box.innerHTML = '<b>' + kit.name + badge(kit.version, kit.changed, kit.built) +
+      '</b><p class="blurb">' + kit.blurb + '</p>';
     if (kit.shared.length){
       const sh = document.createElement('div'); sh.className = 'shared';
       const store = {}; kit.shared.forEach(p => store[p.key] = p.val);

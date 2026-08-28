@@ -36,7 +36,7 @@ Three layers:
 | `ease_spirals.py` | derives `-eased` spirals (0.05–0.15 mm lead-in) and rebuilds the hourglass pair plates |
 | `extract_meta.py` | unpacks 3MF-embedded designer photos/metadata to `models/meta/<slug>/` (never overwrites — custom covers survive) |
 | `make_glbs.py` | decimated ≤180k-tri GLB previews + `manifest.json` |
-| `catalog.py` | the one list of what can be printed: kits, parts, printers |
+| `catalog.py` | the one list of what can be printed: kits, parts, printers, and each design's semver — the version is declared, the date is read from git so it cannot drift |
 | `plateshop.py` | MaxRects plate packing (ported from KlipKlopMaker's `js/plate_pack.js`) and the multi-plate 3MF zip |
 | `gen_sphere_stand.py` | sphere stand, ported from the Sphere Stand Generator as one revolved profile |
 | `build_local.py` | renders `index.html` from `template_local.html`; also the knowledge base: card analyses, materials, calibrated slice numbers, pair/supersede links |

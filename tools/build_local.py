@@ -197,6 +197,29 @@ PARAM_CARD = """
 </article>"""
 cards.insert(next(i for i, c in enumerate(cards) if "held-sphere-chained" in c) + 1, PARAM_CARD)
 
+# version + last-changed on the design cards, from the same catalogue the
+# shop reads, so a card and a shop row can never disagree about what a part is
+import catalog as _cat
+_VER_CARDS = {"card-dice_param": "dice_orb", "card-clasp_param": "clasp",
+              "card-mont_double": "mont_double", "card-mont_plate": "mont_plate"}
+
+
+def _stamp(html):
+    for cid, pid in _VER_CARDS.items():
+        if cid not in html:
+            continue
+        pr = _cat.provenance(_cat.BY_ID[pid])
+        stale = pr["changed"] and (not pr["built"] or pr["built"] < pr["changed"])
+        badge = (f'<span class="ver{" stale" if stale else ""}" title="version '
+                 f'{pr["version"]}, design last changed {pr["changed"]}'
+                 f'{", file built " + pr["built"] if pr["built"] else ", not built yet"}">'
+                 f'v{pr["version"]} · {pr["changed"][5:]}{" ⟳" if stale else ""}</span>')
+        i = html.index(cid)
+        j = html.index("</h3>", i)
+        html = html[:j] + " " + badge + html[j:]
+    return html
+
+
 PARAM_DICE = """
 <article class="card" id="card-dice_param" data-cid="dice_param">
   <div class="photo">
@@ -230,10 +253,13 @@ PARAM_DICE = """
     <div class="notes" data-cid="dice_param"></div>
   </div>
 </article>"""
+PARAM_DICE = _stamp(PARAM_DICE)
 cards.insert(next(i for i, c in enumerate(cards) if 'card-chain_param' in c) + 1, PARAM_DICE)
 # the dice orb has no parameters: its viewport renders the generated file
 # itself, so preview and download can never drift apart
 models_js['dice_param'] = [dict(manifest['dice_orb'], file='custom/dice-cage.3mf')]
+
+
 
 PARAM_CLASP = """
 <article class="card" id="card-clasp_param" data-cid="clasp_param">
@@ -276,6 +302,7 @@ PARAM_CLASP = """
     <div class="notes" data-cid="clasp_param"></div>
   </div>
 </article>"""
+PARAM_CLASP = _stamp(PARAM_CLASP)
 cards.insert(next(i for i, c in enumerate(cards) if 'card-chain_param' in c) + 1, PARAM_CLASP)
 models_js['clasp_param'] = [dict(manifest['clasp'], file='custom/clasp-D3.25.3mf')]
 
@@ -340,6 +367,7 @@ MONT_CARDS = """
     <div class="notes" data-cid="mont_plate"></div>
   </div>
 </article>"""
+MONT_CARDS = _stamp(MONT_CARDS)
 cards.insert(next(i for i, c in enumerate(cards) if 'card-nuts' in c) + 1, MONT_CARDS)
 models_js['mont_double'] = [dict(manifest['mont_double'], file='custom/montessori-double-nut.3mf')]
 models_js['mont_plate'] = [dict(manifest['mont_plate'], file='custom/montessori-plate-2x3.3mf')]

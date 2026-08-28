@@ -36,8 +36,12 @@ PRINTERS = {
 DEFAULT_PRINTER = "P2S"
 
 
-def _p(pid, name, family, kind, blurb, **kw):
-    return dict(id=pid, name=name, family=family, kind=kind, blurb=blurb, **kw)
+def _p(pid, name, family, kind, blurb, version="0.1.0", **kw):
+    """A catalogue entry. `version` is declared, not derived: only an author
+    knows whether a change is a new design, a reshape, or a fix. The date
+    beside it is derived from git, so it cannot drift out of step."""
+    return dict(id=pid, name=name, family=family, kind=kind, blurb=blurb,
+                version=version, **kw)
 
 
 # --- kits: parts whose sizes must agree to interoperate ------------------
@@ -45,7 +49,8 @@ def _p(pid, name, family, kind, blurb, **kw):
 # the clasp's mouth and the jump ring's section, so ordering a chain and a
 # clasp at different diameters is not a choice the shop should offer.
 KITS = [
-    dict(id="chain_set", name="Chain Set", family="Designed here",
+    dict(id="chain_set", version="1.1.0", name="Chain Set",
+         family="Designed here",
          blurb="Chain, clasp and jump rings. One cross-section drives all "
                "three: it sets the link, the clasp's mouth and the ring's "
                "section, so the parts can only be ordered as a matched set.",
@@ -60,7 +65,8 @@ KITS = [
              dict(part="clasp", label="Lobster clasp"),
              dict(part="jump_ring", label="Jump ring"),
          ]),
-    dict(id="montessori", name="Montessori Nuts & Bolts", family="Montessori",
+    dict(id="montessori", version="1.2.0",
+         name="Montessori Nuts & Bolts", family="Montessori",
          blurb="Companions for the Montessori set. The thread is cast from "
                "the designer's own nut, so every piece mates with the "
                "original bolts and with each other.",
@@ -75,28 +81,35 @@ KITS = [
 PARTS = [
     _p("dice_orb", "Dice Orb", "Designed here", "generated",
        "A standard d20 captive in a rib-and-ring shaker sphere.",
+       version="3.2.0",
        gen=["gen_dice_cage.py"], out="dice-cage.3mf", proven=True),
     _p("mont_double", "Double Nut (coupler)", "Montessori", "generated",
        "Joins two Montessori bolts end to end.",
+       version="1.2.0",
        gen=["gen_montessori.py", "--part", "double-nut"],
        out="montessori-double-nut.3mf"),
     _p("mont_plate", "Base Plate 2×3", "Montessori", "generated",
        "Six threaded sockets to stand the bolts in.",
+       version="1.2.0",
        gen=["gen_montessori.py", "--part", "plate"],
        out="montessori-plate-2x3.3mf"),
     _p("clasp", "Lobster Clasp", "Designed here", "generated",
        "Flexure-gate clasp, sized to the chain it ends.",
+       version="2.0.0",
        gen=["gen_clasp.py", "--part", "clasp"], out="clasp-only-D{dia:g}.3mf"),
     _p("jump_ring", "Jump Ring", "Designed here", "generated",
        "Butt C-ring that threads the link bore and the clasp's eye.",
+       version="1.1.0",
        gen=["gen_clasp.py", "--part", "ring"], out="ring-only-D{dia:g}.3mf"),
     _p("chain", "Chain", "Designed here", "parametric",
        "Print-in-place stadium links, any length.",
+       version="1.0.0",
        gen=["gen_chain.py"],
        out="chain-N{links}-L{len:g}-D{dia:g}.3mf"),
     _p("sphere_stand", "Sphere Stand", "Sphere Stands", "parametric",
        "A ring that cradles a ball on a conformal spherical seat. Leave the "
        "last three blank and they follow the ball at a 45 deg contact.",
+       version="1.0.0",
        gen=["gen_sphere_stand.py"], params=[
            dict(key="ball", label="ball", unit="mm", min=8, max=120,
                 step=0.5, val=25.4),
@@ -109,6 +122,7 @@ PARTS = [
        out="sphere-stand"),
     _p("cage", "Geodesic Cage", "Designed here", "parametric",
        "Strut sphere, optionally with a captive ball.",
+       version="1.1.0",
        gen=["gen_cage.py"], params=[
            dict(key="dia", label="cage O", unit="mm", min=30, max=90,
                 step=2, val=50),
@@ -124,6 +138,54 @@ BY_ID = {p["id"]: p for p in PARTS}
 
 def _fmt(v):
     return f"{v:g}" if isinstance(v, (int, float)) else str(v)
+
+
+_GIT = {}
+
+
+def _git_last(path):
+    """(iso date, subject) of the last commit to touch a file."""
+    if path in _GIT:
+        return _GIT[path]
+    try:
+        r = subprocess.run(["git", "log", "-1", "--format=%cI\x1f%s", "--",
+                            path], cwd=ROOT, capture_output=True, text=True,
+                           timeout=10)
+        date, _, note = r.stdout.strip().partition("\x1f")
+    except Exception:
+        date, note = "", ""
+    if not date:
+        try:
+            import datetime
+            date = datetime.datetime.fromtimestamp(
+                os.path.getmtime(path)).isoformat()
+            note = "uncommitted"
+        except OSError:
+            date, note = "", ""
+    _GIT[path] = (date[:10], note[:90])
+    return _GIT[path]
+
+
+def provenance(part):
+    """What this design is, when it last changed, and when it was built.
+
+    The version is the author's; the date comes from the last commit that
+    touched the generator, so a design cannot claim to be current while its
+    source has moved on.
+    """
+    src = os.path.join(HERE, part["gen"][0]) if part.get("gen") else ""
+    changed, note = _git_last(src) if src else ("", "")
+    built = ""
+    try:
+        p = out_path(part)
+        if os.path.exists(p):
+            import datetime
+            built = datetime.datetime.fromtimestamp(
+                os.path.getmtime(p)).strftime("%Y-%m-%d")
+    except Exception:
+        pass
+    return dict(version=part.get("version", "0.1.0"), changed=changed,
+                note=note, built=built)
 
 
 def out_path(part, params=None):
@@ -209,8 +271,18 @@ def library(dirs=None, limit=400):
 
 
 def catalogue():
+    parts = [dict(p, **provenance(p)) for p in PARTS]
+    by = {p["id"]: p for p in parts}
+    kits = []
+    for k in KITS:
+        mem = [by[m["part"]] for m in k["members"] if m["part"] in by]
+        dates = [p["changed"] for p in mem if p["changed"]]
+        builts = [p["built"] for p in mem if p["built"]]
+        # a kit is only as built as its least-built member
+        kits.append(dict(k, changed=max(dates) if dates else "",
+                         built=min(builts) if len(builts) == len(mem) else ""))
     return {"printers": PRINTERS, "printer": DEFAULT_PRINTER,
-            "kits": KITS, "parts": PARTS}
+            "kits": kits, "parts": parts}
 
 
 if __name__ == "__main__":

@@ -110,3 +110,44 @@ class TestCatalogue(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestProvenance(unittest.TestCase):
+    def test_every_part_declares_a_semver(self):
+        import re
+        for p in catalog.PARTS:
+            self.assertRegex(p["version"], r"^\d+\.\d+\.\d+$", p["id"])
+        for k in catalog.KITS:
+            self.assertRegex(k["version"], r"^\d+\.\d+\.\d+$", k["id"])
+
+    def test_dates_are_derived_not_declared(self):
+        # a version is the author's claim; the date must come from the source
+        for p in catalog.PARTS:
+            self.assertNotIn("changed", p,
+                             f"{p['id']} hard-codes a date instead of "
+                             f"deriving it")
+
+    def test_provenance_reports_version_change_and_build(self):
+        pr = catalog.provenance(catalog.BY_ID["dice_orb"])
+        self.assertEqual(pr["version"], catalog.BY_ID["dice_orb"]["version"])
+        self.assertRegex(pr["changed"], r"^\d{4}-\d\d-\d\d$")
+        self.assertIn("note", pr)
+
+    def test_catalogue_stamps_every_entry(self):
+        c = catalog.catalogue()
+        for p in c["parts"]:
+            self.assertIn("changed", p)
+            self.assertIn("built", p)
+        for k in c["kits"]:
+            self.assertIn("changed", k)
+
+    def test_a_kit_is_only_as_built_as_its_least_built_member(self):
+        c = catalog.catalogue()
+        by = {p["id"]: p for p in c["parts"]}
+        for k in c["kits"]:
+            builts = [by[m["part"]]["built"] for m in k["members"]
+                      if m["part"] in by]
+            if all(builts):
+                self.assertEqual(k["built"], min(builts))
+            else:
+                self.assertEqual(k["built"], "")
