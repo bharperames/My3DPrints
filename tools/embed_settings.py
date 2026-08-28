@@ -69,9 +69,17 @@ def base_config():
     return cfg
 
 
-def embed(path, overrides=None):
+def embed(path, overrides=None, brim=True):
+    """Stamp `path` as a Bambu project carrying the P2S presets.
+
+    `brim` is a per-part decision, not a global: an outer brim earns its
+    keep on a small or curved footprint, and costs peeling on a part that
+    already has hundreds of cm2 on the plate.
+    """
     cfg = base_config()
     cfg.update(OVERRIDES)
+    if not brim:
+        cfg["brim_type"] = "no_brim"
     cfg.update(overrides or {})
     dsts = list(cfg.get("different_settings_to_system") or [])
     while len(dsts) < 3:
@@ -101,15 +109,25 @@ def embed(path, overrides=None):
                '</metadata>'
                '<metadata name="BambuStudio:3mfVersion">1</metadata>' +
                mdl[j + 1:])
-    # a project trusts stored placement: move build items from the origin
-    # corner to the plate center
+    # A project trusts stored placement, so a mesh built around z=0 stays
+    # half under the bed and silently slices to half its height — the top
+    # half only, starting from a cut through the middle of the part.
+    dz = 0.0
+    try:
+        import trimesh
+        dz = -float(trimesh.load(path, force="scene").bounds[0][2])
+    except Exception:
+        pass
+    if abs(dz) < 1e-4:
+        dz = 0.0
+    # move build items from the origin corner to the plate centre
     pa = cfg.get("printable_area", ["0x0", "256x0", "256x256", "0x256"])
     xs = [float(p.split("x")[0]) for p in pa]
     ys = [float(p.split("x")[1]) for p in pa]
     cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
     mdl = mdl.replace(
         'transform="1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0"',
-        f'transform="1 0 0 0 1 0 0 0 1 {cx:g} {cy:g} 0"')
+        f'transform="1 0 0 0 1 0 0 0 1 {cx:g} {cy:g} {dz:g}"')
     items["3D/3dmodel.model"] = mdl.encode("utf-8")
     items["Metadata/project_settings.config"] = json.dumps(
         cfg, indent=1).encode("utf-8")

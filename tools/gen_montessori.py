@@ -115,7 +115,7 @@ def screw_test(part, shank, depths, step_deg=3, at=(0.0, 0.0)):
 
 def build_double_nut(nut, height=42.0, lead=LEAD):
     body = trimesh.creation.extrude_polygon(hexagon(HEX_CR), height)
-    body.apply_translation([0, 0, -height / 2])
+    body.apply_translation([0, 0, -height / 2])   # centred while cutting
     # a waist groove marks the two halves and gives fingers a purchase
     groove = trimesh.creation.cylinder(radius=HEX_CR + 1.0, height=4.0,
                                        sections=96)
@@ -170,7 +170,7 @@ def main():
         H = 42.0
         m = build_double_nut(nut, H)
         rep["height_mm"] = H
-        depths = [-8.0, -4.0, 0.0, 4.0, 8.0]
+        depths = [13.0, 17.0, 21.0, 25.0, 29.0]
         probe, at = m, (0.0, 0.0)
     else:
         m, (w, d, h) = build_plate(nut)
@@ -182,6 +182,7 @@ def main():
     m.merge_vertices()
     m.update_faces(m.nondegenerate_faces())
     m.process(validate=True)
+    m.apply_translation([0, 0, -m.bounds[0][2]])      # stand it on the bed
     rep["watertight"] = bool(m.is_watertight)
     rep["bodies"] = int(len(m.split(only_watertight=False)))
     lead, windows = screw_test(probe, shank, depths, at=at)
@@ -210,7 +211,13 @@ def main():
         sc.add_geometry(m, geom_name=a.part.replace("-", "_"))
         sc.export(a.out)
         from embed_settings import embed
-        embed(a.out)
+        # the plate already lands ~290 cm2 on the plate with rounded
+        # corners; a brim there is 700 mm of skirt to peel for nothing.
+        # The coupler's footprint is one small hex, so it keeps its brim.
+        # neither part wants a brim: both land a large flat footprint
+        # (the coupler a 11 cm2 hex, the plate ~290 cm2) and the skirt is
+        # only cleanup — field-reported
+        embed(a.out, brim=False)
         rep["file"] = os.path.basename(a.out)
     print(json.dumps({"ok": ok, **rep}))
     return 0 if ok else 1

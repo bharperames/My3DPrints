@@ -15,6 +15,23 @@ import gen_montessori as GM  # noqa: E402
 HAVE_SRC = os.path.exists(GM.SRC)
 
 
+class TestBedPlacement(unittest.TestCase):
+    @unittest.skipUnless(
+        os.path.exists(os.path.expanduser(
+            "~/Code/My3DPrints/models/custom/montessori-double-nut.3mf")),
+        "generated file not present")
+    def test_generated_parts_stand_on_the_bed(self):
+        import trimesh
+        base = os.path.expanduser("~/Code/My3DPrints/models/custom")
+        for fn in ("montessori-double-nut.3mf", "montessori-plate-2x3.3mf"):
+            p = os.path.join(base, fn)
+            if not os.path.exists(p):
+                continue
+            sc = trimesh.load(p, force="scene")
+            self.assertAlmostEqual(float(sc.bounds[0][2]), 0.0, delta=0.01,
+                                   msg=f"{fn} does not sit on the bed")
+
+
 class TestHex(unittest.TestCase):
     def test_hexagon_circumradius(self):
         h = GM.hexagon(10.0)
