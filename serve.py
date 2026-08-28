@@ -72,7 +72,16 @@ class Handler(SimpleHTTPRequestHandler):
                                         "error": f"unknown part {e}"})
             except Exception as e:
                 return self._json(422, {"ok": False, "error": str(e)[:300]})
-            out = {"ok": True, "reports": reports,
+            preview = None
+            if body.get("preview") and url.path == "/shop/layout":
+                name = "shop-preview.glb"
+                try:
+                    info = ps.build_preview(
+                        plates, os.path.join(MODELS, "custom", name))
+                    preview = dict(info, file="custom/" + name)
+                except Exception as e:
+                    preview = {"error": str(e)[:120]}
+            out = {"ok": True, "reports": reports, "preview": preview,
                    "oversized": [dict(name=o["name"], reason=o["reason"])
                                  for o in over],
                    "plates": [dict(index=p["index"], util=round(p["util"], 3),

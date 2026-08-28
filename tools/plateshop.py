@@ -168,7 +168,7 @@ def order_items(order):
     """
     items, reports = [], {}
     for line in order:
-        part = catalog.BY_ID[line["part"]]
+        part = catalog.find(line["part"])
         params = line.get("params") or {}
         path, rep = catalog.ensure(part, params)
         m = catalog.measure(path)
@@ -177,6 +177,60 @@ def order_items(order):
             items.append(dict(key=part["id"], name=part["name"], path=path,
                               copy=i, **m))
     return items, reports
+
+
+def arranged_scene(plates, pitch=300.0, simplify=60_000):
+    """Every plate, laid out side by side, as one scene.
+
+    The same placement maths the exporter uses, so the preview is the plate —
+    not a diagram of it. Meshes are decimated only if the total gets heavy,
+    which keeps a 3MF full of library geometry from stalling the browser.
+    """
+    cols = max(1, int(np.ceil(np.sqrt(len(plates)))))
+    sc = trimesh.Scene()
+    total = 0
+    for n, p in enumerate(plates):
+        ox = (n % cols) * pitch
+        oy = -(n // cols) * pitch
+        used = {}
+        for it in p["items"]:
+            src = trimesh.load(it["path"], force="scene")
+            bodies = []
+            for node in src.graph.nodes_geometry:
+                tf, gk = src.graph[node]
+                g = src.geometry[gk].copy()
+                g.apply_transform(tf)
+                bodies.append((gk, g))
+            if it["rot"]:
+                R = trimesh.transformations.rotation_matrix(
+                    np.radians(it["rot"]), [0, 0, 1])
+                for _, g in bodies:
+                    g.apply_transform(R)
+            lo = np.min([g.bounds[0] for _, g in bodies], axis=0)
+            hi = np.max([g.bounds[1] for _, g in bodies], axis=0)
+            ctr = (lo + hi) / 2
+            k = used.get(it["key"], 0) + 1
+            used[it["key"]] = k
+            for gk, g in bodies:
+                g.apply_translation([it["x"] - ctr[0] + ox,
+                                     it["y"] - ctr[1] + oy, -lo[2]])
+                total += len(g.faces)
+                sc.add_geometry(g, geom_name=f"p{p['index']}_{it['key']}_{k}_{gk}")
+    if total > simplify:
+        for name, g in list(sc.geometry.items()):
+            try:
+                sc.geometry[name] = g.simplify_quadric_decimation(
+                    face_count=max(200, int(len(g.faces) * simplify / total)))
+            except Exception:
+                pass
+    return sc, cols
+
+
+def build_preview(plates, out_glb):
+    sc, cols = arranged_scene(plates)
+    sc.export(out_glb)
+    return dict(cols=cols, plates=len(plates),
+                tris=sum(len(g.faces) for g in sc.geometry.values()))
 
 
 def build_zip(plates, out_zip, printer="P2S", oversized=None):

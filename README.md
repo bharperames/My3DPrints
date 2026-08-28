@@ -6,15 +6,21 @@ file on disk and a card per design carrying the measurements behind it.
 One machine for now (Bambu P2S), declared in `tools/catalog.py`.
 **Harness only — `models/` (the data plane) is untracked.**
 
-Three ways in:
+Three tabs:
 
-- **Shop** — pick parts and quantities. Parts whose sizes must agree are
-  sold as *kits*: the chain's cross-section is also the clasp's mouth and the
-  jump ring's section, so one dial drives all three. Quantities pack onto
-  256 x 256 plates and download as a zip.
-- **My Library** — every `.3mf`/`.stl` under `models/` and `~/Downloads`,
-  indexed on demand.
-- **Cards** — one per design, with the geometry checks that justify it.
+- **Shop** — one catalogue. A design generated to order, a design with
+  options, and a file found in `~/Downloads` are the same kind of thing here;
+  pick quantities, they land in a bill of materials, and the plates re-pack as
+  you go. Parts whose sizes must agree are sold as *kits*: the chain's
+  cross-section is also the clasp's mouth and the jump ring's section, so one
+  dial drives all three. The plate view is the arranged geometry itself,
+  exported by the same code that writes the 3MFs.
+- **Designs** — a card per design, with the measurements that justify it.
+- **About** — the vocabulary those measurements use, with a diagram each.
+
+Every entry carries a semver and a date. The version is declared; the date is
+read from the last commit touching its generator. An amber badge means the
+cached file predates the design and will rebuild when ordered.
 
 ## Run
 

@@ -151,3 +151,56 @@ class TestProvenance(unittest.TestCase):
                 self.assertEqual(k["built"], min(builts))
             else:
                 self.assertEqual(k["built"], "")
+
+
+class TestUnifiedCatalogue(unittest.TestCase):
+    """A library file and a generated design must be the same kind of thing."""
+
+    def test_library_entries_have_the_shape_of_a_part(self):
+        lib = catalog.library(limit=5)
+        if not lib:
+            self.skipTest("no library files present")
+        for p in lib:
+            for field in ("id", "name", "family", "kind", "version",
+                          "changed", "path"):
+                self.assertIn(field, p, p.get("id"))
+            self.assertEqual(p["kind"], "library")
+
+    def test_find_resolves_generated_and_library_alike(self):
+        self.assertEqual(catalog.find("dice_orb")["kind"], "generated")
+        lib = catalog.library(limit=3)
+        if lib:
+            self.assertEqual(catalog.find(lib[0]["id"])["id"], lib[0]["id"])
+        with self.assertRaises(KeyError):
+            catalog.find("no_such_part")
+
+    def test_a_library_part_needs_no_generation(self):
+        lib = catalog.library(limit=3)
+        if not lib:
+            self.skipTest("no library files present")
+        path, rep = catalog.ensure(lib[0])
+        self.assertTrue(rep.get("library"))
+        self.assertTrue(os.path.exists(path))
+
+    def test_catalogue_is_one_list_with_families(self):
+        c = catalog.catalogue()
+        kinds = {p["kind"] for p in c["parts"]}
+        self.assertIn("library", kinds)
+        self.assertIn("generated", kinds)
+        self.assertTrue(c["families"])
+        # families are declared once, in order of first appearance
+        self.assertEqual(len(c["families"]), len(set(c["families"])))
+
+    def test_an_order_can_mix_kinds(self):
+        lib = [p for p in catalog.library(limit=40)
+               if p["path"].lower().endswith(".3mf")]
+        if not lib:
+            self.skipTest("no library 3MFs present")
+        items, reports = PS.order_items(
+            [{"part": "dice_orb", "qty": 1},
+             {"part": lib[0]["id"], "qty": 1}])
+        self.assertEqual(len(items), 2)
+        self.assertEqual({i["key"] for i in items},
+                         {"dice_orb", lib[0]["id"]})
+        for it in items:
+            self.assertGreater(it["w"], 0)

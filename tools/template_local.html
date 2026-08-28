@@ -11,7 +11,12 @@
 :root{
   --ground:#14181A; --panel:#1D2327; --panel-2:#232B2F;
   --ink:#EAF1EF; --muted:#AFBEBB; --faint:#97A7A4;
-  --line:#313B40; --accent:#4FD2C2; --accent-ink:#7FE2D5;
+  --line:#313B40;
+  /* --line is for decorative rules, which WCAG exempts. Interactive
+     boundaries (inputs, steppers, buttons) need 3:1 against the panel, and
+     --line measures 1.26 — hence --edge at 3.7 */
+  --edge:#6E7678;
+  --accent:#4FD2C2; --accent-ink:#7FE2D5;
   --pass:#74CD81; --pass-bg:#1E3423; --warn:#E7B75E; --warn-bg:#3A2F17;
   --photo-bg:#171D20; --shadow:0 1px 3px rgba(0,0,0,.45),0 4px 18px rgba(0,0,0,.35);
 }
@@ -24,9 +29,13 @@ body{background:var(--ground);color:var(--ink);
 header.top{padding:52px 0 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px}
 h1{font:700 clamp(30px,4.5vw,44px)/1.05 "Chakra Petch",sans-serif;letter-spacing:.5px}
 h1 .tld{color:var(--accent)}
+/* used on both <a> and <button>: a button carries the browser's own light
+   background unless it is reset, which put pale teal text on near-white at a
+   1.33 contrast ratio */
 .guidelink{font:600 13px "IBM Plex Sans",sans-serif;color:var(--accent-ink);
-  text-decoration:none;border:1px solid var(--accent);border-radius:6px;padding:8px 14px;
-  align-self:center}
+  background:transparent;text-decoration:none;border:1px solid var(--accent);
+  border-radius:6px;padding:8px 14px;align-self:center;cursor:pointer;
+  font-family:"IBM Plex Sans",sans-serif}
 .guidelink:hover{background:var(--accent);color:var(--panel)}
 .sub{color:var(--muted);max-width:62ch;text-wrap:balance;margin:10px 0 0;flex-basis:100%}
 .stats{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 34px}
@@ -74,7 +83,7 @@ h1 .tld{color:var(--accent)}
   align-items:center;padding:0 24px;z-index:7}
 .lb-title{font:600 17px "Chakra Petch",sans-serif;color:var(--ink)}
 .lb-hint{font:400 12px "IBM Plex Mono",monospace;color:var(--faint)}
-.lb-close{background:var(--panel);border:1px solid var(--line);color:var(--muted);
+.lb-close{background:var(--panel);border:1px solid var(--edge);color:var(--muted);
   border-radius:6px;width:34px;height:34px;font:600 15px/1 sans-serif;cursor:pointer}
 .lb-close:hover{color:var(--warn);border-color:var(--warn)}
 .coverimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:5}
@@ -101,7 +110,7 @@ h1 .tld{color:var(--accent)}
 .pill.pass{background:var(--pass-bg);color:var(--pass);border:1px solid var(--pass)}
 .pill.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
 .chips{position:absolute;left:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;z-index:6}
-.chips button{background:var(--panel);border:1px solid var(--line);color:var(--muted);
+.chips button{background:var(--panel);border:1px solid var(--edge);color:var(--muted);
   border-radius:99px;padding:4px 10px;font:500 11px "IBM Plex Sans",sans-serif;cursor:pointer}
 .chips button.on{color:var(--accent);border-color:var(--accent)}
 .dimtag{position:absolute;left:12px;top:14px;z-index:6;pointer-events:none;
@@ -121,7 +130,7 @@ h1 .tld{color:var(--accent)}
 .pairlink:hover{text-decoration:underline}
 .card.superseded{display:none}
 .card.superseded.revealed{display:flex;outline:2px dashed var(--warn);outline-offset:-2px}
-.showorig{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+.showorig{background:none;border:1px solid var(--edge);border-radius:6px;color:var(--muted);
   font:500 11.5px "IBM Plex Sans",sans-serif;padding:5px 10px;cursor:pointer}
 .showorig:hover{color:var(--warn);border-color:var(--warn)}
 .mate{font-size:13px;color:var(--accent-ink)}
@@ -135,9 +144,9 @@ h1 .tld{color:var(--accent)}
 .params b{font:500 12px "IBM Plex Mono",monospace;color:var(--ink);text-align:right}
 .params input[type=range]{accent-color:var(--accent);min-width:0}
 .notes form{display:flex;gap:6px}
-.notes input{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+.notes input{flex:1;background:var(--panel-2);border:1px solid var(--edge);border-radius:6px;
   color:var(--ink);font:400 12px "IBM Plex Sans",sans-serif;padding:6px 8px;min-width:0}
-.notes button{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+.notes button{background:none;border:1px solid var(--edge);border-radius:6px;color:var(--muted);
   font:500 11px "IBM Plex Sans",sans-serif;padding:4px 10px;cursor:pointer}
 .notes button:hover{color:var(--accent-ink);border-color:var(--accent)}
 .card h3 .mat{font:600 11px/1 "IBM Plex Mono",monospace;color:var(--accent-ink);
@@ -201,7 +210,38 @@ th.num{text-align:right}
 footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 @media (max-width:640px){.specs{grid-template-columns:1fr}}
 
+/* ---- tabs ---- */
+.tabs{display:flex;gap:6px;margin:6px 0 20px;border-bottom:1px solid var(--line)}
+.tabs button{font:600 14px "IBM Plex Sans",sans-serif;color:var(--muted);
+  background:transparent;border:0;border-bottom:2px solid transparent;
+  padding:9px 16px;cursor:pointer;border-radius:6px 6px 0 0}
+.tabs button:hover{color:var(--ink);background:var(--panel)}
+.tabs button.on{color:var(--accent-ink);border-bottom-color:var(--accent)}
+.pane{display:none}
+.pane.on{display:block}
+
 /* ---- print shop ---- */
+.catsearch{display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap}
+.catsearch input{flex:1;min-width:160px;background:var(--panel-2);
+  border:1px solid var(--edge);border-radius:6px;color:var(--ink);
+  padding:7px 10px;font:400 13px "IBM Plex Sans",sans-serif}
+.catsearch select{background:var(--panel-2);border:1px solid var(--edge);
+  border-radius:6px;color:var(--ink);padding:7px 10px;font:400 13px inherit}
+.catlist{max-height:520px;overflow:auto;padding-right:4px}
+.bom{margin:0 0 12px}
+.bom table{width:100%;border-collapse:collapse;table-layout:fixed;
+  font:400 12.5px "IBM Plex Mono",monospace}
+.bom th:last-child,.bom td.q{text-align:right;width:44px}
+.bom td:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bom th{text-align:left;color:var(--faint);font-weight:500;padding:0 0 5px;
+  border-bottom:1px solid var(--line)}
+.bom td{padding:4px 0;border-bottom:1px dashed var(--line);color:var(--ink)}
+.bom td.q{text-align:right;color:var(--accent-ink);width:34px}
+.bom td.d{color:var(--muted);font-size:11.5px}
+.bom .empty{color:var(--faint);font-style:italic;padding:8px 0}
+.plateview{width:100%;height:340px;border-radius:8px;border:1px solid var(--edge);
+  background:#0F1316;display:block}
+
 .shop{margin:18px 0 26px}
 .shopwrap{display:grid;grid-template-columns:minmax(320px,1fr) minmax(340px,1.15fr);
   gap:18px;align-items:start}
@@ -230,7 +270,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 .kit>b .ver{margin-left:8px}
 .srow .dim{display:block;font:400 11px/1.4 "IBM Plex Mono",monospace;color:var(--faint)}
 .step{display:flex;align-items:center;gap:4px}
-.step button{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);
+.step button{width:24px;height:24px;border-radius:6px;border:1px solid var(--edge);
   background:var(--panel-2);color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
 .step button:hover{color:var(--accent-ink);border-color:var(--accent)}
 .step input{width:44px;height:24px;text-align:center;border-radius:6px;
@@ -239,7 +279,7 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 .plates{display:flex;flex-wrap:wrap;gap:10px}
 .platebox{position:relative}
 .platebox canvas{display:block;border-radius:8px;background:#101418;
-  border:1px solid var(--line)}
+  border:1px solid var(--edge)}
 .platecap{font:500 11px "IBM Plex Mono",monospace;color:var(--muted);
   margin:4px 0 0;text-align:center}
 .shopsum{font:500 12.5px "IBM Plex Mono",monospace;color:var(--accent-ink);
@@ -252,6 +292,17 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 .libitem b{display:block;font-size:12px;color:var(--ink);overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 .libitem span{font:400 10.5px "IBM Plex Mono",monospace;color:var(--faint)}
+
+/* controls: a native checkbox or range renders in the UA's light palette on a
+   dark ground unless it is told the accent */
+input,button,select,textarea{accent-color:var(--accent);font-family:inherit}
+input[type=checkbox]{width:15px;height:15px}
+button.phototoggle,button.showorig{border-color:var(--edge)}
+.libitem{border-color:var(--line)}
+
+/* anything interactive that still inherits a decorative rule */
+input:not([type=range]):not([type=checkbox]), textarea, select,
+.notes input, .step input{border-color:var(--edge)}
 </style>
 </head>
 <body>
@@ -265,10 +316,10 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
   <h1>My Print Shop<span class="tld">.</span></h1>
   <a class="guidelink" href="guide.html">P2S Field Guide →</a>
   <button class="guidelink" id="rebuild" title="re-run the tools pipeline: designs, metadata, previews, page">Rebuild index</button>
-  <p class="sub">Everything this machine knows how to print: a shop that
-  generates parts to order and packs them onto plates, a library of every
-  printable file it can see, and a card per design with the measurements
-  behind it. Run <code>make&nbsp;serve</code> in this folder — it serves the
+  <p class="sub">Everything this machine knows how to print: one catalogue of
+  everything printable — designs it generates to order, designs with options,
+  and every file it can find on disk — packed onto plates as you choose
+  quantities, plus a card per design with the measurements behind it. Run <code>make&nbsp;serve</code> in this folder — it serves the
   page and powers the buttons. New to the vocabulary? See
   <a href="#glossary" style="color:var(--accent-ink)">reading the numbers</a>.</p>
   <p class="sub" id="printerline" style="font:500 12px 'IBM Plex Mono',monospace;
@@ -277,6 +328,17 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
      <code>tools/catalog.py</code></p>
 </header>
 
+
+
+
+
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="shop" class="on">Shop</button>
+  <button role="tab" aria-selected="false" data-tab="designs">Designs</button>
+  <button role="tab" aria-selected="false" data-tab="about">About</button>
+</nav>
+
+<div class="pane on" id="pane-shop">
 <section class="block shop" id="shop">
   <h2>Print Shop</h2>
   <p class="lede">Pick what you want and how many; the shop generates each part,
@@ -288,15 +350,27 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
   <div class="shopwrap">
     <div class="shopcol">
       <h3>Catalogue</h3>
-      <p class="hint">Kits first — their shared dials drive every member.</p>
-      <div id="shop-kits"></div>
-      <div id="shop-parts"></div>
+      <p class="hint">Everything printable, in one list. Kits come first —
+      their shared dials drive every member — then parts, then everything
+      found on disk. Some parts have options; all of them behave the same.</p>
+      <div class="catsearch">
+        <input id="cat-q" type="search" placeholder="search the catalogue…"
+               aria-label="search the catalogue">
+        <select id="cat-fam" aria-label="filter by source"></select>
+      </div>
+      <div class="catlist">
+        <div id="shop-kits"></div>
+        <div id="shop-parts"></div>
+      </div>
     </div>
     <div class="shopcol">
+      <h3>Bill of materials</h3>
+      <div class="bom" id="shop-bom"><p class="empty">nothing selected yet</p></div>
       <h3>Plates</h3>
-      <p class="hint">Top-down, to scale. Dashed line is the usable area
-      (5&nbsp;mm off each edge); parts are spaced 3&nbsp;mm apart.</p>
+      <p class="hint">The arranged plate itself, not a diagram of it — the same
+      placement the exporter writes. Drag to orbit.</p>
       <p class="shopsum" id="shop-sum">nothing selected</p>
+      <canvas class="plateview" id="shop-3d"></canvas>
       <div class="plates" id="shop-plates"></div>
       <p class="shopwarn" id="shop-warn"></p>
       <div class="actions" style="margin-top:12px;align-items:center">
@@ -306,20 +380,9 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
     </div>
   </div>
 </section>
+</div>
 
-<section class="block" id="library">
-  <h2>My Library</h2>
-  <p class="lede">Every printable file this machine can see — the curated
-  models in <code>models/</code> plus whatever has landed in
-  <code>~/Downloads</code>. Scanning re-reads both.</p>
-  <div class="actions" style="margin-bottom:10px">
-    <button class="guidelink" id="lib-scan">Scan Downloads for 3MF files</button>
-    <span class="shopsum" id="lib-sum" style="margin:0"></span>
-  </div>
-  <div class="libgrid" id="lib-grid"></div>
-</section>
-
-
+<div class="pane" id="pane-designs">
 <div class="stats">
   <div class="stat"><b>27</b><span>files scanned</span></div>
   <div class="stat"><b>15</b><span>distinct designs</span></div>
@@ -331,6 +394,54 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 </div>
 
 
+
+
+<div class="grid">{{CARDS}}</div>
+
+<section class="block">
+  <h2>Cross-design compatibility</h2>
+  <p class="lede">Where parts from different downloads can (and cannot) work together. The rule
+  of thumb that falls out of the analysis: two pieces mate when their interface genus (slot or
+  thread count) and profile radii match — diameters alone are not enough.</p>
+  <ul class="fixes">{{COMPAT}}</ul>
+</section>
+
+<section class="block">
+  <h2>Fixes &amp; swapped parts</h2>
+  <p class="lede">Verified from part names, metadata and mesh comparison, not guessed from
+  filenames.</p>
+  <ul class="fixes">{{FIXES}}</ul>
+</section>
+
+<section class="block">
+  <h2>File ledger</h2>
+  <p class="lede">All 27 files, mapped to their design family. <strong>Genus</strong> is the
+  count of tunnels passing clear through a closed solid — a ball is genus 0, a donut or ring
+  genus 1, and each extra handle or helical slot adds one. It is computed from the mesh itself
+  (Euler’s formula: vertices − edges + faces = 2 − 2·genus), so it fingerprints the interlock
+  mechanism no matter how the surface is decorated: the passthrough ball’s 21 helical channels
+  read out as genus 21, and the hourglass bodies’ slot counts as genus 8–19.</p>
+  <details class="ledgerwrap"><summary>Show all 31 files (27 scanned + 4 built)</summary>
+  <div class="tablewrap"><table>
+    <thead><tr><th>File</th><th class="num">MB</th><th>Design</th><th>Geometry verdict</th></tr></thead>
+    <tbody>{{ROWS}}</tbody>
+  </table></div></details>
+</section>
+</div>
+
+<div class="pane" id="pane-about">
+<section class="block">
+  <h2>About this shop</h2>
+  <p class="lede">One machine, one catalogue. Every design here is generated
+  from code that refuses to emit a part until it has proved its own
+  invariants — watertight geometry, real clearances, flexure strain inside
+  what PLA survives, threads verified by screwing the designer's own bolt
+  into them. The numbers on the cards are measurements, not estimates, and
+  where a print failed in the field the note says so.</p>
+  <p class="lede">The vocabulary those measurements use is below, with a
+  diagram for each. <a class="guidelink" style="display:inline-block;margin-top:8px"
+  href="guide.html">P2S Field Guide &rarr;</a></p>
+</section>
 <section class="block" id="glossary">
   <h2>Reading the numbers</h2>
   <p class="lede">The cards lean on a small vocabulary of measurements. First, the symbol that
@@ -397,38 +508,8 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
     </figure>
   </div>
 </section>
+</div>
 
-<div class="grid">{{CARDS}}</div>
-
-<section class="block">
-  <h2>Cross-design compatibility</h2>
-  <p class="lede">Where parts from different downloads can (and cannot) work together. The rule
-  of thumb that falls out of the analysis: two pieces mate when their interface genus (slot or
-  thread count) and profile radii match — diameters alone are not enough.</p>
-  <ul class="fixes">{{COMPAT}}</ul>
-</section>
-
-<section class="block">
-  <h2>Fixes &amp; swapped parts</h2>
-  <p class="lede">Verified from part names, metadata and mesh comparison, not guessed from
-  filenames.</p>
-  <ul class="fixes">{{FIXES}}</ul>
-</section>
-
-<section class="block">
-  <h2>File ledger</h2>
-  <p class="lede">All 27 files, mapped to their design family. <strong>Genus</strong> is the
-  count of tunnels passing clear through a closed solid — a ball is genus 0, a donut or ring
-  genus 1, and each extra handle or helical slot adds one. It is computed from the mesh itself
-  (Euler’s formula: vertices − edges + faces = 2 − 2·genus), so it fingerprints the interlock
-  mechanism no matter how the surface is decorated: the passthrough ball’s 21 helical channels
-  read out as genus 21, and the hourglass bodies’ slot counts as genus 8–19.</p>
-  <details class="ledgerwrap"><summary>Show all 31 files (27 scanned + 4 built)</summary>
-  <div class="tablewrap"><table>
-    <thead><tr><th>File</th><th class="num">MB</th><th>Design</th><th>Geometry verdict</th></tr></thead>
-    <tbody>{{ROWS}}</tbody>
-  </table></div></details>
-</section>
 
 <footer>P2S slice numbers are real Bambu Studio CLI slices — 0.2 mm Standard, Bambu PLA
 Basic, textured PEI, 15% infill defaults. Calibration against Bambu Studio on the actual printer
@@ -1284,16 +1365,15 @@ function animate(){
 renderer.setAnimationLoop(animate);
 
 // ================= print shop =================
-// Catalogue -> quantities -> server-side pack -> top-down plate preview.
-// The layout is never computed here: the same packer that writes the 3MFs
-// draws the preview, so what you see is what gets exported.
+// One catalogue: generated designs, parametric designs and files found on
+// disk are the same kind of thing here. Pick quantities, they land in the
+// bill of materials, and the plates re-pack as you go. The plate view is the
+// arranged geometry itself, exported by the same code that writes the 3MFs.
 (async function shop(){
   const $ = id => document.getElementById(id);
   if (!$('shop-kits')) return;
-  const qty = new Map();            // part id -> count
-  const shared = new Map();         // kit id -> {key: value}
-  const own = new Map();            // part id -> {key: value}
-  let cat = null, plates = [], bed = [256,256], margin = 5;
+  const qty = new Map(), shared = new Map(), own = new Map();
+  let cat = null, plates = [], byId = {};
 
   const num = v => (Math.round(v*100)/100).toString();
   function paramVals(part){
@@ -1304,20 +1384,24 @@ renderer.setAnimationLoop(animate);
     }
     return o;
   }
-  function order(){
-    return [...qty].filter(([,n]) => n > 0).map(([id,n]) => {
-      const part = cat.parts.find(p => p.id === id);
-      return {part: id, qty: n, params: paramVals(part)};
-    });
-  }
+  const order = () => [...qty].filter(([,n]) => n > 0).map(([id,n]) =>
+    ({part: id, qty: n, params: paramVals(byId[id])}));
+
+  const badge = (v, d, built) => {
+    const stale = d && v !== '—' && (!built || built < d);
+    return '<span class="ver' + (stale ? ' stale' : '') + '" title="version ' + v
+      + (d ? ', last changed ' + d : '') + (built ? ', file built ' + built : '')
+      + (stale ? ' — rebuilds when ordered' : '') + '">v' + v
+      + (d ? ' · ' + d.slice(5) : '') + (stale ? ' ⟳' : '') + '</span>';
+  };
   function stepper(id){
     const d = document.createElement('div'); d.className = 'step';
-    d.innerHTML = '<button data-d="-1">&minus;</button>' +
-      '<input type="number" min="0" max="99" value="' + (qty.get(id)||0) + '">' +
-      '<button data-d="1">+</button>';
+    d.innerHTML = '<button data-d="-1" aria-label="one fewer">&minus;</button>' +
+      '<input type="number" min="0" max="99" value="' + (qty.get(id)||0) +
+      '" aria-label="quantity">' + '<button data-d="1" aria-label="one more">+</button>';
     const inp = d.querySelector('input');
     const set = n => { n = Math.max(0, Math.min(99, n|0)); qty.set(id, n);
-      inp.value = n; schedule(); };
+      inp.value = n; renderBom(); schedule(); };
     d.querySelectorAll('button').forEach(b => b.onclick = () =>
       set((qty.get(id)||0) + Number(b.dataset.d)));
     inp.onchange = () => set(Number(inp.value));
@@ -1325,39 +1409,32 @@ renderer.setAnimationLoop(animate);
   }
   function slider(p, get, set){
     const l = document.createElement('label');
-    const val = document.createElement('b');
-    const r = document.createElement('input');
-    r.type = 'range'; r.min = p.min; r.max = p.max; r.step = p.step;
-    r.value = get();
+    const val = document.createElement('b'), r = document.createElement('input');
+    r.type = 'range'; r.min = p.min; r.max = p.max; r.step = p.step; r.value = get();
     const show = () => val.textContent = num(r.value) + (p.unit ? ' '+p.unit : '');
     r.oninput = () => { show(); set(Number(r.value)); schedule(); };
-    show();
-    l.append(p.label + ' ', r, val);
-    return l;
+    show(); l.append(p.label + ' ', r, val); return l;
   }
-  // The useful signal is not 'changed recently' — most things change on the
-  // same day — it is whether the cached file predates the design that made
-  // it. That is the one state you can act on: order it and it rebuilds.
-  const badge = (v, d, built) => {
-    const stale = d && (!built || built < d);
-    return '<span class="ver' + (stale ? ' stale' : '') + '" title="version '
-      + v + (d ? ', design last changed ' + d : '')
-      + (built ? ', file built ' + built : ', not built yet')
-      + (stale ? ' — will rebuild when ordered' : '') + '">v' + v
-      + (d ? ' · ' + d.slice(5) : '') + (stale ? ' ⟳' : '') + '</span>';
-  };
   function partRow(part, label){
     const row = document.createElement('div'); row.className = 'srow';
     const left = document.createElement('div');
     left.innerHTML = '<span class="nm">' + (label || part.name) + '</span>' +
       badge(part.version, part.changed, part.built) +
-      '<span class="dim" data-dim="' + part.id + '">' + (part.blurb||'') + '</span>';
+      '<span class="dim" data-dim="' + part.id + '">' +
+      (part.blurb || part.family) + '</span>';
     row.append(left, stepper(part.id));
     return row;
   }
+  function optionBox(part, defs){
+    const sh = document.createElement('div'); sh.className = 'shared';
+    const store = own.get(part.id) || {}; own.set(part.id, store);
+    defs.forEach(p => { if (store[p.key] === undefined) store[p.key] = p.val;
+      sh.append(slider(p, () => store[p.key], v => { store[p.key] = v; })); });
+    return sh;
+  }
 
   cat = await (await fetch('/shop/catalog')).json();
-  const byId = Object.fromEntries(cat.parts.map(p => [p.id, p]));
+  byId = Object.fromEntries(cat.parts.map(p => [p.id, p]));
 
   for (const kit of cat.kits){
     const box = document.createElement('div'); box.className = 'kit';
@@ -1372,116 +1449,156 @@ renderer.setAnimationLoop(animate);
       box.append(sh);
     }
     for (const m of kit.members){
-      const part = byId[m.part];
-      if (!part) continue;
+      const part = byId[m.part]; if (!part) continue;
       box.append(partRow(part, m.label));
-      if (m.own){
-        const sh = document.createElement('div'); sh.className = 'shared';
-        const store = own.get(part.id) || {}; own.set(part.id, store);
-        m.own.forEach(p => { store[p.key] = p.val;
-          sh.append(slider(p, () => store[p.key], v => { store[p.key] = v; })); });
-        box.append(sh);
-      }
+      if (m.own) box.append(optionBox(part, m.own));
     }
     $('shop-kits').append(box);
   }
 
+  // one list for everything else, filtered rather than split by kind
   const kitParts = new Set(cat.kits.flatMap(k => k.members.map(m => m.part)));
   const solo = cat.parts.filter(p => !kitParts.has(p.id));
-  if (solo.length){
+  const fam = $('cat-fam');
+  fam.innerHTML = '<option value="">all sources</option>' +
+    cat.families.map(f => '<option>' + f + '</option>').join('');
+  const CAP = 60;
+  function renderCatalogue(){
+    const q = $('cat-q').value.trim().toLowerCase(), f = fam.value;
+    const hit = solo.filter(p => (!f || p.family === f) &&
+      (!q || (p.name + ' ' + p.family + ' ' + (p.blurb||'')).toLowerCase().includes(q)));
+    const host = $('shop-parts'); host.innerHTML = '';
     const box = document.createElement('div'); box.className = 'kit';
-    box.innerHTML = '<b>Individual parts</b>';
-    for (const part of solo){
+    box.innerHTML = '<b>Parts</b><p class="blurb">' + hit.length +
+      ' of ' + solo.length + ' shown' + (hit.length > CAP ? ', first ' + CAP : '') +
+      '. Anything with a quantity joins the bill of materials.</p>';
+    // selected items always render, wherever the filter is
+    const shown = hit.slice(0, CAP);
+    for (const p of solo) if ((qty.get(p.id)||0) > 0 && !shown.includes(p)) shown.unshift(p);
+    for (const part of shown){
       box.append(partRow(part));
-      if (part.params){
-        const sh = document.createElement('div'); sh.className = 'shared';
-        const store = own.get(part.id) || {}; own.set(part.id, store);
-        part.params.forEach(p => { store[p.key] = p.val;
-          sh.append(slider(p, () => store[p.key], v => { store[p.key] = v; })); });
-        box.append(sh);
-      }
+      if (part.params) box.append(optionBox(part, part.params));
     }
-    $('shop-parts').append(box);
+    host.append(box);
+  }
+  $('cat-q').oninput = renderCatalogue;
+  fam.onchange = renderCatalogue;
+  renderCatalogue();
+
+  function renderBom(){
+    const rows = [...qty].filter(([,n]) => n > 0);
+    const el = $('shop-bom');
+    if (!rows.length){ el.innerHTML = '<p class="empty">nothing selected yet</p>'; return; }
+    el.innerHTML = '<table><thead><tr><th>part</th><th>each</th>' +
+      '<th>qty</th></tr></thead><tbody>' +
+      rows.map(([id,n]) => { const p = byId[id]; const d = p.dims || '';
+        return '<tr><td>' + p.name + '</td><td class="d">' + d +
+          '</td><td class="q">' + n + '</td></tr>'; }).join('') +
+      '</tbody></table>';
   }
 
-  function draw(){
-    const host = $('shop-plates'); host.innerHTML = '';
-    const PX = 210, sc = PX / bed[0];
-    for (const p of plates){
-      const wrap = document.createElement('div'); wrap.className = 'platebox';
-      const cv = document.createElement('canvas');
-      cv.width = PX * devicePixelRatio; cv.height = PX * devicePixelRatio;
-      cv.style.width = cv.style.height = PX + 'px';
-      const g = cv.getContext('2d'); g.scale(devicePixelRatio, devicePixelRatio);
-      g.strokeStyle = '#2b333a'; g.lineWidth = 1;
-      g.strokeRect(.5, .5, PX-1, PX-1);
-      g.setLineDash([3,3]); g.strokeStyle = '#3c464e';
-      g.strokeRect(margin*sc, margin*sc, (bed[0]-2*margin)*sc, (bed[1]-2*margin)*sc);
-      g.setLineDash([]);
-      for (const it of p.items){
-        const x = (it.x + bed[0]/2 - it.w/2) * sc;
-        const y = PX - (it.y + bed[1]/2 + it.d/2) * sc;   // canvas y is flipped
-        g.fillStyle = 'rgba(233,122,60,.32)'; g.strokeStyle = '#e97a3c';
-        g.fillRect(x, y, it.w*sc, it.d*sc); g.strokeRect(x, y, it.w*sc, it.d*sc);
-        if (it.w*sc > 26 && it.d*sc > 12){
-          g.fillStyle = '#f0d9c6'; g.font = '9px "IBM Plex Mono",monospace';
-          g.save(); g.beginPath(); g.rect(x, y, it.w*sc, it.d*sc); g.clip();
-          g.fillText(it.name.split(' ')[0], x+3, y+11); g.restore();
-        }
-      }
-      wrap.append(cv);
-      const cap = document.createElement('p'); cap.className = 'platecap';
-      cap.textContent = 'Plate ' + p.index + ' · ' + p.items.length + ' parts · '
-        + Math.round(p.util*100) + '%';
-      wrap.append(cap); host.append(wrap);
+  // ---- 3D plate view: the arranged geometry, not a diagram of it ----
+  const cv = $('shop-3d');
+  const R3 = new THREE.WebGLRenderer({canvas: cv, alpha: true, antialias: true});
+  R3.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const S3 = makeScene();
+  const C3 = new THREE.PerspectiveCamera(42, 2, 1, 6000);
+  const CT = new OrbitControls(C3, cv);
+  CT.enableDamping = true;
+  let model = null, beds = null;
+  function bedGrid(cols, n, bed, margin, pitch){
+    const g = new THREE.Group();
+    for (let i = 0; i < n; i++){
+      const ox = (i % cols) * pitch, oz = -Math.floor(i / cols) * pitch;
+      const grid = new THREE.GridHelper(bed[0], bed[0]/16, 0x3a464c, 0x232b2f);
+      grid.position.set(ox, 0, -oz);
+      g.add(grid);
+      const u = bed[0] - 2*margin, v = bed[1] - 2*margin;
+      const pts = [[-u/2,0,-v/2],[u/2,0,-v/2],[u/2,0,v/2],[-u/2,0,v/2],[-u/2,0,-v/2]]
+        .map(p => new THREE.Vector3(p[0]+ox, 0.1, p[2]-oz));
+      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color: 0x4FD2C2})));
     }
+    return g;
   }
+  function show3d(info, bed, margin){
+    if (beds){ S3.remove(beds); beds = null; }
+    beds = bedGrid(info.cols, info.plates, bed, margin, 300);
+    S3.add(beds);
+    loader.load('models/' + info.file + '?t=' + Date.now(), gltf => {
+      if (model) S3.remove(model);
+      model = gltf.scene;
+      model.rotation.x = -Math.PI/2;             // trimesh writes z-up
+      model.traverse(o => { if (o.isMesh){
+        // trimesh writes GLB without vertex normals; a standard material
+        // shades those black, so compute them before assigning one
+        if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+        o.material = new THREE.MeshStandardMaterial({color: 0xE9A063,
+          metalness: 0.05, roughness: 0.6}); }});
+      S3.add(model);
+      const box = new THREE.Box3().setFromObject(beds);
+      const c = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3()).length();
+      CT.target.copy(c);
+      C3.position.copy(c).add(new THREE.Vector3(0.5, 0.85, 0.9)
+        .normalize().multiplyScalar(size * 0.95));
+      C3.updateProjectionMatrix();
+    });
+  }
+  (function loop(){
+    requestAnimationFrame(loop);
+    const r = cv.getBoundingClientRect();
+    if (!r.width || !document.getElementById('pane-shop').classList.contains('on')) return;
+    if (cv.width !== Math.round(r.width*devicePixelRatio)){
+      R3.setSize(r.width, r.height, false);
+      C3.aspect = r.width / r.height; C3.updateProjectionMatrix();
+    }
+    CT.update(); R3.render(S3, C3);
+  })();
 
   let timer = null, busy = false;
-  function schedule(){ clearTimeout(timer); timer = setTimeout(layout, 350); }
+  function schedule(){ clearTimeout(timer); timer = setTimeout(layout, 400); }
   async function layout(){
     const o = order();
-    if (!o.length){ plates = []; draw(); $('shop-sum').textContent = 'nothing selected';
-      $('shop-warn').textContent = ''; return; }
-    if (busy) { schedule(); return; }
+    if (!o.length){ plates = []; $('shop-sum').textContent = 'nothing selected';
+      $('shop-warn').textContent = ''; if (model){ S3.remove(model); model = null; }
+      if (beds){ S3.remove(beds); beds = null; } return; }
+    if (busy){ schedule(); return; }
     busy = true; $('shop-sum').textContent = 'packing…';
     try {
-      const r = await fetch('/shop/layout', {method:'POST',
-        body: JSON.stringify({order: o})});
-      const j = await r.json();
+      const j = await (await fetch('/shop/layout', {method:'POST',
+        body: JSON.stringify({order: o, preview: true})})).json();
       if (!j.ok) throw new Error(j.error || 'layout failed');
-      plates = j.plates; bed = j.bed; margin = j.margin; draw();
+      plates = j.plates;
       const n = plates.reduce((s,p) => s + p.items.length, 0);
       const avg = plates.length ? plates.reduce((s,p)=>s+p.util,0)/plates.length : 0;
-      $('shop-sum').textContent = plates.length + ' plate' +
-        (plates.length===1?'':'s') + ' · ' + n + ' parts · ' +
-        Math.round(avg*100) + '% avg fill';
+      $('shop-sum').textContent = plates.length + ' plate' + (plates.length===1?'':'s') +
+        ' · ' + n + ' parts · ' + Math.round(avg*100) + '% avg fill';
       $('shop-warn').textContent = (j.oversized||[]).map(o =>
         '! ' + o.name + ' does not fit the plate (' + o.reason + ')').join('  ');
       for (const [id, rep] of Object.entries(j.reports||{})){
+        if (!rep.w) continue;
+        const dims = rep.w.toFixed(0)+'×'+rep.d.toFixed(0)+'×'+rep.h.toFixed(0)+' mm';
+        if (byId[id]) byId[id].dims = dims;
         const el = document.querySelector('[data-dim="' + id + '"]');
-        if (el && rep.w) el.textContent =
-          rep.w.toFixed(0)+'×'+rep.d.toFixed(0)+'×'+rep.h.toFixed(0)+' mm each';
+        if (el) el.textContent = dims + ' each';
       }
-    } catch(e){ $('shop-sum').textContent = '✗ ' + e.message; plates = []; draw(); }
+      renderBom();
+      if (j.preview) show3d(j.preview, j.bed, j.margin);
+    } catch(e){ $('shop-sum').textContent = '✗ ' + e.message; }
     busy = false;
   }
 
-  $('shop-clear').onclick = (ev) => {
-    ev.preventDefault();
-    qty.clear();
+  $('shop-clear').onclick = ev => { ev.preventDefault(); qty.clear();
     document.querySelectorAll('.step input').forEach(i => i.value = 0);
-    layout();
-  };
+    renderBom(); layout(); };
   $('shop-build').onclick = async e => {
-    const b = e.target, o = order();
-    if (!o.length) return;
+    const b = e.target, o = order(); if (!o.length) return;
     b.disabled = true;
     const stop = startTicker(b, 'Generating, packing, writing plates');
     try {
-      const r = await fetch('/shop/build', {method:'POST',
-        body: JSON.stringify({order: o})});
-      const j = await r.json(); stop();
+      const j = await (await fetch('/shop/build', {method:'POST',
+        body: JSON.stringify({order: o})})).json(); stop();
       if (!j.ok) throw new Error(j.error || 'build failed');
       b.textContent = 'Downloaded ' + j.plates.length + ' plate(s) ✓';
       const a = document.createElement('a');
@@ -1490,25 +1607,18 @@ renderer.setAnimationLoop(animate);
     } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
     setTimeout(() => { b.textContent = 'Build plates → zip'; b.disabled = false; }, 4500);
   };
-
-  // ---- library ----
-  $('lib-scan').onclick = async e => {
-    const b = e.target; b.disabled = true;
-    const stop = startTicker(b, 'Scanning');
-    try {
-      const j = await (await fetch('/shop/scan')).json(); stop();
-      $('lib-sum').textContent = j.count + ' printable files';
-      const g = $('lib-grid'); g.innerHTML = '';
-      for (const it of j.items){
-        const d = document.createElement('div'); d.className = 'libitem';
-        d.innerHTML = '<b title="' + it.path + '">' + it.name + '</b>' +
-          '<span>' + it.where + ' · ' + (it.size/1048576).toFixed(1) + ' MB</span>';
-        g.append(d);
-      }
-    } catch(err){ stop(); $('lib-sum').textContent = '✗ ' + err.message; }
-    b.textContent = 'Scan Downloads for 3MF files'; b.disabled = false;
-  };
 })();
+
+// ---- tabs ----
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => {
+    x.classList.toggle('on', x === b);
+    x.setAttribute('aria-selected', x === b ? 'true' : 'false');
+  });
+  document.querySelectorAll('.pane').forEach(p =>
+    p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
+  dispatchEvent(new Event('scroll'));
+});
 
 </script>
 </body>

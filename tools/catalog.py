@@ -14,6 +14,7 @@ packer never care which is which:
 Every entry resolves to a 3MF on disk plus a measured footprint, which is
 all the packer needs. Anything the packer cannot measure is not sellable.
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -134,6 +135,19 @@ PARTS = [
        out="cage-D{dia:g}-F{freq}-T{strut:g}-B{ball:g}.3mf"),
 ]
 BY_ID = {p["id"]: p for p in PARTS}
+_LIB_INDEX = {}
+
+
+def find(part_id):
+    """Resolve any catalogue id — generated, parametric or library."""
+    if part_id in BY_ID:
+        return BY_ID[part_id]
+    if part_id not in _LIB_INDEX:
+        _LIB_INDEX.clear()
+        _LIB_INDEX.update({p["id"]: p for p in library()})
+    if part_id in _LIB_INDEX:
+        return _LIB_INDEX[part_id]
+    raise KeyError(part_id)
 
 
 def _fmt(v):
@@ -167,6 +181,10 @@ def _git_last(path):
 
 
 def provenance(part):
+    if part["kind"] == "library":
+        return dict(version=part.get("version", "—"),
+                    changed=part.get("changed", ""), note="on disk",
+                    built=part.get("built", ""))
     """What this design is, when it last changed, and when it was built.
 
     The version is the author's; the date comes from the last commit that
@@ -211,6 +229,8 @@ def ensure(part, params=None, timeout=600):
     Returns (path, report). Raises RuntimeError with the generator's own
     message when a design gate refuses the parameters.
     """
+    if part["kind"] == "library":
+        return part["path"], {"cached": True, "library": True}
     path = out_path(part, params)
     if os.path.exists(path):
         return path, {"cached": True}
@@ -238,7 +258,13 @@ def measure(path):
 
 
 def library(dirs=None, limit=400):
-    """Index printable files sitting on disk (the ad-hoc shelf)."""
+    """Printable files on disk, as catalogue parts.
+
+    Same shape as a generated part, so nothing downstream — the shop rows,
+    the bill of materials, the packer, the exporter — needs to know which
+    kind it is holding. The only difference is that ensure() has nothing to
+    generate.
+    """
     dirs = dirs or [os.path.expanduser("~/Downloads"), MODELS]
     seen, out = set(), []
     for d in dirs:
@@ -259,19 +285,26 @@ def library(dirs=None, limit=400):
                 if key in seen:
                     continue
                 seen.add(key)
+                import datetime
                 out.append(_p(
-                    "lib_" + str(abs(hash(p)) % (10 ** 10)),
-                    os.path.splitext(fn)[0].replace("+", " "),
-                    "Library", "library", "",
-                    path=p, size=st.st_size, mtime=st.st_mtime,
-                    where="Downloads" if "Downloads" in root else "models"))
+                    "lib_" + hashlib.md5(p.encode()).hexdigest()[:10],
+                    os.path.splitext(fn)[0].replace("+", " ").replace("_", " "),
+                    "Downloads" if "Downloads" in root else "Models",
+                    "library", "",
+                    version="—", path=p, size=st.st_size,
+                    changed=datetime.date.fromtimestamp(
+                        st.st_mtime).isoformat(),
+                    built=datetime.date.fromtimestamp(
+                        st.st_mtime).isoformat()))
                 if len(out) >= limit:
                     return out
     return out
 
 
-def catalogue():
-    parts = [dict(p, **provenance(p)) for p in PARTS]
+def catalogue(with_library=True):
+    """One list. A part is a part; some of them have options."""
+    entries = list(PARTS) + (library() if with_library else [])
+    parts = [dict(p, **provenance(p)) for p in entries]
     by = {p["id"]: p for p in parts}
     kits = []
     for k in KITS:
@@ -281,8 +314,12 @@ def catalogue():
         # a kit is only as built as its least-built member
         kits.append(dict(k, changed=max(dates) if dates else "",
                          built=min(builts) if len(builts) == len(mem) else ""))
+    fams = []
+    for p in parts:
+        if p["family"] not in fams:
+            fams.append(p["family"])
     return {"printers": PRINTERS, "printer": DEFAULT_PRINTER,
-            "kits": kits, "parts": parts}
+            "kits": kits, "parts": parts, "families": fams}
 
 
 if __name__ == "__main__":
