@@ -99,12 +99,22 @@ class TestScrewVerification(unittest.TestCase):
                                "a wrong lead passed the screw test")
 
     def test_double_nut_is_one_watertight_body(self):
-        m = self.good.copy()
-        m.merge_vertices()
-        m.update_faces(m.nondegenerate_faces())
-        m.process(validate=True)
-        self.assertTrue(m.is_watertight)
-        self.assertEqual(len(m.split(only_watertight=False)), 1)
+        # watertight as built, with no repair pass: an unconditional
+        # merge_vertices welds the end chamfer's near-coincident vertices
+        # at the hex corners and breaks a solid that was already sound
+        self.assertTrue(self.good.is_watertight)
+        self.assertEqual(len(self.good.split(only_watertight=False)), 1)
+
+    def test_hex_ends_are_chamfered_like_the_original(self):
+        import numpy as np
+        v = self.good.vertices
+        r = np.hypot(v[:, 0], v[:, 1])
+        z0 = v[:, 2].min()
+        face = (np.abs(v[:, 2] - z0) < 0.05) & (r > 21)
+        self.assertAlmostEqual(float(r[face].max()), GM.FACE_R, delta=0.1)
+        corners = v[r > GM.HEX_CR - 0.25]
+        self.assertAlmostEqual(float(corners[:, 2].min() - z0), GM.CHAM_H,
+                               delta=0.15)
 
 
 if __name__ == "__main__":

@@ -38,6 +38,11 @@ LEAD = 11.660                      # mm, right-hand single start
 BORE_ROOT = 18.00                  # female thread root radius
 HEX_CR = 28.55                     # nut circumradius (57.1 across corners)
 CHAMFER = 2.2
+# The designer's nut chamfers its outer hex at both ends: the end face is a
+# circle of r 22.56 flaring to the full 28.55 corner by z 5.26. Measured off
+# the source, and reused here so the coupler reads as the same family of
+# part rather than a raw prism with square edges.
+FACE_R, CHAM_H = 22.56, 5.26
 
 
 def source_parts():
@@ -113,8 +118,25 @@ def screw_test(part, shank, depths, step_deg=3, at=(0.0, 0.0)):
     return lead, out
 
 
+def end_chamfers(height):
+    """A barrel whose conical ends cut the hex corners, as a nut's do."""
+    # the cone must pass exactly through (HEX_CR, CHAM_H) — that is the
+    # measured point where the original reaches its full corner. Running it
+    # straight to a clearance radius instead gets there too early.
+    slope = (HEX_CR - FACE_R) / CHAM_H
+    zc = CHAM_H + 2.0 / slope
+    # keep the profile off the axis: a revolve through r=0 leaves degenerate
+    # polar triangles that survive the boolean as non-manifold edges. A 1 mm
+    # axial hole is harmless — it sits inside the bore, which is open anyway.
+    prof = np.array([(1.0, 0.0), (FACE_R, 0.0), (HEX_CR + 2.0, zc),
+                     (HEX_CR + 2.0, height - zc), (FACE_R, height),
+                     (1.0, height), (1.0, 0.0)])
+    return trimesh.creation.revolve(prof, sections=192)
+
+
 def build_double_nut(nut, height=42.0, lead=LEAD):
     body = trimesh.creation.extrude_polygon(hexagon(HEX_CR), height)
+    body = body.intersection(end_chamfers(height), engine="manifold")
     body.apply_translation([0, 0, -height / 2])   # centred while cutting
     # a waist groove marks the two halves and gives fingers a purchase
     groove = trimesh.creation.cylinder(radius=HEX_CR + 1.0, height=4.0,
@@ -179,9 +201,14 @@ def main():
                    sockets=6, pitch_mm=64.0)
         depths = [6.0, 9.0, 12.0, 15.0]
         probe, at = m, (-32.0, -64.0)      # a real socket, not the origin
-    m.merge_vertices()
-    m.update_faces(m.nondegenerate_faces())
-    m.process(validate=True)
+    # Only repair what is broken. An unconditional merge_vertices welds the
+    # chamfer revolve's near-coincident vertices near the hex corners and
+    # turns a watertight solid into a non-manifold one.
+    if not m.is_watertight:
+        m.merge_vertices(digits_vertex=5)
+        m.update_faces(m.unique_faces())
+        m.update_faces(m.nondegenerate_faces())
+        m.process(validate=True)
     m.apply_translation([0, 0, -m.bounds[0][2]])      # stand it on the bed
     rep["watertight"] = bool(m.is_watertight)
     rep["bodies"] = int(len(m.split(only_watertight=False)))

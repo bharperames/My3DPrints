@@ -32,13 +32,19 @@ META_KEYS = {"type", "name", "inherits", "from", "instantiation",
 # to the preset value on load. Overrides must be declared there or the GUI
 # silently drops them (the CLI applies the raw config either way).
 PROCESS_OVERRIDES = ("brim_type", "brim_width", "brim_object_gap",
-                     "enable_support")
+                     "enable_support", "reduce_crossing_wall")
 OVERRIDES = {
     "curr_bed_type": "Textured PEI Plate",
     "brim_type": "outer_only",
     "brim_width": "5",
     "brim_object_gap": "0.1",
     "enable_support": "0",             # template came from a supported print
+    # Travels that cross an open bore drag a string across it, once or more
+    # per layer, and a helical thread turns each one a little further round
+    # — which is the fan of strings that shows up inside a printed nut. The
+    # system preset leaves this off. Measured on the coupler: 1029 crossings
+    # of the open hole (20.5 m) become 34 (0.8 m), at no cost in time.
+    "reduce_crossing_wall": "1",
 }
 
 
