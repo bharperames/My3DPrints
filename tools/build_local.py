@@ -245,22 +245,30 @@ PARAM_CLASP = """
   <div class="body">
     <p class="eyebrow">Designed here · Claude · fixed geometry</p>
     <h3>Lobster Clasp + Jump Ring <span class="mat">PLA</span></h3>
-    <p class="principle">Ends the parametric chain. Both parts are flat profiles
-    extruded in Z, so they print with no supports, no bridges and no overhangs —
-    and every flexure bends <em>within</em> its layers rather than across them,
-    which is the direction PLA survives. The gate is a flexure, not a
-    pin-and-spring: a 1.0 mm curved beam anchored opposite the mouth, spanning it
-    to trap the link. Press the thumb tab — set at the mouth's edge so it never
-    blocks the passage — and the beam bends inward, opening 3.65 mm for a Ø3.25
-    link; closed it leaves 1.69 mm, half what the link needs to escape. Peak
-    strain at the weld root is 1.4%, computed from beam theory against a 1.5%
-    ceiling for repeated flexure. The jump ring is a butt C-ring, as a metal one
-    is: radially thinner than it is tall so it springs open in-plane, 1.1% strain
-    at the width needed to thread a link. A ball-and-socket snap was tried first
-    and does not fit — a socket with walls needs more section than the ring can
-    spare. 2m42s, 1 g, no slicer warnings. Unvalidated until printed.</p>
-    <p class="specline">clasp 25.4 mm · bowl Ø16.9 · gate 1.0 mm beam, 2.35 mm tab
-    travel · ring Ø12.4 × 1.3 mm section · both parts one plate, 173 mm² bed</p>
+    <p class="principle">Ends the parametric chain, shaped like the real thing:
+    one pear silhouette running from a hooked head, through a waisted neck, into
+    an integrated eye — not a bowl and a tail bolted onto a bar. The outline is
+    the convex hull of the head and eye circles with a small circle bitten out of
+    each flank to pinch the waist; a large circle there is too flat and eats
+    through the head before the waist narrows, so the generator measures the
+    surviving wall (1.35 mm) and refuses if it thins past 0.9. Both parts are
+    flat profiles extruded in Z: no supports, no bridges, no overhangs, and every
+    flexure bends <em>within</em> its layers rather than across them, which is the
+    direction PLA survives. The gate is a flexure, not a pin-and-spring — a coil
+    spring and a 0.4 mm pivot are the two parts of a real lobster clasp that PLA
+    does worst. A 1.0 mm curved beam is anchored opposite the mouth and spans it
+    to trap the link; the thumb lever rides the mouth's lower edge, a wing broad
+    at its root and tapering to the point you press. Closed it leaves 2.02 mm,
+    well under the 3.25 mm a link needs to escape; pressed it opens 3.65 mm, with
+    4.89 mm of mouth still clear of the lever. Peak strain 1.36% from beam theory
+    against a 1.5% ceiling, measured from where the ramped weld root actually
+    clears the bore rather than from the nominal anchor. The jump ring is a butt
+    C-ring, as a metal one is, radially thinner than it is tall so it springs open
+    in-plane; 1.1% strain at the width needed to thread a link. 3 m 28 s, 1.2 g,
+    no slicer warnings. Unvalidated until printed.</p>
+    <p class="specline">clasp 28.5 mm long · head Ø16.9, wall 2.15 · gate 1.0 mm
+    beam, 1.95 mm lever travel · eye bore 5.1 · ring Ø12.4 × 1.3 mm section ·
+    one plate, 230 mm² bed</p>
     <div class="actions">
       <button class="print" id="cl-print">Generate + open in Bambu Studio</button>
       <a class="savelink" id="cl-dl" href="#">generate &amp; download the verified 3MF</a>

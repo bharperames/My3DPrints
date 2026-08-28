@@ -56,55 +56,72 @@ def wedge(a0, a1, r_in, r_out):
 def build(D, T=None):
     """Return (clasp_polygon, ring_polygon, report). Raises ValueError."""
     rep = {}
-    tw = max(1.6, 0.50 * D)                 # wall thickness
+    tw = max(1.9, 0.66 * D)                 # head wall: reads solid,
+                                            # not a second ring
     tg = max(1.00, 0.31 * D)                # gate beam thickness
     th = T if T else max(3.4, 1.10 * D)     # extrusion height
     R1 = 2.60 * D                           # bowl outer radius
     Rin = R1 - tw                           # bowl bore
-    gc = 0.52 * D                           # closed gap, gate to bore
+    gc = 0.62 * D                           # closed gap, gate to bore
     Rg = Rin - gc - tg / 2                  # gate centreline radius
     if Rg - tg / 2 < 0.5 * (D + 1.0):
         raise ValueError("bowl too small to hold the link once it is in")
 
-    # One opening only: a second slot in a ring always strands the wall
-    # segment between them. The tab lives at the low edge of the mouth and
-    # the link passes through the rest of it.
-    MOUTH_LO, MOUTH_HI = -30.0, 16.0
-    A_TAB, TAB_HALF = -23.0, 5.0
-    A_ANCH, A_TIP = 200.0, -36.0            # gate beam sweep
+    # One opening only: a second slot always strands the arc of head wall
+    # between it and the mouth. So the mouth sits where a real clasp's does
+    # — upper right, under the hooked nose — and the thumb lever rides its
+    # lower edge.
+    MOUTH_LO, MOUTH_HI = 12.0, 68.0
+    A_TAB, TAB_HALF = 25.0, 5.0
+    A_ANCH, A_TIP = 272.0, 6.0              # gate sweeps clockwise
 
-    # --- body: bowl ring, mouth and thumb slot removed, neck, tail loop ---
-    bowl = Point(0, 0).buffer(R1, 128).difference(Point(0, 0).buffer(Rin, 128))
-    bowl = bowl.difference(wedge(MOUTH_LO, MOUTH_HI, Rin - 0.1, R1 + 0.1))
-    if bowl.geom_type != "Polygon":
-        raise ValueError("the mouth split the bowl wall into loose arcs")
+    # --- body: one pear silhouette, head through waist to the eye --------
+    R2 = 1.45 * D                           # eye outer radius
+    yt = -(R1 + R2 + 2.2)                   # eye centre, on a neck
+    outer = unary_union([Point(0, 0).buffer(R1, 160),
+                         Point(0, yt).buffer(R2, 96)]).convex_hull
+    # a hull joins the circles with dead-straight tangents; a real clasp
+    # waists inward, so bite a large circle out of each flank — placed so
+    # its inner edge lands exactly on the half-width we want, not deeper
+    # a small carve circle has the curvature to pinch a neck; a large
+    # one is too flat and eats the head before the waist narrows
+    hw, wr, yw = 0.47 * R1, 0.75 * R1, -1.12 * R1
+    for sx in (-1, 1):
+        outer = outer.difference(Point(sx * (hw + wr), yw).buffer(wr, 200))
+    # the bowl stays concentric so the verified gate geometry still holds:
+    # the pear's own taper is what thickens the wall down into the waist
+    body = (outer.difference(Point(0, 0).buffer(Rin, 160))
+                 .difference(Point(0, yt).buffer(R2 - tw, 96))
+                 .difference(wedge(MOUTH_LO, MOUTH_HI, Rin - 0.4, R1 + 5.0)))
+    if body.geom_type != "Polygon":
+        raise ValueError("the mouth split the head wall into loose arcs")
+    # the waist carve is a big circle and will happily eat through the head
+    # if placed badly: measure what wall is actually left
+    wall_min = min(Point(Rin * np.cos(t), Rin * np.sin(t)).distance(
+        outer.exterior) for t in np.radians(np.arange(0, 360, 2)))
+    rep["wall_min_mm"] = round(float(wall_min), 2)
+    if wall_min < MIN_FEATURE:
+        raise ValueError(f"head wall thins to {wall_min:.2f} mm "
+                         f"(<{MIN_FEATURE}) — ease the waist carve")
     passage = np.radians(MOUTH_HI - (A_TAB + TAB_HALF)) * (R1 - tw / 2)
     rep["passage_mm"] = round(passage, 2)
     if passage < D + 0.6:
         raise ValueError(f"only {passage:.1f} mm of mouth clear of the thumb "
                          f"tab — a Ø{D:g} link needs {D + 0.6:.1f}")
-    R2 = 1.45 * D                           # tail loop outer radius
-    yt = -(R1 + R2 - tw * 0.6)
-    tail = (Point(0, yt).buffer(R2, 96)
-            .difference(Point(0, yt).buffer(R2 - tw, 96)))
-    # the neck spans wall-to-wall only: run it further at either end and it
-    # blocks the bowl (where the captured link sits) or the tail bore (where
-    # the jump ring threads)
-    y_top, y_bot = -(R1 - tw * 0.5), yt + R2 - tw * 0.5
-    if y_bot >= y_top:
-        raise ValueError("tail loop overlaps the bowl — no room for a neck")
-    neck = Polygon([(-tw * 1.15, y_top), (tw * 1.15, y_top),
-                    (tw * 0.75, y_bot), (-tw * 0.75, y_bot)])
-    body = unary_union([bowl, tail, neck])
 
     # --- gate: flexure beam, ramping off the wall at the anchor ---
     path = np.vstack([
         arc_pts(R1 - tw / 2, Rg, A_ANCH, A_ANCH - 45, 40),   # blend off wall
         arc_pts(Rg, Rg, A_ANCH - 45, A_TIP, 150)])
     gate = LineString(path).buffer(tg / 2, cap_style=1, resolution=24)
-    tab = LineString(arc_pts(Rg, R1 - 0.4, A_TAB + TAB_HALF * 0.5,
-                             A_TAB - TAB_HALF * 0.5, 20)
-                     ).buffer(tg * 0.62, cap_style=2, resolution=16)
+    # a wing, as the real lever is: broad where it leaves the gate and
+    # tapering to the point a thumb presses
+    wing = arc_pts(Rg, R1 + 1.3, A_TAB + TAB_HALF * 0.8,
+                   A_TAB - TAB_HALF * 1.6, 26)
+    tab = unary_union([
+        LineString(wing[i:i + 3]).buffer(tg * (0.85 - 0.5 * i / len(wing)),
+                                         cap_style=1, resolution=12)
+        for i in range(0, len(wing) - 2, 2)])
     gate = unary_union([gate, tab])
     clasp = unary_union([body, gate])
     if clasp.geom_type != "Polygon":
@@ -144,7 +161,7 @@ def build(D, T=None):
                beam_len_mm=round(L, 1), strain=round(strain, 4))
     if strain > STRAIN_LIMIT:
         raise ValueError(f"gate strain {strain*100:.1f}% over "
-                         f"{STRAIN_LIMIT*100:.0f}% — longer or thinner beam")
+                         f"{STRAIN_LIMIT*100:.1f}% — longer or thinner beam")
 
     # --- jump ring -------------------------------------------------------
     # A butt C-ring, as a metal jump ring is. A ball-and-socket snap was the
