@@ -293,14 +293,20 @@ def library(dirs=None, limit=400):
     kind it is holding. The only difference is that ensure() has nothing to
     generate.
     """
-    dirs = dirs or [os.path.expanduser("~/Downloads"), MODELS]
-    seen, out = set(), []
+    # models/ first: where a design exists in both places, that is the copy
+    # a human has curated and extracted the designer's photos from
+    dirs = dirs or [MODELS, os.path.expanduser("~/Downloads")]
+    seen, out = {}, []
     for d in dirs:
         if not os.path.isdir(d):
             continue
         for root, _, files in os.walk(d):
             if "/glb" in root or "/meta" in root or "/index_out" in root:
                 continue
+            if "/custom" in root:
+                continue        # the generators' own output: already a part,
+                                # and listing it again puts the same design
+                                # in the catalog twice under two names
             for fn in sorted(files):
                 low = fn.lower()
                 if not low.endswith((".3mf", ".stl")):
@@ -312,12 +318,25 @@ def library(dirs=None, limit=400):
                     st = os.stat(p)
                 except OSError:
                     continue
-                key = (fn.lower(), st.st_size)
-                if key in seen:
+                # A design kept in both models/ and Downloads is one design,
+                # even when the two copies differ in size because one was
+                # re-saved — that pair was showing up as two catalog entries
+                # for the same object. Two files that merely share a generic
+                # name in unrelated project folders are not folded: "00
+                # start.3mf" means something different in each of them.
+                key = low
+                prev = seen.get(key)
+                same_design = prev is not None and (
+                    (prev["path"].startswith(MODELS)) !=
+                    (p.startswith(MODELS)))
+                if same_design:
+                    prev["copies"] = prev.get("copies", 1) + 1
+                    prev.setdefault("also", []).append(p)
                     continue
-                seen.add(key)
+                if prev is not None and prev["size"] == st.st_size:
+                    continue                     # the very same file, twice
                 import datetime
-                out.append(_p(
+                entry = _p(
                     "lib_" + hashlib.md5(p.encode()).hexdigest()[:10],
                     os.path.splitext(fn)[0].replace("+", " ").replace("_", " "),
                     "Downloads" if "Downloads" in root else "Models",
@@ -326,7 +345,9 @@ def library(dirs=None, limit=400):
                     changed=datetime.date.fromtimestamp(
                         st.st_mtime).isoformat(),
                     built=datetime.date.fromtimestamp(
-                        st.st_mtime).isoformat()))
+                        st.st_mtime).isoformat())
+                seen.setdefault(key, entry)
+                out.append(entry)
                 if len(out) >= limit:
                     return out
     return out

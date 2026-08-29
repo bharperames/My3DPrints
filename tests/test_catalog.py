@@ -52,6 +52,28 @@ class TestOneList(unittest.TestCase):
         for p in plain[:5]:
             self.assertTrue(p.get("preview") and p.get("dims"))
 
+    def test_a_design_kept_in_two_places_is_one_entry(self):
+        # the curated copy in models/ and the download it came from are the
+        # same design; listing both put it in the catalog twice
+        folded = [p for p in self.parts if p.get("copies", 1) > 1]
+        self.assertTrue(folded, "expected some designs kept in both places")
+        for p in folded:
+            self.assertTrue(p["path"].startswith(catalog.MODELS),
+                            f"{p['name']} kept the uncurated copy")
+            self.assertEqual(len(p["also"]), p["copies"] - 1)
+
+    def test_the_generators_own_output_is_not_listed_twice(self):
+        # custom/ holds what the generators wrote; those are already parts
+        dup = [p["id"] for p in self.parts
+               if "/custom/" in p.get("path", "")]
+        self.assertEqual(dup, [])
+
+    def test_unrelated_files_sharing_a_name_stay_separate(self):
+        # "00 start.3mf" means something different in each project folder
+        names = [p["name"] for p in self.parts]
+        self.assertGreater(len(names) - len(set(names)), 0,
+                           "expected distinct files that share a name")
+
     def test_sliced_exports_are_not_offered_as_models(self):
         # a *.gcode.3mf is a slice of a print, not something to print
         bad = [p["id"] for p in self.parts

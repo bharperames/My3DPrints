@@ -1158,6 +1158,7 @@ renderer.setAnimationLoop(animate);
     if (p.dims) bits.push(p.dims);
     if (p.bodies > 1) bits.push(p.bodies + ' bodies');
     if (p.tris) bits.push(p.tris.toLocaleString() + ' tris');
+    if (p.copies > 1) bits.push(p.copies + ' copies on disk');
     let out = esc(bits.join(' \u00b7 '));
     if (p.slice) out += '<br>P2S slice: ' + esc(p.slice);
     return out;
