@@ -333,3 +333,29 @@ class TestChainCoils(unittest.TestCase):
         rep, _ = self._make(40, bed=60)
         self.assertFalse(rep["ok"])
         self.assertIn("coil", rep["error"])
+
+    def test_links_land_on_a_flat_foot_not_a_tangent_line(self):
+        # a round tube touches the bed on a line, and the slicer lays one
+        # bead per link — 6 mm2 holding a 10 mm loop, which lifted
+        rep, path = self._make(40)
+        self.assertGreater(rep["foot_mm"], 0.2)
+        import trimesh
+        sc = trimesh.load(path, force="scene")
+        g = list(sc.geometry.values())[0]
+        z0 = float(g.bounds[0][2])
+        flat = g.vertices[g.vertices[:, 2] < z0 + 0.02]
+        self.assertGreater(len(flat), 8, "no flat pad at the bottom")
+        span = flat[:, :2].max(axis=0) - flat[:, :2].min(axis=0)
+        self.assertGreater(min(span), 0.8, f"foot is a sliver: {span}")
+
+    def test_the_foot_does_not_eat_the_joint(self):
+        # cutting the bottom only removes material, so clearance may not drop
+        flat, _ = self._make(40)
+        none, _ = self._make(40, foot=0)
+        self.assertGreaterEqual(flat["clearance"], none["clearance"] - 0.01)
+
+    def test_no_brim_by_default(self):
+        # any brim follows the plan-view outline, and interlocked links
+        # overlap in plan, so it welds every link to its neighbour
+        rep, _ = self._make(40)
+        self.assertFalse(rep["brim"])

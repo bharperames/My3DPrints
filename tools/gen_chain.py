@@ -60,6 +60,11 @@ def tube(loop2d, tr, n_sec=20):
     return m
 
 
+NO_BRIM_WHY = ("a brim follows each link's plan-view outline, and "
+               "interlocked links overlap in plan, so every brim merges "
+               "into one sheet welded across the joints")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--links", type=int, required=True)
@@ -70,6 +75,13 @@ def main():
                     default="auto")
     ap.add_argument("--bed", type=float, default=246.0,
                     help="usable plate edge (mm); the coil must fit inside it")
+    ap.add_argument("--foot", type=float, default=0.4,
+                    help="flat cut off the bottom of each link (mm). A round "
+                         "tube touches the bed on a line; a flat lands on a "
+                         "pad. 0 restores the tangent contact.")
+    ap.add_argument("--brim", action="store_true",
+                    help="force a brim. Measured on a 40-link coil it fuses "
+                         "all 40 links into one sheet: " + NO_BRIM_WHY)
     a = ap.parse_args()
     err = None
     if not 2 <= a.links <= 120:
@@ -86,6 +98,7 @@ def main():
         return 1
 
     link = tube(stadium_path(cl_l, cl_w), a.dia / 2)
+    foot = max(0.0, min(a.foot, a.dia / 3))     # never bite past a third
 
     def placed(x, tilt):
         l = link.copy()
@@ -121,7 +134,14 @@ def main():
     min_gap = max(0.4, 0.12 * a.dia)
 
     def place(x, y, psi, tilt):
-        """A link at (x, y), lying along a path heading psi, tilted on it."""
+        """A link at (x, y), lying along a path heading psi, tilted on it.
+
+        The bottom is cut flat. A round tube meets the bed on a tangent
+        line, so the slicer lays a single bead per link — a few mm2 holding
+        a 10 mm loop, which is why a coil of them lifts. Taking a slice off
+        the bottom turns that line into a pad, and unlike a brim it adds no
+        material between one link and the next.
+        """
         l = link.copy()
         l.apply_transform(
             trimesh.transformations.rotation_matrix(tilt, [1, 0, 0]))
@@ -129,6 +149,11 @@ def main():
             trimesh.transformations.rotation_matrix(psi, [0, 0, 1]))
         l.apply_translation([x, y, 0])
         l.apply_translation([0, 0, -l.bounds[0][2]])
+        if foot > 0:
+            cut = l.slice_plane([0, 0, foot], [0, 0, 1], cap=True)
+            if cut is not None and len(cut.faces):
+                cut.apply_translation([0, 0, -cut.bounds[0][2]])
+                l = cut
         return l
 
     def threaded(a_lnk, b_lnk, tilt_a, psi_a):
@@ -274,15 +299,19 @@ def main():
         sc.add_geometry(l, geom_name=f"link_{i}")
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     sc.export(a.out)
+
     from embed_settings import embed
-    # no brim: a 5 mm skirt would bridge the gaps between print-in-place links
-    embed(a.out, brim=False)
+    # Grip comes from the flat foot, not from a brim: the foot triples the
+    # bead the slicer can lay under each link without putting any material
+    # between one link and the next.
+    embed(a.out, brim=bool(a.brim))
     ext = sc.bounds[1] - sc.bounds[0]
     per = 2 * (cl_l - cl_w) + np.pi * cl_w
     vol = per * np.pi * (a.dia / 2) ** 2 * a.links / 1000.0
     print(json.dumps({"ok": True, "file": os.path.basename(a.out),
                       "links": a.links, "pitch": round(float(pitch), 2),
                       "layout": layout, "coil_radius": coil_r,
+                      "brim": bool(a.brim), "foot_mm": round(foot, 2),
                       "straight_len": round(float(straight_len), 1),
                       "clearance": round(float(worst if worst is not None
                                                else clearance), 2),
