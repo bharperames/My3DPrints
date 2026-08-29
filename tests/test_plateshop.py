@@ -4,7 +4,9 @@ import os
 import sys
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+TOOLS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools")
+PY = sys.executable
+sys.path.insert(0, TOOLS)
 import catalog  # noqa: E402
 import plateshop as PS  # noqa: E402
 
@@ -199,11 +201,35 @@ class TestUnifiedCatalog(unittest.TestCase):
         items, reports = PS.order_items(
             [{"part": "dice_orb", "qty": 1},
              {"part": lib[0]["id"], "qty": 1}])
-        self.assertEqual(len(items), 2)
+        # one line can become several items: a downloaded file of separate
+        # objects is packed a piece at a time
+        self.assertGreaterEqual(len(items), 2)
         self.assertEqual({i["key"] for i in items},
                          {"dice_orb", lib[0]["id"]})
         for it in items:
             self.assertGreater(it["w"], 0)
+
+    def test_a_file_of_separate_objects_is_packed_a_piece_at_a_time(self):
+        # the Quantum Skull ships its two halves side by side, 388 mm wide.
+        # Packed whole it fits no plate; packed as halves it fits one.
+        skull = next((p for p in catalog.catalog()["parts"]
+                      if "Skull" in p["name"]), None)
+        if skull is None:
+            self.skipTest("Quantum Skull not present")
+        items, reports = PS.order_items([{"part": skull["id"], "qty": 1}])
+        self.assertGreater(len(items), 1)
+        for it in items:
+            self.assertLess(it["w"], 246.0)
+        plates, over = PS.pack(items)
+        self.assertEqual(over, [])
+        self.assertEqual(reports[skull["id"]]["pieces"], len(items))
+
+    def test_an_assembly_is_never_split(self):
+        # the dice orb's die sits inside its cage; separating them would
+        # stand the die on the bed
+        items, _ = PS.order_items([{"part": "dice_orb", "qty": 1}])
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0]["assembly"])
 
 
 class TestEverythingSitsOnThePlate(unittest.TestCase):
@@ -261,3 +287,49 @@ class TestEverythingSitsOnThePlate(unittest.TestCase):
         usable = 256 - 2 * PS.MARGIN
         self.assertLessEqual(m["w"] + PS.GAP, usable - 2.0,
                              "wrench leaves no margin on the plate")
+
+
+class TestChainCoils(unittest.TestCase):
+    """A chain too long to lie straight is coiled, and still a chain."""
+
+    @staticmethod
+    def _make(links, **kw):
+        import subprocess
+        import tempfile
+        out = os.path.join(tempfile.mkdtemp(), f"c{links}.3mf")
+        args = [PY, os.path.join(TOOLS, "gen_chain.py"),
+                "--links", str(links), "--len", "19", "--dia", "3.25",
+                "--out", out]
+        for k, v in kw.items():
+            args += [f"--{k}", str(v)]
+        r = subprocess.run(args, capture_output=True, text=True, timeout=900)
+        return json.loads(r.stdout.strip().splitlines()[-1]), out
+
+    def test_a_short_chain_still_lies_straight(self):
+        rep, _ = self._make(5)
+        self.assertTrue(rep["ok"], rep)
+        self.assertEqual(rep["layout"], "straight")
+        self.assertLess(rep["dims"][1], 15.0)
+
+    def test_a_long_chain_coils_onto_the_plate(self):
+        rep, _ = self._make(40)
+        self.assertTrue(rep["ok"], rep)
+        self.assertEqual(rep["layout"], "coil")
+        self.assertGreater(rep["straight_len"], 246.0)
+        self.assertLess(max(rep["dims"][0], rep["dims"][1]), 246.0)
+
+    def test_the_coil_keeps_the_joint_clearance(self):
+        rep, _ = self._make(40)
+        # the same floor the straight joint has to clear
+        self.assertGreaterEqual(rep["clearance"], 0.4)
+
+    def test_coiling_does_not_change_the_pitch(self):
+        # a coiled chain is the same chain, just arranged to fit
+        a, _ = self._make(5)
+        b, _ = self._make(40)
+        self.assertAlmostEqual(a["pitch"], b["pitch"], places=2)
+
+    def test_a_coil_that_will_not_fit_is_refused(self):
+        rep, _ = self._make(40, bed=60)
+        self.assertFalse(rep["ok"])
+        self.assertIn("coil", rep["error"])

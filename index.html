@@ -515,12 +515,25 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
 <script type="importmap">
 {"imports":{"three":"./vendor/three.module.js",
 "three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
-"three/addons/loaders/GLTFLoader.js":"./vendor/loaders/GLTFLoader.js"}}
+"three/addons/loaders/GLTFLoader.js":"./vendor/loaders/GLTFLoader.js",
+"three/addons/utils/BufferGeometryUtils.js":"./vendor/utils/BufferGeometryUtils.js"}}
 </script>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {toCreasedNormals} from 'three/addons/utils/BufferGeometryUtils.js';
+
+// trimesh writes GLB without normals. Computing them the usual way averages
+// across every shared vertex, which rounds a prism's sharp edges into a soft
+// twist — the wrench's flat walls came out looking wrung. Splitting at a
+// crease angle keeps flats flat and curves smooth.
+function fixNormals(obj){
+  obj.traverse(o => { if (o.isMesh && !o.geometry.attributes.normal){
+    o.geometry = toCreasedNormals(o.geometry, Math.PI / 6);   // 30 deg
+  }});
+  return obj;
+}
 
 const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
@@ -670,7 +683,7 @@ function setModel(v, i){
   v.el.appendChild(status);
   loader.load(entry.glb || ('models/glb/' + entry.slug + '.glb'), gltf => {
     status.remove();
-    const obj = gltf.scene;
+    const obj = fixNormals(gltf.scene);
     obj.rotation.x = -Math.PI/2;   // z-up sources
     obj.traverse(o => { if (o.isMesh){
       o.material.metalness = 0.05; o.material.roughness = 0.62;
@@ -1271,9 +1284,14 @@ renderer.setAnimationLoop(animate);
       body.append(row);
       if (m.own) body.append(optionBox(p, m.own));
     }
-    const entries = mem.filter(p => p.preview).map(p =>
-      ({glb: p.preview, label: p.name, chip: p.name,
-        dims: p.dims3, tris: p.tris}));
+    // the set first, then each part on its own chip
+    const entries = [];
+    if (k.preview) entries.push({glb: k.preview, label: k.name,
+                                 chip: 'all ' + mem.length,
+                                 dims: k.dims3, tris: k.tris});
+    mem.filter(p => p.preview).forEach(p => entries.push(
+      {glb: p.preview, label: p.name, chip: p.name,
+       dims: p.dims3, tris: p.tris}));
     if (entries.length) mountView(el.querySelector('.view'), entries);
     return el;
   }
@@ -1362,34 +1380,104 @@ renderer.setAnimationLoop(animate);
   const cv = $('shop-3d');
   const R3 = new THREE.WebGLRenderer({canvas: cv, alpha: true, antialias: true});
   R3.setPixelRatio(Math.min(devicePixelRatio, 2));
-  const S3 = makeScene();
-  const C3 = new THREE.PerspectiveCamera(42, 2, 1, 6000);
+  R3.shadowMap.enabled = true;
+  R3.shadowMap.type = THREE.PCFSoftShadowMap;
+  // The plate gets its own studio rig rather than the card viewers' flat one:
+  // a part reads as something about to be printed only when it sits on a
+  // surface and drops a shadow onto it.
+  const S3 = new THREE.Scene();
+  S3.add(new THREE.HemisphereLight(0xdfe8e6, 0x2a3336, 0.55));
+  const KEY = new THREE.DirectionalLight(0xfff2d8, 2.1);
+  KEY.position.set(180, 300, 220);
+  KEY.castShadow = true;
+  KEY.shadow.mapSize.set(2048, 2048);
+  KEY.shadow.bias = -0.0006;
+  KEY.shadow.normalBias = 0.6;
+  S3.add(KEY);
+  const FILL = new THREE.DirectionalLight(0xbdd4ff, 0.4);
+  FILL.position.set(-240, 120, 160); S3.add(FILL);
+  const RIM = new THREE.DirectionalLight(0x7fd8cc, 0.5);
+  RIM.position.set(-120, 70, -260); S3.add(RIM);
+
+  const C3 = new THREE.PerspectiveCamera(42, 2, 1, 8000);
   const CT = new OrbitControls(C3, cv);
   CT.enableDamping = true;
   let model = null, beds = null;
+
+  // A slicer bed, not a bare grid: a solid surface that takes the shadow,
+  // 10 mm graph-paper ruling with a heavier 50 mm line, and the usable area
+  // outlined inside the plate's own edge.
+  function onePlate(bed, margin){
+    const g = new THREE.Group();
+    const [w, d] = bed;
+    const top = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2),
+      // light enough that a contact shadow actually reads on it: at
+      // 0x243038 the shadow was rendering and invisible
+      new THREE.MeshStandardMaterial({color: 0x3d4f5c, roughness: 0.95,
+                                      metalness: 0.0}));
+    top.receiveShadow = true;
+    g.add(top);
+    const minor = new THREE.GridHelper(w, Math.round(w / 10),
+                                       0x6b8296, 0x6b8296);
+    minor.material.transparent = true; minor.material.opacity = 0.45;
+    minor.position.y = 0.05;
+    const major = new THREE.GridHelper(w, Math.round(w / 50),
+                                       0xb9cbd8, 0xb9cbd8);
+    major.material.transparent = true; major.material.opacity = 0.8;
+    major.position.y = 0.1;
+    g.add(minor, major);
+    // the plate's own edge
+    const edge = (u, v, y, col) => {
+      const pts = [[-u/2,y,-v/2],[u/2,y,-v/2],[u/2,y,v/2],[-u/2,y,v/2],
+                   [-u/2,y,-v/2]].map(p => new THREE.Vector3(...p));
+      return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+                            new THREE.LineBasicMaterial({color: col}));
+    };
+    g.add(edge(w, d, 0.16, 0xcdd9e4));
+    // and the area the packer will actually use
+    g.add(edge(w - 2*margin, d - 2*margin, 0.2, 0x4FD2C2));
+    return g;
+  }
   function bedGrid(cols, n, bed, margin, pitch){
     const g = new THREE.Group();
     for (let i = 0; i < n; i++){
-      const ox = (i % cols) * pitch, oz = -Math.floor(i / cols) * pitch;
-      const grid = new THREE.GridHelper(bed[0], bed[0]/16, 0x3a464c, 0x232b2f);
-      grid.position.set(ox, 0, -oz);
-      g.add(grid);
-      const u = bed[0] - 2*margin, v = bed[1] - 2*margin;
-      const pts = [[-u/2,0,-v/2],[u/2,0,-v/2],[u/2,0,v/2],[-u/2,0,v/2],[-u/2,0,-v/2]]
-        .map(p => new THREE.Vector3(p[0]+ox, 0.1, p[2]-oz));
-      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
-        new THREE.LineBasicMaterial({color: 0x4FD2C2})));
+      const p = onePlate(bed, margin);
+      p.position.set((i % cols) * pitch, 0, -Math.floor(i / cols) * pitch);
+      g.add(p);
     }
     return g;
   }
+  // Fit the whole plate in the viewport, both ways round. Framing on the
+  // bounding sphere alone crops a wide plate in a narrow panel, which is how
+  // the bed ended up running off the edge of the rail.
   function frameBeds(){
     const box = new THREE.Box3().setFromObject(beds);
     const c = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).length();
+    const sz = box.getSize(new THREE.Vector3());
+    const r = Math.max(sz.x, sz.z) * 0.5 * Math.SQRT2;   // seen from an angle
+    const vFov = C3.fov * Math.PI / 180;
+    const aspect = Math.max(0.4, cv.clientWidth / Math.max(1, cv.clientHeight));
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const dist = Math.max(r / Math.tan(vFov / 2), r / Math.tan(hFov / 2)) * 1.18;
     CT.target.copy(c);
-    C3.position.copy(c).add(new THREE.Vector3(0.5, 0.85, 0.9)
-      .normalize().multiplyScalar(size * 0.95));
+    C3.position.copy(c).add(new THREE.Vector3(0.45, 0.72, 0.9)
+      .normalize().multiplyScalar(dist));
+    C3.near = Math.max(1, dist / 100);
+    C3.far = dist * 6;
     C3.updateProjectionMatrix();
+    // the shadow frustum has to cover the plate or the shadow clips
+    const s = Math.max(sz.x, sz.z) * 0.75 + 60;
+    KEY.shadow.camera.left = -s; KEY.shadow.camera.right = s;
+    KEY.shadow.camera.top = s; KEY.shadow.camera.bottom = -s;
+    KEY.shadow.camera.far = dist * 4;
+    KEY.shadow.camera.updateProjectionMatrix();
+    // ~40 deg elevation, not overhead: a flat part under a high light casts
+    // its shadow underneath itself, where nobody can see it
+    KEY.position.copy(c).add(new THREE.Vector3(0.62, 0.84, 0.7)
+      .normalize().multiplyScalar(Math.max(sz.x, sz.z) * 1.4));
+    KEY.target.position.copy(c);
+    if (!KEY.target.parent) S3.add(KEY.target);
   }
   // An empty plate is still a plate: show the bed from the first frame
   // rather than a black rectangle that reads as a broken viewport.
@@ -1407,14 +1495,12 @@ renderer.setAnimationLoop(animate);
     S3.add(beds);
     loader.load('models/' + info.file + '?t=' + Date.now(), gltf => {
       if (model) S3.remove(model);
-      model = gltf.scene;
+      model = fixNormals(gltf.scene);
       model.rotation.x = -Math.PI/2;             // trimesh writes z-up
       model.traverse(o => { if (o.isMesh){
-        // trimesh writes GLB without vertex normals; a standard material
-        // shades those black, so compute them before assigning one
-        if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+        o.castShadow = true;
         o.material = new THREE.MeshStandardMaterial({color: 0xE9A063,
-          metalness: 0.05, roughness: 0.6}); }});
+          metalness: 0.05, roughness: 0.55}); }});
       S3.add(model);
       frameBeds();
     });
@@ -1452,7 +1538,8 @@ renderer.setAnimationLoop(animate);
         '! ' + o.name + ' does not fit the plate (' + o.reason + ')').join('  ');
       for (const [id, rep] of Object.entries(j.reports||{})){
         if (!rep.w) continue;
-        const dims = rep.w.toFixed(0)+'×'+rep.d.toFixed(0)+'×'+rep.h.toFixed(0)+' mm';
+        const dims = rep.w.toFixed(0)+'×'+rep.d.toFixed(0)+'×'+rep.h.toFixed(0)
+          + ' mm' + (rep.pieces > 1 ? ' ×' + rep.pieces : '');
         if (byId[id]) byId[id].dims = dims;
         // the measurement comes back from the real build, so the card and
         // the kit row both take the corrected size rather than the estimate
@@ -1486,6 +1573,20 @@ renderer.setAnimationLoop(animate);
     } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
     setTimeout(() => { b.textContent = 'Build plates → zip'; b.disabled = false; }, 4500);
   };
+
+  // a hook for the browser checks: the plate's renderer and light rig
+  window.__plateObjs = () => ({R3, S3, C3, KEY, beds: () => beds,
+                              model: () => model});
+  window.__plate = () => ({shadows: R3.shadowMap.enabled,
+    shadowMaps: R3.info.memory.textures,
+    calls: R3.info.render.calls, tris: R3.info.render.triangles,
+    lightAt: KEY.position.toArray().map(Math.round),
+    cam: [KEY.shadow.camera.left, KEY.shadow.camera.right,
+          KEY.shadow.camera.near, KEY.shadow.camera.far].map(Math.round),
+    casters: (() => { let n = 0;
+      S3.traverse(o => { if (o.isMesh && o.castShadow) n++; }); return n; })(),
+    receivers: (() => { let n = 0;
+      S3.traverse(o => { if (o.isMesh && o.receiveShadow) n++; }); return n; })()});
 
   showEmptyBed();     // after the 3D state above exists, not before
 })();

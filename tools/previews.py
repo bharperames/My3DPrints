@@ -65,7 +65,9 @@ def _tile(meshes):
 
 
 def build_one(pid, path, budget=BUDGET, tile=True):
-    meshes = _load(path)
+    meshes = []
+    for one in ([path] if isinstance(path, str) else path):
+        meshes += _load(one)
     if not meshes:
         raise ValueError("no printable body in the file")
     full = sum(len(m.faces) for m in meshes)
@@ -155,19 +157,35 @@ def stamp(path):
     return f"{st.st_size}:{int(st.st_mtime)}"
 
 
+def _source_of(pid):
+    part = catalog.find(pid)
+    if part["kind"] == "library":
+        return part["path"]
+    return catalog.ensure(part, catalog.defaults(part))[0]
+
+
 def sources():
-    """(id, source path) for everything the catalog can put on a plate."""
+    """(id, source) for everything the catalog can show on a card.
+
+    A kit gets a preview of its own, built from every member: the card is
+    for the set, and showing only the first part of it answers the wrong
+    question about what you are about to order.
+    """
     cat = catalog.catalog()
     for p in cat["parts"]:
         try:
-            if p["kind"] == "library":
-                yield p["id"], catalog.find(p["id"])["path"]
-            else:
-                part = catalog.find(p["id"])
-                yield p["id"], catalog.ensure(part,
-                                              catalog.defaults(part))[0]
+            yield p["id"], _source_of(p["id"])
         except Exception as e:                       # noqa: BLE001
             print(f"  ! {p['id']}: {e}", file=sys.stderr)
+    for k in cat["kits"]:
+        paths = []
+        for m in k["members"]:
+            try:
+                paths.append(_source_of(m["part"]))
+            except Exception as e:                   # noqa: BLE001
+                print(f"  ! {k['id']}/{m['part']}: {e}", file=sys.stderr)
+        if paths:
+            yield "kit_" + k["id"], paths
 
 
 def main():
@@ -187,7 +205,8 @@ def main():
                 out.append(have[pid])
             continue
         try:
-            s = stamp(path)
+            s = "|".join(stamp(x)
+                         for x in ([path] if isinstance(path, str) else path))
         except OSError:
             continue
         old = have.get(pid)

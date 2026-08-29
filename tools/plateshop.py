@@ -161,6 +161,54 @@ def describe(plates, oversized):
     return "\n".join(out)
 
 
+_BODIES = {}
+
+
+def load_bodies(path):
+    """Every body of a file, in world space, keyed by its geometry name."""
+    if path not in _BODIES:
+        src = trimesh.load(path, force="scene")
+        out = []
+        for node in src.graph.nodes_geometry:
+            tf, gk = src.graph[node]
+            g = src.geometry[gk].copy()
+            g.apply_transform(tf)
+            out.append((gk, g))
+        _BODIES[path] = out
+    return [(gk, g.copy()) for gk, g in _BODIES[path]]
+
+
+def is_assembly(bodies):
+    """Do the bodies share space? Then they were positioned on purpose.
+
+    A dice orb's die sits inside its cage and the two must move together.
+    A downloaded file's objects usually sit side by side on the designer's
+    plate, and moving them together makes one 388 mm part that fits no bed.
+    """
+    for i, (_, a) in enumerate(bodies):
+        for _, b in bodies[i + 1:]:
+            if (a.bounds[0] < b.bounds[1]).all() and \
+               (b.bounds[0] < a.bounds[1]).all():
+                return True
+    return False
+
+
+def pieces(path):
+    """What the packer places: whole assemblies, or one object at a time."""
+    bodies = load_bodies(path)
+    if len(bodies) < 2 or is_assembly(bodies):
+        return [[gk for gk, _ in bodies]]
+    return [[gk] for gk, _ in bodies]
+
+
+def _extent(bodies, keys):
+    sel = [g for gk, g in bodies if gk in keys]
+    lo = np.min([g.bounds[0] for g in sel], axis=0)
+    hi = np.max([g.bounds[1] for g in sel], axis=0)
+    return dict(w=float(hi[0] - lo[0]), d=float(hi[1] - lo[1]),
+                h=float(hi[2] - lo[2]))
+
+
 def order_items(order):
     """Resolve an order into per-copy items, generating what is missing.
 
@@ -172,10 +220,23 @@ def order_items(order):
         params = line.get("params") or {}
         path, rep = catalog.ensure(part, params)
         m = catalog.measure(path)
-        reports[part["id"]] = dict(rep, **m, file=os.path.basename(path))
+        bodies = load_bodies(path)
+        groups = pieces(path)
+        one = len(groups) == 1
+        # report the piece that gets placed, not the designer's whole plate:
+        # a file laid out 388 mm wide is two 81 mm halves to this shop
+        shown = m if one else max(
+            (_extent(bodies, set(g)) for g in groups),
+            key=lambda e: e["w"] * e["d"])
+        reports[part["id"]] = dict(rep, **shown, file=os.path.basename(path),
+                                   pieces=len(groups))
         for i in range(int(line.get("qty", 1))):
-            items.append(dict(key=part["id"], name=part["name"], path=path,
-                              copy=i, assembly=part["kind"] != "library", **m))
+            for j, keys in enumerate(groups):
+                items.append(dict(
+                    key=part["id"], path=path, copy=i, bodies=keys,
+                    name=(part["name"] if one
+                          else f"{part['name']} ({j + 1}/{len(groups)})"),
+                    assembly=one, **_extent(bodies, set(keys))))
     return items, reports
 
 
@@ -195,13 +256,9 @@ def arranged_scene(plates, pitch=300.0, simplify=60_000):
         ox, oy = (n % cols) * pitch, -(n // cols) * pitch
         used = {}
         for it in p["items"]:
-            src = trimesh.load(it["path"], force="scene")
-            bodies = []
-            for node in src.graph.nodes_geometry:
-                tf, gk = src.graph[node]
-                g = src.geometry[gk].copy()
-                g.apply_transform(tf)
-                bodies.append((gk, g))
+            keys = set(it.get("bodies") or [])
+            bodies = [(gk, g) for gk, g in load_bodies(it["path"])
+                      if not keys or gk in keys]
             if it["rot"]:
                 R = trimesh.transformations.rotation_matrix(
                     np.radians(it["rot"]), [0, 0, 1])
@@ -266,17 +323,14 @@ def build_zip(plates, out_zip, printer="P2S", oversized=None):
             sc = trimesh.Scene()
             used, cm3 = {}, 0.0
             for it in p["items"]:
-                src = trimesh.load(it["path"], force="scene")
-                # A part is one rigid assembly. Placing its bodies
-                # separately re-centres each on the same spot and drops each
-                # to z=0 — which would stand the dice orb's die on the bed
-                # instead of on its support sleeve inside the cage.
-                bodies = []
-                for node in src.graph.nodes_geometry:
-                    tf, gk = src.graph[node]
-                    g = src.geometry[gk].copy()
-                    g.apply_transform(tf)
-                    bodies.append((gk, g))
+                # A piece is placed as a unit. For an assembly that is every
+                # body in the file — placing them separately would re-centre
+                # each on the same spot and stand the dice orb's die on the
+                # bed instead of on its sleeve inside the cage. For a file of
+                # independent objects it is one object.
+                keys = set(it.get("bodies") or [])
+                bodies = [(gk, g) for gk, g in load_bodies(it["path"])
+                          if not keys or gk in keys]
                 if it["rot"]:
                     R = trimesh.transformations.rotation_matrix(
                         np.radians(it["rot"]), [0, 0, 1])

@@ -83,10 +83,12 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     bore_af = af + clr
     bore_cr = bore_af / np.sqrt(3)
     r_box = bore_cr + box_wall
-    span = af * 2.95                       # centre to centre; 3.2 put the
-                                           # part at 246.04 mm against a
-                                           # 246.0 usable plate and the
-                                           # packer refused it by 0.04
+    span = af * 2.0                        # centre to centre. A real spanner
+                                           # runs long for leverage; a toy for
+                                           # a 50 mm nut is chunky and short,
+                                           # about 3.5x across-flats overall.
+                                           # 2.95 made a 228 mm wrench that
+                                           # read as a crowbar next to the nut
     r_open = bore_af / 2 + jaw_arm
 
     ang = np.radians(JAW_DEG)

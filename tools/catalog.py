@@ -60,7 +60,7 @@ KITS = [
                       max=8, step=0.25, val=3.25)],
          members=[
              dict(part="chain", label="Chain",
-                  own=[dict(key="links", label="links", min=2, max=25,
+                  own=[dict(key="links", label="links", min=2, max=100,
                             step=1, val=5),
                        dict(key="len", label="link length", unit="mm",
                             min=14, max=60, step=1, val=19)]),
@@ -110,8 +110,10 @@ PARTS = [
        version="1.1.0",
        gen=["gen_clasp.py", "--part", "ring"], out="ring-only-D{dia:g}.3mf"),
     _p("chain", "Chain", "Designed here", "parametric",
-       "Print-in-place stadium links, any length.",
-       version="1.0.0",
+       "Print-in-place stadium links. A chain too long to lie straight on "
+       "the plate is coiled instead, at a radius the joint has been measured "
+       "to bend through.",
+       version="1.1.0",
        gen=["gen_chain.py"],
        out="chain-N{links}-L{len:g}-D{dia:g}.3mf"),
     _p("sphere_stand", "Sphere Stand", "Sphere Stands", "parametric",
@@ -432,8 +434,14 @@ def catalog(with_library=True):
         dates = [p["changed"] for p in mem if p["changed"]]
         builts = [p["built"] for p in mem if p["built"]]
         # a kit is only as built as its least-built member
-        kits.append(dict(k, changed=max(dates) if dates else "",
-                         built=min(builts) if len(builts) == len(mem) else ""))
+        kit = dict(k, changed=max(dates) if dates else "",
+                   built=min(builts) if len(builts) == len(mem) else "")
+        pv = prev.get("kit_" + k["id"])
+        if pv:
+            # the card is for the set, so its preview shows the whole set
+            kit.update(preview=pv["glb"], dims3=pv["dims"], tris=pv["tris_full"],
+                       bodies=pv["bodies"])
+        kits.append(kit)
     fams = []
     for p in parts:
         if p["family"] not in fams:
