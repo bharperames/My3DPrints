@@ -294,9 +294,12 @@ def main():
             print(json.dumps({"ok": False, "error": why}))
             return 1
 
+    # One object, not one per link. A scene of 40 geometries arrives in
+    # Studio as 40 draggable objects, and dragging one link out of a chain
+    # is a silent way to ruin a print. A single mesh of 40 shells slices
+    # identically and moves as the one thing it is.
     sc = trimesh.Scene()
-    for i, l in enumerate(placed_links):
-        sc.add_geometry(l, geom_name=f"link_{i}")
+    sc.add_geometry(trimesh.util.concatenate(placed_links), geom_name="chain")
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     sc.export(a.out)
 

@@ -230,13 +230,20 @@ def order_items(order):
             key=lambda e: e["w"] * e["d"])
         reports[part["id"]] = dict(rep, **shown, file=os.path.basename(path),
                                    pieces=len(groups))
+        # A brim is a per-part decision and plates are homogeneous: a part
+        # that needs one must not share a plate with a part a brim would
+        # ruin. The packer already partitions by group, so the brim choice
+        # is the group.
+        brim = part.get("brim", "off")
         for i in range(int(line.get("qty", 1))):
             for j, keys in enumerate(groups):
                 items.append(dict(
                     key=part["id"], path=path, copy=i, bodies=keys,
                     name=(part["name"] if one
                           else f"{part['name']} ({j + 1}/{len(groups)})"),
-                    assembly=one, **_extent(bodies, set(keys))))
+                    assembly=one, brim=brim,
+                    group=("brim" if brim == "on" else ""),
+                    **_extent(bodies, set(keys))))
     return items, reports
 
 
@@ -302,75 +309,85 @@ def build_preview(plates, out_glb):
                 tris=sum(len(g.faces) for g in sc.geometry.values()))
 
 
-def build_zip(plates, out_zip, printer="P2S", oversized=None):
-    """Write one Bambu project per plate, zipped, and return a manifest.
+def plate_name(p):
+    stem = f"plate_{p['index']:02d}"
+    if p["group"]:
+        stem += f"_{p['group']}"
+    return stem
 
-    Placements are plate-centred. Every part is baked at its offset with an
-    identity build transform, so embed_settings' single plate-centring
-    translation moves the whole plate together rather than stacking the
-    parts on the origin — and its bed-drop keeps the lowest one on z=0.
 
-    KlipKlopMaker deliberately ships geometry-only 3MFs so the slicer keeps
-    the user's presets. We do the opposite on purpose: this shop targets one
-    known machine, and the embedded profile is what makes the brim and
-    support choices survive the trip into Studio.
-    """
+def write_plate(p, path, brim=False):
+    """One plate as a Bambu project. Returns its manifest entry."""
     from embed_settings import embed
-    manifest = []
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        for p in plates:
-            sc = trimesh.Scene()
-            used, cm3 = {}, 0.0
-            for it in p["items"]:
-                # A piece is placed as a unit. For an assembly that is every
-                # body in the file — placing them separately would re-centre
-                # each on the same spot and stand the dice orb's die on the
-                # bed instead of on its sleeve inside the cage. For a file of
-                # independent objects it is one object.
-                keys = set(it.get("bodies") or [])
-                bodies = [(gk, g) for gk, g in load_bodies(it["path"])
-                          if not keys or gk in keys]
-                if it["rot"]:
-                    R = trimesh.transformations.rotation_matrix(
-                        np.radians(it["rot"]), [0, 0, 1])
-                    for _, g in bodies:
-                        g.apply_transform(R)
-                lo = np.min([g.bounds[0] for _, g in bodies], axis=0)
-                hi = np.max([g.bounds[1] for _, g in bodies], axis=0)
-                ctr = (lo + hi) / 2
-                n = used.get(it["key"], 0) + 1
-                used[it["key"]] = n
-                for gk, g in bodies:
-                    dz = -lo[2] if it.get("assembly", True) else -g.bounds[0][2]
-                    g.apply_translation([it["x"] - ctr[0],
-                                         it["y"] - ctr[1], dz])
-                    cm3 += float(g.volume) / 1000
-                    sc.add_geometry(g, geom_name=f"{it['key']}_{n}_{gk}")
-            # solid volume, not print weight: sparse infill lands well
-            # under this, so quoting grams here would flatter the number
-            stem = (f"plate_{p['index']:02d}"
-                    + (f"_{p['group']}" if p["group"] else "")
-                    + f"_{len(p['items'])}parts_{round(cm3)}cm3")
-            tmp = os.path.join(catalog.CUSTOM, f".{stem}.3mf")
-            sc.export(tmp)
-            embed(tmp, brim=False)
-            with open(tmp, "rb") as f:
-                z.writestr(f"{stem}.3mf", f.read())
-            os.remove(tmp)
-            manifest.append(dict(plate=p["index"], group=p["group"],
-                                 parts=len(p["items"]),
-                                 util=round(p["util"], 3),
-                                 solid_cm3=round(cm3, 1),
-                                 file=f"{stem}.3mf",
-                                 items=[dict(key=i["key"], name=i["name"],
-                                             x=round(i["x"], 1),
-                                             y=round(i["y"], 1),
-                                             rot=i["rot"], w=round(i["pw"], 1),
-                                             d=round(i["pd"], 1),
-                                             h=round(i["h"], 1))
-                                        for i in p["items"]]))
-        z.writestr("plates.json", json.dumps(manifest, indent=1))
+    sc = trimesh.Scene()
+    used, cm3 = {}, 0.0
+    for it in p["items"]:
+        keys = set(it.get("bodies") or [])
+        bodies = [(gk, g) for gk, g in load_bodies(it["path"])
+                  if not keys or gk in keys]
+        if it["rot"]:
+            R = trimesh.transformations.rotation_matrix(
+                np.radians(it["rot"]), [0, 0, 1])
+            for _, g in bodies:
+                g.apply_transform(R)
+        lo = np.min([g.bounds[0] for _, g in bodies], axis=0)
+        hi = np.max([g.bounds[1] for _, g in bodies], axis=0)
+        ctr = (lo + hi) / 2
+        n = used.get(it["key"], 0) + 1
+        used[it["key"]] = n
+        for gk, g in bodies:
+            dz = -lo[2] if it.get("assembly", True) else -g.bounds[0][2]
+            g.apply_translation([it["x"] - ctr[0], it["y"] - ctr[1], dz])
+            cm3 += float(g.volume) / 1000
+        # An assembly is one object on the plate. Written body by body it
+        # arrives in Studio as loose parts the user can drag apart — a chain
+        # whose links separate, a die lifted out of its cage.
+        if it.get("assembly", True) and len(bodies) > 1:
+            sc.add_geometry(trimesh.util.concatenate([g for _, g in bodies]),
+                            geom_name=f"{it['key']}_{n}")
+        else:
+            for gk, g in bodies:
+                sc.add_geometry(g, geom_name=f"{it['key']}_{n}_{gk}")
+    sc.export(path)
+    embed(path, brim=brim)
+    return dict(plate=p["index"], group=p["group"], parts=len(p["items"]),
+                util=round(p["util"], 3), solid_cm3=round(cm3, 1),
+                brim=bool(brim), file=os.path.basename(path),
+                items=[dict(key=i["key"], name=i["name"],
+                            x=round(i["x"], 1), y=round(i["y"], 1),
+                            rot=i["rot"], w=round(i["pw"], 1),
+                            d=round(i["pd"], 1), h=round(i["h"], 1))
+                       for i in p["items"]])
+
+
+def build_output(plates, outdir, oversized=None):
+    """One plate downloads as a 3MF; several download as a zip.
+
+    Wrapping a single plate in an archive is a step for the user to undo
+    before they can open it.
+    """
+    made = []
+    for p in plates:
+        brim = p["group"] == "brim"
+        stem = plate_name(p)
+        cm3_path = os.path.join(outdir, f"{stem}.3mf")
+        m = write_plate(p, cm3_path, brim=brim)
+        named = os.path.join(
+            outdir, f"{stem}_{m['parts']}parts_{round(m['solid_cm3'])}cm3.3mf")
+        if named != cm3_path:
+            os.replace(cm3_path, named)
+            m["file"] = os.path.basename(named)
+        made.append((named, m))
+    if len(made) == 1:
+        return made[0][1]["file"], [m for _, m in made]
+    name = "print-shop-order.zip"
+    with zipfile.ZipFile(os.path.join(outdir, name), "w",
+                         zipfile.ZIP_DEFLATED) as z:
+        for path, m in made:
+            with open(path, "rb") as f:
+                z.writestr(m["file"], f.read())
+            os.remove(path)
+        z.writestr("plates.json", json.dumps([m for _, m in made], indent=1))
         z.writestr("README.txt",
                    "My Print Shop — one 3MF per plate, Bambu P2S.\n\n"
                    + describe(plates, oversized or [])
@@ -380,9 +397,7 @@ def build_zip(plates, out_zip, printer="P2S", oversized=None):
                      "Volumes in the filenames are solid material. A sparse\n"
                      "infill prints well under that — slice for the real\n"
                      "figure.\n")
-    with open(out_zip, "wb") as f:
-        f.write(buf.getvalue())
-    return manifest
+    return name, [m for _, m in made]
 
 
 if __name__ == "__main__":
@@ -393,8 +408,8 @@ if __name__ == "__main__":
     ]
     items, reports = order_items(order)
     plates, rejected = pack(items)
-    out = os.path.join(catalog.CUSTOM, "shop-order.zip")
-    man = build_zip(plates, out, oversized=rejected)
+    name, man = build_output(plates, catalog.CUSTOM, oversized=rejected)
     print(describe(plates, rejected))
-    print(json.dumps({"plates": len(plates), "zip": out,
-                      "files": [m["file"] for m in man]}, indent=1))
+    print(json.dumps({"plates": len(plates), "download": name,
+                      "files": [m["file"] for m in man],
+                      "brim": [m["file"] for m in man if m["brim"]]}, indent=1))

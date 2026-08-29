@@ -63,7 +63,11 @@ KITS = [
                   own=[dict(key="links", label="links", min=2, max=100,
                             step=1, val=5),
                        dict(key="len", label="link length", unit="mm",
-                            min=14, max=60, step=1, val=19)]),
+                            min=14, max=60, step=1, val=19),
+                       # a round tube meets the bed on a line and the slicer
+                       # lays a single bead per link; the flat gives it a pad
+                       dict(key="foot", label="bed foot", unit="mm",
+                            min=0.0, max=0.8, step=0.1, val=0.4)]),
              dict(part="clasp", label="Lobster clasp"),
              dict(part="jump_ring", label="Jump ring"),
          ]),
@@ -90,7 +94,10 @@ PARTS = [
     _p("dice_orb", "Dice Orb", "Designed here", "generated",
        "A standard d20 captive in a rib-and-ring shaker sphere.",
        version="3.2.0",
-       gen=["gen_dice_cage.py"], out="dice-cage.3mf", proven=True),
+       gen=["gen_dice_cage.py"], out="dice-cage.3mf", proven=True,
+       # printed twice: it failed brimless and came out perfect with an
+       # outer brim holding the die pedestal down
+       brim="on"),
     _p("mont_double", "Double Nut (coupler)", "Montessori", "generated",
        "Joins two Montessori bolts end to end.",
        version="1.2.0",
@@ -110,12 +117,13 @@ PARTS = [
        version="1.1.0",
        gen=["gen_clasp.py", "--part", "ring"], out="ring-only-D{dia:g}.3mf"),
     _p("chain", "Chain", "Designed here", "parametric",
-       "Print-in-place stadium links. A chain too long to lie straight on "
-       "the plate is coiled instead, at a radius the joint has been measured "
-       "to bend through.",
-       version="1.1.0",
+       "Print-in-place stadium links, cut flat where they meet the bed so "
+       "each link lands on a pad instead of a tangent line. A chain too "
+       "long to lie straight on the plate is coiled instead, at a radius "
+       "the joint has been measured to bend through.",
+       version="1.2.0",
        gen=["gen_chain.py"],
-       out="chain-N{links}-L{len:g}-D{dia:g}.3mf"),
+       out="chain-N{links}-L{len:g}-D{dia:g}-F{foot:g}.3mf"),
     _p("sphere_stand", "Sphere Stand", "Sphere Stands", "parametric",
        "A ring that cradles a ball on a conformal spherical seat. Leave the "
        "last three blank and they follow the ball at a 45 deg contact.",
@@ -141,7 +149,8 @@ PARTS = [
                 step=0.2, val=2.2),
            dict(key="ball", label="ball \u00d8 (0 = none)", unit="mm", min=0,
                 max=40, step=1, val=19)],
-       out="cage-D{dia:g}-F{freq}-T{strut:g}-B{ball:g}.3mf"),
+       out="cage-D{dia:g}-F{freq}-T{strut:g}-B{ball:g}.3mf",
+       brim="on"),      # same thin first layer as the dice orb
 ]
 BY_ID = {p["id"]: p for p in PARTS}
 _LIB_INDEX = {}
@@ -215,23 +224,6 @@ def provenance(part):
                 note=note, built=built)
 
 
-def out_path(part, params=None):
-    """Where this part's 3MF lives, given its parameters.
-
-    A name ending in .3mf is literal. Anything else is a stem, and the
-    supplied parameters make the suffix — so a part whose defaults are
-    derived (the sphere stand computes base, wall and chamfer from the ball)
-    keys its file on what was actually asked for, not on a fixed template.
-    """
-    name, params = part["out"], params or {}
-    if not name.endswith(".3mf"):
-        sfx = "-".join(f"{k}{_fmt(v)}" for k, v in sorted(params.items()))
-        name = f"{name}-{sfx}.3mf" if sfx else f"{name}.3mf"
-    elif "{" in name:
-        name = name.format(**params)
-    return os.path.join(CUSTOM, name)
-
-
 def defaults(part):
     """Every dial a part needs to build, at its default value.
 
@@ -253,8 +245,47 @@ def defaults(part):
     return vals
 
 
+def stale(part, path):
+    """Was this file built before the code that builds it?
+
+    Without this a cached 3MF is served forever: a generator can be fixed
+    and every order still gets the old geometry, while the shop's own badge
+    says the part rebuilds when ordered. The badge was telling the truth
+    about the intent and not about the behaviour.
+    """
+    if not os.path.exists(path):
+        return True
+    built = os.path.getmtime(path)
+    srcs = [os.path.join(HERE, g) for g in (part.get("gen") or [])[:1]]
+    srcs.append(os.path.join(HERE, "embed_settings.py"))
+    return any(os.path.exists(f) and os.path.getmtime(f) > built
+               for f in srcs)
+
+
+def out_path(part, params=None):
+    """Where this part's 3MF lives, given its parameters.
+
+    A name ending in .3mf is literal. Anything else is a stem, and the
+    supplied parameters make the suffix — so a part whose defaults are
+    derived (the sphere stand computes base, wall and chamfer from the ball)
+    keys its file on what was actually asked for, not on a fixed template.
+    """
+    name, params = part["out"], params or {}
+    if not name.endswith(".3mf"):
+        sfx = "-".join(f"{k}{_fmt(v)}" for k, v in sorted(params.items()))
+        name = f"{name}-{sfx}.3mf" if sfx else f"{name}.3mf"
+    elif "{" in name:
+        # Fill anything the caller left out from the part's own defaults. A
+        # dial added to a design should not break every order that predates
+        # it, and provenance asks for the path with no parameters at all.
+        full = dict(defaults(part))
+        full.update(params)
+        name = name.format(**full)
+    return os.path.join(CUSTOM, name)
+
+
 def ensure(part, params=None, timeout=600):
-    """Generate the part's file if it is not already on disk.
+    """Generate the part's file if it is not on disk, or is out of date.
 
     Returns (path, report). Raises RuntimeError with the generator's own
     message when a design gate refuses the parameters.
@@ -262,7 +293,7 @@ def ensure(part, params=None, timeout=600):
     if part["kind"] == "library":
         return part["path"], {"cached": True, "library": True}
     path = out_path(part, params)
-    if os.path.exists(path):
+    if not stale(part, path):
         return path, {"cached": True}
     cmd = [PY, os.path.join(HERE, part["gen"][0])] + part["gen"][1:]
     for k, v in (params or {}).items():
@@ -287,34 +318,94 @@ def measure(path):
                 h=float(hi[2] - lo[2]))
 
 
-def library(dirs=None, limit=400):
+IMPORTED = os.path.join(MODELS, "imported.json")
+DOWNLOADS = os.path.expanduser("~/Downloads")
+
+
+def imported():
+    """Files the user has explicitly imported, still present on disk."""
+    if not os.path.exists(IMPORTED):
+        return []
+    try:
+        with open(IMPORTED) as f:
+            paths = json.load(f)
+    except ValueError:
+        return []
+    return [p for p in paths if os.path.isfile(p)]
+
+
+def scan(dirs=None):
+    """Candidates for import. Looks; does not remember."""
+    return library(dirs or [DOWNLOADS], include_imported=False)
+
+
+def import_from(dirs=None):
+    """Take what a scan found into the catalog, and write that down.
+
+    The shop used to walk ~/Downloads on every read, which made anything
+    that landed there a design — including the plates it had just exported.
+    Importing is a thing the user does now, not a thing that happens to
+    them.
+    """
+    have = set(imported())
+    found = {p["path"] for p in scan(dirs)}
+    keep = sorted(have | found)
+    os.makedirs(os.path.dirname(IMPORTED), exist_ok=True)
+    with open(IMPORTED, "w") as f:
+        json.dump(keep, f, indent=1)
+    return dict(added=len(found - have), total=len(keep),
+                already=len(found & have))
+
+
+def forget_imports():
+    """Drop every import. The models/ shelf is untouched."""
+    if os.path.exists(IMPORTED):
+        os.remove(IMPORTED)
+
+
+def library(dirs=None, limit=400, include_imported=True):
     """Printable files on disk, as catalog parts.
 
     Same shape as a generated part, so nothing downstream — the shop rows,
     the bill of materials, the packer, the exporter — needs to know which
     kind it is holding. The only difference is that ensure() has nothing to
     generate.
+
+    Only models/ is read automatically: that shelf is this project's own.
+    Anything else is here because it was imported on purpose.
     """
-    # models/ first: where a design exists in both places, that is the copy
-    # a human has curated and extracted the designer's photos from
-    dirs = dirs or [MODELS, os.path.expanduser("~/Downloads")]
+    dirs = list(dirs) if dirs else [MODELS]
+    files_only = []
+    if include_imported and dirs == [MODELS]:
+        files_only = imported()
     seen, out = {}, []
-    for d in dirs:
-        if not os.path.isdir(d):
+    walks = [(d, None) for d in dirs] + [(None, f) for f in files_only]
+    for d, one in walks:
+        if one is not None:
+            root, files = os.path.dirname(one), [os.path.basename(one)]
+            trees = [(root, files)]
+        elif os.path.isdir(d):
+            trees = [(r, fs) for r, _, fs in os.walk(d)]
+        else:
             continue
-        for root, _, files in os.walk(d):
+        for root, files in trees:
             if "/glb" in root or "/meta" in root or "/index_out" in root:
                 continue
             if "/custom" in root:
                 continue        # the generators' own output: already a part,
                                 # and listing it again puts the same design
                                 # in the catalog twice under two names
+            if "print-shop-order" in root:
+                continue        # a plate this shop exported, downloaded and
+                                # then found again — an order is not a design
             for fn in sorted(files):
                 low = fn.lower()
                 if not low.endswith((".3mf", ".stl")):
                     continue
                 if low.endswith(".gcode.3mf"):
                     continue        # a sliced export, not a model to print
+                if re.match(r"plate_\d\d[_.]", low):
+                    continue        # our own plate naming, downloaded back
                 p = os.path.join(root, fn)
                 try:
                     st = os.stat(p)
@@ -427,6 +518,20 @@ def catalog(with_library=True):
     entries = list(PARTS) + (library() if with_library else [])
     prev = previews()
     parts = [enrich(dict(p, **provenance(p)), prev) for p in entries]
+    # Every part carries a semver, including the ones nobody here authored.
+    # Reconciled in memory so a read has no side effects; the pipeline
+    # (versions.py) is what writes the ledger.
+    import versions as _v
+    led, faults = _v.reconcile(parts, write=False)
+    for p in parts:
+        e = led.get(p["id"], {})
+        if e.get("version"):
+            p["version"] = e["version"]
+        p["fingerprint"] = e.get("fingerprint")
+        p["revisions"] = e.get("revisions", 0)
+        p["first_seen"] = e.get("first_seen", "")
+        p["version_source"] = ("declared" if p["kind"] != "library"
+                               else "observed")
     by = {p["id"]: p for p in parts}
     kits = []
     for k in KITS:
@@ -447,7 +552,8 @@ def catalog(with_library=True):
         if p["family"] not in fams:
             fams.append(p["family"])
     return {"printers": PRINTERS, "printer": DEFAULT_PRINTER,
-            "kits": kits, "parts": parts, "families": fams}
+            "kits": kits, "parts": parts, "families": fams,
+            "version_faults": faults}
 
 
 if __name__ == "__main__":

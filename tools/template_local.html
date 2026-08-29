@@ -363,6 +363,7 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
   <h1>My Print Shop<span class="tld">.</span></h1>
   <a class="guidelink" href="guide.html">P2S Field Guide →</a>
   <button class="guidelink" id="rebuild" title="re-run the tools pipeline: designs, metadata, previews, page">Rebuild index</button>
+  <button class="guidelink" id="import" title="look through ~/Downloads for printable files and add them to the catalog">Import from Downloads</button>
   <p class="sub">One catalog of everything printable. Choose quantities and
   they pack onto plates as you go.</p>
   <p class="sub" id="printerline" style="font:500 12px 'IBM Plex Mono',monospace;
@@ -401,7 +402,7 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
     <div class="bom" id="shop-bom"><p class="empty">nothing on the plate yet</p></div>
     <p class="shopwarn" id="shop-warn"></p>
     <div class="actions" style="margin-top:12px;align-items:center">
-      <button class="print" id="shop-build">Build plates &rarr; zip</button>
+      <button class="print" id="shop-build">Build plates</button>
       <a class="savelink" id="shop-clear" href="#">clear the plate</a>
     </div>
   </aside>
@@ -1119,12 +1120,21 @@ renderer.setAnimationLoop(animate);
   const order = () => [...qty].filter(([,n]) => n > 0).map(([id,n]) =>
     ({part: id, qty: n, params: paramVals(byId[id])}));
 
-  const badge = (v, d, built) => {
-    const stale = d && v !== '—' && (!built || built < d);
+  const badge = (v, d, built, p) => {
+    const stale = d && v !== '\u2014' && (!built || built < d);
+    const rev = p && p.revisions ? p.revisions : 0;
+    const src = p && p.version_source === 'observed'
+      ? 'read from the file, not declared by an author' : 'declared by the author';
     return '<span class="ver' + (stale ? ' stale' : '') + '" title="version ' + v
-      + (d ? ', last changed ' + d : '') + (built ? ', file built ' + built : '')
-      + (stale ? ' — rebuilds when ordered' : '') + '">v' + v
-      + (d ? ' · ' + d.slice(5) : '') + (stale ? ' ⟳' : '') + '</span>';
+      + ' \u2014 ' + src
+      + (rev ? '; changed ' + rev + ' time' + (rev > 1 ? 's' : '') + ' since first seen' : '')
+      + (p && p.first_seen ? '; first seen ' + p.first_seen : '')
+      + (d ? '; source last changed ' + d : '')
+      + (built ? '; file built ' + built : '')
+      + (stale ? ' \u2014 rebuilds when ordered' : '') + '">v' + v
+      + (d ? ' \u00b7 ' + d.slice(5) : '')
+      + (rev ? ' \u00b7 r' + rev : '')
+      + (stale ? ' \u27f3' : '') + '</span>';
   };
   function stepper(id){
     const d = document.createElement('div'); d.className = 'step';
@@ -1228,7 +1238,7 @@ renderer.setAnimationLoop(animate);
         (p.material ? ' <span class="mat">' + esc(p.material) + '</span>' : '') +
         '</h3>' +
       (p.version && p.version !== '\u2014'
-        ? '<div class="verline">' + badge(p.version, p.changed, p.built) + '</div>' : '') +
+        ? '<div class="verline">' + badge(p.version, p.changed, p.built, p) + '</div>' : '') +
       (p.blurb ? '<p class="principle">' + esc(p.blurb) + '</p>' : '') +
       '<p class="specline" data-dim="' + esc(p.id) + '">' + spec(p) + '</p>' +
       '</div>';
@@ -1566,12 +1576,38 @@ renderer.setAnimationLoop(animate);
       const j = await (await fetch('/shop/build', {method:'POST',
         body: JSON.stringify({order: o})})).json(); stop();
       if (!j.ok) throw new Error(j.error || 'build failed');
-      b.textContent = 'Downloaded ' + j.plates.length + ' plate(s) ✓';
+      b.textContent = j.single
+        ? 'Downloaded the plate ✓'
+        : 'Downloaded ' + j.plates.length + ' plates ✓';
       const a = document.createElement('a');
       a.href = 'models/' + j.file; a.download = '';
       document.body.appendChild(a); a.click(); a.remove();
     } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
-    setTimeout(() => { b.textContent = 'Build plates → zip'; b.disabled = false; }, 4500);
+    setTimeout(() => { b.textContent = 'Build plates'; b.disabled = false; }, 4500);
+  };
+
+  // Downloads is not read unless asked: anything that lands there — including
+  // a plate this shop just exported — was becoming a design in the catalog.
+  const imp = $('import');
+  if (imp) imp.onclick = async () => {
+    const orig = imp.textContent;
+    imp.disabled = true; imp.textContent = 'Looking\u2026';
+    try {
+      const s = await (await fetch('/shop/scan')).json();
+      if (!s.new){
+        imp.textContent = s.count
+          ? 'Nothing new (' + s.imported + ' already in)' : 'Nothing found';
+      } else {
+        imp.textContent = 'Importing ' + s.new + '\u2026';
+        const r = await (await fetch('/shop/import', {method: 'POST',
+          body: '{}'})).json();
+        if (!r.ok) throw new Error(r.error || 'import failed');
+        imp.textContent = 'Added ' + r.added + ' \u2713 reloading';
+        return setTimeout(() => location.reload(), 900);
+      }
+    } catch(e){ imp.textContent = '\u2717 ' + e.message; }
+    imp.disabled = false;
+    setTimeout(() => { imp.textContent = orig; }, 4000);
   };
 
   // a hook for the browser checks: the plate's renderer and light rig

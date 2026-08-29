@@ -95,11 +95,15 @@ class Handler(SimpleHTTPRequestHandler):
                                           for i in p["items"]])
                               for p in plates],
                    "bed": bed["bed"], "margin": ps.MARGIN}
+            if url.path == "/shop/import":
+                cat, _ = _shop_modules()
+                return self._json(200, {"ok": True, **cat.import_from()})
             if url.path == "/shop/build":
-                name = "print-shop-order.zip"
-                ps.build_zip(plates, os.path.join(MODELS, "custom", name),
-                             oversized=over)
+                name, man = ps.build_output(
+                    plates, os.path.join(MODELS, "custom"), oversized=over)
                 out["file"] = "custom/" + name
+                out["single"] = name.lower().endswith(".3mf")
+                out["brim"] = [m["file"] for m in man if m["brim"]]
             return self._json(200, out)
         if url.path == "/generate":
             q = parse_qs(url.query)
@@ -183,9 +187,13 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"ok": True, **cat.catalog()})
         if url.path == "/shop/scan":
             cat, _ = _shop_modules()
-            lib = cat.library()
-            return self._json(200, {"ok": True, "count": len(lib),
-                                    "items": lib})
+            found = cat.scan()
+            have = set(cat.imported())
+            return self._json(200, {
+                "ok": True, "count": len(found),
+                "new": sum(1 for p in found if p["path"] not in have),
+                "imported": len(have),
+                "items": [p["name"] for p in found[:40]]})
         if url.path == "/generate":
             return self.do_POST()
         if url.path == "/notes":

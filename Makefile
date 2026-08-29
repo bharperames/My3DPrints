@@ -23,7 +23,7 @@ PY := $(HOME)/.claude/skills/3d-print-check/.venv/bin/python
 
 .PHONY: build
 build:
-	cd tools && $(PY) build_designs.py && $(PY) extract_meta.py && $(PY) previews.py && $(PY) build_local.py
+	cd tools && $(PY) build_designs.py && $(PY) extract_meta.py && $(PY) previews.py && $(PY) versions.py && $(PY) build_local.py
 
 .PHONY: test
 test:
