@@ -18,6 +18,7 @@ ITEMS = [
  ("clasp", "custom/clasp-D3.25.3mf", "Designed here", "Lobster clasp + jump ring"),
  ("mont_double", "custom/montessori-double-nut.3mf", "Nuts & Bolts", "Double nut (coupler)"),
  ("mont_plate", "custom/montessori-plate-2x3.3mf", "Nuts & Bolts", "Threaded base plate 2x3"),
+ ("wrench", "custom/wrench-af50.3mf", "Nuts & Bolts", "Nut wrench"),
  ("chain_test", "chain-test-5seg.3mf", "Designed here", "Chain test — 5 links"),
  ("held_chained", "held-sphere-chained.3mf", "Designed here", "Held sphere + chain"),
  ("chain_test_2x", "chain-test-5seg-2x.3mf", "Designed here", "Chain test — 5 links · 2×"),

@@ -66,7 +66,7 @@ KITS = [
              dict(part="clasp", label="Lobster clasp"),
              dict(part="jump_ring", label="Jump ring"),
          ]),
-    dict(id="montessori", version="1.2.0",
+    dict(id="montessori", version="1.3.0",
          name="Montessori Nuts & Bolts", family="Montessori",
          blurb="Companions for the Montessori set. The thread is cast from "
                "the designer's own nut, so every piece mates with the "
@@ -75,11 +75,17 @@ KITS = [
          members=[
              dict(part="mont_double", label="Double nut (coupler)"),
              dict(part="mont_plate", label="Base plate 2×3"),
+             dict(part="wrench", label="Nut wrench"),
          ]),
 ]
 
 # --- parts: each resolves to one 3MF on disk -----------------------------
 PARTS = [
+    _p("wrench", "Nut Wrench", "Montessori", "generated",
+       "Combination spanner for the Montessori hex: a six-point box end one "
+       "side, an open jaw the other. One size drives the nuts and both bolt "
+       "heads.",
+       version="1.0.0", gen=["gen_wrench.py"], out="wrench-af50.3mf"),
     _p("dice_orb", "Dice Orb", "Designed here", "generated",
        "A standard d20 captive in a rib-and-ring shaker sphere.",
        version="3.2.0",

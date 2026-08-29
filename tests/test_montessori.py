@@ -165,3 +165,57 @@ class TestScrewVerification(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWrench(unittest.TestCase):
+    """The wrench is sized off the same hex the nut and bolt heads share."""
+
+    @classmethod
+    def setUpClass(cls):
+        import gen_wrench
+        cls.W = gen_wrench
+        cls.prof, cls.rep, cls.geo = gen_wrench.build()
+
+    def test_one_size_drives_the_whole_set(self):
+        # nut 49.68, bolt heads 49.78 — the wrench takes the larger
+        self.assertGreaterEqual(self.W.AF, 49.78 - 1e-6)
+
+    def test_profile_is_one_piece_with_one_bore(self):
+        self.assertEqual(self.prof.geom_type, "Polygon")
+        self.assertEqual(len(self.prof.interiors), 1)
+
+    def test_thinner_than_the_hex_flat_band(self):
+        # the heads chamfer above and below, leaving ~18 mm of true flat
+        self.assertLess(self.rep["thick_mm"], 17.5)
+
+    def test_jaw_arms_carry_a_childs_torque(self):
+        self.assertLess(self.rep["jaw_stress_MPa"], self.W.PLA_YIELD / 2)
+        self.assertGreater(self.rep["safety"], 2.0)
+
+    def test_thin_arms_are_refused(self):
+        with self.assertRaisesRegex(ValueError, "stress"):
+            self.W.build(jaw_arm=8.0)
+
+    def test_head_keeps_material_behind_the_throat(self):
+        self.assertGreaterEqual(self.rep["behind_throat_mm"], self.W.MIN_WALL)
+
+    def test_jaw_grips_past_the_nuts_centre(self):
+        self.assertGreater(self.rep["grip_past_nut_mm"], 8.0)
+
+    def test_it_fits_the_bed(self):
+        self.assertLess(self.rep["length_mm"], 246.0)
+
+    @unittest.skipUnless(HAVE_SRC, "source Montessori model not present")
+    def test_the_designer_s_nut_seats_in_both_ends(self):
+        import trimesh
+        m = trimesh.creation.extrude_polygon(self.prof, self.rep["thick_mm"])
+        nut, _ = GM.source_parts()
+        nut = nut.copy()
+        nut.apply_translation([0, 0, -nut.bounds[0][2]])
+        for tag, at in (("box", (0.0, 0.0)), ("jaw", self.geo["seat"])):
+            fit = self.W.fit_test(m, nut, at, self.rep["thick_mm"], sweep=2.0)
+            self.assertIsNotNone(fit, f"nut will not enter the {tag} end")
+            gap, _, free = fit
+            self.assertGreaterEqual(gap, self.W.FIT_MIN, tag)
+            self.assertLessEqual(gap, self.W.FIT_MAX, tag)
+            self.assertGreater(free, 0, tag)

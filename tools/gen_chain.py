@@ -111,6 +111,9 @@ def main():
         sc.add_geometry(l, geom_name=f"link_{i}")
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     sc.export(a.out)
+    from embed_settings import embed
+    # no brim: a 5 mm skirt would bridge the gaps between print-in-place links
+    embed(a.out, brim=False)
     ext = sc.bounds[1] - sc.bounds[0]
     per = 2 * (cl_l - cl_w) + np.pi * cl_w
     vol = per * np.pi * (a.dia / 2) ** 2 * a.links / 1000.0

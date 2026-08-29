@@ -374,6 +374,9 @@ def build_montessori():
     """Coupler nut and 2x3 socket board for the Montessori set."""
     import subprocess
     here = os.path.dirname(os.path.abspath(__file__))
+    subprocess.run([sys.executable, os.path.join(here, "gen_wrench.py"),
+                    "--out", os.path.join(M, "custom", "wrench-af50.3mf")],
+                   capture_output=True, text=True)
     for part, fn in (("double-nut", "montessori-double-nut.3mf"),
                      ("plate", "montessori-plate-2x3.3mf")):
         r = subprocess.run([sys.executable, os.path.join(here,

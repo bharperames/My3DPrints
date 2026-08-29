@@ -201,7 +201,8 @@ cards.insert(next(i for i, c in enumerate(cards) if "held-sphere-chained" in c) 
 # shop reads, so a card and a shop row can never disagree about what a part is
 import catalog as _cat
 _VER_CARDS = {"card-dice_param": "dice_orb", "card-clasp_param": "clasp",
-              "card-mont_double": "mont_double", "card-mont_plate": "mont_plate"}
+              "card-mont_double": "mont_double", "card-mont_plate": "mont_plate",
+              "card-wrench": "wrench"}
 
 
 def _stamp(html):
@@ -371,6 +372,44 @@ MONT_CARDS = _stamp(MONT_CARDS)
 cards.insert(next(i for i, c in enumerate(cards) if 'card-nuts' in c) + 1, MONT_CARDS)
 models_js['mont_double'] = [dict(manifest['mont_double'], file='custom/montessori-double-nut.3mf')]
 models_js['mont_plate'] = [dict(manifest['mont_plate'], file='custom/montessori-plate-2x3.3mf')]
+
+WRENCH_CARD = """
+<article class="card" id="card-wrench" data-cid="wrench">
+  <div class="photo">
+    <div class="view" data-models="wrench"></div>
+    <span class="pill warn">Designed · unprinted</span>
+    <div class="dimtag">243 × 88 × 14 mm</div>
+  </div>
+  <div class="body">
+    <p class="eyebrow">Designed here · Claude · fits the original set</p>
+    <h3>Nut Wrench <span class="mat">PLA</span></h3>
+    <p class="principle">A combination spanner for the Montessori hex: a
+    six-point box end one side, an open jaw the other. The nut and both bolt
+    heads measure 49.68–49.78 mm across the flats, so one wrench drives
+    everything in the set. It prints flat — no supports, no bridges, no
+    overhangs — and is deliberately thinner than the hex's ~18 mm flat band,
+    so the jaw grips flat on flat instead of riding up the head's chamfer.
+    Fit is proved against the designer's own nut rather than a drawing: it is
+    seated in each end and FCL has to report a gap inside a band, since too
+    tight will not go on and too loose rounds the corners it is meant to turn.
+    Both ends measure 0.45 mm. The jaw arms are sized by bending: 23 MPa at a
+    determined 40 N on the handle, against PLA's ~50 MPa yield — a safety
+    factor of 2.2, and the first 8 mm arms failed that gate at 81 MPa.
+    48 min, 40 g, no slicer warnings. Unvalidated until printed.</p>
+    <p class="specline">box bore 51.2 across flats, 6-point · jaw 27.5 deep,
+    gripping 12 mm past the nut's centre · 13.5 mm arms, 14 mm thick ·
+    fills the bed lengthways at 243 mm</p>
+    <div class="actions">
+      <button class="print" id="wr-print">Generate + open in Bambu Studio</button>
+      <a class="savelink" id="wr-dl" href="#">generate &amp; download the verified 3MF</a>
+    </div>
+    <div class="notes" data-cid="wrench"></div>
+  </div>
+</article>"""
+WRENCH_CARD = _stamp(WRENCH_CARD)
+cards.insert(next(i for i, c in enumerate(cards) if 'card-mont_plate' in c) + 1, WRENCH_CARD)
+models_js['wrench'] = [dict(manifest['wrench'], file='custom/wrench-af50.3mf')]
+
 
 
 

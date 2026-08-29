@@ -118,10 +118,12 @@ def embed(path, overrides=None, brim=True):
     # A project trusts stored placement, so a mesh built around z=0 stays
     # half under the bed and silently slices to half its height — the top
     # half only, starting from a cut through the middle of the part.
-    dz = 0.0
+    dz, mx, my = 0.0, 0.0, 0.0
     try:
         import trimesh
-        dz = -float(trimesh.load(path, force="scene").bounds[0][2])
+        b = trimesh.load(path, force="scene").bounds
+        dz = -float(b[0][2])
+        mx, my = float((b[0][0] + b[1][0]) / 2), float((b[0][1] + b[1][1]) / 2)
     except Exception:
         pass
     if abs(dz) < 1e-4:
@@ -131,9 +133,12 @@ def embed(path, overrides=None, brim=True):
     xs = [float(p.split("x")[0]) for p in pa]
     ys = [float(p.split("x")[1]) for p in pa]
     cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    # centre the mesh's own bounds on the plate, not its origin: a part
+    # modelled from its corner would otherwise be pushed a half-bed sideways
+    # and fall off the plate
     mdl = mdl.replace(
         'transform="1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0"',
-        f'transform="1 0 0 0 1 0 0 0 1 {cx:g} {cy:g} {dz:g}"')
+        f'transform="1 0 0 0 1 0 0 0 1 {cx - mx:g} {cy - my:g} {dz:g}"')
     items["3D/3dmodel.model"] = mdl.encode("utf-8")
     items["Metadata/project_settings.config"] = json.dumps(
         cfg, indent=1).encode("utf-8")
