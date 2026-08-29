@@ -1,4 +1,4 @@
-"""Unit tests for the plate packer and the shop catalogue."""
+"""Unit tests for the plate packer and the shop catalog."""
 import json
 import os
 import sys
@@ -81,7 +81,7 @@ class TestPacker(unittest.TestCase):
         self.assertEqual(len(plates), 2)
 
 
-class TestCatalogue(unittest.TestCase):
+class TestCatalog(unittest.TestCase):
     def test_every_kit_member_is_a_real_part(self):
         for kit in catalog.KITS:
             for m in kit["members"]:
@@ -133,8 +133,8 @@ class TestProvenance(unittest.TestCase):
         self.assertRegex(pr["changed"], r"^\d{4}-\d\d-\d\d$")
         self.assertIn("note", pr)
 
-    def test_catalogue_stamps_every_entry(self):
-        c = catalog.catalogue()
+    def test_catalog_stamps_every_entry(self):
+        c = catalog.catalog()
         for p in c["parts"]:
             self.assertIn("changed", p)
             self.assertIn("built", p)
@@ -142,7 +142,7 @@ class TestProvenance(unittest.TestCase):
             self.assertIn("changed", k)
 
     def test_a_kit_is_only_as_built_as_its_least_built_member(self):
-        c = catalog.catalogue()
+        c = catalog.catalog()
         by = {p["id"]: p for p in c["parts"]}
         for k in c["kits"]:
             builts = [by[m["part"]]["built"] for m in k["members"]
@@ -153,7 +153,7 @@ class TestProvenance(unittest.TestCase):
                 self.assertEqual(k["built"], "")
 
 
-class TestUnifiedCatalogue(unittest.TestCase):
+class TestUnifiedCatalog(unittest.TestCase):
     """A library file and a generated design must be the same kind of thing."""
 
     def test_library_entries_have_the_shape_of_a_part(self):
@@ -182,8 +182,8 @@ class TestUnifiedCatalogue(unittest.TestCase):
         self.assertTrue(rep.get("library"))
         self.assertTrue(os.path.exists(path))
 
-    def test_catalogue_is_one_list_with_families(self):
-        c = catalog.catalogue()
+    def test_catalog_is_one_list_with_families(self):
+        c = catalog.catalog()
         kinds = {p["kind"] for p in c["parts"]}
         self.assertIn("library", kinds)
         self.assertIn("generated", kinds)
@@ -204,3 +204,60 @@ class TestUnifiedCatalogue(unittest.TestCase):
                          {"dice_orb", lib[0]["id"]})
         for it in items:
             self.assertGreater(it["w"], 0)
+
+
+class TestEverythingSitsOnThePlate(unittest.TestCase):
+    """Nothing may float. The bed is z=0 for every part, from any source."""
+
+    def _scene(self, order):
+        items, _ = PS.order_items(order)
+        plates, over = PS.pack(items)
+        self.assertFalse(over, [o["name"] for o in over])
+        return PS.arranged_scene(plates)[0], items
+
+    def test_generated_parts_are_authored_at_z0(self):
+        for pid, params in (("dice_orb", {}), ("mont_double", {}),
+                            ("wrench", {}), ("clasp", {"dia": 3.25})):
+            part = catalog.find(pid)
+            path, _ = catalog.ensure(part, params)
+            import trimesh
+            sc = trimesh.load(path, force="scene")
+            self.assertAlmostEqual(float(sc.bounds[0][2]), 0.0, delta=0.01,
+                                   msg=pid)
+
+    def test_arranged_preview_puts_every_part_on_the_bed(self):
+        # decimation moves vertices, so a part dropped before it is simplified
+        # comes back proud — the preview must drop after
+        sc, _ = self._scene([{"part": "dice_orb", "qty": 2},
+                             {"part": "chain",
+                              "params": {"links": 5, "len": 19, "dia": 3.25},
+                              "qty": 2},
+                             {"part": "wrench", "qty": 1}])
+        by_part = {}
+        for name, g in sc.geometry.items():
+            key = name.rsplit("_", 1)[0]
+            by_part[key] = min(by_part.get(key, 9e9), float(g.bounds[0][2]))
+        for key, z in by_part.items():
+            self.assertLess(z, 0.01, f"{key} floats {z:.3f} mm")
+
+    def test_a_source_not_at_z0_is_still_placed_on_the_bed(self):
+        lib = [p for p in catalog.library(limit=200)
+               if p["path"].lower().endswith(".3mf")]
+        import trimesh
+        odd = next((p for p in lib
+                    if abs(trimesh.load(p["path"],
+                                        force="scene").bounds[0][2]) > 0.5),
+                   None)
+        if odd is None:
+            self.skipTest("no library file sits off the bed")
+        sc, _ = self._scene([{"part": odd["id"], "qty": 1}])
+        for name, g in sc.geometry.items():
+            self.assertLess(float(g.bounds[0][2]), 0.01, name)
+
+    def test_the_wrench_fits_the_plate_with_margin(self):
+        part = catalog.find("wrench")
+        path, _ = catalog.ensure(part)
+        m = catalog.measure(path)
+        usable = 256 - 2 * PS.MARGIN
+        self.assertLessEqual(m["w"] + PS.GAP, usable - 2.0,
+                             "wrench leaves no margin on the plate")

@@ -180,7 +180,7 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/shop/catalog":
             cat, _ = _shop_modules()
-            return self._json(200, {"ok": True, **cat.catalogue()})
+            return self._json(200, {"ok": True, **cat.catalog()})
         if url.path == "/shop/scan":
             cat, _ = _shop_modules()
             lib = cat.library()
@@ -194,11 +194,32 @@ class Handler(SimpleHTTPRequestHandler):
             return super().do_GET()
         q = parse_qs(url.query)
         fname = unquote(q.get("f", [""])[0])
+        pid = unquote(q.get("id", [""])[0])
         dry = q.get("dry", ["0"])[0] == "1"
-        path = os.path.realpath(os.path.join(MODELS, fname))
-        ok = (path.startswith(os.path.realpath(MODELS) + os.sep)
-              and os.path.isfile(path)
-              and path.lower().endswith((".3mf", ".stl")))
+        if pid:
+            # A catalog part, opened by id: the shop can hand any entry to
+            # the slicer, including a generated one that has to be built
+            # first and a file that lives outside models/.
+            cat, _ = _shop_modules()
+            try:
+                part = cat.find(pid)
+            except KeyError:
+                return self._json(404, {"ok": False, "error": "unknown part"})
+            try:
+                params = json.loads(unquote(q.get("params", ["{}"])[0]) or "{}")
+            except ValueError:
+                params = {}
+            try:
+                path = os.path.realpath(cat.ensure(
+                    part, params or cat.defaults(part))[0])
+            except Exception as e:                          # noqa: BLE001
+                return self._json(500, {"ok": False, "error": str(e)})
+            ok = os.path.isfile(path)
+        else:
+            path = os.path.realpath(os.path.join(MODELS, fname))
+            ok = (path.startswith(os.path.realpath(MODELS) + os.sep)
+                  and os.path.isfile(path)
+                  and path.lower().endswith((".3mf", ".stl")))
         app = find_app()
         if not ok:
             return self._json(400, {"ok": False, "error": "unknown file"})

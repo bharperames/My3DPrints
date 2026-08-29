@@ -193,7 +193,10 @@ class TestWrench(unittest.TestCase):
         self.assertGreater(self.rep["safety"], 2.0)
 
     def test_thin_arms_are_refused(self):
-        with self.assertRaisesRegex(ValueError, "stress"):
+        # either gate may catch it first — the tapered arm can fall under
+        # the wall minimum before the bending number goes bad — and both
+        # are a refusal to emit a wrench that would snap
+        with self.assertRaisesRegex(ValueError, "stress|thin"):
             self.W.build(jaw_arm=8.0)
 
     def test_head_keeps_material_behind_the_throat(self):

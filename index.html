@@ -11,7 +11,12 @@
 :root{
   --ground:#14181A; --panel:#1D2327; --panel-2:#232B2F;
   --ink:#EAF1EF; --muted:#AFBEBB; --faint:#97A7A4;
-  --line:#313B40; --accent:#4FD2C2; --accent-ink:#7FE2D5;
+  --line:#313B40;
+  /* --line is for decorative rules, which WCAG exempts. Interactive
+     boundaries (inputs, steppers, buttons) need 3:1 against the panel, and
+     --line measures 1.26 — hence --edge at 3.7 */
+  --edge:#6E7678;
+  --accent:#4FD2C2; --accent-ink:#7FE2D5;
   --pass:#74CD81; --pass-bg:#1E3423; --warn:#E7B75E; --warn-bg:#3A2F17;
   --photo-bg:#171D20; --shadow:0 1px 3px rgba(0,0,0,.45),0 4px 18px rgba(0,0,0,.35);
 }
@@ -24,9 +29,13 @@ body{background:var(--ground);color:var(--ink);
 header.top{padding:52px 0 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px}
 h1{font:700 clamp(30px,4.5vw,44px)/1.05 "Chakra Petch",sans-serif;letter-spacing:.5px}
 h1 .tld{color:var(--accent)}
+/* used on both <a> and <button>: a button carries the browser's own light
+   background unless it is reset, which put pale teal text on near-white at a
+   1.33 contrast ratio */
 .guidelink{font:600 13px "IBM Plex Sans",sans-serif;color:var(--accent-ink);
-  text-decoration:none;border:1px solid var(--accent);border-radius:6px;padding:8px 14px;
-  align-self:center}
+  background:transparent;text-decoration:none;border:1px solid var(--accent);
+  border-radius:6px;padding:8px 14px;align-self:center;cursor:pointer;
+  font-family:"IBM Plex Sans",sans-serif}
 .guidelink:hover{background:var(--accent);color:var(--panel)}
 .sub{color:var(--muted);max-width:62ch;text-wrap:balance;margin:10px 0 0;flex-basis:100%}
 .stats{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 34px}
@@ -36,7 +45,12 @@ h1 .tld{color:var(--accent)}
   font-variant-numeric:tabular-nums}
 .stat span{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .stat b em{font-style:normal;font-size:14px;color:var(--faint)}
-.dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.aboutgrid{display:grid;grid-template-columns:minmax(230px,0.85fr) 3fr;gap:20px;
+  align-items:start}
+@media (max-width:900px){.aboutgrid{grid-template-columns:1fr}}
+.dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.dia figcaption{font-size:12px;line-height:1.45}
+.dia svg{max-height:132px}
 .dia{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
 .dia svg{width:100%;height:auto;display:block}
 .dia .part{fill:none;stroke:var(--ink);stroke-width:2}
@@ -53,7 +67,7 @@ h1 .tld{color:var(--accent)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px;align-items:start}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
-.photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3}
+.photo{position:relative;background:var(--photo-bg);aspect-ratio:3/2}
 .view{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
 .axisbtn{position:absolute;top:12px;left:46px;z-index:6;background:var(--panel);
   border:1px solid var(--line);color:var(--muted);border-radius:6px;height:28px;
@@ -74,7 +88,7 @@ h1 .tld{color:var(--accent)}
   align-items:center;padding:0 24px;z-index:7}
 .lb-title{font:600 17px "Chakra Petch",sans-serif;color:var(--ink)}
 .lb-hint{font:400 12px "IBM Plex Mono",monospace;color:var(--faint)}
-.lb-close{background:var(--panel);border:1px solid var(--line);color:var(--muted);
+.lb-close{background:var(--panel);border:1px solid var(--edge);color:var(--muted);
   border-radius:6px;width:34px;height:34px;font:600 15px/1 sans-serif;cursor:pointer}
 .lb-close:hover{color:var(--warn);border-color:var(--warn)}
 .coverimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;z-index:5}
@@ -101,7 +115,7 @@ h1 .tld{color:var(--accent)}
 .pill.pass{background:var(--pass-bg);color:var(--pass);border:1px solid var(--pass)}
 .pill.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
 .chips{position:absolute;left:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;z-index:6}
-.chips button{background:var(--panel);border:1px solid var(--line);color:var(--muted);
+.chips button{background:var(--panel);border:1px solid var(--edge);color:var(--muted);
   border-radius:99px;padding:4px 10px;font:500 11px "IBM Plex Sans",sans-serif;cursor:pointer}
 .chips button.on{color:var(--accent);border-color:var(--accent)}
 .dimtag{position:absolute;left:12px;top:14px;z-index:6;pointer-events:none;
@@ -121,7 +135,7 @@ h1 .tld{color:var(--accent)}
 .pairlink:hover{text-decoration:underline}
 .card.superseded{display:none}
 .card.superseded.revealed{display:flex;outline:2px dashed var(--warn);outline-offset:-2px}
-.showorig{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+.showorig{background:none;border:1px solid var(--edge);border-radius:6px;color:var(--muted);
   font:500 11.5px "IBM Plex Sans",sans-serif;padding:5px 10px;cursor:pointer}
 .showorig:hover{color:var(--warn);border-color:var(--warn)}
 .mate{font-size:13px;color:var(--accent-ink)}
@@ -135,9 +149,9 @@ h1 .tld{color:var(--accent)}
 .params b{font:500 12px "IBM Plex Mono",monospace;color:var(--ink);text-align:right}
 .params input[type=range]{accent-color:var(--accent);min-width:0}
 .notes form{display:flex;gap:6px}
-.notes input{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+.notes input{flex:1;background:var(--panel-2);border:1px solid var(--edge);border-radius:6px;
   color:var(--ink);font:400 12px "IBM Plex Sans",sans-serif;padding:6px 8px;min-width:0}
-.notes button{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);
+.notes button{background:none;border:1px solid var(--edge);border-radius:6px;color:var(--muted);
   font:500 11px "IBM Plex Sans",sans-serif;padding:4px 10px;cursor:pointer}
 .notes button:hover{color:var(--accent-ink);border-color:var(--accent)}
 .card h3 .mat{font:600 11px/1 "IBM Plex Mono",monospace;color:var(--accent-ink);
@@ -187,7 +201,7 @@ section.block>p.lede{color:var(--muted);max-width:70ch;margin-bottom:20px}
 .fixes code, .note code{font:400 12px "IBM Plex Mono",monospace;background:var(--panel-2);
   border:1px solid var(--line);border-radius:4px;padding:1px 4px;color:var(--ink)}
 .tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+.tablewrap table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
 th{font:600 11px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;letter-spacing:.09em;
   color:var(--faint);text-align:left;padding:12px 16px;border-bottom:1px solid var(--line)}
 td{padding:9px 16px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -200,6 +214,142 @@ th.num{text-align:right}
 .dot.warn{background:var(--warn)}
 footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 @media (max-width:640px){.specs{grid-template-columns:1fr}}
+
+/* ---- tabs ---- */
+.tabs{display:flex;gap:6px;margin:6px 0 20px;border-bottom:1px solid var(--line)}
+.tabs button{font:600 14px "IBM Plex Sans",sans-serif;color:var(--muted);
+  background:transparent;border:0;border-bottom:2px solid transparent;
+  padding:9px 16px;cursor:pointer;border-radius:6px 6px 0 0}
+.tabs button:hover{color:var(--ink);background:var(--panel)}
+.tabs button.on{color:var(--accent-ink);border-bottom-color:var(--accent)}
+.pane{display:none}
+.pane.on{display:block}
+
+/* ---- print shop ---- */
+.catsearch{display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap}
+.catsearch input{flex:1;min-width:160px;background:var(--panel-2);
+  border:1px solid var(--edge);border-radius:6px;color:var(--ink);
+  padding:7px 10px;font:400 13px "IBM Plex Sans",sans-serif}
+.catsearch select{background:var(--panel-2);border:1px solid var(--edge);
+  border-radius:6px;color:var(--ink);padding:7px 10px;font:400 13px inherit}
+.catlist{max-height:520px;overflow:auto;padding-right:4px}
+.bom{margin:0 0 12px}
+.bom table{width:100%;border-collapse:collapse;table-layout:fixed;
+  font:400 12.5px "IBM Plex Mono",monospace}
+.bom th:last-child,.bom td.q{text-align:right;width:38px}
+.bom th:nth-child(2),.bom td.d{width:104px}
+.bom td:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bom th{text-align:left;color:var(--faint);font-weight:500;padding:0 0 5px;
+  border-bottom:1px solid var(--line)}
+.bom td{padding:4px 0;border-bottom:1px dashed var(--line);color:var(--ink)}
+.bom td.q{text-align:right;color:var(--accent-ink);width:34px}
+.bom td.d{color:var(--muted);font-size:11.5px}
+.bom .empty{color:var(--faint);font-style:italic;padding:8px 0}
+.plateview{width:100%;height:340px;border-radius:8px;border:1px solid var(--edge);
+  background:#0F1316;display:block}
+
+.shop{margin:18px 0 26px}
+.shopwrap{display:grid;grid-template-columns:minmax(320px,1fr) minmax(340px,1.15fr);
+  gap:18px;align-items:start}
+@media (max-width:900px){.shopwrap{grid-template-columns:1fr}}
+.shopcol{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.shopcol h3{margin:0 0 4px;font-size:14px;letter-spacing:.02em}
+.shopcol .hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+.kit{border:1px solid var(--line);border-radius:10px;padding:10px;margin:0 0 12px;
+  background:var(--panel-2)}
+.kit>b{font-size:13px;color:var(--ink)}
+.kit .blurb{font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.45}
+.shared{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 8px;padding:8px;
+  border-radius:8px;background:rgba(255,255,255,.03)}
+.shared label{font:500 11.5px/1.3 "IBM Plex Mono",monospace;color:var(--muted);
+  display:flex;align-items:center;gap:6px}
+.shared input[type=range]{width:104px}
+.shared b{color:var(--accent-ink);font-weight:600;min-width:52px}
+.srow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+  padding:5px 0;border-top:1px dashed var(--line)}
+.srow:first-of-type{border-top:0}
+.srow .nm{font-size:12.5px;color:var(--ink)}
+.ver{font:500 10px/1 "IBM Plex Mono",monospace;color:var(--faint);
+  border:1px solid var(--line);border-radius:5px;padding:2px 5px;margin-left:6px;
+  white-space:nowrap;vertical-align:1px}
+.ver.stale{color:var(--warn);border-color:var(--warn)}
+.kit>b .ver{margin-left:8px}
+.srow .dim{display:block;font:400 11px/1.4 "IBM Plex Mono",monospace;color:var(--faint)}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:24px;height:24px;border-radius:6px;border:1px solid var(--edge);
+  background:var(--panel-2);color:var(--muted);cursor:pointer;font-size:14px;line-height:1}
+.step button:hover{color:var(--accent-ink);border-color:var(--accent)}
+.step input{width:44px;height:24px;text-align:center;border-radius:6px;
+  border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+  font:500 12px "IBM Plex Mono",monospace}
+.plates{display:flex;flex-wrap:wrap;gap:10px}
+.platebox{position:relative}
+.platebox canvas{display:block;border-radius:8px;background:#101418;
+  border:1px solid var(--edge)}
+.platecap{font:500 11px "IBM Plex Mono",monospace;color:var(--muted);
+  margin:4px 0 0;text-align:center}
+.shopsum{font:500 12.5px "IBM Plex Mono",monospace;color:var(--accent-ink);
+  margin:0 0 10px;min-height:18px}
+.shopwarn{font-size:12px;color:var(--warn);margin:6px 0 0}
+.libgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:8px;max-height:330px;overflow:auto;padding-right:4px}
+.libitem{border:1px solid var(--line);border-radius:8px;padding:7px 9px;
+  background:var(--panel-2)}
+.libitem b{display:block;font-size:12px;color:var(--ink);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.libitem span{font:400 10.5px "IBM Plex Mono",monospace;color:var(--faint)}
+
+/* controls: a native checkbox or range renders in the UA's light palette on a
+   dark ground unless it is told the accent */
+input,button,select,textarea{accent-color:var(--accent);font-family:inherit}
+input[type=checkbox]{width:15px;height:15px}
+button.phototoggle,button.showorig{border-color:var(--edge)}
+.libitem{border-color:var(--line)}
+
+/* anything interactive that still inherits a decorative rule */
+input:not([type=range]):not([type=checkbox]), textarea, select,
+.notes input, .step input{border-color:var(--edge)}
+
+/* ---- one catalog: cards on the left, the plate you are filling on the right ---- */
+.catwrap{display:grid;grid-template-columns:minmax(0,1fr) 356px;gap:20px;align-items:start}
+.catmain{min-width:0}
+.platerail{position:sticky;top:12px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:14px}
+.platerail h3{margin:0 0 4px;font-size:14px;letter-spacing:.02em}
+.platerail .hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+.cattools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 16px}
+.cattools input{flex:1;min-width:180px;background:var(--panel-2);
+  border:1px solid var(--edge);border-radius:8px;color:var(--ink);
+  font:400 13px "IBM Plex Sans",sans-serif;padding:8px 10px}
+.cattools select{background:var(--panel-2);border:1px solid var(--edge);
+  border-radius:8px;color:var(--ink);font:400 13px "IBM Plex Sans",sans-serif;padding:8px}
+.catcount{font:400 12px "IBM Plex Mono",monospace;color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.catmore{display:flex;justify-content:center;margin:20px 0 0}
+.morebtn{background:var(--panel);border:1px solid var(--edge);border-radius:8px;
+  color:var(--ink);font:600 13px "IBM Plex Sans",sans-serif;padding:9px 22px;cursor:pointer}
+.morebtn:hover{border-color:var(--accent);color:var(--accent-ink)}
+.morebtn[hidden]{display:none}
+.card.oncart{outline:2px solid var(--accent);outline-offset:-2px}
+.qtytag{position:absolute;right:12px;bottom:10px;z-index:6;
+  background:var(--accent);color:var(--ground);border-radius:999px;
+  font:600 12px/1 "IBM Plex Mono",monospace;padding:5px 9px}
+.verline{margin:-4px 0 0}
+.cardfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
+.cardfoot .print{padding:7px 12px;font-size:12.5px}
+.card .params{max-height:none}
+.emptycat{color:var(--faint);font-style:italic;padding:26px 0}
+@media (max-width:1080px){
+  .catwrap{grid-template-columns:1fr}
+  .platerail{position:static;order:-1}
+}
+.refs{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  gap:10px;align-items:start;margin-top:14px}
+.refs>details{margin:0}
+.refs>details[open]{grid-column:1/-1}
+.refbody{padding:14px 16px}
+.refs .fixes{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 </style>
 </head>
 <body>
@@ -210,32 +360,72 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
   <button class="lb-close" aria-label="close">✕</button></div></div>
 <div class="wrap">
 <header class="top">
-  <h1>The Fidget Shelf<span class="tld">.</span></h1>
+  <h1>My Print Shop<span class="tld">.</span></h1>
   <a class="guidelink" href="guide.html">P2S Field Guide →</a>
   <button class="guidelink" id="rebuild" title="re-run the tools pipeline: designs, metadata, previews, page">Rebuild index</button>
-  <p class="sub">One card per file — every preview is the real mesh; drag to orbit.
-  The four “pair plate” files were built here: both mating parts on one plate, ready to
-  print as a single job. Run <code>make&nbsp;serve</code> in this folder — it serves the
-  page and powers the print buttons. New to the vocabulary? See <a href="#glossary" style="color:var(--accent-ink)">reading the numbers</a>.</p>
+  <p class="sub">One catalog of everything printable. Choose quantities and
+  they pack onto plates as you go.</p>
+  <p class="sub" id="printerline" style="font:500 12px 'IBM Plex Mono',monospace;
+     color:var(--faint);margin-top:6px">printer:
+     <b style="color:var(--accent-ink)">Bambu Lab P2S</b> · bed 256 × 256 × 256 mm
+     · 0.4 nozzle</p>
 </header>
 
-<div class="stats">
-  <div class="stat"><b>27</b><span>files scanned</span></div>
-  <div class="stat"><b>15</b><span>distinct designs</span></div>
-  <div class="stat"><b>9<em>/15</em></b><span>fully clean designs</span></div>
-  <div class="stat"><b>6</b><span>with mesh defects</span></div>
-  <div class="stat"><b>1</b><span>repaired part</span></div>
-  <div class="stat"><b>4</b><span>pair plates built</span></div>
-  <div class="stat"><b>8.6 M</b><span>triangles checked</span></div>
+
+
+
+
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="catalog" class="on">Catalog</button>
+  <button role="tab" aria-selected="false" data-tab="about">About</button>
+</nav>
+
+<div class="pane on" id="pane-catalog">
+<div class="catwrap">
+  <div class="catmain">
+    <div class="cattools">
+      <input id="cat-q" type="search" placeholder="search the catalog…"
+             aria-label="search the catalog">
+      <select id="cat-fam" aria-label="filter by family"></select>
+      <span class="catcount" id="cat-count"></span>
+    </div>
+    <div class="grid" id="cat-grid"></div>
+    <div class="catmore"><button id="cat-more" class="morebtn">Show more</button></div>
+  </div>
+  <aside class="platerail">
+    <h3>Plate</h3>
+    <p class="hint">Accurate representation of the printable plates.</p>
+    <canvas class="plateview" id="shop-3d"></canvas>
+    <p class="shopsum" id="shop-sum">nothing on the plate</p>
+    <h3 style="margin-top:14px">Bill of materials</h3>
+    <div class="bom" id="shop-bom"><p class="empty">nothing on the plate yet</p></div>
+    <p class="shopwarn" id="shop-warn"></p>
+    <div class="actions" style="margin-top:12px;align-items:center">
+      <button class="print" id="shop-build">Build plates &rarr; zip</button>
+      <a class="savelink" id="shop-clear" href="#">clear the plate</a>
+    </div>
+  </aside>
+</div>
 </div>
 
-
+<div class="pane" id="pane-about">
 <section class="block" id="glossary">
-  <h2>Reading the numbers</h2>
-  <p class="lede">The cards lean on a small vocabulary of measurements. First, the symbol that
-  appears everywhere: <strong style="color:var(--ink)">&#216; means diameter</strong> — the full
-  width of a circle through its center, in millimetres ("&#216;19 ball" = a ball 19&nbsp;mm
-  across). Everything else:</p>
+  <div class="aboutgrid">
+    <div>
+      <h2 style="margin-top:0">Reading the numbers</h2>
+      <p class="lede" style="margin-bottom:10px"><strong style="color:var(--ink)">&#216;
+      means diameter</strong> — the full width of a circle through its centre,
+      in millimetres. "&#216;19 ball" is a ball 19&nbsp;mm across.</p>
+      <p class="lede" style="margin-bottom:10px">Every figure on a card is
+      measured from the mesh or read out of a real slice, and print notes
+      record what happened on the printer.</p>
+      <a class="guidelink" style="display:inline-block" href="guide.html">P2S
+      Field Guide &rarr;</a>
+      <p class="hint" style="margin-top:14px;line-height:1.5">Slice figures come
+      from real Bambu Studio CLI runs (0.2&nbsp;mm Standard, PLA Basic, textured
+      PEI, 15% infill). Calibrated against the printer: masses land within
+      ±6%, times read 10–25% low and drift further on long prints.</p>
+    </div>
   <div class="dias">
     <figure class="dia">
       <svg viewBox="0 0 220 150" role="img" aria-label="Ball resting on a ring stand">
@@ -285,1138 +475,43 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
     <figure class="dia">
       <img src="assets/genus.png" alt="Three blocks: solid, one cylinder bored through, two bored through" style="width:100%;display:block">
         <div class="genlabels"><span>genus 0</span><span>genus 1</span><span>genus 2</span></div>
-      <figcaption><strong>Genus</strong> is a topological property: the number of handles or
-      through-holes in a solid. <strong>Why you care:</strong> a toy's mechanism <em>is</em> its
-      topology — parts interlock only when tunnels and threads line up, so genus is a fingerprint
-      read straight from the mesh. It's how this index proved the hourglass spirals all share one
-      7-slot thread, caught that the "fixed" Staryu head is still the same part, and verified the
-      held-sphere's ball truly can't escape. A ball is genus 0; bore one cylinder clear through a
-      block and it's genus 1; every extra bore adds one — the passthrough ball's 21 helical
-      channels read genus 21.</figcaption>
+      <figcaption><strong>Genus</strong> is the number of handles or through-holes in a solid. <b>Why you care:</b> a toy's mechanism <i>is</i> its topology — parts interlock only when tunnels and threads line up, so genus is a fingerprint read straight from the mesh. A ball is genus 0; one bore through a block is genus 1; the passthrough ball's 21 helical channels read genus 21.</figcaption>
     </figure>
   </div>
+  </div>
 </section>
 
-<div class="grid">
-<article class="card" data-cid="sphere1" id="card-sphere1">
-  <div class="photo">
-    <div class="view" data-models="sphere1"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Sphere Stands · (unattributed export)</p>
-    <h3>Sphere Stand 1″ <span class="mat">PLA</span></h3>
-    <p class="principle">Ring stand for a 25.4 mm sphere — knife-edge rim Ø19.2 mm holds it at ≈49°. Genus-1, watertight. Also seats the 27 mm passthrough ball.</p>
-    
-    <p class="specline">20.5×20.5×5.1 mm · 1 part · 2,304 tris<br>P2S slice: 2 m · 0.8 g</p>
-    <div class="actions">
-      <button class="print" data-card="sphere1">Open in Bambu Studio</button>
-      <a class="savelink" href="models/sphere_stand_1.0in.3mf" download title="sphere_stand_1.0in.3mf">save · sphere_stand_1.0in.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="sphere1"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
-<article class="card" data-cid="sphere2" id="card-sphere2">
-  <div class="photo">
-    <div class="view" data-models="sphere2"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Sphere Stands · (unattributed export)</p>
-    <h3>Sphere Stand 2″ <span class="mat">PLA</span></h3>
-    <p class="principle">Same revolved profile scaled for a 50.8 mm sphere — rim Ø36.5 mm, contact ≈46°. Also seats the 39 mm passthrough ball.</p>
-    
-    <p class="specline">41.3×41.3×9.3 mm · 1 part · 2,304 tris<br>P2S slice: 7 m · 3.4 g</p>
-    <div class="actions">
-      <button class="print" data-card="sphere2">Open in Bambu Studio</button>
-      <a class="savelink" href="models/sphere_stand_2.0in.3mf" download title="sphere_stand_2.0in.3mf">save · sphere_stand_2.0in.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="sphere2"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
-<article class="card" data-cid="sphere3" id="card-sphere3">
-  <div class="photo">
-    <div class="view" data-models="sphere3"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Sphere Stands · (unattributed export)</p>
-    <h3>Sphere Stand 3″ <span class="mat">PLA</span></h3>
-    <p class="principle">Largest of the family — rim Ø57.7 mm for a 76.2 mm sphere. All three share one 2,304-triangle topology.</p>
-    
-    <p class="specline">61.5×61.5×13.4 mm · 1 part · 2,304 tris<br>P2S slice: 14 m · 8.8 g</p>
-    <div class="actions">
-      <button class="print" data-card="sphere3">Open in Bambu Studio</button>
-      <a class="savelink" href="models/sphere_stand_3.0in.3mf" download title="sphere_stand_3.0in.3mf">save · sphere_stand_3.0in.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="sphere3"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
-<article class="card" data-cid="vortex" id="card-vortex">
-  <div class="photo">
-    <div class="view" data-models="vortex"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Vortex · Bazzlington · original</p>
-    <h3>Vortex v3 <span class="mat">PLA</span></h3>
-    <p class="principle">Three nested twisted sleeves (genus-1 tubes, 4-fold symmetry, 50 mm tall) that spin freely inside each other. Slicer estimate 32 g · 2 h 06 m.</p>
-    
-    <p class="specline">66.7×76.7×50.0 mm · 3 parts · 378,652 tris<br>P2S slice: 1 h 24 m · 27.9 g (via STL re-slice — the project file mis-slices in the CLI)</p>
-    <div class="actions">
-      <button class="print" data-card="vortex">Open in Bambu Studio</button>
-      <a class="savelink" href="models/Vortex+v3+project.3mf" download title="Vortex+v3+project.3mf">save · Vortex+v3+project.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="vortex"></div>
-    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>Bazzlington</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 3 walls, 25% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-01.10.01.50</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-02-21</dd></div><div class="mrow"><dt>slicer_weight_g</dt><dd>32.2</dd></div><div class="mrow"><dt>slicer_time</dt><dd>2h 05m</dd></div></dl><p class="mdesc">I designed this version of my Vortex fidget toy to have 3 seperate pieces. 
-
-&nbsp;
-
-This model prints fine with no supports.</p><div class="gal"><img src="models/meta/vortex_v3_project/photo_1.webp" loading="lazy" data-cid="vortex" alt="designer photo"><img src="models/meta/vortex_v3_project/photo_2.webp" loading="lazy" data-cid="vortex" alt="designer photo"><img src="models/meta/vortex_v3_project/photo_3.webp" loading="lazy" data-cid="vortex" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="fidget" id="card-fidget">
-  <div class="photo">
-    <div class="view" data-models="fidget"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Passthrough series · RJ Design</p>
-    <h3>Mini Fidget Ball <span class="mat">PLA</span></h3>
-    <p class="principle">Genus-21 helical ball threads itself through the smaller genus-7 disc. The preview shows every object in the file — the designer ships the ball at two sizes (27 + 13.5 mm, V2-series compatible); you print one. Axle = 33 mm of filament or a 2×33 brass dowel.</p>
-    
-    <p class="specline">46.0×67.7×27.0 mm · 3 parts · 845,530 tris<br>P2S slice: 44 m · 8.0 g</p>
-    <div class="actions">
-      <button class="print" data-card="fidget">Open in Bambu Studio</button>
-      <a class="savelink" href="models/Mini+Fidget+Ball.3mf" download title="Mini+Fidget+Ball.3mf">save · Mini+Fidget+Ball.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="fidget"></div>
-    <details class="metabox"><summary>3MF metadata · 4 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>RJ Design</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 2 walls, 30% Gyroid infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-01.10.01.50</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-02-21</dd></div><div class="mrow"><dt>slicer_weight_g</dt><dd>11.3</dd></div><div class="mrow"><dt>slicer_time</dt><dd>0h 52m</dd></div></dl><p class="mdesc">The Design
-
-&nbsp;
-
-The Latest model in the Series is Here: The v2 - Vortex Fidget Ball
-
-&nbsp;
-
-Note: this model is best used with some minor assembly (though not neccessary)
-
-&nbsp;
-
-This can be played with in one hand. you push the ball through the disc and back.
-
-&nbsp;
-
-The parts are also compaitble with other designs in the V2 series.
-
-&nbsp;
-
-Dimensions are approximately: 27mm x 27mm x 35mm
-
-&nbsp;
-
-Let me know if you experience any issues.
-
-&nbsp;
-
-If you enjoy this print consider giving it a boost (It&#39;d really help me out!)
-
-&nbsp;
-
-Assembly
-
-&nbsp;
-
-Though not necessary, this toy is best enjoyed with some assembly.
-
-&nbsp;
-
-There are two methods:
-
-&nbsp;
-
-The First Method uses …</p><div class="gal"><img src="models/meta/mini_fidget_ball/photo_1.webp" loading="lazy" data-cid="fidget" alt="designer photo"><img src="models/meta/mini_fidget_ball/photo_2.webp" loading="lazy" data-cid="fidget" alt="designer photo"><img src="models/meta/mini_fidget_ball/photo_3.webp" loading="lazy" data-cid="fidget" alt="designer photo"><img src="models/meta/mini_fidget_ball/photo_4.webp" loading="lazy" data-cid="fidget" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="stackable" id="card-stackable">
-  <div class="photo">
-    <div class="view" data-models="stackable"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Passthrough series · RJ Design · V2</p>
-    <h3>Mini Stackable Passthrough <span class="mat">PLA</span></h3>
-    <p class="principle">Threaded genus-17 tube sections stack into a vortex column; the preview shows all shipped objects: ball size variants (13.5/27/39 mm, V2-series compatible — print the one you need) plus assembly copies. Tree supports ship as mesh bodies — print sequentially.</p>
-    
-    <p class="specline">90.5×121.8×62.2 mm · 7 parts · 3,731,786 tris<br>P2S slice: 5 h 32 m · 48.6 g</p>
-    <div class="actions">
-      <button class="print" data-card="stackable">Open in Bambu Studio</button>
-      <a class="savelink" href="models/Mini+Stackable+Supports+added+back+in.3mf" download title="Mini+Stackable+Supports+added+back+in.3mf">save · Mini+Stackable+Supports+added+back+in.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="stackable"></div>
-    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>RJ Design</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>profile</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 2 walls, 30% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.01.01.52</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-08-01</dd></div></dl><p class="mdesc">The Design
-
-&nbsp;
-
-You Asked for it, its here!
-
-&nbsp;
-
-The new Stackable impossible passthrough!
-
-&nbsp;
-
-Fully compatible with the V2 Series,
-
-&nbsp;
-
-The “male” part of the thread seems to defy physics by passing through the slightly larger “female” Part
-
-&nbsp;
-
-Now your can print as many tall parts as you like and add them together to make an extra long vortex tube!
-
-&nbsp;
-
-The Ball Twists its way down the Tube
-
-&nbsp;
-
-There is a Top cap and a Bottom cap to prevent the the ball escaping
-
-&nbsp;
-
-Or, if you&#39;ve got a spring from a ball point pen lying around, try adding this into the centre!
-
-&nbsp;
-
-Dimensions of 1 tall part is approximately: diameter 32mm x 60mm
-
-&nbsp;
-
-Let me k…</p><div class="gal"><img src="models/meta/mini_stackable_supports_added_back_in/photo_1.webp" loading="lazy" data-cid="stackable" alt="designer photo"><img src="models/meta/mini_stackable_supports_added_back_in/photo_2.webp" loading="lazy" data-cid="stackable" alt="designer photo"><img src="models/meta/mini_stackable_supports_added_back_in/photo_3.webp" loading="lazy" data-cid="stackable" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="top" id="card-top">
-  <div class="photo">
-    <div class="view" data-models="top"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Spinning Top · AeroDesigns</p>
-    <h3>Magic Spinning Top <span class="mat">PLA</span></h3>
-    <p class="principle">Floating-ring illusion: two genus-3 halves (ring + 3 spokes) plus two connector sizes — standard and +0.07 mm for slippery filaments. Never rescale.</p>
-    
-    <p class="specline">100.3×152.2×41.3 mm · 4 parts · 5,292 tris<br>P2S slice: 28 m · 11.4 g</p>
-    <div class="actions">
-      <button class="print" data-card="top">Open in Bambu Studio</button>
-      <a class="savelink" href="models/magic_spinning_top_+23+de+fight+d.3mf" download title="magic_spinning_top_+23+de+fight+d.3mf">save · magic_spinning_top_+23+de+fight+d.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="top"></div>
-    <details class="metabox"><summary>3MF metadata · 5 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>AeroDesigns</dd></div><div class="mrow"><dt>License</dt><dd>MakerWorld Exclusive License</dd></div><div class="mrow"><dt>Origin</dt><dd>profile</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>impression plus solide !</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.07.01.62</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-07-14</dd></div></dl><p class="mdesc">A spinning top that creates a unique visual effect while spinning.
-Balanced with special geometry for long spin times and smooth motion, making it fun to watch and satisfying to use.
-Prints easily and works well as a desk toy or fidget.
-
-&nbsp;
-
-warning:
-
-Connector may not fit properly if the model id scaled up or down.
-
-&nbsp;
-
-Notes:
-
-prints in two halves with a separate connecting piece.
-
-Glue is not needed but advised for a good connection between pieces.
-
-Has two different sizes of connector to accommodate filaments with different tolerances eg. PLA silk.
-
-&nbsp;
-MembershipEnjoying my models? If you&#39;d like to support future projects or sell physical prints of my designs, consider jo…</p><div class="gal"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_1.webp" loading="lazy" data-cid="top" alt="designer photo"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_2.webp" loading="lazy" data-cid="top" alt="designer photo"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_3.webp" loading="lazy" data-cid="top" alt="designer photo"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_4.webp" loading="lazy" data-cid="top" alt="designer photo"><img src="models/meta/magic_spinning_top_23_de_fight_d/photo_5.webp" loading="lazy" data-cid="top" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="skull" id="card-skull">
-  <div class="photo">
-    <div class="view" data-models="skull"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Quantum Skull · Gmino</p>
-    <h3>Quantum Skull <span class="mat">PLA</span></h3>
-    <p class="principle">Two identical 31.5 cm³ skull halves that nest and slide as a two-hand fidget. Print each half in its own colour (two plates).</p>
-    
-    <p class="specline">81.0×212.6×36.7 mm · 2 parts · 30,692 tris<br>P2S slice: 1 h 02 m · 36.7 g</p>
-    <div class="actions">
-      <button class="print" data-card="skull">Open in Bambu Studio</button>
-      <a class="savelink" href="models/Quantum+Skull.3mf" download title="Quantum+Skull.3mf">save · Quantum+Skull.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="skull"></div>
-    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>Gmino</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.24mm layer, 3 walls, 15% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.04.00.70</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-01-06</dd></div></dl><p class="mdesc">Quantum Skull is a fidget you must have in your hands.
-
-&nbsp;
-
-In the print profile, you&#39;ll find two plates, one for each plate, and you&#39;ll need to print one in the color of your choice.
-
-&nbsp;
-
-And you&#39;re ready to play.
-
-&nbsp;
-
-Enjoy!</p><div class="gal"><img src="models/meta/quantum_skull/photo_1.webp" loading="lazy" data-cid="skull" alt="designer photo"><img src="models/meta/quantum_skull/photo_2.webp" loading="lazy" data-cid="skull" alt="designer photo"><img src="models/meta/quantum_skull/photo_3.webp" loading="lazy" data-cid="skull" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="puffer" id="card-puffer">
-  <div class="photo">
-    <div class="view" data-models="puffer"></div>
-    <span class="pill warn">1 leaky object</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Pufferfish · Legend Lee</p>
-    <h3>Pufferfish — original <span class="mat">PETG</span></h3>
-    <p class="principle">Articulated squeeze-ball: hinged spike plates around a multi-body core, pulled by rubber bands. One leaky object of 10 — every slicer auto-repairs it.</p>
-    
-    <p class="specline">182.5×177.9×41.9 mm · 10 parts · 385,412 tris<br>P2S slice: 2 h 09 m · 63.1 g — plate 1 of 4</p>
-    <div class="actions">
-      <button class="print" data-card="puffer">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pufferfish.3mf" download title="pufferfish.3mf">save · pufferfish.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="puffer"></div>
-    <details class="metabox"><summary>3MF metadata · 4 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>Legend Lee</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>profile</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.16mm 层高, 2 层墙, 15% 填充</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.08.02.60</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-08-23</dd></div></dl><p class="mdesc">本作品需要用到橡皮筋、润滑剂和胶水
-
-本作品主作结构参考比个赞@user_294872208
-
-&nbsp;
-
-安装指南如下：
-
- 
-
-&nbsp;
-为我助力</p><div class="gal"><img src="models/meta/pufferfish/photo_1.webp" loading="lazy" data-cid="puffer" alt="designer photo"><img src="models/meta/pufferfish/photo_2.webp" loading="lazy" data-cid="puffer" alt="designer photo"><img src="models/meta/pufferfish/photo_3.webp" loading="lazy" data-cid="puffer" alt="designer photo"><img src="models/meta/pufferfish/photo_4.webp" loading="lazy" data-cid="puffer" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="puffer3p" id="card-puffer3p">
-  <div class="photo">
-    <div class="view" data-models="puffer3p"></div>
-    <span class="pill warn">Same leaky part</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Pufferfish · Legend Lee</p>
-    <h3>Pufferfish — 3-plate re-save <span class="mat">PETG</span></h3>
-    <p class="principle">Same 10 parts as the original (verified rotation-invariant), re-arranged across three plates for easier printing.</p>
-    
-    <p class="specline">182.5×177.9×41.9 mm · 10 parts · 385,412 tris<br>P2S slice: 2 h 09 m · 63.1 g — plate 1 of 4</p>
-    <div class="actions">
-      <button class="print" data-card="puffer3p">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pufferfish-p2s-threeplates.3mf" download title="pufferfish-p2s-threeplates.3mf">save · pufferfish-p2s-threeplates.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="puffer3p"></div>
-    <details class="metabox"><summary>3MF metadata · 4 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>Legend Lee</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>profile</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.16mm 层高, 2 层墙, 15% 填充</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.08.02.60</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-08-23</dd></div></dl><p class="mdesc">本作品需要用到橡皮筋、润滑剂和胶水
-
-本作品主作结构参考比个赞@user_294872208
-
-&nbsp;
-
-安装指南如下：
-
- 
-
-&nbsp;
-为我助力</p><div class="gal"><img src="models/meta/pufferfish_p2s_threeplates/photo_1.webp" loading="lazy" data-cid="puffer3p" alt="designer photo"><img src="models/meta/pufferfish_p2s_threeplates/photo_2.webp" loading="lazy" data-cid="puffer3p" alt="designer photo"><img src="models/meta/pufferfish_p2s_threeplates/photo_3.webp" loading="lazy" data-cid="puffer3p" alt="designer photo"><img src="models/meta/pufferfish_p2s_threeplates/photo_4.webp" loading="lazy" data-cid="puffer3p" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="puffer1c" id="card-puffer1c">
-  <div class="photo">
-    <div class="view" data-models="puffer1c"></div>
-    <span class="pill warn">Same leaky part</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Pufferfish · Legend Lee</p>
-    <h3>Pufferfish — one-colour re-save <span class="mat">PETG</span></h3>
-    <p class="principle">Same parts, colour scheme flattened. A 1.3× scale is baked into mesh coords and cancelled by transforms — prints the same size.</p>
-    
-    <p class="specline">193.4×177.9×41.9 mm · 10 parts · 385,412 tris<br>P2S slice: 4 h 07 m · 81.8 g — single plate</p>
-    <div class="actions">
-      <button class="print" data-card="puffer1c">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pufferfish-p2s-onecolor.3mf" download title="pufferfish-p2s-onecolor.3mf">save · pufferfish-p2s-onecolor.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="puffer1c"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.08.02.60</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-08-23</dd></div></dl></details>
-  </div>
-</article>
-
-<article class="card" data-cid="pikachu" id="card-pikachu">
-  <div class="photo">
-    <div class="view" data-models="pikachu"></div>
-    <span class="pill warn">Minor defects</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Pikachu Flexy · B-Forge3D · v2</p>
-    <h3>Pikachu Flexy Keychain <span class="mat">PETG</span></h3>
-    <p class="principle">Print-in-place flexy of 7 hinged bodies. This file is itself the fix — the reinforced single-colour v2 of a fragile original.</p>
-    
-    <p class="specline">32.5×76.1×14.1 mm · 1 part · 34,818 tris<br>P2S slice: 18 m · 5.3 g</p>
-    <div class="actions">
-      <button class="print" data-card="pikachu">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pikachu+more+resistant+one+color.3mf" download title="pikachu+more+resistant+one+color.3mf">save · pikachu+more+resistant+one+color.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="pikachu"></div>
-    <details class="metabox"><summary>3MF metadata · 5 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>B-Forge3D</dd></div><div class="mrow"><dt>License</dt><dd>MakerWorld Exclusive License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>new version - more resistant single color</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.05.00.66</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2026-05-04</dd></div></dl><p class="mdesc">Ho realizzato un portachiavi articolato di pikachu stampabile a colori con AMS, cercate di avere un giallo coprente sennò si noterà un pò di nero intorno alla bocca, se avranno in molti questo problema cercherò di modificare il modello per far si che non si veda, ho messo anche il modello con un singolo colore per chi non possiede un AMS, per dubbi o domande lasciate pure un commento qua sotto
-
-&nbsp;
-
-aggiornamento: ho realizzato una nuova versione più resistente che dovrebbe dare anche meno problemi durante la stampa multicolore, spero sia di vostro gradimento.
-
-&nbsp;
-
-Want to sell physical prints of my designs?
-
-Become an active Patreon member to obtain a commercial license.
-
-Link in my …</p><div class="gal"><img src="models/meta/pikachu_more_resistant_one_color/photo_1.webp" loading="lazy" data-cid="pikachu" alt="designer photo"><img src="models/meta/pikachu_more_resistant_one_color/photo_2.webp" loading="lazy" data-cid="pikachu" alt="designer photo"><img src="models/meta/pikachu_more_resistant_one_color/photo_3.webp" loading="lazy" data-cid="pikachu" alt="designer photo"><img src="models/meta/pikachu_more_resistant_one_color/photo_4.webp" loading="lazy" data-cid="pikachu" alt="designer photo"><img src="models/meta/pikachu_more_resistant_one_color/photo_5.webp" loading="lazy" data-cid="pikachu" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="staryu" id="card-staryu">
-  <div class="photo">
-    <div class="view" data-models="staryu"></div>
-    <span class="pill warn">Dup-face defect</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Staryu & Starmie · pythong · remix</p>
-    <h3>Staryu & Starmie — original <span class="mat">PLA</span></h3>
-    <p class="principle">Two spinners on one bearing recipe, friction tuned by the diff_disc washer stack. Star heads carry 152 k duplicate faces — slicers discard them.</p>
-    
-    <p class="specline">187.4×192.5×17.0 mm · 16 parts · 921,452 tris<br>P2S slice: 10 m · 4.3 g — plate 1 of 4</p>
-    <div class="actions">
-      <button class="print" data-card="staryu">Open in Bambu Studio</button>
-      <a class="savelink" href="models/Staryu_Starmie_Spin_Spin.3mf" download title="Staryu_Starmie_Spin_Spin.3mf">save · Staryu_Starmie_Spin_Spin.3mf</a>
-      <button class="showorig" data-target="staryu_dup" data-show-label="show duplicate download" data-hide-label="hide duplicate download">show duplicate download</button>
-    </div>
-    <div class="notes" data-cid="staryu"></div>
-    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>pythong</dd></div><div class="mrow"><dt>License</dt><dd>BY-NC-SA</dd></div><div class="mrow"><dt>Origin</dt><dd>remix</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>Staryu Starmie Spinners (NO AMS NEEDED)</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.01.01.52</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-07-11</dd></div></dl><p class="mdesc">Based on the Starmie Fidget Spinner of Nova7171
-
-&nbsp;
-
-I am no fan of the thickness and the necessity of supports or glue, also I had problems with the friction of the original model, so I redesigned the main body and their edges, the connector pin, the back wall, and overall the spinner is half as thick to fit my kids&#39; hands better. Also you don&#39;t need support or glue here to assemble the spinner
-
-&nbsp;
-
-I&#39;ve also created a slightly smaller version for Staryu with a different diamond, have fun with it!
-
-&nbsp;
-
-FOR THOSE WITHOUT AMS (like me): I&#39;ve added a pause to plate 1, where you can exchange your filament
-
-&nbsp;
-
-For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><img src="models/meta/staryu_starmie_spin_spin/photo_1.webp" loading="lazy" data-cid="staryu" alt="designer photo"><img src="models/meta/staryu_starmie_spin_spin/photo_2.webp" loading="lazy" data-cid="staryu" alt="designer photo"><img src="models/meta/staryu_starmie_spin_spin/photo_3.webp" loading="lazy" data-cid="staryu" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card superseded" data-cid="staryu_dup" id="card-staryu_dup">
-  <div class="photo">
-    <div class="view" data-models="staryu_dup"></div>
-    <span class="pill warn">Duplicate file</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Staryu & Starmie · pythong · remix</p>
-    <h3>Staryu & Starmie — copy (1) <span class="mat">PLA</span></h3>
-    <p class="principle">Byte-identical duplicate download of the original (same MD5). Safe to delete; kept here for completeness.</p>
-    
-    <p class="specline">187.4×192.5×17.0 mm · 16 parts · 921,452 tris<br>P2S slice: 10 m · 4.3 g — plate 1 of 4</p>
-    <div class="actions">
-      <button class="print" data-card="staryu_dup">Open in Bambu Studio</button>
-      <a class="savelink" href="models/Staryu_Starmie_Spin_Spin (1).3mf" download title="Staryu_Starmie_Spin_Spin (1).3mf">save · Staryu_Starmie_Spin_Spin (1).3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="staryu_dup"></div>
-    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>pythong</dd></div><div class="mrow"><dt>License</dt><dd>BY-NC-SA</dd></div><div class="mrow"><dt>Origin</dt><dd>remix</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>Staryu Starmie Spinners (NO AMS NEEDED)</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.01.01.52</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-07-11</dd></div></dl><p class="mdesc">Based on the Starmie Fidget Spinner of Nova7171
-
-&nbsp;
-
-I am no fan of the thickness and the necessity of supports or glue, also I had problems with the friction of the original model, so I redesigned the main body and their edges, the connector pin, the back wall, and overall the spinner is half as thick to fit my kids&#39; hands better. Also you don&#39;t need support or glue here to assemble the spinner
-
-&nbsp;
-
-I&#39;ve also created a slightly smaller version for Staryu with a different diamond, have fun with it!
-
-&nbsp;
-
-FOR THOSE WITHOUT AMS (like me): I&#39;ve added a pause to plate 1, where you can exchange your filament
-
-&nbsp;
-
-For all the others: Plate 2 should hopefully flush in…</p><div class="gal"><img src="models/meta/staryu_starmie_spin_spin_1/photo_1.webp" loading="lazy" data-cid="staryu_dup" alt="designer photo"><img src="models/meta/staryu_starmie_spin_spin_1/photo_2.webp" loading="lazy" data-cid="staryu_dup" alt="designer photo"><img src="models/meta/staryu_starmie_spin_spin_1/photo_3.webp" loading="lazy" data-cid="staryu_dup" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="cone_pair_s" id="card-cone_pair_s">
-  <div class="photo">
-    <div class="view" data-models="cone_pair_s"></div>
-    <span class="pill pass">Built · both parts</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
-    <h3>Cone Pair Plate — 90 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Solid + eased spiral (0.05–0.15 mm entry lead-in) on one plate. Known failure: the solid’s wall thins to 1–2 mm where the slots taper at the rim, on a 35–39° flare — cracks in PETG as the top closes (spiral is innocent). Print PLA, 100% infill + ≥4 walls on the solid, 100% fan up top, brim. Full measurements in the print notes.</p>
-    
-    <p class="specline">44.7×92.0×90.0 mm · 2 parts · 362,160 tris<br>P2S slice: 2 h 19 m · 60.5 g</p>
-    <div class="actions">
-      <button class="print" data-card="cone_pair_s">Open in Bambu Studio</button>
-      <a class="savelink" href="models/cone-hourglass-pair-small.3mf" download title="cone-hourglass-pair-small.3mf">save · cone-hourglass-pair-small.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="cone_pair_s"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
-<article class="card" data-cid="cone_pair_d" id="card-cone_pair_d">
-  <div class="photo">
-    <div class="view" data-models="cone_pair_d"></div>
-    <span class="pill pass">Built · both parts</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
-    <h3>Cone Pair Plate — dubbel 180 mm <span class="mat">PLA</span></h3>
-    <p class="principle">The double-height pair on one plate, with the eased spiral (0.05–0.15 mm entry lead-in). 8.7:1 lever at 180 mm — brim mandatory; same thin-rim caution as the 90 mm plate.</p>
-    
-    <p class="specline">48.4×95.5×180.0 mm · 2 parts · 418,836 tris<br>P2S slice: 4 h 54 m · 133.2 g</p>
-    <div class="actions">
-      <button class="print" data-card="cone_pair_d">Open in Bambu Studio</button>
-      <a class="savelink" href="models/cone-hourglass-pair-dubbel.3mf" download title="cone-hourglass-pair-dubbel.3mf">save · cone-hourglass-pair-dubbel.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="cone_pair_d"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
-<article class="card" data-cid="cone_solid_s" id="card-cone_solid_s">
-  <div class="photo">
-    <div class="view" data-models="cone_solid_s"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
-    <h3>Cone Solid — 90 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Hourglass body with 7 helical slots + a central channel (mesh genus 8). 100% infill per the designer; lands on 7 first-layer islands — brim.</p>
-    <p class="mate">mates with Cone Spiral — 90 mm (pair plate: cone-hourglass-pair-small.3mf) — <a class="pairlink" href="#card-cone_pair_s">print both together ↓</a></p>
-    <p class="specline">44.7×44.7×90.0 mm · 1 part · 184,238 tris<br>P2S slice: 1 h 17 m · 30.6 g</p>
-    <div class="actions">
-      <button class="print" data-card="cone_solid_s">Open in Bambu Studio</button>
-      <a class="savelink" href="models/cone-solid-small.stl" download title="cone-solid-small.stl">save · cone-solid-small.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="cone_solid_s"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="cone_spiral_s" id="card-cone_spiral_s">
-  <div class="photo">
-    <div class="view" data-models="cone_spiral_s"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
-    <h3>Cone Spiral — 90 mm <span class="mat">PLA</span></h3>
-    <p class="principle">The smooth twisted piece (genus 0) that screws through the solid's slots. 15% gyroid infill.</p>
-    <p class="mate">mates with Cone Solid — 90 mm — <a class="pairlink" href="#card-cone_pair_s">print both together ↓</a></p>
-    <p class="specline">41.3×41.4×90.0 mm · 1 part · 177,922 tris<br>P2S slice: 1 h 03 m · 30.1 g</p>
-    <div class="actions">
-      <button class="print" data-card="cone_spiral_s">Open in Bambu Studio</button>
-      <a class="savelink" href="models/cone-spiral-small.stl" download title="cone-spiral-small.stl">save · cone-spiral-small.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="cone_spiral_s"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="cone_solid_d" id="card-cone_solid_d">
-  <div class="photo">
-    <div class="view" data-models="cone_solid_d"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
-    <h3>Cone Solid — dubbel 180 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Two hourglass cells stacked at constant Ø — same 7 slots per cell (mesh genus 15). 7.4:1 lever ratio — brim mandatory.</p>
-    <p class="mate">mates with Cone Spiral — dubbel 180 mm (pair plate: cone-hourglass-pair-dubbel.3mf) — <a class="pairlink" href="#card-cone_pair_d">print both together ↓</a></p>
-    <p class="specline">48.4×48.4×180.0 mm · 1 part · 214,672 tris<br>P2S slice: 2 h 42 m · 71.0 g</p>
-    <div class="actions">
-      <button class="print" data-card="cone_solid_d">Open in Bambu Studio</button>
-      <a class="savelink" href="models/cone-solid.stl" download title="cone-solid.stl">save · cone-solid.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="cone_solid_d"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="cone_spiral_d" id="card-cone_spiral_d">
-  <div class="photo">
-    <div class="view" data-models="cone_spiral_d"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Cone · Idea2Item · Printables</p>
-    <h3>Cone Spiral — dubbel 180 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Double-length spiral, same Ø41 body. 8.7:1 lever ratio — brim mandatory.</p>
-    <p class="mate">mates with Cone Solid — dubbel 180 mm — <a class="pairlink" href="#card-cone_pair_d">print both together ↓</a></p>
-    <p class="specline">41.1×41.2×180.0 mm · 1 part · 204,164 tris<br>P2S slice: 2 h 12 m · 62.4 g</p>
-    <div class="actions">
-      <button class="print" data-card="cone_spiral_d">Open in Bambu Studio</button>
-      <a class="savelink" href="models/cone-spiral.stl" download title="cone-spiral.stl">save · cone-spiral.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="cone_spiral_d"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="pyr_pair_s" id="card-pyr_pair_s">
-  <div class="photo">
-    <div class="view" data-models="pyr_pair_s"></div>
-    <span class="pill pass">Built · both parts</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
-    <h3>Pyramid Pair Plate — 90 mm <span class="mat">PLA</span></h3>
-    <p class="principle">The repaired solid + eased spiral on one plate. Same thin-rim + 35–39° flare failure anatomy as the cone set — print PLA, 100% infill + ≥4 walls on the solid, 100% fan up top, brim. Details in the print notes.</p>
-    
-    <p class="specline">46.6×93.9×90.0 mm · 2 parts · 401,514 tris<br>P2S slice: 2 h 37 m · 75.5 g</p>
-    <div class="actions">
-      <button class="print" data-card="pyr_pair_s">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pyramid-hourglass-pair-small.3mf" download title="pyramid-hourglass-pair-small.3mf">save · pyramid-hourglass-pair-small.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="pyr_pair_s"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
-<article class="card" data-cid="pyr_pair_d" id="card-pyr_pair_d">
-  <div class="photo">
-    <div class="view" data-models="pyr_pair_d"></div>
-    <span class="pill pass">Built · both parts</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
-    <h3>Pyramid Pair Plate — dubbel 180 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Both parts on one plate. Same failure anatomy as the 90 mm set (thin rim ribbons on a 35–39° flare — field-confirmed at both scales), amplified here by the 8.7:1 lever and doubled travels. Prefer the individual cards on separate plates; PLA, max fan + slow outer wall up top, brim. Details in the print notes.</p>
-    
-    <p class="specline">47.5×94.7×180.0 mm · 2 parts · 432,840 tris<br>P2S slice: 5 h 11 m · 147.6 g</p>
-    <div class="actions">
-      <button class="print" data-card="pyr_pair_d">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pyramid-hourglass-pair-dubbel.3mf" download title="pyramid-hourglass-pair-dubbel.3mf">save · pyramid-hourglass-pair-dubbel.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="pyr_pair_d"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
-<article class="card" data-cid="pyr_solid_sf" id="card-pyr_solid_sf">
-  <div class="photo">
-    <div class="view" data-models="pyr_solid_sf"></div>
-    <span class="pill pass">Repaired</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
-    <h3>Pyramid Solid — 90 mm (fixed) <span class="mat">PLA</span></h3>
-    <p class="principle">The repaired body: zero-thickness pinch removed (2 fewer faces, watertight) — 7 slots + channel. Print this, not the original.</p>
-    <p class="mate">mates with Pyramid Spiral — 90 mm (pair plate: pyramid-hourglass-pair-small.3mf) — <a class="pairlink" href="#card-pyr_pair_s">print both together ↓</a></p>
-    <p class="specline">46.6×46.6×90.0 mm · 1 part · 200,876 tris<br>P2S slice: 1 h 32 m · 42.7 g</p>
-    <div class="actions">
-      <button class="print" data-card="pyr_solid_sf">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pyramid-solid-small-fixed.stl" download title="pyramid-solid-small-fixed.stl">save · pyramid-solid-small-fixed.stl</a>
-      <button class="showorig" data-target="pyr_solid_so" data-show-label="show original (pinch)" data-hide-label="hide original (pinch)">show original (pinch)</button>
-    </div>
-    <div class="notes" data-cid="pyr_solid_sf"></div>
-    
-  </div>
-</article>
-
-<article class="card superseded" data-cid="pyr_solid_so" id="card-pyr_solid_so">
-  <div class="photo">
-    <div class="view" data-models="pyr_solid_so"></div>
-    <span class="pill warn">Pinch defect</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
-    <h3>Pyramid Solid — 90 mm (original) <span class="mat">PLA</span></h3>
-    <p class="principle">Ships with a zero-thickness pinch: one duplicated triangle on a non-manifold edge. Superseded by the -fixed file — kept for reference.</p>
-    
-    <p class="specline">46.6×46.6×90.0 mm · 1 part · 200,878 tris<br>P2S slice: 1 h 31 m · 42.7 g</p>
-    <div class="actions">
-      <button class="print" data-card="pyr_solid_so">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pyramid-solid-small.stl" download title="pyramid-solid-small.stl">save · pyramid-solid-small.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="pyr_solid_so"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="pyr_spiral_s" id="card-pyr_spiral_s">
-  <div class="photo">
-    <div class="view" data-models="pyr_spiral_s"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
-    <h3>Pyramid Spiral — 90 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Twisted square-base piece (genus 0) with the set's shared 7-lobe thread. 15% gyroid infill.</p>
-    <p class="mate">mates with Pyramid Solid — 90 mm (fixed) — <a class="pairlink" href="#card-pyr_pair_s">print both together ↓</a></p>
-    <p class="specline">41.4×41.4×90.0 mm · 1 part · 200,638 tris<br>P2S slice: 1 h 06 m · 32.9 g</p>
-    <div class="actions">
-      <button class="print" data-card="pyr_spiral_s">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pyramid-spiral-small.stl" download title="pyramid-spiral-small.stl">save · pyramid-spiral-small.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="pyr_spiral_s"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="pyr_solid_d" id="card-pyr_solid_d">
-  <div class="photo">
-    <div class="view" data-models="pyr_solid_d"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
-    <h3>Pyramid Solid — dubbel 180 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Double-height slotted body, 7 slots per cell (mesh genus 19). 100% infill and a brim.</p>
-    <p class="mate">mates with Pyramid Spiral — dubbel 180 mm (pair plate: pyramid-hourglass-pair-dubbel.3mf) — <a class="pairlink" href="#card-pyr_pair_d">print both together ↓</a></p>
-    <p class="specline">47.5×47.5×180.0 mm · 1 part · 221,738 tris<br>P2S slice: 2 h 58 m · 83.7 g</p>
-    <div class="actions">
-      <button class="print" data-card="pyr_solid_d">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pyramid-solid.stl" download title="pyramid-solid.stl">save · pyramid-solid.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="pyr_solid_d"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="pyr_spiral_d" id="card-pyr_spiral_d">
-  <div class="photo">
-    <div class="view" data-models="pyr_spiral_d"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Hourglass · Pyramid · Idea2Item · Printables</p>
-    <h3>Pyramid Spiral — dubbel 180 mm <span class="mat">PLA</span></h3>
-    <p class="principle">Double-length spiral. 8.7:1 lever ratio — brim mandatory.</p>
-    <p class="mate">mates with Pyramid Solid — dubbel 180 mm — <a class="pairlink" href="#card-pyr_pair_d">print both together ↓</a></p>
-    <p class="specline">41.1×41.2×180.0 mm · 1 part · 211,102 tris<br>P2S slice: 2 h 14 m · 64.0 g</p>
-    <div class="actions">
-      <button class="print" data-card="pyr_spiral_d">Open in Bambu Studio</button>
-      <a class="savelink" href="models/pyramid-spiral.stl" download title="pyramid-spiral.stl">save · pyramid-spiral.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="pyr_spiral_d"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="nuts" id="card-nuts">
-  <div class="photo">
-    <div class="view" data-models="nuts"></div>
-    <span class="pill pass">Repaired</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Nuts & Bolts · carnivalcamps</p>
-    <h3>Montessori Nuts & Bolts <span class="mat">PLA</span></h3>
-    <p class="principle">Toddler counting toy: five jumbo bolts in 30 mm height steps (59–179 mm) sharing one chunky thread, plus a nut — every nut fits every bolt; print as many nuts as needed. The nut mesh shipped leaky (4 non-manifold edges from 5 zero-area slivers); repaired here — volume unchanged to 0.01 cm³, all six objects watertight. Non-toxic filament, brim on the tall bolts.</p>
-    
-    <p class="specline">106.6×183.4×179.2 mm · 6 parts · 217,774 tris<br>P2S slice: 5 h 32 m · 228.4 g (Studio on the P2S: 6 h 56 m · 225.05 g)</p>
-    <div class="actions">
-      <button class="print" data-card="nuts">Open in Bambu Studio</button>
-      <a class="savelink" href="models/montessori+nuts+and+bolts-fixed.3mf" download title="montessori+nuts+and+bolts-fixed.3mf">save · montessori+nuts+and+bolts-fixed.3mf</a>
-      <button class="showorig" data-target="nuts_orig" data-show-label="show original (leaky nut)" data-hide-label="hide original (leaky nut)">show original (leaky nut)</button>
-    </div>
-    <div class="notes" data-cid="nuts"></div>
-    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>carnivalcamps</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 2 walls, 15% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.03.01.51</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-11-08</dd></div></dl><p class="mdesc">MembershipQuires vender este modelo en Etsy o tiendas similares?, adquiere una licencia comercial hoy mismoBoost MeSi te gustó el modelo apoyame con un impulso
-Buy me coffe if you like my models https://ko-fi.com/carnivalcamps
-
-Looking for a fun, safe, and educational toy for your little one? Introducing the Jumbo Nuts &amp; Bolts set!
-
-Designed specifically for small hands, this 3D-printable toy is perfect for helping toddlers develop crucial skills like fine motor control, hand-eye coordination, color recognition, and basic counting. The chunky, oversized design ensures it&#39;s easy to grip and completely safe for young children.
-
-Watch them delight in stacking, screwing, and creating the…</p><div class="gal"><img src="models/meta/montessori_nuts_and_bolts_fixed/photo_1.webp" loading="lazy" data-cid="nuts" alt="designer photo"><img src="models/meta/montessori_nuts_and_bolts_fixed/photo_2.webp" loading="lazy" data-cid="nuts" alt="designer photo"><img src="models/meta/montessori_nuts_and_bolts_fixed/photo_3.webp" loading="lazy" data-cid="nuts" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card superseded" data-cid="nuts_orig" id="card-nuts_orig">
-  <div class="photo">
-    <div class="view" data-models="nuts_orig"></div>
-    <span class="pill warn">Nut not watertight</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Nuts & Bolts · carnivalcamps</p>
-    <h3>Montessori Nuts & Bolts — original <span class="mat">PLA</span></h3>
-    <p class="principle">As downloaded: the nut object carries 5 degenerate faces creating 4 non-manifold edges. Superseded by the repaired file — kept for reference.</p>
-    
-    <p class="specline">106.6×183.4×179.2 mm · 6 parts · 217,774 tris<br>P2S slice: 5 h 32 m · 228.4 g</p>
-    <div class="actions">
-      <button class="print" data-card="nuts_orig">Open in Bambu Studio</button>
-      <a class="savelink" href="models/montessori+nuts+and+bolts.3mf" download title="montessori+nuts+and+bolts.3mf">save · montessori+nuts+and+bolts.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="nuts_orig"></div>
-    <details class="metabox"><summary>3MF metadata · 3 photos</summary><dl class="mrows"><div class="mrow"><dt>Designer</dt><dd>carnivalcamps</dd></div><div class="mrow"><dt>License</dt><dd>Standard Digital File License</dd></div><div class="mrow"><dt>Origin</dt><dd>original</dd></div><div class="mrow"><dt>ProfileTitle</dt><dd>0.2mm layer, 2 walls, 15% infill</dd></div><div class="mrow"><dt>Application</dt><dd>BambuStudio-02.03.01.51</dd></div><div class="mrow"><dt>CreationDate</dt><dd>2025-11-08</dd></div></dl><p class="mdesc">MembershipQuires vender este modelo en Etsy o tiendas similares?, adquiere una licencia comercial hoy mismoBoost MeSi te gustó el modelo apoyame con un impulso
-Buy me coffe if you like my models https://ko-fi.com/carnivalcamps
-
-Looking for a fun, safe, and educational toy for your little one? Introducing the Jumbo Nuts &amp; Bolts set!
-
-Designed specifically for small hands, this 3D-printable toy is perfect for helping toddlers develop crucial skills like fine motor control, hand-eye coordination, color recognition, and basic counting. The chunky, oversized design ensures it&#39;s easy to grip and completely safe for young children.
-
-Watch them delight in stacking, screwing, and creating the…</p><div class="gal"><img src="models/meta/montessori_nuts_and_bolts/photo_1.webp" loading="lazy" data-cid="nuts_orig" alt="designer photo"><img src="models/meta/montessori_nuts_and_bolts/photo_2.webp" loading="lazy" data-cid="nuts_orig" alt="designer photo"><img src="models/meta/montessori_nuts_and_bolts/photo_3.webp" loading="lazy" data-cid="nuts_orig" alt="designer photo"></div></details>
-  </div>
-</article>
-
-<article class="card" data-cid="held_chain" id="card-held_chain">
-  <div class="photo">
-    <div class="view" data-models="held_chain"></div>
-    <span class="pill pass">Designed · ready</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Designed here · Claude · this session</p>
-    <h3>Held Sphere + Chain <span class="mat">PLA</span></h3>
-    <p class="principle">Chainmail onto the untouched lattice: the hook is simply a longer, wider chain link — 20×12 mm with a thin Ø2.4 tube, standard 45° tilt — threaded through one stock lattice opening and wrapped around a low strut. No cage modifications, nothing welded, no extra hardware; capture proven by ray-escape test, 0.52 mm running clearance, chain joints ≥0.48 mm. Prints flat in one job.</p>
-    <p class="mate">mates with Held Sphere (chainless version)</p>
-    <p class="specline">158.1×83.2×49.7 mm · 13 parts · 60,728 tris<br>P2S slice: 1 h 01 m · 13.5 g (Studio on the P2S: 1 h 06 m · 12.72 g)</p>
-    <div class="actions">
-      <button class="print" data-card="held_chain">Open in Bambu Studio</button>
-      <a class="savelink" href="models/held-sphere-chained.3mf" download title="held-sphere-chained.3mf">save · held-sphere-chained.3mf</a>
-      
-    </div>
-    <div class="notes" data-cid="held_chain"></div>
-    <details class="metabox"><summary>3MF metadata</summary><dl class="mrows"></dl></details>
-  </div>
-</article>
-
-<article class="card" id="card-cage_param" data-cid="cage_param">
-  <div class="photo">
-    <div class="view" data-models="__param_cage"></div>
-    <span class="pill pass">Parametric · live</span>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Designed here · Claude · parametric</p>
-    <h3>Parametric Held Sphere <span class="mat">PLA</span></h3>
-    <p class="principle">The captive-ball cage, generalized: a geodesic strut sphere with a
-    ball inside on a breakaway pedestal, generated on the fly. Rebuilt after two field failures, honestly unvalidated until printed: the ball now stands
-    on a wide bed-anchored pedestal (Ø8–13, ~300× stiffer than the pip that let the ball wobble
-    into spaghetti) rising through a designed bottom window, with a breakaway neck under the
-    45° teardrop; the stub exits through its own window. Sliders cannot produce unstable
-    shapes: spans capped at the field-proven 16 mm, lattice auto-densifies, and the ball must
-    be too big for both the lattice openings and the window. Bambu Studio will still show a
-    floating-regions warning on any strut globe — every strut starts as a bridge anchored at
-    its end joints; within the envelope that prints fine (the successful Ø50 print carried
-    the same warning). It is not the failure signal. The viewer flags impossible
-    combinations live and the server generator re-proves captivity, clearance and
-    watertightness before handing you the 3MF.</p>
-    <div class="params">
-      <label>cage Ø <input type="range" id="pg-dia" min="34" max="84" step="2" value="50"><b id="pg-dia-v">Ø50 mm</b></label>
-      <label>lattice <input type="range" id="pg-sub" min="1" max="6" step="1" value="2"><b id="pg-sub-v">120 struts</b></label>
-      <label>strut Ø <input type="range" id="pg-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pg-strut-v">Ø2.2 mm</b></label>
-      <label>ball Ø <input type="range" id="pg-ball" min="13" max="60" step="1" value="19"><b id="pg-ball-v">Ø19 mm</b></label>
-      <label>ball <input type="checkbox" id="pg-hasball" checked style="justify-self:start"><b id="pg-hasball-v">included</b></label>
-    </div>
-    <p class="specline" id="pg-stats"></p>
-    <div class="actions">
-      <button class="print" id="pg-print">Generate + open in Bambu Studio</button>
-      <a class="savelink" id="pg-dl" href="#">generate &amp; download the verified 3MF</a>
-    </div>
-    <div class="notes" data-cid="cage_param"></div>
-  </div>
-</article>
-
-<article class="card" id="card-chain_param" data-cid="chain_param">
-  <div class="photo">
-    <div class="view" data-models="__param_chain"></div>
-    <span class="pill pass">Parametric · live</span>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Designed here · Claude · parametric</p>
-    <h3>Parametric Chain <span class="mat">PLA</span></h3>
-    <p class="principle">The chain, generalized: print-in-place stadium links at alternating
-    ±45° tilt, generated on the fly. Drag the sliders — the model rebuilds instantly in the
-    viewer. Link width follows the cross-section so the joints always clear; the download
-    button runs the server generator, which FCL-verifies every joint before handing you the
-    3MF (the two fixed test chains this card replaces live on in the file ledger).</p>
-    <div class="params">
-      <label>links <input type="range" id="pc-links" min="2" max="25" step="1" value="5"><b id="pc-links-v">5</b></label>
-      <label>link length <input type="range" id="pc-len" min="14" max="60" step="1" value="19"><b id="pc-len-v">19 mm</b></label>
-      <label>cross-section <input type="range" id="pc-dia" min="2" max="8" step="0.25" value="3.25"><b id="pc-dia-v">Ø3.25 mm</b></label>
-    </div>
-    <p class="specline" id="pc-stats"></p>
-    <div class="actions">
-      <button class="print" id="pc-print">Generate + open in Bambu Studio</button>
-      <a class="savelink" id="pc-dl" href="#">generate &amp; download the verified 3MF</a>
-    </div>
-    <div class="notes" data-cid="chain_param"></div>
-  </div>
-</article>
-
-<article class="card" id="card-dice_param" data-cid="dice_param">
-  <div class="photo">
-    <div class="view" data-models="__param_dice"></div>
-    <span class="pill pass">Parametric · live</span>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">Designed here · Claude · parametric</p>
-    <h3>Dice Cage <span class="mat">PLA</span></h3>
-    <p class="principle">A d20 inside the d20: shake the icosahedral cage and the die lands
-    readable in the spherical bowl of the bottom. The die is auto-sized by the seat rule —
-    its face inradius equals the lattice opening plus strut radius plus margin, so a landed
-    face always bridges the floor openings and rests level on the surrounding struts.
-    Faces engraved 1–20 (antipodal pairs sum to 21); prints flat-face-down on the breakaway
-    pedestal. Unvalidated until printed.</p>
-    <div class="params">
-      <label>cage Ø <input type="range" id="pd-dia" min="44" max="88" step="2" value="60"><b id="pd-dia-v">Ø60 mm</b></label>
-      <label>lattice <input type="range" id="pd-sub" min="2" max="6" step="1" value="3"><b id="pd-sub-v">270 struts</b></label>
-      <label>strut Ø <input type="range" id="pd-strut" min="1.6" max="4" step="0.2" value="2.2"><b id="pd-strut-v">Ø2.2 mm</b></label>
-    </div>
-    <p class="specline" id="pd-stats"></p>
-    <div class="actions">
-      <button class="print" id="pd-print">Generate + open in Bambu Studio</button>
-      <a class="savelink" id="pd-dl" href="#">generate &amp; download the verified 3MF</a>
-    </div>
-    <div class="notes" data-cid="dice_param"></div>
-  </div>
-</article>
-
-<article class="card" data-cid="cshape" id="card-cshape">
-  <div class="photo">
-    <div class="view" data-models="cshape"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">One-off Experiments · (local export)</p>
-    <h3>C-Shape (copy 16) <span class="mat">PLA</span></h3>
-    <p class="principle">Arch of fused spherical lobes — 286 cm³ solid, clean and watertight.</p>
-    
-    <p class="specline">120.9×145.7×41.7 mm · 1 part · 9,770 tris<br>P2S slice: 2 h 54 m · 93.1 g</p>
-    <div class="actions">
-      <button class="print" data-card="cshape">Open in Bambu Studio</button>
-      <a class="savelink" href="models/c-shape copy 16.stl" download title="c-shape copy 16.stl">save · c-shape copy 16.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="cshape"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="remesh" id="card-remesh">
-  <div class="photo">
-    <div class="view" data-models="remesh"></div>
-    <span class="pill pass">Clean</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">One-off Experiments · (local export)</p>
-    <h3>Averaged Remesh <span class="mat">PLA</span></h3>
-    <p class="principle">Smoothed low-poly arch (2,146 faces) — an averaging-pipeline output at threshold 0.900.</p>
-    
-    <p class="specline">103.5×116.4×17.2 mm · 1 part · 2,146 tris<br>P2S slice: 1 h 26 m · 37.4 g</p>
-    <div class="actions">
-      <button class="print" data-card="remesh">Open in Bambu Studio</button>
-      <a class="savelink" href="models/remesh_averaged_model_thresh0.900.stl" download title="remesh_averaged_model_thresh0.900.stl">save · remesh_averaged_model_thresh0.900.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="remesh"></div>
-    
-  </div>
-</article>
-
-<article class="card superseded" data-cid="voro" id="card-voro">
-  <div class="photo">
-    <div class="view" data-models="voro"></div>
-    <span class="pill warn">Superseded</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">One-off Experiments · (local export)</p>
-    <h3>Voronoi Sphere — original <span class="mat">PLA</span></h3>
-    <p class="principle">Openwork lattice shell (genus 56, “Voronoi” per the filename) as downloaded: inverted normals and saved at Ø2 mm. Superseded by the fixed version — kept for reference.</p>
-    
-    <p class="specline">2.0×2.0×2.0 mm · 1 part · 84,480 tris<br>P2S slice: unsliceable at Ø2 mm — print the fixed version</p>
-    <div class="actions">
-      <button class="print" data-card="voro">Open in Bambu Studio</button>
-      <a class="savelink" href="models/voro_sphere_2.stl" download title="voro_sphere_2.stl">save · voro_sphere_2.stl</a>
-      
-    </div>
-    <div class="notes" data-cid="voro"></div>
-    
-  </div>
-</article>
-
-<article class="card" data-cid="voro_f" id="card-voro_f">
-  <div class="photo">
-    <div class="view" data-models="voro_f"></div>
-    <span class="pill pass">Repaired · ready</span>
-    <div class="chips"></div>
-    <div class="dimtag"></div>
-  </div>
-  <div class="body">
-    <p class="eyebrow">One-off Experiments · (local export)</p>
-    <h3>Voronoi Sphere — fixed Ø60 <span class="mat">PLA</span></h3>
-    <p class="principle">Repaired here: normals flipped (volume now positive, 28.8 cm³) and scaled 30× to Ø60 mm — mean strut ≈2.9 mm, comfortably printable. Watertight, genus 56. Slicer flags floating regions where lattice arcs start mid-air: enable tree supports or accept some rough undersides.</p>
-    
-    <p class="specline">59.1×60.3×60.1 mm · 1 part · 84,480 tris<br>P2S slice: 1 h 22 m · 24.8 g</p>
-    <div class="actions">
-      <button class="print" data-card="voro_f">Open in Bambu Studio</button>
-      <a class="savelink" href="models/voro_sphere_2-fixed.stl" download title="voro_sphere_2-fixed.stl">save · voro_sphere_2-fixed.stl</a>
-      <button class="showorig" data-target="voro" data-show-label="show original (Ø2 mm)" data-hide-label="hide original (Ø2 mm)">show original (Ø2 mm)</button>
-    </div>
-    <div class="notes" data-cid="voro_f"></div>
-    
-  </div>
-</article></div>
-
-<section class="block">
-  <h2>Cross-design compatibility</h2>
-  <p class="lede">Where parts from different downloads can (and cannot) work together. The rule
-  of thumb that falls out of the analysis: two pieces mate when their interface genus (slot or
-  thread count) and profile radii match — diameters alone are not enough.</p>
-  <ul class="fixes"><li><strong><span class="dot pass"></span>V2 passthrough series (designer-stated, measured)</strong><span>Mini Fidget Ball and Mini Stackable share the same canonical ball mesh at 13.5 / 27 / 39 mm — the 27 mm ball threads both the fidget disc (Ø34.9) and the stackable tube (Ø35.4). Stackable sections thread into each other indefinitely: male passes female by design.</span></li><li><strong><span class="dot pass"></span>Passthrough balls on the sphere stands</strong><span>A ball sits on a stand when its Ø exceeds the rim Ø. The 27 mm ball rests on the 1″ stand (rim 19.2 mm, contact ≈45°) and the 39 mm ball on the 2″ stand (rim 36.5 mm — deep seat, ≈69°). The 13.5 mm ball falls through every stand.</span></li><li><strong><span class="dot warn"></span>Staryu vs Starmie — same design, no shared parts</strong><span>Staryu is the same spinner at 94% scale: pins, spacers and heads do not interchange between the two (designer-confirmed, and the pin Øs differ). The diff_disc washer stack is the shared tuning hardware within each spinner.</span></li><li><strong><span class="dot pass"></span>Hourglass cone & pyramid share one 7-lobe thread (measured)</strong><span>Cross-sections show every hourglass part rides the same 7-lobe inner mechanism — cone and pyramid differ only in outer skin (round vs square). Clearance measured 0.38 mm for all four solid×spiral combinations at the mid-connection, so same-size cone and pyramid parts likely interchange. Size classes do not mix: small and dubbel waist profiles differ.</span></li><li><strong><span class="dot warn"></span>Spinning top connector is fit-critical</strong><span>The two connectors differ by 0.06–0.07 mm for different filaments; the designer warns any rescale of the top breaks the fit, since clearance does not scale with the part.</span></li></ul>
-</section>
-
-<section class="block">
-  <h2>Fixes &amp; swapped parts</h2>
-  <p class="lede">Verified from part names, metadata and mesh comparison, not guessed from
-  filenames.</p>
-  <ul class="fixes"><li><strong>Pyramid hourglass</strong><span>Mesh repaired locally: <code>pyramid-solid-small.stl</code> has a zero-thickness pinch (one duplicated triangle on a non-manifold edge). <code>pyramid-solid-small-fixed.stl</code> (Aug 20) deletes both copies of the triangle — 2 fewer faces, watertight again.</span></li><li><strong>Staryu / Starmie</strong><span>Head replaced upstream: <code>Startmie_head_final_fixed.stl</code>. The whole model is a remix that redesigned the body edges, pin and back wall at half the original thickness, removing the need for supports and glue.</span></li><li><strong>Magic Spinning Top</strong><span>Connector part shipped in two sizes — standard and <code>connector PLA.stl</code>, +0.06–0.07&nbsp;mm — swap the part instead of rescaling to fix a loose fit.</span></li><li><strong>Pikachu</strong><span>Entire file is the replacement: v2 “more resistant” rebuild of a fragile original, in single-colour form.</span></li><li><strong>Mini Stackable</strong><span>“Supports added back in” — the floating ball’s tree-support geometry was restored as an extra mesh body inside each ball object after an earlier upload shipped without it.</span></li><li><strong>Pufferfish</strong><span>Your two <code>-p2s-</code> files are re-saves of the original — verified with rotation-invariant part signatures. threeplates re-plates the same parts; onecolor bakes a 1.3× scale into mesh coordinates and cancels it in the placement transform (same printed size).</span></li><li><strong>Staryu duplicate</strong><span><code>Staryu_Starmie_Spin_Spin (1).3mf</code> is byte-identical (MD5 <code>9eb99177…</code>) to the original — a double download, not a revision.</span></li></ul>
-</section>
-
-<section class="block">
-  <h2>File ledger</h2>
-  <p class="lede">All 27 files, mapped to their design family. <strong>Genus</strong> is the
-  count of tunnels passing clear through a closed solid — a ball is genus 0, a donut or ring
-  genus 1, and each extra handle or helical slot adds one. It is computed from the mesh itself
-  (Euler’s formula: vertices − edges + faces = 2 − 2·genus), so it fingerprints the interlock
-  mechanism no matter how the surface is decorated: the passthrough ball’s 21 helical channels
-  read out as genus 21, and the hourglass bodies’ slot counts as genus 8–19.</p>
-  <details class="ledgerwrap"><summary>Show all 31 files (27 scanned + 4 built)</summary>
+<section class="block refs">
+  <details class="ledgerwrap"><summary>Cross-design compatibility</summary>
+  <div class="refbody">
+  <p class="lede">Two pieces mate when their interface genus (slot or thread
+  count) and profile radii match &mdash; diameters alone are not enough.</p>
+  <ul class="fixes"><li><strong><span class="dot pass"></span>V2 passthrough series (designer-stated, measured)</strong><span>Mini Fidget Ball and Mini Stackable share the same canonical ball mesh at 13.5 / 27 / 39 mm — the 27 mm ball threads both the fidget disc (Ø34.9) and the stackable tube (Ø35.4). Stackable sections thread into each other indefinitely: male passes female by design.</span></li><li><strong><span class="dot pass"></span>Passthrough balls on the sphere stands</strong><span>A ball sits on a stand when its Ø exceeds the rim Ø. The 27 mm ball rests on the 1″ stand (rim 19.2 mm, contact ≈45°) and the 39 mm ball on the 2″ stand (rim 36.5 mm — deep seat, ≈69°). The 13.5 mm ball falls through every stand.</span></li><li><strong><span class="dot warn"></span>Staryu vs Starmie — same design, no shared parts</strong><span>Staryu is the same spinner at 94% scale: pins, spacers and heads do not interchange between the two (designer-confirmed, and the pin Øs differ). The diff_disc washer stack is the shared tuning hardware within each spinner.</span></li><li><strong><span class="dot pass"></span>Hourglass cone & pyramid share one 7-lobe thread (measured)</strong><span>Cross-sections show every hourglass part rides the same 7-lobe inner mechanism — cone and pyramid differ only in outer skin (round vs square). Clearance measured 0.38 mm for all four solid×spiral combinations at the mid-connection, so same-size cone and pyramid parts likely interchange. Size classes do not mix: small and dubbel waist profiles differ.</span></li><li><strong><span class="dot warn"></span>Spinning top connector is fit-critical</strong><span>The two connectors differ by 0.06–0.07 mm for different filaments; the designer warns any rescale of the top breaks the fit, since clearance does not scale with the part.</span></li></ul></div></details>
+
+  <details class="ledgerwrap"><summary>Fixes &amp; swapped parts</summary>
+  <div class="refbody">
+  <p class="lede">Verified from part names, metadata and mesh comparison, not
+  guessed from filenames.</p>
+  <ul class="fixes"><li><strong>Pyramid hourglass</strong><span>Mesh repaired locally: <code>pyramid-solid-small.stl</code> has a zero-thickness pinch (one duplicated triangle on a non-manifold edge). <code>pyramid-solid-small-fixed.stl</code> (Aug 20) deletes both copies of the triangle — 2 fewer faces, watertight again.</span></li><li><strong>Staryu / Starmie</strong><span>Head replaced upstream: <code>Startmie_head_final_fixed.stl</code>. The whole model is a remix that redesigned the body edges, pin and back wall at half the original thickness, removing the need for supports and glue.</span></li><li><strong>Magic Spinning Top</strong><span>Connector part shipped in two sizes — standard and <code>connector PLA.stl</code>, +0.06–0.07&nbsp;mm — swap the part instead of rescaling to fix a loose fit.</span></li><li><strong>Pikachu</strong><span>Entire file is the replacement: v2 “more resistant” rebuild of a fragile original, in single-colour form.</span></li><li><strong>Mini Stackable</strong><span>“Supports added back in” — the floating ball’s tree-support geometry was restored as an extra mesh body inside each ball object after an earlier upload shipped without it.</span></li><li><strong>Pufferfish</strong><span>Your two <code>-p2s-</code> files are re-saves of the original — verified with rotation-invariant part signatures. threeplates re-plates the same parts; onecolor bakes a 1.3× scale into mesh coordinates and cancels it in the placement transform (same printed size).</span></li><li><strong>Staryu duplicate</strong><span><code>Staryu_Starmie_Spin_Spin (1).3mf</code> is byte-identical (MD5 <code>9eb99177…</code>) to the original — a double download, not a revision.</span></li></ul></div></details>
+
+  <details class="ledgerwrap"><summary>File ledger</summary>
+  <div class="refbody">
+  <p class="lede"><strong>Genus</strong> is the count of tunnels passing clear
+  through a closed solid &mdash; a ball is genus 0, a donut genus 1, and each
+  extra handle or helical slot adds one. It is computed from the mesh itself
+  (Euler’s formula: vertices &minus; edges + faces = 2 &minus; 2&middot;genus),
+  so it fingerprints the interlock mechanism no matter how the surface is
+  decorated: the passthrough ball’s 21 helical channels read out as genus 21,
+  and the hourglass bodies’ slot counts as genus 8&ndash;19.</p>
   <div class="tablewrap"><table>
     <thead><tr><th>File</th><th class="num">MB</th><th>Design</th><th>Geometry verdict</th></tr></thead>
     <tbody><tr><td class="mono">sphere_stand_1.0in.3mf</td><td class="mono num">0.02</td><td>Sphere Stand</td><td><span class="dot pass"></span>watertight · genus 1</td></tr><tr><td class="mono">sphere_stand_2.0in.3mf</td><td class="mono num">0.02</td><td>Sphere Stand</td><td><span class="dot pass"></span>watertight · genus 1</td></tr><tr><td class="mono">sphere_stand_3.0in.3mf</td><td class="mono num">0.02</td><td>Sphere Stand</td><td><span class="dot pass"></span>watertight · genus 1</td></tr><tr><td class="mono">Vortex+v3+project.3mf</td><td class="mono num">6.03</td><td>Vortex v3</td><td><span class="dot pass"></span>3 objects, all watertight</td></tr><tr><td class="mono">Mini+Fidget+Ball.3mf</td><td class="mono num">6.07</td><td>Mini Fidget Ball</td><td><span class="dot pass"></span>watertight · genus 21+7</td></tr><tr><td class="mono">Mini+Stackable+Supports+added+back+in.3mf</td><td class="mono num">23.4</td><td>Mini Stackable</td><td><span class="dot pass"></span>watertight · 3.73 M tris</td></tr><tr><td class="mono">magic_spinning_top_+23+de+fight+d.3mf</td><td class="mono num">0.70</td><td>Magic Spinning Top</td><td><span class="dot pass"></span>watertight · 2 connector variants</td></tr><tr><td class="mono">Quantum+Skull.3mf</td><td class="mono num">1.38</td><td>Quantum Skull</td><td><span class="dot pass"></span>watertight · mirror pair</td></tr><tr><td class="mono">pufferfish.3mf</td><td class="mono num">7.01</td><td>Pufferfish</td><td><span class="dot warn"></span>1 of 10 objects leaks</td></tr><tr><td class="mono">pufferfish-p2s-threeplates.3mf</td><td class="mono num">7.01</td><td>Pufferfish</td><td><span class="dot warn"></span>same geometry, replated</td></tr><tr><td class="mono">pufferfish-p2s-onecolor.3mf</td><td class="mono num">5.63</td><td>Pufferfish</td><td><span class="dot warn"></span>same geometry, one colour</td></tr><tr><td class="mono">pikachu+more+resistant+one+color.3mf</td><td class="mono num">1.43</td><td>Pikachu Flexy</td><td><span class="dot warn"></span>not watertight · 5 degen faces</td></tr><tr><td class="mono">Staryu_Starmie_Spin_Spin.3mf</td><td class="mono num">15.7</td><td>Staryu & Starmie</td><td><span class="dot warn"></span>152 k duplicate faces</td></tr><tr><td class="mono">Staryu_Starmie_Spin_Spin (1).3mf</td><td class="mono num">15.7</td><td>Staryu & Starmie</td><td><span class="dot warn"></span>exact duplicate file</td></tr><tr><td class="mono">cone-solid-small.stl</td><td class="mono num">8.8</td><td>Hourglass · cone</td><td><span class="dot pass"></span>watertight · genus 8</td></tr><tr><td class="mono">cone-solid.stl</td><td class="mono num">10.0</td><td>Hourglass · cone</td><td><span class="dot pass"></span>watertight · genus 15</td></tr><tr><td class="mono">cone-spiral-small.stl</td><td class="mono num">8.5</td><td>Hourglass · cone</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">cone-spiral.stl</td><td class="mono num">9.7</td><td>Hourglass · cone</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">pyramid-solid-small.stl</td><td class="mono num">9.6</td><td>Hourglass · pyramid</td><td><span class="dot warn"></span>pinch defect — superseded by -fixed</td></tr><tr><td class="mono">pyramid-solid-small-fixed.stl</td><td class="mono num">9.6</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>repaired · watertight · genus 10</td></tr><tr><td class="mono">pyramid-solid.stl</td><td class="mono num">11.0</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>watertight · genus 19</td></tr><tr><td class="mono">pyramid-spiral-small.stl</td><td class="mono num">9.6</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">pyramid-spiral.stl</td><td class="mono num">10.0</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">c-shape copy 16.stl</td><td class="mono num">0.5</td><td>One-off experiments</td><td><span class="dot pass"></span>watertight · genus 0</td></tr><tr><td class="mono">remesh_averaged_model_thresh0.900.stl</td><td class="mono num">0.1</td><td>One-off experiments</td><td><span class="dot pass"></span>watertight · low-poly</td></tr><tr><td class="mono">voro_sphere_2.stl</td><td class="mono num">4.1</td><td>One-off experiments</td><td><span class="dot warn"></span>inverted normals · unit scale Ø2 mm</td></tr><tr><td class="mono">montessori+nuts+and+bolts.3mf</td><td class="mono num">2.9</td><td>Montessori Nuts & Bolts</td><td><span class="dot warn"></span>5 bolts clean · nut leaks (repairable)</td></tr><tr><td class="mono">cone-hourglass-pair-small.3mf</td><td class="mono num">5.6</td><td>Hourglass · cone</td><td><span class="dot pass"></span>built here — both mating parts, one plate</td></tr><tr><td class="mono">cone-hourglass-pair-dubbel.3mf</td><td class="mono num">6.5</td><td>Hourglass · cone</td><td><span class="dot pass"></span>built here — both mating parts, one plate</td></tr><tr><td class="mono">pyramid-hourglass-pair-small.3mf</td><td class="mono num">6.3</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>built here — fixed solid + spiral, one plate</td></tr><tr><td class="mono">pyramid-hourglass-pair-dubbel.3mf</td><td class="mono num">6.9</td><td>Hourglass · pyramid</td><td><span class="dot pass"></span>built here — both mating parts, one plate</td></tr><tr><td class="mono">voro_sphere_2-fixed.stl</td><td class="mono num">4.1</td><td>One-off experiments</td><td><span class="dot pass"></span>repaired here — normals flipped, scaled to Ø60 mm</td></tr></tbody>
-  </table></div></details>
+  </table></div></div></details>
 </section>
-
-<footer>P2S slice numbers are real Bambu Studio CLI slices — 0.2 mm Standard, Bambu PLA
-Basic, textured PEI, 15% infill defaults. Calibration against Bambu Studio on the actual printer
-(2026-08-25, two parts): filament is reliable (Studio −1.5% to −6% vs harness) but the
-harness underestimates time, and more so on long prints — +8% on a 1-hour part, +25% on a
-7-hour one. Read masses as ±6% and add 10–25% to times, scaling with print length. Designs that specify other
-settings (100% infill hourglass solids, PETG) will run heavier and longer. Multi-plate
-projects are labeled with the plate that was sliced.<br><br>Validated 2026-08-24 with trimesh 5.0. Previews are decimated to ≤180 k triangles
-(full counts in each card); originals live in <span class="mono">models/</span>. Weights are
-solid-PLA upper bounds at 1.24 g/cm³ except where the file embeds a slicer estimate.</footer>
+</div>
 </div>
 
-<script>const MODELS = {"sphere1": [{"slug": "sphere_stand_1in", "file": "sphere_stand_1.0in.3mf", "family": "Sphere Stands", "label": "1\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [20.5, 20.5, 5.1], "glb_mb": 0.0}], "sphere2": [{"slug": "sphere_stand_2in", "file": "sphere_stand_2.0in.3mf", "family": "Sphere Stands", "label": "2\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [41.3, 41.3, 9.3], "glb_mb": 0.0}], "sphere3": [{"slug": "sphere_stand_3in", "file": "sphere_stand_3.0in.3mf", "family": "Sphere Stands", "label": "3\u2033 sphere stand", "parts": 1, "tris": 2304, "tris_full": 2304, "dims": [61.5, 61.5, 13.4], "glb_mb": 0.0}], "vortex": [{"slug": "vortex_v3", "file": "Vortex+v3+project.3mf", "family": "Vortex v3", "label": "Vortex v3 (3 sleeves)", "parts": 3, "tris": 179996, "tris_full": 378652, "dims": [66.7, 76.7, 50.0], "glb_mb": 3.6, "cover": "models/meta/vortex_v3_project/cover.png", "photos": ["models/meta/vortex_v3_project/photo_1.webp", "models/meta/vortex_v3_project/photo_2.webp", "models/meta/vortex_v3_project/photo_3.webp"]}], "fidget": [{"slug": "mini_fidget_ball", "file": "Mini+Fidget+Ball.3mf", "family": "Passthrough series", "label": "Mini Fidget Ball", "parts": 3, "tris": 179996, "tris_full": 845530, "dims": [46.0, 67.7, 27.0], "glb_mb": 3.6, "cover": "models/meta/mini_fidget_ball/cover.png", "photos": ["models/meta/mini_fidget_ball/photo_1.webp", "models/meta/mini_fidget_ball/photo_2.webp", "models/meta/mini_fidget_ball/photo_3.webp", "models/meta/mini_fidget_ball/photo_4.webp"]}], "stackable": [{"slug": "mini_stackable", "file": "Mini+Stackable+Supports+added+back+in.3mf", "family": "Passthrough series", "label": "Mini Stackable tube", "parts": 7, "tris": 179994, "tris_full": 3731786, "dims": [90.5, 121.8, 62.2], "glb_mb": 3.6, "cover": "models/meta/mini_stackable_supports_added_back_in/cover.png", "photos": ["models/meta/mini_stackable_supports_added_back_in/photo_1.webp", "models/meta/mini_stackable_supports_added_back_in/photo_2.webp", "models/meta/mini_stackable_supports_added_back_in/photo_3.webp"]}], "top": [{"slug": "spinning_top", "file": "magic_spinning_top_+23+de+fight+d.3mf", "family": "Spinning Top", "label": "Magic spinning top", "parts": 4, "tris": 5292, "tris_full": 5292, "dims": [100.3, 152.2, 41.3], "glb_mb": 0.1, "cover": "models/meta/magic_spinning_top_23_de_fight_d/cover.png", "photos": ["models/meta/magic_spinning_top_23_de_fight_d/photo_1.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_2.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_3.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_4.webp", "models/meta/magic_spinning_top_23_de_fight_d/photo_5.webp"]}], "skull": [{"slug": "quantum_skull", "file": "Quantum+Skull.3mf", "family": "Quantum Skull", "label": "Quantum Skull halves", "parts": 2, "tris": 30692, "tris_full": 30692, "dims": [81.0, 212.6, 36.7], "glb_mb": 0.6, "cover": "models/meta/quantum_skull/cover.png", "photos": ["models/meta/quantum_skull/photo_1.webp", "models/meta/quantum_skull/photo_2.webp", "models/meta/quantum_skull/photo_3.webp"]}], "puffer": [{"slug": "pufferfish", "file": "pufferfish.3mf", "family": "Pufferfish", "label": "Pufferfish (all parts)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish/cover.png", "photos": ["models/meta/pufferfish/photo_1.webp", "models/meta/pufferfish/photo_2.webp", "models/meta/pufferfish/photo_3.webp", "models/meta/pufferfish/photo_4.webp"]}], "puffer3p": [{"slug": "pufferfish_threeplates", "file": "pufferfish-p2s-threeplates.3mf", "family": "Pufferfish", "label": "Pufferfish (3-plate re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [182.5, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish_p2s_threeplates/cover.png", "photos": ["models/meta/pufferfish_p2s_threeplates/photo_1.webp", "models/meta/pufferfish_p2s_threeplates/photo_2.webp", "models/meta/pufferfish_p2s_threeplates/photo_3.webp", "models/meta/pufferfish_p2s_threeplates/photo_4.webp"]}], "puffer1c": [{"slug": "pufferfish_onecolor", "file": "pufferfish-p2s-onecolor.3mf", "family": "Pufferfish", "label": "Pufferfish (one-color re-save)", "parts": 10, "tris": 180096, "tris_full": 385412, "dims": [193.4, 177.9, 41.9], "glb_mb": 3.6, "cover": "models/meta/pufferfish_p2s_onecolor/cover.png"}], "pikachu": [{"slug": "pikachu", "file": "pikachu+more+resistant+one+color.3mf", "family": "Pikachu Flexy", "label": "Pikachu flexy keychain", "parts": 1, "tris": 34818, "tris_full": 34818, "dims": [32.5, 76.1, 14.1], "glb_mb": 0.7, "cover": "models/meta/pikachu_more_resistant_one_color/cover.png", "photos": ["models/meta/pikachu_more_resistant_one_color/photo_1.webp", "models/meta/pikachu_more_resistant_one_color/photo_2.webp", "models/meta/pikachu_more_resistant_one_color/photo_3.webp", "models/meta/pikachu_more_resistant_one_color/photo_4.webp", "models/meta/pikachu_more_resistant_one_color/photo_5.webp"]}], "staryu": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin.3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7, "cover": "models/meta/staryu_starmie_spin_spin/cover.png", "photos": ["models/meta/staryu_starmie_spin_spin/photo_1.webp", "models/meta/staryu_starmie_spin_spin/photo_2.webp", "models/meta/staryu_starmie_spin_spin/photo_3.webp"]}], "staryu_dup": [{"slug": "staryu_starmie", "file": "Staryu_Starmie_Spin_Spin (1).3mf", "family": "Staryu & Starmie", "label": "Both spinners + hardware", "parts": 16, "tris": 288120, "tris_full": 921452, "dims": [187.4, 192.5, 17.0], "glb_mb": 4.7, "cover": "models/meta/staryu_starmie_spin_spin_1/cover.png", "photos": ["models/meta/staryu_starmie_spin_spin_1/photo_1.webp", "models/meta/staryu_starmie_spin_spin_1/photo_2.webp", "models/meta/staryu_starmie_spin_spin_1/photo_3.webp"]}], "cone_pair_s": [{"slug": "cone_pair_small", "file": "cone-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 90 mm", "parts": 2, "tris": 179998, "tris_full": 362160, "dims": [44.7, 92.0, 90.0], "glb_mb": 3.6}], "cone_pair_d": [{"slug": "cone_pair_dubbel", "file": "cone-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Cone", "label": "Cone pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 418836, "dims": [48.4, 95.5, 180.0], "glb_mb": 3.6}], "cone_solid_s": [{"slug": "cone_solid_small", "file": "cone-solid-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 184238, "dims": [44.7, 44.7, 90.0], "glb_mb": 3.6}], "cone_spiral_s": [{"slug": "cone_spiral_small", "file": "cone-spiral-small.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 90 mm", "parts": 1, "tris": 177922, "tris_full": 177922, "dims": [41.3, 41.4, 90.0], "glb_mb": 3.6}], "cone_solid_d": [{"slug": "cone_solid", "file": "cone-solid.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 214672, "dims": [48.4, 48.4, 180.0], "glb_mb": 3.6}], "cone_spiral_d": [{"slug": "cone_spiral", "file": "cone-spiral.stl", "family": "Hourglass \u00b7 Cone", "label": "Cone spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 204164, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "pyr_pair_s": [{"slug": "pyramid_pair_small", "file": "pyramid-hourglass-pair-small.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 90 mm (fixed)", "parts": 2, "tris": 179998, "tris_full": 401514, "dims": [46.6, 93.9, 90.0], "glb_mb": 3.6}], "pyr_pair_d": [{"slug": "pyramid_pair_dubbel", "file": "pyramid-hourglass-pair-dubbel.3mf", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid pair \u00b7 dubbel 180 mm", "parts": 2, "tris": 179998, "tris_full": 432840, "dims": [47.5, 94.7, 180.0], "glb_mb": 3.6}], "pyr_solid_sf": [{"slug": "pyramid_solid_small_fixed", "file": "pyramid-solid-small-fixed.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (fixed)", "parts": 1, "tris": 180000, "tris_full": 200876, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_solid_so": [{"slug": "pyramid_solid_small_orig", "file": "pyramid-solid-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 90 mm (orig, pinch)", "parts": 1, "tris": 180000, "tris_full": 200878, "dims": [46.6, 46.6, 90.0], "glb_mb": 3.6}], "pyr_spiral_s": [{"slug": "pyramid_spiral_small", "file": "pyramid-spiral-small.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 90 mm", "parts": 1, "tris": 180000, "tris_full": 200638, "dims": [41.4, 41.4, 90.0], "glb_mb": 3.6}], "pyr_solid_d": [{"slug": "pyramid_solid", "file": "pyramid-solid.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid solid \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 221738, "dims": [47.5, 47.5, 180.0], "glb_mb": 3.6}], "pyr_spiral_d": [{"slug": "pyramid_spiral", "file": "pyramid-spiral.stl", "family": "Hourglass \u00b7 Pyramid", "label": "Pyramid spiral \u00b7 dubbel 180 mm", "parts": 1, "tris": 180000, "tris_full": 211102, "dims": [41.1, 41.2, 180.0], "glb_mb": 3.6}], "nuts": [{"slug": "nuts_bolts", "file": "montessori+nuts+and+bolts-fixed.3mf", "family": "Nuts & Bolts", "label": "Montessori nuts & bolts", "parts": 6, "tris": 179994, "tris_full": 217774, "dims": [106.6, 183.4, 179.2], "glb_mb": 3.6, "cover": "models/meta/montessori_nuts_and_bolts_fixed/cover.png", "photos": ["models/meta/montessori_nuts_and_bolts_fixed/photo_1.webp", "models/meta/montessori_nuts_and_bolts_fixed/photo_2.webp", "models/meta/montessori_nuts_and_bolts_fixed/photo_3.webp"]}], "nuts_orig": [{"slug": "nuts_bolts", "file": "montessori+nuts+and+bolts.3mf", "family": "Nuts & Bolts", "label": "Montessori nuts & bolts", "parts": 6, "tris": 179994, "tris_full": 217774, "dims": [106.6, 183.4, 179.2], "glb_mb": 3.6, "cover": "models/meta/montessori_nuts_and_bolts/cover.png", "photos": ["models/meta/montessori_nuts_and_bolts/photo_1.webp", "models/meta/montessori_nuts_and_bolts/photo_2.webp", "models/meta/montessori_nuts_and_bolts/photo_3.webp"]}], "held_chain": [{"slug": "held_chained", "file": "held-sphere-chained.3mf", "family": "Designed here", "label": "Held sphere + chain", "parts": 13, "tris": 60728, "tris_full": 60728, "dims": [158.1, 83.2, 49.7], "glb_mb": 0.9}], "cshape": [{"slug": "c_shape", "file": "c-shape copy 16.stl", "family": "One-off STLs", "label": "C-shape (copy 16)", "parts": 1, "tris": 9770, "tris_full": 9770, "dims": [120.9, 145.7, 41.7], "glb_mb": 0.2}], "remesh": [{"slug": "remesh_avg", "file": "remesh_averaged_model_thresh0.900.stl", "family": "One-off STLs", "label": "Averaged remesh", "parts": 1, "tris": 2146, "tris_full": 2146, "dims": [103.5, 116.4, 17.2], "glb_mb": 0.0}], "voro": [{"slug": "voro_sphere", "file": "voro_sphere_2.stl", "family": "One-off STLs", "label": "Voronoi sphere", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [2.0, 2.0, 2.0], "glb_mb": 1.7}], "voro_f": [{"slug": "voro_fixed", "file": "voro_sphere_2-fixed.stl", "family": "One-off Experiments", "label": "Voronoi sphere (fixed)", "parts": 1, "tris": 84480, "tris_full": 84480, "dims": [59.1, 60.3, 60.1], "glb_mb": 1.7}]};</script>
+<script>const MODELS = {};</script>
 <script type="importmap">
 {"imports":{"three":"./vendor/three.module.js",
 "three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
@@ -1558,12 +653,14 @@ function frameModel(v, obj){
 function setModel(v, i){
   const entry = v.entries[i];
   v.idx = i;
+  const key = entry.glb || entry.slug;
   const dimtag = v.el.parentElement.querySelector('.dimtag');
-  if (dimtag) dimtag.textContent =
-    `${entry.dims[0]}×${entry.dims[1]}×${entry.dims[2]} mm · ${entry.tris.toLocaleString()} tris`;
-  if (v.loaded[entry.slug]){
+  if (dimtag) dimtag.textContent = entry.dims && entry.tris
+    ? `${entry.dims[0]}×${entry.dims[1]}×${entry.dims[2]} mm · ${entry.tris.toLocaleString()} tris`
+    : '';
+  if (v.loaded[key]){
     if (v.current) v.scene.remove(v.current);
-    v.current = v.loaded[entry.slug];
+    v.current = v.loaded[key];
     v.scene.add(v.current); frameModel(v, v.current);
     placeCoin(v, new THREE.Box3().setFromObject(v.current));
     return;
@@ -1571,14 +668,14 @@ function setModel(v, i){
   const status = document.createElement('div');
   status.className = 'status'; status.textContent = 'loading…';
   v.el.appendChild(status);
-  loader.load('models/glb/' + entry.slug + '.glb', gltf => {
+  loader.load(entry.glb || ('models/glb/' + entry.slug + '.glb'), gltf => {
     status.remove();
     const obj = gltf.scene;
     obj.rotation.x = -Math.PI/2;   // z-up sources
     obj.traverse(o => { if (o.isMesh){
       o.material.metalness = 0.05; o.material.roughness = 0.62;
       o.material.side = THREE.DoubleSide; }});
-    v.loaded[entry.slug] = obj;
+    v.loaded[key] = obj;
     if (v.idx === i){
       if (v.current) v.scene.remove(v.current);
       v.current = obj; v.scene.add(obj); frameModel(v, obj);
@@ -1587,9 +684,19 @@ function setModel(v, i){
   }, undefined, () => { status.textContent = 'load failed — serve over http'; });
 }
 
-document.querySelectorAll('.view').forEach(el => {
-  const entries = MODELS[el.dataset.models];
-  if (!entries) return;
+// Every 3D viewport on the page is mounted through here, whether it was in
+// the markup or built a moment ago by the catalog. One code path means a
+// catalog card and a hand-written card behave the same: same lazy load, same
+// expand button, same graph-paper axes.
+const io = new IntersectionObserver(es => es.forEach(e => {
+  const v = views.find(x => x.el === e.target);
+  if (!v) return;
+  v.visible = e.isIntersecting;
+  if (v.visible && !v.started){ v.started = true; setModel(v, 0); }
+}), {rootMargin: '200px'});
+
+function mountView(el, entries){
+  if (!el || !entries || !entries.length) return null;
   const v = {el, entries, idx: 0, loaded: {}, current: null, started: false};
   v.scene = makeScene();
   v.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
@@ -1608,7 +715,27 @@ document.querySelectorAll('.view').forEach(el => {
       chips.appendChild(b);
     });
   }
-});
+  addViewChrome(el);
+  io.observe(el);
+  return v;
+}
+
+// Filtering the catalog throws cards away. Each one owns a scene, a camera
+// and an observer entry, so dropping the element without dropping those
+// leaks a renderer's worth of state per keystroke.
+function unmountViews(root){
+  root.querySelectorAll('.view').forEach(el => {
+    const i = views.findIndex(x => x.el === el);
+    if (i < 0) return;
+    const v = views[i];
+    io.unobserve(el);
+    if (v.current) v.scene.remove(v.current);
+    v.controls.dispose();
+    views.splice(i, 1);
+  });
+}
+
+
 
 // ---- lightbox: one reusable large view ----
 const lbRoot = document.getElementById('lightbox');
@@ -1642,12 +769,27 @@ lbRoot.querySelector('.lb-backdrop').onclick = closeLightbox;
 addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 views.push(lbV);
 
-document.querySelectorAll('.view').forEach(el => {
-  if (el === lbEl) return;
+// mounted after the lightbox exists: every viewport gets an expand button,
+// and that button needs somewhere to expand into
+document.querySelectorAll('.view').forEach(el =>
+  mountView(el, MODELS[el.dataset.models]));
+
+
+{
+  const gb = document.createElement('button');
+  gb.className = 'lb-close'; gb.style.width = 'auto'; gb.style.padding = '0 12px';
+  gb.style.font = '600 12px IBM Plex Sans, sans-serif'; gb.textContent = 'graph';
+  gb.onclick = () => { lbV.graphOn = !lbV.graphOn;
+    gb.style.color = lbV.graphOn ? '#7ea3e0' : ''; refreshGraph(lbV); };
+  lbRoot.querySelector('.lb-chrome').insertBefore(gb, lbRoot.querySelector('.lb-close'));
+}
+
+function addViewChrome(el){
+  if (el === lbEl || el.parentElement.querySelector('.expand')) return;
   const v0 = views.find(x => x.el === el);
   if (!v0) return;
   const b = document.createElement('button');
-  b.className = 'expand'; b.textContent = '⤢'; b.title = 'open large viewer';
+  b.className = 'expand'; b.textContent = '\u2922'; b.title = 'open large viewer';
   b.onclick = ev => { ev.stopPropagation(); openLightbox(v0); };
   el.parentElement.appendChild(b);
   const gb = document.createElement('button');
@@ -1656,14 +798,6 @@ document.querySelectorAll('.view').forEach(el => {
   gb.onclick = ev => { ev.stopPropagation();
     v0.graphOn = !v0.graphOn; gb.classList.toggle('on', v0.graphOn); refreshGraph(v0); };
   el.parentElement.appendChild(gb);
-});
-{
-  const gb = document.createElement('button');
-  gb.className = 'lb-close'; gb.style.width = 'auto'; gb.style.padding = '0 12px';
-  gb.style.font = '600 12px IBM Plex Sans, sans-serif'; gb.textContent = 'graph';
-  gb.onclick = () => { lbV.graphOn = !lbV.graphOn;
-    gb.style.color = lbV.graphOn ? '#7ea3e0' : ''; refreshGraph(lbV); };
-  lbRoot.querySelector('.lb-chrome').insertBefore(gb, lbRoot.querySelector('.lb-close'));
 }
 
 function startTicker(el, label){
@@ -1677,116 +811,7 @@ function startTicker(el, label){
   return () => clearInterval(iv);
 }
 // ---- parametric chain card ----
-const pcEl = document.querySelector('.view[data-models="__param_chain"]');
-if (pcEl){
-  const pv = { el: pcEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
-  pv.scene = makeScene();
-  pv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
-  pv.controls = new OrbitControls(pv.camera, pcEl);
-  pv.controls.enableDamping = true; pv.controls.autoRotate = true;
-  pv.controls.autoRotateSpeed = 1.0; pv.controls.enableZoom = false;
-  views.push(pv);
-  const PAL = [0xe97a3c, 0x40a096, 0x6c82c8, 0xd4aa42, 0xaa64aa, 0x64aa5a, 0xc85a64];
-  function stadiumPts(clL, clW, nPer){
-    const s = (clL - clW)/2, r = clW/2, pts = [];
-    for (let k = 0; k < nPer; k++){ const t = -Math.PI/2 + Math.PI*k/(nPer-1); pts.push([s + r*Math.cos(t), r*Math.sin(t)]); }
-    for (let k = 0; k < nPer; k++){ const t = Math.PI/2 + Math.PI*k/(nPer-1); pts.push([-s + r*Math.cos(t), r*Math.sin(t)]); }
-    return pts;
-  }
-  function linkGeometry(clL, clW, dia){
-    const path = stadiumPts(clL, clW, 20).map(p => new THREE.Vector3(p[0], p[1], 0));
-    const curve = new THREE.CatmullRomCurve3(path, true);
-    return new THREE.TubeGeometry(curve, 90, dia/2, 12, true);
-  }
-  function params(){
-    return { n: +document.getElementById('pc-links').value,
-             len: +document.getElementById('pc-len').value,
-             dia: +document.getElementById('pc-dia').value };
-  }
-  function rebuild(){
-    const {n, len, dia} = params();
-    const clW = 2.5*dia + 1.0, clL = len - dia;
-    const short = clL < clW + 2;
-    document.getElementById('pc-links-v').textContent = n;
-    document.getElementById('pc-len-v').textContent = len + ' mm';
-    document.getElementById('pc-dia-v').textContent = 'Ø' + dia + ' mm';
-    if (pv.current){ pv.scene.remove(pv.current); pv.current = null; }
-    if (short){
-      document.getElementById('pc-stats').textContent =
-        'link too short for Ø' + dia + ' — needs ≥ ' + (clW + 2 + dia).toFixed(0) + ' mm';
-      return;
-    }
-    const pitch = (clL - clW) + 0.30*(clW + dia);
-    const geo = linkGeometry(clL, clW, dia);
-    const group = new THREE.Group();
-    for (let i = 0; i < n; i++){
-      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color: PAL[i % PAL.length], metalness: 0.05, roughness: 0.62 }));
-      m.rotation.x = (i % 2 === 0 ? 1 : -1) * Math.PI/4;
-      m.position.x = i * pitch;
-      group.add(m);
-    }
-    const box = new THREE.Box3().setFromObject(group);
-    group.position.y = -(box.min.y + box.max.y)/2;
-    group.position.z = -box.min.z;
-    group.rotation.x = -Math.PI/2;   // z-up convention like the GLBs
-    pv.current = group; pv.scene.add(group);
-    const b2 = new THREE.Box3().setFromObject(group);
-    placeCoin(pv, b2);
-    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
-    const size = b2.getSize(new THREE.Vector3()).length();
-    const c = b2.getCenter(new THREE.Vector3());
-    pv.controls.target.copy(c);
-    const fovV = pv.camera.fov*Math.PI/180;
-    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*pv.camera.aspect))/2);
-    pv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
-    pv.camera.near = dist/50; pv.camera.far = dist*20; pv.camera.updateProjectionMatrix();
-    const per = 2*(clL - clW) + Math.PI*clW;
-    const vol = per*Math.PI*(dia/2)**2*n/1000;
-    const totalLen = (n-1)*pitch + len;
-    document.getElementById('pc-stats').textContent =
-      totalLen.toFixed(0) + ' mm long · pitch ' + pitch.toFixed(1) + ' mm · ≈' + (vol*1.24).toFixed(1) + ' g solid PLA';
-    const dt = pcEl.parentElement.querySelector('.dimtag');
-    if (dt) dt.textContent = n + ' links · live';
-  }
-  ['pc-links','pc-len','pc-dia'].forEach(id =>
-    document.getElementById(id).addEventListener('input', rebuild));
-  rebuild();
-  async function generate(){
-    const {n, len, dia} = params();
-    const r = await fetch(`/generate?links=${n}&len=${len}&dia=${dia}`);
-    return await r.json();
-  }
-  document.getElementById('pc-print').onclick = async e => {
-    const b = e.target; b.disabled = true;
-    const stop = startTicker(b, 'Generating + verifying');
-    try {
-      const j = await generate();
-      stop();
-      if (!j.ok) throw new Error(j.error || 'generation failed');
-      const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
-      const j2 = await r2.json();
-      if (!j2.ok) throw new Error(j2.error || 'open failed');
-      b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm joints)` : '');
-    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
-    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4000);
-  };
-  document.getElementById('pc-dl').onclick = async e => {
-    e.preventDefault();
-    const a = e.target; const orig = a.textContent;
-    const stop = startTicker(a, 'generating + verifying');
-    try {
-      const j = await generate();
-      stop();
-      if (!j.ok) throw new Error(j.error || 'generation failed');
-      a.textContent = 'download ' + j.file.split('/').pop() + (j.clearance ? ` · ${j.clearance} mm joints` : '');
-      const link = document.createElement('a');
-      link.href = 'models/' + j.file; link.download = '';
-      document.body.appendChild(link); link.click(); link.remove();
-    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
-    setTimeout(() => { a.textContent = orig; }, 5000);
-  };
-}
+
 
 function geodesic(nu){
   const phi = (1 + Math.sqrt(5))/2;
@@ -1837,166 +862,35 @@ function geodesic(nu){
 const CAGE_MAT = new THREE.MeshStandardMaterial({color:0xd9a45c, metalness:0.05, roughness:0.62});
 const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
 // ---- parametric held-sphere card ----
-const cgEl = document.querySelector('.view[data-models="__param_cage"]');
-if (cgEl){
-  const cv = { el: cgEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
-  cv.scene = makeScene();
-  cv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
-  cv.controls = new OrbitControls(cv.camera, cgEl);
-  cv.controls.enableDamping = true; cv.controls.autoRotate = true;
-  cv.controls.autoRotateSpeed = 1.0; cv.controls.enableZoom = false;
-  views.push(cv);
-  function cgParams(){
-    const hasBall = document.getElementById('pg-hasball').checked;
-    return { dia: +document.getElementById('pg-dia').value,
-             sub: +document.getElementById('pg-sub').value,
-             strut: +document.getElementById('pg-strut').value,
-             ball: hasBall ? +document.getElementById('pg-ball').value : 0 };
-  }
-  function cgRebuild(){
-    let {dia, sub, strut, ball} = cgParams();
-    const cageOnly = ball === 0;
-    // stability envelope: spans ≤16 mm (field-bracketed), slenderness ≤8
-    let geo = geodesic(sub);
-    for (let guard = 0; guard < 8; guard++){
-      const eTest = (dia/2) * geo.eMaxU;
-      if (eTest > 16 && sub < 6){ sub++; document.getElementById('pg-sub').value = sub; geo = geodesic(sub); continue; }
-      if (eTest / strut > 8){
-        strut = Math.min(4, Math.ceil(eTest/8*5)/5);
-        document.getElementById('pg-strut').value = strut; continue;
-      }
-      break;
-    }
-    const R = dia/2, sr = strut/2, jr = sr*1.35, br = ball/2;
-    const {verts, edges} = geo;
-    const eLen = R * geo.eMaxU;
-    const opening = 2*(eLen/(2*Math.sqrt(3)) - sr);
-    document.getElementById('pg-dia-v').textContent = 'Ø' + dia + ' mm';
-    document.getElementById('pg-sub-v').textContent = edges.length + ' struts';
-    document.getElementById('pg-strut-v').textContent = 'Ø' + strut.toFixed(1) + ' mm';
-    document.getElementById('pg-ball-v').textContent = 'Ø' + ball + ' mm';
-    const escapes = !cageOnly && ball <= opening + 1.0;
-    const wontFit = !cageOnly && br > R - sr - 2.0;
-    if (cv.current){ cv.scene.remove(cv.current); cv.current = null; }
-    document.getElementById('pg-hasball-v').textContent = cageOnly ? 'cage only' : 'included';
-    document.getElementById('pg-ball').disabled = cageOnly;
-    // pedestal window: same segment rule as the generator
-    const pedR = Math.min(7, 0.34 * R - 3.5, br - 3.5, Math.max(4, br * 0.45));
-    const winR = pedR + 3.5;
-    const yLow = -R + 0.4 * R;
-    const segAxis = (a, b) => {
-      const ax = verts[a][0]*R, az = verts[a][2]*R;
-      const dx = verts[b][0]*R - ax, dz = verts[b][2]*R - az;
-      const L2 = dx*dx + dz*dz;
-      const tq = L2 === 0 ? 0 : Math.min(1, Math.max(0, -(ax*dx + az*dz)/L2));
-      return Math.hypot(ax + tq*dx, az + tq*dz);
-    };
-    const kept = cageOnly ? edges : edges.filter(([a, b]) =>
-      !(Math.max(verts[a][1], verts[b][1]) * R < yLow && segAxis(a, b) < winR));
-    let winOpen = 0;
-    { let dmin = Infinity;
-      for (const [a2, b2] of kept)
-        if (Math.max(verts[a2][1], verts[b2][1]) * R < yLow + 4) dmin = Math.min(dmin, segAxis(a2, b2));
-      winOpen = isFinite(dmin) ? 2 * (dmin - sr) : 0; }
-    const winEscape = !cageOnly && !escapes && !wontFit && ball < winOpen + 1.0;
-    // wobble estimate calibrated to the generator (Ø28 -> 7.13); server is authoritative
-    const wobbleEst = ball >= 24 ? 7.13 * ball / 28 : 9.9 * Math.pow(ball / 28, 3);
-    const tooHeavy = !cageOnly && !escapes && !wontFit && !winEscape && wobbleEst > 8.0;
-    const group = new THREE.Group();
-    const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
-    for (const [a, b] of kept){
-      const P = new THREE.Vector3(...verts[a]).multiplyScalar(R);
-      const Q = new THREE.Vector3(...verts[b]).multiplyScalar(R);
-      const m = new THREE.Mesh(cyl, CAGE_MAT);
-      const d = Q.clone().sub(P);
-      m.scale.set(sr, d.length(), sr);
-      m.position.copy(P).add(Q).multiplyScalar(0.5);
-      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
-      group.add(m);
-    }
-    const js = new THREE.SphereGeometry(1, 12, 8);
-    const usedV = new Set(kept.flat());
-    for (const i of usedV){
-      const m = new THREE.Mesh(js, CAGE_MAT);
-      m.scale.setScalar(jr);
-      m.position.set(verts[i][0]*R, verts[i][1]*R, verts[i][2]*R);
-      group.add(m);
-    }
-    if (!cageOnly && !escapes && !wontFit && !winEscape && !tooHeavy){
-      const yBed = -R - sr;
-      const yA = yBed + 5.4;                   // pedestal 4 + neck 1.4
-      const bm = new THREE.Mesh(new THREE.SphereGeometry(br, 24, 16), BALL_MAT);
-      bm.position.y = yA + br*Math.SQRT2;
-      group.add(bm);
-      const cn = new THREE.Mesh(new THREE.ConeGeometry(br/Math.SQRT2, br*Math.SQRT2, 32), BALL_MAT);
-      cn.rotation.x = Math.PI;
-      cn.position.y = yA + br*Math.SQRT2/2;
-      group.add(cn);
-      const pd = new THREE.Mesh(new THREE.CylinderGeometry(pedR, pedR, 4, 32), BALL_MAT);
-      pd.position.y = yBed + 2;
-      group.add(pd);
-      const nk = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 1.6, 16), BALL_MAT);
-      nk.position.y = yBed + 4.7;
-      group.add(nk);
-    }
-    cv.current = group; cv.scene.add(group);
-    const b2 = new THREE.Box3().setFromObject(group);
-    placeCoin(cv, b2);
-    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
-    const size = b2.getSize(new THREE.Vector3()).length();
-    const c = b2.getCenter(new THREE.Vector3());
-    cv.controls.target.copy(c);
-    const fovV = cv.camera.fov*Math.PI/180;
-    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*cv.camera.aspect))/2);
-    cv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
-    cv.camera.near = dist/50; cv.camera.far = dist*20; cv.camera.updateProjectionMatrix();
-    const stats = document.getElementById('pg-stats');
-    if (tooHeavy)
-      stats.textContent = '⚠ ball too heavy to print on its breakaway neck (est. wobble ' + wobbleEst.toFixed(0) + ', limit 8 — max ≈ Ø31)';
-    else if (winEscape)
-      stats.textContent = '⚠ ball escapes through the pedestal window (Ø' + winOpen.toFixed(1) + ') — ball needs ≥ ' + (winOpen+1).toFixed(0) + ' mm';
-    else if (escapes)
-      stats.textContent = '⚠ ball escapes: openings Ø' + opening.toFixed(1) + ' — ball needs ≥ ' + (opening+1).toFixed(0) + ' mm';
-    else if (wontFit)
-      stats.textContent = '⚠ ball won\u2019t fit: max ≈ ' + (2*(R - sr - 2)).toFixed(0) + ' mm in this cage';
-    else {
-      stats.textContent = cageOnly
-        ? kept.length + ' struts · cage only, no window carved'
-        : edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
-      stats.textContent += ' · spans ' + eLen.toFixed(0) + ' mm ✓';
-    }
-    const dt = cgEl.parentElement.querySelector('.dimtag');
-    if (dt) dt.textContent = 'Ø' + dia + ' · live';
-  }
-  ['pg-dia','pg-sub','pg-strut','pg-ball','pg-hasball'].forEach(id =>
-    document.getElementById(id).addEventListener('input', cgRebuild));
-  cgRebuild();
-  async function cgGenerate(){
-    const {dia, sub, strut, ball} = cgParams();
-    const r = await fetch(`/generate?type=cage&dia=${dia}&freq=${sub}&strut=${strut}&ball=${ball}`);
+
+
+
+
+// ---- lobster clasp card (geometry from the generated 3MF, via GLB) ----
+if (document.getElementById('cl-print')){
+  async function clGenerate(){
+    const r = await fetch('/generate?type=clasp', {method: 'POST'});
     return await r.json();
   }
-  document.getElementById('pg-print').onclick = async e => {
+  document.getElementById('cl-print').onclick = async e => {
     const b = e.target; b.disabled = true;
-    const stop = startTicker(b, 'Generating + verifying');
+    const stop = startTicker(b, 'Generating + verifying flexures');
     try {
-      const j = await cgGenerate();
-      stop();
+      const j = await clGenerate(); stop();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
       const j2 = await r2.json();
       if (!j2.ok) throw new Error(j2.error || 'open failed');
-      b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm clear)` : '');
+      b.textContent = 'Sent to Bambu Studio ✓';
     } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
     setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
   };
-  document.getElementById('pg-dl').onclick = async e => {
+  document.getElementById('cl-dl').onclick = async e => {
     e.preventDefault();
     const a = e.target; const orig = a.textContent;
     const stop = startTicker(a, 'generating + verifying');
     try {
-      const j = await cgGenerate();
-      stop();
+      const j = await clGenerate(); stop();
       if (!j.ok) throw new Error(j.error || 'generation failed');
       a.textContent = 'download ' + j.file.split('/').pop();
       const link = document.createElement('a');
@@ -2007,112 +901,10 @@ if (cgEl){
   };
 }
 
-// ---- parametric dice cage card ----
-const pdEl = document.querySelector('.view[data-models="__param_dice"]');
-if (pdEl){
-  const dv = { el: pdEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
-  dv.scene = makeScene();
-  dv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
-  dv.controls = new OrbitControls(dv.camera, pdEl);
-  dv.controls.enableDamping = true; dv.controls.autoRotate = true;
-  dv.controls.autoRotateSpeed = 1.0; dv.controls.enableZoom = false;
-  views.push(dv);
-  const DIE_MAT = new THREE.MeshStandardMaterial({color:0xc75a5a, metalness:0.05, roughness:0.55});
-  function pdParams(){
-    return { dia: +document.getElementById('pd-dia').value,
-             sub: +document.getElementById('pd-sub').value,
-             strut: +document.getElementById('pd-strut').value };
-  }
-  function pdRebuild(){
-    let {dia, sub, strut} = pdParams();
-    let geo = geodesic(sub);
-    for (let guard = 0; guard < 8; guard++){
-      const eTest = (dia/2) * geo.eMaxU;
-      if (eTest > 16 && sub < 6){ sub++; document.getElementById('pd-sub').value = sub; geo = geodesic(sub); continue; }
-      if (eTest / strut > 8){ strut = Math.min(4, Math.ceil(eTest/8*5)/5);
-        document.getElementById('pd-strut').value = strut; continue; }
-      break;
-    }
-    const R = dia/2, sr = strut/2, jr = sr*1.42;
-    const {verts, edges} = geo;
-    const eLen = R * geo.eMaxU;
-    document.getElementById('pd-dia-v').textContent = 'Ø' + dia + ' mm';
-    document.getElementById('pd-sub-v').textContent = edges.length + ' struts';
-    document.getElementById('pd-strut-v').textContent = 'Ø' + strut.toFixed(1) + ' mm';
-    const oR = eLen/(2*Math.sqrt(3)) - sr;
-    const faceIn = oR + sr + 1.2;
-    const dieCr = 0.9511 * faceIn * 2 * Math.sqrt(3);
-    const tooBig = dieCr > R - sr - 3.5;
-    if (dv.current){ dv.scene.remove(dv.current); dv.current = null; }
-    const pedR = Math.min(7, 0.34*R - 3.5, faceIn - 1.0);
-    const winR = pedR + 3.5;
-    const yLow = -R + 0.4*R;
-    const segAxis = (a, b) => {
-      const ax = verts[a][0]*R, az = verts[a][2]*R;
-      const dx = verts[b][0]*R - ax, dz = verts[b][2]*R - az;
-      const L2 = dx*dx + dz*dz;
-      const tq = L2 === 0 ? 0 : Math.min(1, Math.max(0, -(ax*dx + az*dz)/L2));
-      return Math.hypot(ax + tq*dx, az + tq*dz);
-    };
-    const kept = tooBig ? edges : edges.filter(([a, b]) =>
-      !(Math.max(verts[a][1], verts[b][1]) * R < yLow && segAxis(a, b) < winR));
-    const group = new THREE.Group();
-    const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
-    for (const [a, b] of kept){
-      const P = new THREE.Vector3(verts[a][0]*R, verts[a][1]*R, verts[a][2]*R);
-      const Q = new THREE.Vector3(verts[b][0]*R, verts[b][1]*R, verts[b][2]*R);
-      const m = new THREE.Mesh(cyl, CAGE_MAT);
-      const d = Q.clone().sub(P);
-      m.scale.set(sr, d.length(), sr);
-      m.position.copy(P).add(Q).multiplyScalar(0.5);
-      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
-      group.add(m);
-    }
-    const js = new THREE.SphereGeometry(1, 12, 8);
-    for (const i of new Set(kept.flat())){
-      const m = new THREE.Mesh(js, CAGE_MAT);
-      m.scale.setScalar(jr);
-      m.position.set(verts[i][0]*R, verts[i][1]*R, verts[i][2]*R);
-      group.add(m);
-    }
-    if (!tooBig){
-      const yBed = -R - sr;
-      const die = new THREE.Mesh(new THREE.IcosahedronGeometry(dieCr), DIE_MAT);
-      // rest flat: icosahedron face-down = rotate so a face normal points -y
-      die.geometry.computeVertexNormals();
-      die.rotation.set(Math.atan(1/1.618)+Math.PI/2, 0, 0);  // approx face-down
-      const inR = 0.7558 * (dieCr/0.9511);
-      die.position.y = yBed + 5.4 + inR;
-      group.add(die);
-      const pd = new THREE.Mesh(new THREE.CylinderGeometry(pedR, pedR, 4, 32), DIE_MAT);
-      pd.position.y = yBed + 2; group.add(pd);
-      const nk = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 1.6, 16), DIE_MAT);
-      nk.position.y = yBed + 4.7; group.add(nk);
-    }
-    dv.current = group; dv.scene.add(group);
-    const b2 = new THREE.Box3().setFromObject(group);
-    placeCoin(dv, b2);
-    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
-    const size = b2.getSize(new THREE.Vector3()).length();
-    const c = b2.getCenter(new THREE.Vector3());
-    dv.controls.target.copy(c);
-    const fovV = dv.camera.fov*Math.PI/180;
-    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*dv.camera.aspect))/2);
-    dv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
-    dv.camera.near = dist/50; dv.camera.far = dist*20; dv.camera.updateProjectionMatrix();
-    const stats = document.getElementById('pd-stats');
-    stats.textContent = tooBig
-      ? '⚠ seat rule needs a Ø' + (2*dieCr).toFixed(0) + ' die — too big for this cage; finer lattice or bigger Ø'
-      : 'd20 Ø' + (2*dieCr).toFixed(0) + ' mm, face edge ' + (faceIn*2*Math.sqrt(3)).toFixed(0) + ' mm · openings Ø' + (2*oR).toFixed(1) + ' · spans ' + eLen.toFixed(0) + ' mm ✓ (numerals in the generated file)';
-    const dt = pdEl.parentElement.querySelector('.dimtag');
-    if (dt) dt.textContent = 'Ø' + dia + ' · live';
-  }
-  ['pd-dia','pd-sub','pd-strut'].forEach(id =>
-    document.getElementById(id).addEventListener('input', pdRebuild));
-  pdRebuild();
+// ---- dice orb card (geometry comes from the generated 3MF, via GLB) ----
+if (document.getElementById('pd-print')){
   async function pdGenerate(){
-    const {dia, sub, strut} = pdParams();
-    const r = await fetch(`/generate?type=dice&dia=${dia}&freq=${sub}&strut=${strut}`);
+    const r = await fetch('/generate?type=dice', {method: 'POST'});
     return await r.json();
   }
   document.getElementById('pd-print').onclick = async e => {
@@ -2143,14 +935,6 @@ if (pdEl){
     setTimeout(() => { a.textContent = orig; }, 5000);
   };
 }
-
-const io = new IntersectionObserver(es => es.forEach(e => {
-  const v = views.find(x => x.el === e.target);
-  if (!v) return;
-  v.visible = e.isIntersecting;
-  if (v.visible && !v.started){ v.started = true; setModel(v, 0); }
-}), {rootMargin: '200px'});
-views.forEach(v => io.observe(v.el));
 
 async function openInSlicer(files, btn){
   const orig = btn.textContent;
@@ -2247,8 +1031,12 @@ function renderNotes(box, list){
     box.insertBefore(d, form);
   });
 }
-fetch('/notes').then(r => r.json()).then(all => {
-  document.querySelectorAll('.notes').forEach(box => {
+let ALLNOTES = {};
+function bindNotes(root){
+  (root || document).querySelectorAll('.notes').forEach(box => {
+    if (box.dataset.bound) return;
+    box.dataset.bound = '1';
+    const all = ALLNOTES;
     const cid = box.dataset.cid;
     const form = document.createElement('form');
     const inp = document.createElement('input');
@@ -2266,6 +1054,9 @@ fetch('/notes').then(r => r.json()).then(all => {
     box.appendChild(form);
     renderNotes(box, all[cid]);
   });
+}
+fetch('/notes').then(r => r.json()).then(all => {
+  ALLNOTES = all; bindNotes(document);
 }).catch(() => {});
 
 function animate(){
@@ -2290,6 +1081,425 @@ function animate(){
   }
 }
 renderer.setAnimationLoop(animate);
+
+// ================= the catalog =================
+// There is one list of designs. A part built by a generator, a part with
+// options, and a file found on disk are the same kind of thing here: a card
+// with a preview, a quantity, and a place on a plate. Choosing a quantity
+// puts it on the plate, and the plates re-pack as you go. The plate view is
+// the arranged geometry itself, exported by the code that writes the 3MFs.
+(async function shop(){
+  const $ = id => document.getElementById(id);
+  if (!$('cat-grid')) return;
+  const qty = new Map(), shared = new Map(), own = new Map();
+  let cat = null, plates = [], byId = {};
+
+  const num = v => (Math.round(v*100)/100).toString();
+  function paramVals(part){
+    const o = Object.assign({}, own.get(part.id) || {});
+    for (const [kid, sh] of shared){
+      const kit = cat.kits.find(k => k.id === kid);
+      if (kit && kit.members.some(m => m.part === part.id)) Object.assign(o, sh);
+    }
+    return o;
+  }
+  const order = () => [...qty].filter(([,n]) => n > 0).map(([id,n]) =>
+    ({part: id, qty: n, params: paramVals(byId[id])}));
+
+  const badge = (v, d, built) => {
+    const stale = d && v !== '—' && (!built || built < d);
+    return '<span class="ver' + (stale ? ' stale' : '') + '" title="version ' + v
+      + (d ? ', last changed ' + d : '') + (built ? ', file built ' + built : '')
+      + (stale ? ' — rebuilds when ordered' : '') + '">v' + v
+      + (d ? ' · ' + d.slice(5) : '') + (stale ? ' ⟳' : '') + '</span>';
+  };
+  function stepper(id){
+    const d = document.createElement('div'); d.className = 'step';
+    d.innerHTML = '<button data-d="-1" aria-label="one fewer">&minus;</button>' +
+      '<input type="number" min="0" max="99" value="' + (qty.get(id)||0) +
+      '" aria-label="quantity">' + '<button data-d="1" aria-label="one more">+</button>';
+    const inp = d.querySelector('input');
+    const set = n => { n = Math.max(0, Math.min(99, n|0)); qty.set(id, n);
+      inp.value = n; renderBom(); markCards(); schedule(); };
+    d.querySelectorAll('button').forEach(b => b.onclick = () =>
+      set((qty.get(id)||0) + Number(b.dataset.d)));
+    inp.onchange = () => set(Number(inp.value));
+    return d;
+  }
+  function slider(p, get, set){
+    const l = document.createElement('label');
+    const val = document.createElement('b'), r = document.createElement('input');
+    r.type = 'range'; r.min = p.min; r.max = p.max; r.step = p.step; r.value = get();
+    const show = () => val.textContent = num(r.value) + (p.unit ? ' '+p.unit : '');
+    r.oninput = () => { show(); set(Number(r.value)); schedule(); };
+    show(); l.append(p.label + ' ', r, val); return l;
+  }
+  function optionBox(part, defs){
+    const sh = document.createElement('div'); sh.className = 'shared';
+    const store = own.get(part.id) || {}; own.set(part.id, store);
+    defs.forEach(p => { if (store[p.key] === undefined) store[p.key] = p.val;
+      sh.append(slider(p, () => store[p.key], v => { store[p.key] = v; })); });
+    return sh;
+  }
+
+  cat = await (await fetch('/shop/catalog')).json();
+  byId = Object.fromEntries(cat.parts.map(p => [p.id, p]));
+  cat.kits.forEach(k => {
+    const store = {};
+    (k.shared || []).forEach(d => store[d.key] = d.val);
+    shared.set(k.id, store);
+  });
+
+  const esc = t => String(t == null ? '' : t)
+    .replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function spec(p){
+    const bits = [];
+    if (p.dims) bits.push(p.dims);
+    if (p.bodies > 1) bits.push(p.bodies + ' bodies');
+    if (p.tris) bits.push(p.tris.toLocaleString() + ' tris');
+    let out = esc(bits.join(' \u00b7 '));
+    if (p.slice) out += '<br>P2S slice: ' + esc(p.slice);
+    return out;
+  }
+  function metaBox(p){
+    if (!p.meta) return '';
+    const rows = ['Designer','License','Origin','Application','CreationDate']
+      .filter(k => p.meta[k])
+      .map(k => '<div class="mrow"><dt>' + k + '</dt><dd>' +
+                esc(p.meta[k]) + '</dd></div>').join('');
+    const desc = p.meta.Description
+      ? '<p class="mdesc">' + esc(p.meta.Description) + '</p>' : '';
+    const ph = p.meta.photos || [];
+    const gal = ph.length ? '<div class="gal">' + ph.map(u =>
+      '<img src="' + esc(u) + '" loading="lazy" alt="designer photo">')
+      .join('') + '</div>' : '';
+    if (!rows && !desc && !gal) return '';
+    return '<details class="metabox"><summary>designer\u2019s 3MF metadata' +
+      (ph.length ? ' \u00b7 ' + ph.length + ' photos' : '') + '</summary>' +
+      '<dl class="mrows">' + rows + '</dl>' + desc + gal + '</details>';
+  }
+  async function openPart(p, btn){
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Opening\u2026';
+    try {
+      const r = await fetch('/open?id=' + encodeURIComponent(p.id) +
+        '&params=' + encodeURIComponent(JSON.stringify(paramVals(p))));
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || 'server refused');
+      btn.textContent = 'Sent to Bambu Studio \u2713';
+    } catch(e){
+      btn.textContent = /fetch|network/i.test(e.message)
+        ? 'Run make serve first' : '\u2717 ' + e.message;
+    }
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3500);
+  }
+  function photo(entries, pill){
+    return '<div class="photo"><div class="view"></div>' +
+      (pill ? '<span class="pill ' + esc(pill[0]) + '">' + esc(pill[1]) +
+              '</span>' : '') +
+      '<div class="chips"></div><div class="dimtag"></div>' +
+      '<span class="qtytag" hidden></span></div>';
+  }
+
+  function makeCard(p){
+    const el = document.createElement('article');
+    el.className = 'card'; el.dataset.id = p.id;
+    if (p.card) el.dataset.cid = p.card;
+    el.innerHTML = photo(null, p.verdict) +
+      '<div class="body">' +
+      '<p class="eyebrow">' + esc(p.family) +
+        (p.designer ? ' \u00b7 ' + esc(p.designer) : '') + '</p>' +
+      '<h3>' + esc(p.name) +
+        (p.material ? ' <span class="mat">' + esc(p.material) + '</span>' : '') +
+        '</h3>' +
+      (p.version && p.version !== '\u2014'
+        ? '<div class="verline">' + badge(p.version, p.changed, p.built) + '</div>' : '') +
+      (p.blurb ? '<p class="principle">' + esc(p.blurb) + '</p>' : '') +
+      '<p class="specline" data-dim="' + esc(p.id) + '">' + spec(p) + '</p>' +
+      '</div>';
+    const body = el.querySelector('.body');
+    if (p.params && p.params.length) body.append(optionBox(p, p.params));
+    const foot = document.createElement('div'); foot.className = 'cardfoot';
+    const open = document.createElement('button');
+    open.className = 'print'; open.textContent = 'Open in Bambu Studio';
+    open.onclick = () => openPart(p, open);
+    foot.append(open, stepper(p.id));
+    body.append(foot);
+    if (p.card){
+      const n = document.createElement('div');
+      n.className = 'notes'; n.dataset.cid = p.card; body.append(n);
+    }
+    const mb = metaBox(p);
+    if (mb) body.insertAdjacentHTML('beforeend', mb);
+    if (p.preview) mountView(el.querySelector('.view'),
+      [{glb: p.preview, label: p.name, dims: p.dims3, tris: p.tris}]);
+    return el;
+  }
+
+  // A kit is one card, not several: its parts share dials because their
+  // sizes have to agree, and splitting them across cards is what let a
+  // clasp be ordered that no chain in the order would fit.
+  function makeKitCard(k){
+    const el = document.createElement('article');
+    el.className = 'card'; el.dataset.kit = k.id;
+    const mem = k.members.map(m => byId[m.part]).filter(Boolean);
+    el.innerHTML = photo(null, null) +
+      '<div class="body">' +
+      '<p class="eyebrow">kit \u00b7 ' + mem.length + ' parts, one set of sizes</p>' +
+      '<h3>' + esc(k.name) + '</h3>' +
+      '<div class="verline">' + badge(k.version, k.changed, k.built) + '</div>' +
+      (k.blurb ? '<p class="principle">' + esc(k.blurb) + '</p>' : '') +
+      '</div>';
+    const body = el.querySelector('.body');
+    if (k.shared && k.shared.length){
+      const sh = document.createElement('div'); sh.className = 'shared';
+      const store = shared.get(k.id);
+      k.shared.forEach(d => sh.append(slider(d, () => store[d.key],
+        v => { store[d.key] = v; })));
+      body.append(sh);
+    }
+    for (const m of k.members){
+      const p = byId[m.part]; if (!p) continue;
+      const row = document.createElement('div'); row.className = 'srow';
+      const left = document.createElement('div');
+      left.innerHTML = '<span class="nm">' + esc(m.label || p.name) + '</span>' +
+        '<span class="dim" data-dim="' + esc(p.id) + '">' +
+        esc(p.dims || p.blurb || '') + '</span>';
+      row.append(left, stepper(p.id));
+      body.append(row);
+      if (m.own) body.append(optionBox(p, m.own));
+    }
+    const entries = mem.filter(p => p.preview).map(p =>
+      ({glb: p.preview, label: p.name, chip: p.name,
+        dims: p.dims3, tris: p.tris}));
+    if (entries.length) mountView(el.querySelector('.view'), entries);
+    return el;
+  }
+
+  // ---- filter, page, render ----
+  const fam = $('cat-fam');
+  fam.innerHTML = '<option value="">all families</option>' +
+    cat.families.map(f => '<option>' + esc(f) + '</option>').join('');
+  const inKit = new Set(cat.kits.flatMap(k => k.members.map(m => m.part)));
+  const solo = cat.parts.filter(p => !inKit.has(p.id));
+  const PAGE = 24;
+  let limit = PAGE;
+
+  const hay = p => (p.name + ' ' + p.family + ' ' + (p.blurb || '') + ' ' +
+                    (p.designer || '')).toLowerCase();
+  function chosen(){
+    const q = $('cat-q').value.trim().toLowerCase(), f = fam.value;
+    const kits = cat.kits.filter(k => {
+      const mem = k.members.map(m => byId[m.part]).filter(Boolean);
+      const t = (k.name + ' ' + (k.blurb || '') + ' ' +
+                 mem.map(p => p.name).join(' ')).toLowerCase();
+      return (!q || t.includes(q)) &&
+             (!f || mem.some(p => p.family === f));
+    }).map(k => ({kit: k}));
+    const parts = solo.filter(p => (!f || p.family === f) &&
+                                   (!q || hay(p).includes(q)))
+                      .map(p => ({part: p}));
+    return kits.concat(parts);
+  }
+  const onPlate = e => e.kit
+    ? e.kit.members.some(m => (qty.get(m.part) || 0) > 0)
+    : (qty.get(e.part.id) || 0) > 0;
+
+  function render(){
+    const grid = $('cat-grid');
+    const all = chosen();
+    // what is on the plate sorts to the front of whatever the filter left,
+    // so a long catalog never buries the thing being adjusted
+    all.sort((a, b) => (onPlate(b) ? 1 : 0) - (onPlate(a) ? 1 : 0));
+    const show = all.slice(0, limit);
+    unmountViews(grid);
+    grid.innerHTML = '';
+    if (!show.length){
+      grid.innerHTML = '<p class="emptycat">Nothing matches that.</p>';
+    } else {
+      show.forEach(e => grid.append(e.kit ? makeKitCard(e.kit) : makeCard(e.part)));
+    }
+    $('cat-count').textContent = show.length + ' of ' + all.length +
+      (all.length === 1 ? ' design' : ' designs');
+    $('cat-more').hidden = show.length >= all.length;
+    bindNotes(grid);
+    markCards();
+  }
+  // the quantity a card shows has to survive a re-render and a filter change
+  function markCards(){
+    document.querySelectorAll('#cat-grid .card').forEach(el => {
+      const ids = el.dataset.kit
+        ? cat.kits.find(k => k.id === el.dataset.kit).members.map(m => m.part)
+        : [el.dataset.id];
+      const n = ids.reduce((a, id) => a + (qty.get(id) || 0), 0);
+      el.classList.toggle('oncart', n > 0);
+      const tag = el.querySelector('.qtytag');
+      if (tag){ tag.hidden = !n; tag.textContent = '\u00d7' + n; }
+    });
+  }
+  let redraw = null;
+  $('cat-q').oninput = () => { clearTimeout(redraw);
+    redraw = setTimeout(() => { limit = PAGE; render(); }, 120); };
+  fam.onchange = () => { limit = PAGE; render(); };
+  $('cat-more').onclick = () => { limit += PAGE; render(); };
+  render();
+
+  function renderBom(){
+    const rows = [...qty].filter(([,n]) => n > 0);
+    const el = $('shop-bom');
+    if (!rows.length){ el.innerHTML = '<p class="empty">nothing selected yet</p>'; return; }
+    el.innerHTML = '<table><thead><tr><th>part</th><th>each</th>' +
+      '<th>qty</th></tr></thead><tbody>' +
+      rows.map(([id,n]) => { const p = byId[id]; const d = p.dims || '';
+        return '<tr><td>' + p.name + '</td><td class="d">' + d +
+          '</td><td class="q">' + n + '</td></tr>'; }).join('') +
+      '</tbody></table>';
+  }
+
+  // ---- 3D plate view: the arranged geometry, not a diagram of it ----
+  const cv = $('shop-3d');
+  const R3 = new THREE.WebGLRenderer({canvas: cv, alpha: true, antialias: true});
+  R3.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const S3 = makeScene();
+  const C3 = new THREE.PerspectiveCamera(42, 2, 1, 6000);
+  const CT = new OrbitControls(C3, cv);
+  CT.enableDamping = true;
+  let model = null, beds = null;
+  function bedGrid(cols, n, bed, margin, pitch){
+    const g = new THREE.Group();
+    for (let i = 0; i < n; i++){
+      const ox = (i % cols) * pitch, oz = -Math.floor(i / cols) * pitch;
+      const grid = new THREE.GridHelper(bed[0], bed[0]/16, 0x3a464c, 0x232b2f);
+      grid.position.set(ox, 0, -oz);
+      g.add(grid);
+      const u = bed[0] - 2*margin, v = bed[1] - 2*margin;
+      const pts = [[-u/2,0,-v/2],[u/2,0,-v/2],[u/2,0,v/2],[-u/2,0,v/2],[-u/2,0,-v/2]]
+        .map(p => new THREE.Vector3(p[0]+ox, 0.1, p[2]-oz));
+      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color: 0x4FD2C2})));
+    }
+    return g;
+  }
+  function frameBeds(){
+    const box = new THREE.Box3().setFromObject(beds);
+    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3()).length();
+    CT.target.copy(c);
+    C3.position.copy(c).add(new THREE.Vector3(0.5, 0.85, 0.9)
+      .normalize().multiplyScalar(size * 0.95));
+    C3.updateProjectionMatrix();
+  }
+  // An empty plate is still a plate: show the bed from the first frame
+  // rather than a black rectangle that reads as a broken viewport.
+  function showEmptyBed(){
+    if (beds) S3.remove(beds);
+    if (model){ S3.remove(model); model = null; }
+    const pr = cat.printers[cat.printer];
+    beds = bedGrid(1, 1, pr.bed, 5, 300);
+    S3.add(beds);
+    frameBeds();
+  }
+  function show3d(info, bed, margin){
+    if (beds){ S3.remove(beds); beds = null; }
+    beds = bedGrid(info.cols, info.plates, bed, margin, 300);
+    S3.add(beds);
+    loader.load('models/' + info.file + '?t=' + Date.now(), gltf => {
+      if (model) S3.remove(model);
+      model = gltf.scene;
+      model.rotation.x = -Math.PI/2;             // trimesh writes z-up
+      model.traverse(o => { if (o.isMesh){
+        // trimesh writes GLB without vertex normals; a standard material
+        // shades those black, so compute them before assigning one
+        if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+        o.material = new THREE.MeshStandardMaterial({color: 0xE9A063,
+          metalness: 0.05, roughness: 0.6}); }});
+      S3.add(model);
+      frameBeds();
+    });
+  }
+  (function loop(){
+    requestAnimationFrame(loop);
+    const r = cv.getBoundingClientRect();
+    if (!r.width || !document.getElementById('pane-catalog').classList.contains('on')) return;
+    if (cv.width !== Math.round(r.width*devicePixelRatio)){
+      R3.setSize(r.width, r.height, false);
+      C3.aspect = r.width / r.height; C3.updateProjectionMatrix();
+    }
+    CT.update(); R3.render(S3, C3);
+  })();
+
+  let timer = null, busy = false;
+  function schedule(){ clearTimeout(timer); timer = setTimeout(layout, 400); }
+  async function layout(){
+    const o = order();
+    if (!o.length){ plates = []; $('shop-sum').textContent = 'nothing on the plate';
+      $('shop-warn').textContent = ''; showEmptyBed();
+      if (beds){ S3.remove(beds); beds = null; } return; }
+    if (busy){ schedule(); return; }
+    busy = true; $('shop-sum').textContent = 'packing…';
+    try {
+      const j = await (await fetch('/shop/layout', {method:'POST',
+        body: JSON.stringify({order: o, preview: true})})).json();
+      if (!j.ok) throw new Error(j.error || 'layout failed');
+      plates = j.plates;
+      const n = plates.reduce((s,p) => s + p.items.length, 0);
+      const avg = plates.length ? plates.reduce((s,p)=>s+p.util,0)/plates.length : 0;
+      $('shop-sum').textContent = plates.length + ' plate' + (plates.length===1?'':'s') +
+        ' · ' + n + ' parts · ' + Math.round(avg*100) + '% avg fill';
+      $('shop-warn').textContent = (j.oversized||[]).map(o =>
+        '! ' + o.name + ' does not fit the plate (' + o.reason + ')').join('  ');
+      for (const [id, rep] of Object.entries(j.reports||{})){
+        if (!rep.w) continue;
+        const dims = rep.w.toFixed(0)+'×'+rep.d.toFixed(0)+'×'+rep.h.toFixed(0)+' mm';
+        if (byId[id]) byId[id].dims = dims;
+        // the measurement comes back from the real build, so the card and
+        // the kit row both take the corrected size rather than the estimate
+        document.querySelectorAll('[data-dim="' + id + '"]').forEach(el => {
+          if (el.classList.contains('specline') && byId[id])
+            el.innerHTML = spec(byId[id]);
+          else el.textContent = dims + ' each';
+        });
+      }
+      renderBom();
+      if (j.preview) show3d(j.preview, j.bed, j.margin);
+    } catch(e){ $('shop-sum').textContent = '✗ ' + e.message; }
+    busy = false;
+  }
+
+  $('shop-clear').onclick = ev => { ev.preventDefault(); qty.clear();
+    document.querySelectorAll('.step input').forEach(i => i.value = 0);
+    renderBom(); markCards(); layout(); };
+  $('shop-build').onclick = async e => {
+    const b = e.target, o = order(); if (!o.length) return;
+    b.disabled = true;
+    const stop = startTicker(b, 'Generating, packing, writing plates');
+    try {
+      const j = await (await fetch('/shop/build', {method:'POST',
+        body: JSON.stringify({order: o})})).json(); stop();
+      if (!j.ok) throw new Error(j.error || 'build failed');
+      b.textContent = 'Downloaded ' + j.plates.length + ' plate(s) ✓';
+      const a = document.createElement('a');
+      a.href = 'models/' + j.file; a.download = '';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
+    setTimeout(() => { b.textContent = 'Build plates → zip'; b.disabled = false; }, 4500);
+  };
+
+  showEmptyBed();     // after the 3D state above exists, not before
+})();
+
+// ---- tabs ----
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => {
+    x.classList.toggle('on', x === b);
+    x.setAttribute('aria-selected', x === b ? 'true' : 'false');
+  });
+  document.querySelectorAll('.pane').forEach(p =>
+    p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
+  dispatchEvent(new Event('scroll'));
+});
+
 </script>
 </body>
 </html>

@@ -175,7 +175,7 @@ def order_items(order):
         reports[part["id"]] = dict(rep, **m, file=os.path.basename(path))
         for i in range(int(line.get("qty", 1))):
             items.append(dict(key=part["id"], name=part["name"], path=path,
-                              copy=i, **m))
+                              copy=i, assembly=part["kind"] != "library", **m))
     return items, reports
 
 
@@ -187,11 +187,12 @@ def arranged_scene(plates, pitch=300.0, simplify=60_000):
     which keeps a 3MF full of library geometry from stalling the browser.
     """
     cols = max(1, int(np.ceil(np.sqrt(len(plates)))))
-    sc = trimesh.Scene()
-    total = 0
+    # Load and orient everything first, decimate, and only then compute each
+    # part's drop. Decimation moves vertices, so a mesh dropped to z=0 before
+    # it is simplified comes back a hair proud and reads as floating.
+    staged, total = [], 0
     for n, p in enumerate(plates):
-        ox = (n % cols) * pitch
-        oy = -(n // cols) * pitch
+        ox, oy = (n % cols) * pitch, -(n // cols) * pitch
         used = {}
         for it in p["items"]:
             src = trimesh.load(it["path"], force="scene")
@@ -206,23 +207,34 @@ def arranged_scene(plates, pitch=300.0, simplify=60_000):
                     np.radians(it["rot"]), [0, 0, 1])
                 for _, g in bodies:
                     g.apply_transform(R)
-            lo = np.min([g.bounds[0] for _, g in bodies], axis=0)
-            hi = np.max([g.bounds[1] for _, g in bodies], axis=0)
-            ctr = (lo + hi) / 2
             k = used.get(it["key"], 0) + 1
             used[it["key"]] = k
-            for gk, g in bodies:
-                g.apply_translation([it["x"] - ctr[0] + ox,
-                                     it["y"] - ctr[1] + oy, -lo[2]])
-                total += len(g.faces)
-                sc.add_geometry(g, geom_name=f"p{p['index']}_{it['key']}_{k}_{gk}")
+            total += sum(len(g.faces) for _, g in bodies)
+            staged.append((p["index"], it, k, ox, oy, bodies))
     if total > simplify:
-        for name, g in list(sc.geometry.items()):
-            try:
-                sc.geometry[name] = g.simplify_quadric_decimation(
-                    face_count=max(200, int(len(g.faces) * simplify / total)))
-            except Exception:
-                pass
+        for _, _, _, _, _, bodies in staged:
+            for i, (gk, g) in enumerate(bodies):
+                try:
+                    bodies[i] = (gk, g.simplify_quadric_decimation(
+                        face_count=max(200,
+                                       int(len(g.faces) * simplify / total))))
+                except Exception:
+                    pass
+    sc = trimesh.Scene()
+    for idx, it, k, ox, oy, bodies in staged:
+        lo = np.min([g.bounds[0] for _, g in bodies], axis=0)
+        hi = np.max([g.bounds[1] for _, g in bodies], axis=0)
+        ctr = (lo + hi) / 2
+        for gk, g in bodies:
+            # A generated part is one assembly: its bodies keep their relative
+            # heights, since a die sits inside its cage by design. A file off
+            # disk is usually a set of independent objects, and some ship with
+            # them at different heights — those each get their own drop, or
+            # they print in mid-air.
+            dz = -lo[2] if it.get("assembly", True) else -g.bounds[0][2]
+            g.apply_translation([it["x"] - ctr[0] + ox,
+                                 it["y"] - ctr[1] + oy, dz])
+            sc.add_geometry(g, geom_name=f"p{idx}_{it['key']}_{k}_{gk}")
     return sc, cols
 
 
@@ -273,11 +285,12 @@ def build_zip(plates, out_zip, printer="P2S", oversized=None):
                 lo = np.min([g.bounds[0] for _, g in bodies], axis=0)
                 hi = np.max([g.bounds[1] for _, g in bodies], axis=0)
                 ctr = (lo + hi) / 2
-                shift = [it["x"] - ctr[0], it["y"] - ctr[1], -lo[2]]
                 n = used.get(it["key"], 0) + 1
                 used[it["key"]] = n
                 for gk, g in bodies:
-                    g.apply_translation(shift)
+                    dz = -lo[2] if it.get("assembly", True) else -g.bounds[0][2]
+                    g.apply_translation([it["x"] - ctr[0],
+                                         it["y"] - ctr[1], dz])
                     cm3 += float(g.volume) / 1000
                     sc.add_geometry(g, geom_name=f"{it['key']}_{n}_{gk}")
             # solid volume, not print weight: sparse infill lands well

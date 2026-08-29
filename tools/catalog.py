@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Print Shop catalogue: everything this machine knows how to print.
+"""The Print Shop catalog: everything this machine knows how to print.
 
 Three kinds of entry, deliberately uniform so the shop UI and the plate
 packer never care which is which:
@@ -17,6 +17,7 @@ all the packer needs. Anything the packer cannot measure is not sellable.
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -38,7 +39,7 @@ DEFAULT_PRINTER = "P2S"
 
 
 def _p(pid, name, family, kind, blurb, version="0.1.0", **kw):
-    """A catalogue entry. `version` is declared, not derived: only an author
+    """A catalog entry. `version` is declared, not derived: only an author
     knows whether a change is a new design, a reshape, or a fix. The date
     beside it is derived from git, so it cannot drift out of step."""
     return dict(id=pid, name=name, family=family, kind=kind, blurb=blurb,
@@ -131,12 +132,12 @@ PARTS = [
        "Strut sphere, optionally with a captive ball.",
        version="1.1.0",
        gen=["gen_cage.py"], params=[
-           dict(key="dia", label="cage O", unit="mm", min=30, max=90,
+           dict(key="dia", label="cage \u00d8", unit="mm", min=30, max=90,
                 step=2, val=50),
            dict(key="freq", label="frequency", min=1, max=6, step=1, val=2),
-           dict(key="strut", label="strut O", unit="mm", min=1.4, max=4.5,
+           dict(key="strut", label="strut \u00d8", unit="mm", min=1.4, max=4.5,
                 step=0.2, val=2.2),
-           dict(key="ball", label="ball O (0 = none)", unit="mm", min=0,
+           dict(key="ball", label="ball \u00d8 (0 = none)", unit="mm", min=0,
                 max=40, step=1, val=19)],
        out="cage-D{dia:g}-F{freq}-T{strut:g}-B{ball:g}.3mf"),
 ]
@@ -145,7 +146,7 @@ _LIB_INDEX = {}
 
 
 def find(part_id):
-    """Resolve any catalogue id — generated, parametric or library."""
+    """Resolve any catalog id — generated, parametric or library."""
     if part_id in BY_ID:
         return BY_ID[part_id]
     if part_id not in _LIB_INDEX:
@@ -229,6 +230,27 @@ def out_path(part, params=None):
     return os.path.join(CUSTOM, name)
 
 
+def defaults(part):
+    """Every dial a part needs to build, at its default value.
+
+    A part in a kit gets some of its dials from the kit, so that the parts
+    of a set always fit each other. Asking a part for its own params alone
+    leaves those out and the generator refuses for want of a size.
+    """
+    vals = {}
+    for k in KITS:
+        if any(m["part"] == part["id"] for m in k["members"]):
+            for d in k.get("shared", []):
+                vals[d["key"]] = d["val"]
+            for m in k["members"]:
+                if m["part"] == part["id"]:
+                    for d in (m.get("own") or []):
+                        vals[d["key"]] = d["val"]
+    for d in (part.get("params") or []):
+        vals[d["key"]] = d["val"]
+    return vals
+
+
 def ensure(part, params=None, timeout=600):
     """Generate the part's file if it is not already on disk.
 
@@ -264,7 +286,7 @@ def measure(path):
 
 
 def library(dirs=None, limit=400):
-    """Printable files on disk, as catalogue parts.
+    """Printable files on disk, as catalog parts.
 
     Same shape as a generated part, so nothing downstream — the shop rows,
     the bill of materials, the packer, the exporter — needs to know which
@@ -280,8 +302,11 @@ def library(dirs=None, limit=400):
             if "/glb" in root or "/meta" in root or "/index_out" in root:
                 continue
             for fn in sorted(files):
-                if not fn.lower().endswith((".3mf", ".stl")):
+                low = fn.lower()
+                if not low.endswith((".3mf", ".stl")):
                     continue
+                if low.endswith(".gcode.3mf"):
+                    continue        # a sliced export, not a model to print
                 p = os.path.join(root, fn)
                 try:
                     st = os.stat(p)
@@ -307,10 +332,78 @@ def library(dirs=None, limit=400):
     return out
 
 
-def catalogue(with_library=True):
+def previews():
+    """id -> preview record, built by previews.py. Empty is not an error."""
+    f = os.path.join(MODELS, "previews.json")
+    if not os.path.exists(f):
+        return {}
+    try:
+        with open(f) as fh:
+            return {e["id"]: e for e in json.load(fh)}
+    except (ValueError, KeyError):
+        return {}
+
+
+def enrich(part, prev):
+    """Give every entry the fields a card needs, whoever made it.
+
+    A generated part knows its own story; a file scanned off disk knows
+    only its name. Where a human has written about that file, its curation
+    is folded in here — so one card template renders either, and the shop
+    and the design write-up can no longer disagree about what a part is.
+    """
+    import designs
+    out = dict(part)
+    pv = prev.get(part["id"])
+    if pv:
+        out.update(preview=pv["glb"], dims3=pv["dims"], bodies=pv["bodies"],
+                   tris=pv["tris_full"])
+        d = pv["dims"]
+        out["dims"] = f"{d[0]} x {d[1]} x {d[2]} mm"
+    cur = designs.curation(os.path.basename(part.get("path", "")))
+    if cur:
+        out.update(name=cur["title"], family=cur["family"],
+                   designer=cur["designer"], material=cur["mat"],
+                   verdict=list(cur["v"]), card=cur["cid"])
+        if not out.get("blurb"):
+            out["blurb"] = cur["blurb"]
+        sl = designs.SLICE.get(cur["cid"])
+        if sl:
+            out["slice"] = sl
+    m = _meta(part.get("path", ""))
+    if m:
+        out["meta"] = m
+    return out
+
+
+def _meta(path):
+    """The designer's own metadata, extracted from the 3MF alongside it."""
+    if not path:
+        return None
+    slug = re.sub(r"[^a-z0-9]+", "_",
+                  os.path.basename(path).lower().rsplit(".", 1)[0]).strip("_")
+    f = os.path.join(MODELS, "meta", slug, "meta.json")
+    if not os.path.exists(f):
+        return None
+    try:
+        with open(f) as fh:
+            md = json.load(fh)
+    except ValueError:
+        return None
+    keep = {k: md[k] for k in ("Designer", "License", "Origin", "Application",
+                               "CreationDate", "Description") if md.get(k)}
+    if md.get("photos"):
+        keep["photos"] = [f"models/meta/{slug}/{x}" for x in md["photos"]]
+    if md.get("cover"):
+        keep["cover"] = f"models/meta/{slug}/{md['cover']}"
+    return keep or None
+
+
+def catalog(with_library=True):
     """One list. A part is a part; some of them have options."""
     entries = list(PARTS) + (library() if with_library else [])
-    parts = [dict(p, **provenance(p)) for p in entries]
+    prev = previews()
+    parts = [enrich(dict(p, **provenance(p)), prev) for p in entries]
     by = {p["id"]: p for p in parts}
     kits = []
     for k in KITS:
@@ -329,7 +422,7 @@ def catalogue(with_library=True):
 
 
 if __name__ == "__main__":
-    c = catalogue()
+    c = catalog()
     print(json.dumps({"kits": [(k["id"], [m["part"] for m in k["members"]])
                                for k in c["kits"]],
                       "parts": [p["id"] for p in c["parts"]],

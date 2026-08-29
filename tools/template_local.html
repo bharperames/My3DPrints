@@ -45,7 +45,12 @@ h1 .tld{color:var(--accent)}
   font-variant-numeric:tabular-nums}
 .stat span{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .stat b em{font-style:normal;font-size:14px;color:var(--faint)}
-.dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.aboutgrid{display:grid;grid-template-columns:minmax(230px,0.85fr) 3fr;gap:20px;
+  align-items:start}
+@media (max-width:900px){.aboutgrid{grid-template-columns:1fr}}
+.dias{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.dia figcaption{font-size:12px;line-height:1.45}
+.dia svg{max-height:132px}
 .dia{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
 .dia svg{width:100%;height:auto;display:block}
 .dia .part{fill:none;stroke:var(--ink);stroke-width:2}
@@ -62,7 +67,7 @@ h1 .tld{color:var(--accent)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px;align-items:start}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
-.photo{position:relative;background:var(--photo-bg);aspect-ratio:4/3}
+.photo{position:relative;background:var(--photo-bg);aspect-ratio:3/2}
 .view{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
 .axisbtn{position:absolute;top:12px;left:46px;z-index:6;background:var(--panel);
   border:1px solid var(--line);color:var(--muted);border-radius:6px;height:28px;
@@ -196,7 +201,7 @@ section.block>p.lede{color:var(--muted);max-width:70ch;margin-bottom:20px}
 .fixes code, .note code{font:400 12px "IBM Plex Mono",monospace;background:var(--panel-2);
   border:1px solid var(--line);border-radius:4px;padding:1px 4px;color:var(--ink)}
 .tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px}
-table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+.tablewrap table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
 th{font:600 11px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;letter-spacing:.09em;
   color:var(--faint);text-align:left;padding:12px 16px;border-bottom:1px solid var(--line)}
 td{padding:9px 16px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -231,7 +236,8 @@ footer{margin-top:56px;color:var(--faint);font-size:12.5px;max-width:75ch}
 .bom{margin:0 0 12px}
 .bom table{width:100%;border-collapse:collapse;table-layout:fixed;
   font:400 12.5px "IBM Plex Mono",monospace}
-.bom th:last-child,.bom td.q{text-align:right;width:44px}
+.bom th:last-child,.bom td.q{text-align:right;width:38px}
+.bom th:nth-child(2),.bom td.d{width:104px}
 .bom td:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bom th{text-align:left;color:var(--faint);font-weight:500;padding:0 0 5px;
   border-bottom:1px solid var(--line)}
@@ -303,6 +309,47 @@ button.phototoggle,button.showorig{border-color:var(--edge)}
 /* anything interactive that still inherits a decorative rule */
 input:not([type=range]):not([type=checkbox]), textarea, select,
 .notes input, .step input{border-color:var(--edge)}
+
+/* ---- one catalog: cards on the left, the plate you are filling on the right ---- */
+.catwrap{display:grid;grid-template-columns:minmax(0,1fr) 356px;gap:20px;align-items:start}
+.catmain{min-width:0}
+.platerail{position:sticky;top:12px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:14px}
+.platerail h3{margin:0 0 4px;font-size:14px;letter-spacing:.02em}
+.platerail .hint{font-size:12px;color:var(--muted);margin:0 0 10px}
+.cattools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 16px}
+.cattools input{flex:1;min-width:180px;background:var(--panel-2);
+  border:1px solid var(--edge);border-radius:8px;color:var(--ink);
+  font:400 13px "IBM Plex Sans",sans-serif;padding:8px 10px}
+.cattools select{background:var(--panel-2);border:1px solid var(--edge);
+  border-radius:8px;color:var(--ink);font:400 13px "IBM Plex Sans",sans-serif;padding:8px}
+.catcount{font:400 12px "IBM Plex Mono",monospace;color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.catmore{display:flex;justify-content:center;margin:20px 0 0}
+.morebtn{background:var(--panel);border:1px solid var(--edge);border-radius:8px;
+  color:var(--ink);font:600 13px "IBM Plex Sans",sans-serif;padding:9px 22px;cursor:pointer}
+.morebtn:hover{border-color:var(--accent);color:var(--accent-ink)}
+.morebtn[hidden]{display:none}
+.card.oncart{outline:2px solid var(--accent);outline-offset:-2px}
+.qtytag{position:absolute;right:12px;bottom:10px;z-index:6;
+  background:var(--accent);color:var(--ground);border-radius:999px;
+  font:600 12px/1 "IBM Plex Mono",monospace;padding:5px 9px}
+.verline{margin:-4px 0 0}
+.cardfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
+.cardfoot .print{padding:7px 12px;font-size:12.5px}
+.card .params{max-height:none}
+.emptycat{color:var(--faint);font-style:italic;padding:26px 0}
+@media (max-width:1080px){
+  .catwrap{grid-template-columns:1fr}
+  .platerail{position:static;order:-1}
+}
+.refs{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  gap:10px;align-items:start;margin-top:14px}
+.refs>details{margin:0}
+.refs>details[open]{grid-column:1/-1}
+.refbody{padding:14px 16px}
+.refs .fixes{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 </style>
 </head>
 <body>
@@ -316,16 +363,12 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
   <h1>My Print Shop<span class="tld">.</span></h1>
   <a class="guidelink" href="guide.html">P2S Field Guide →</a>
   <button class="guidelink" id="rebuild" title="re-run the tools pipeline: designs, metadata, previews, page">Rebuild index</button>
-  <p class="sub">Everything this machine knows how to print: one catalogue of
-  everything printable — designs it generates to order, designs with options,
-  and every file it can find on disk — packed onto plates as you choose
-  quantities, plus a card per design with the measurements behind it. Run <code>make&nbsp;serve</code> in this folder — it serves the
-  page and powers the buttons. New to the vocabulary? See
-  <a href="#glossary" style="color:var(--accent-ink)">reading the numbers</a>.</p>
+  <p class="sub">One catalog of everything printable. Choose quantities and
+  they pack onto plates as you go.</p>
   <p class="sub" id="printerline" style="font:500 12px 'IBM Plex Mono',monospace;
-     color:var(--faint)">printer: <b style="color:var(--accent-ink)">Bambu Lab P2S</b>
-     · bed 256 × 256 × 256 mm · 0.4 nozzle · one machine for now, read from
-     <code>tools/catalog.py</code></p>
+     color:var(--faint);margin-top:6px">printer:
+     <b style="color:var(--accent-ink)">Bambu Lab P2S</b> · bed 256 × 256 × 256 mm
+     · 0.4 nozzle</p>
 </header>
 
 
@@ -333,121 +376,56 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
 
 
 <nav class="tabs" role="tablist">
-  <button role="tab" aria-selected="true" data-tab="shop" class="on">Shop</button>
-  <button role="tab" aria-selected="false" data-tab="designs">Designs</button>
+  <button role="tab" aria-selected="true" data-tab="catalog" class="on">Catalog</button>
   <button role="tab" aria-selected="false" data-tab="about">About</button>
 </nav>
 
-<div class="pane on" id="pane-shop">
-<section class="block shop" id="shop">
-  <h2>Print Shop</h2>
-  <p class="lede">Pick what you want and how many; the shop generates each part,
-  packs the copies onto as many 256&nbsp;&times;&nbsp;256 plates as it takes, and hands
-  back one 3MF per plate in a zip — each already carrying the P2S profile.
-  Parts whose sizes have to agree are sold as <em>kits</em>: the chain's
-  cross-section is also the clasp's mouth and the jump ring's section, so
-  ordering them at different diameters is not a choice worth offering.</p>
-  <div class="shopwrap">
-    <div class="shopcol">
-      <h3>Catalogue</h3>
-      <p class="hint">Everything printable, in one list. Kits come first —
-      their shared dials drive every member — then parts, then everything
-      found on disk. Some parts have options; all of them behave the same.</p>
-      <div class="catsearch">
-        <input id="cat-q" type="search" placeholder="search the catalogue…"
-               aria-label="search the catalogue">
-        <select id="cat-fam" aria-label="filter by source"></select>
-      </div>
-      <div class="catlist">
-        <div id="shop-kits"></div>
-        <div id="shop-parts"></div>
-      </div>
+<div class="pane on" id="pane-catalog">
+<div class="catwrap">
+  <div class="catmain">
+    <div class="cattools">
+      <input id="cat-q" type="search" placeholder="search the catalog…"
+             aria-label="search the catalog">
+      <select id="cat-fam" aria-label="filter by family"></select>
+      <span class="catcount" id="cat-count"></span>
     </div>
-    <div class="shopcol">
-      <h3>Bill of materials</h3>
-      <div class="bom" id="shop-bom"><p class="empty">nothing selected yet</p></div>
-      <h3>Plates</h3>
-      <p class="hint">The arranged plate itself, not a diagram of it — the same
-      placement the exporter writes. Drag to orbit.</p>
-      <p class="shopsum" id="shop-sum">nothing selected</p>
-      <canvas class="plateview" id="shop-3d"></canvas>
-      <div class="plates" id="shop-plates"></div>
-      <p class="shopwarn" id="shop-warn"></p>
-      <div class="actions" style="margin-top:12px;align-items:center">
-        <button class="print" id="shop-build">Build plates &rarr; zip</button>
-        <a class="savelink" id="shop-clear" href="#">clear the order</a>
-      </div>
-    </div>
+    <div class="grid" id="cat-grid"></div>
+    <div class="catmore"><button id="cat-more" class="morebtn">Show more</button></div>
   </div>
-</section>
+  <aside class="platerail">
+    <h3>Plate</h3>
+    <p class="hint">Accurate representation of the printable plates.</p>
+    <canvas class="plateview" id="shop-3d"></canvas>
+    <p class="shopsum" id="shop-sum">nothing on the plate</p>
+    <h3 style="margin-top:14px">Bill of materials</h3>
+    <div class="bom" id="shop-bom"><p class="empty">nothing on the plate yet</p></div>
+    <p class="shopwarn" id="shop-warn"></p>
+    <div class="actions" style="margin-top:12px;align-items:center">
+      <button class="print" id="shop-build">Build plates &rarr; zip</button>
+      <a class="savelink" id="shop-clear" href="#">clear the plate</a>
+    </div>
+  </aside>
 </div>
-
-<div class="pane" id="pane-designs">
-<div class="stats">
-  <div class="stat"><b>27</b><span>files scanned</span></div>
-  <div class="stat"><b>15</b><span>distinct designs</span></div>
-  <div class="stat"><b>9<em>/15</em></b><span>fully clean designs</span></div>
-  <div class="stat"><b>6</b><span>with mesh defects</span></div>
-  <div class="stat"><b>1</b><span>repaired part</span></div>
-  <div class="stat"><b>4</b><span>pair plates built</span></div>
-  <div class="stat"><b>8.6 M</b><span>triangles checked</span></div>
-</div>
-
-
-
-
-<div class="grid">{{CARDS}}</div>
-
-<section class="block">
-  <h2>Cross-design compatibility</h2>
-  <p class="lede">Where parts from different downloads can (and cannot) work together. The rule
-  of thumb that falls out of the analysis: two pieces mate when their interface genus (slot or
-  thread count) and profile radii match — diameters alone are not enough.</p>
-  <ul class="fixes">{{COMPAT}}</ul>
-</section>
-
-<section class="block">
-  <h2>Fixes &amp; swapped parts</h2>
-  <p class="lede">Verified from part names, metadata and mesh comparison, not guessed from
-  filenames.</p>
-  <ul class="fixes">{{FIXES}}</ul>
-</section>
-
-<section class="block">
-  <h2>File ledger</h2>
-  <p class="lede">All 27 files, mapped to their design family. <strong>Genus</strong> is the
-  count of tunnels passing clear through a closed solid — a ball is genus 0, a donut or ring
-  genus 1, and each extra handle or helical slot adds one. It is computed from the mesh itself
-  (Euler’s formula: vertices − edges + faces = 2 − 2·genus), so it fingerprints the interlock
-  mechanism no matter how the surface is decorated: the passthrough ball’s 21 helical channels
-  read out as genus 21, and the hourglass bodies’ slot counts as genus 8–19.</p>
-  <details class="ledgerwrap"><summary>Show all 31 files (27 scanned + 4 built)</summary>
-  <div class="tablewrap"><table>
-    <thead><tr><th>File</th><th class="num">MB</th><th>Design</th><th>Geometry verdict</th></tr></thead>
-    <tbody>{{ROWS}}</tbody>
-  </table></div></details>
-</section>
 </div>
 
 <div class="pane" id="pane-about">
-<section class="block">
-  <h2>About this shop</h2>
-  <p class="lede">One machine, one catalogue. Every design here is generated
-  from code that refuses to emit a part until it has proved its own
-  invariants — watertight geometry, real clearances, flexure strain inside
-  what PLA survives, threads verified by screwing the designer's own bolt
-  into them. The numbers on the cards are measurements, not estimates, and
-  where a print failed in the field the note says so.</p>
-  <p class="lede">The vocabulary those measurements use is below, with a
-  diagram for each. <a class="guidelink" style="display:inline-block;margin-top:8px"
-  href="guide.html">P2S Field Guide &rarr;</a></p>
-</section>
 <section class="block" id="glossary">
-  <h2>Reading the numbers</h2>
-  <p class="lede">The cards lean on a small vocabulary of measurements. First, the symbol that
-  appears everywhere: <strong style="color:var(--ink)">&#216; means diameter</strong> — the full
-  width of a circle through its center, in millimetres ("&#216;19 ball" = a ball 19&nbsp;mm
-  across). Everything else:</p>
+  <div class="aboutgrid">
+    <div>
+      <h2 style="margin-top:0">Reading the numbers</h2>
+      <p class="lede" style="margin-bottom:10px"><strong style="color:var(--ink)">&#216;
+      means diameter</strong> — the full width of a circle through its centre,
+      in millimetres. "&#216;19 ball" is a ball 19&nbsp;mm across.</p>
+      <p class="lede" style="margin-bottom:10px">Every figure on a card is
+      measured from the mesh or read out of a real slice, and print notes
+      record what happened on the printer.</p>
+      <a class="guidelink" style="display:inline-block" href="guide.html">P2S
+      Field Guide &rarr;</a>
+      <p class="hint" style="margin-top:14px;line-height:1.5">Slice figures come
+      from real Bambu Studio CLI runs (0.2&nbsp;mm Standard, PLA Basic, textured
+      PEI, 15% infill). Calibrated against the printer: masses land within
+      ±6%, times read 10–25% low and drift further on long prints.</p>
+    </div>
   <div class="dias">
     <figure class="dia">
       <svg viewBox="0 0 220 150" role="img" aria-label="Ball resting on a ring stand">
@@ -497,29 +475,40 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
     <figure class="dia">
       <img src="assets/genus.png" alt="Three blocks: solid, one cylinder bored through, two bored through" style="width:100%;display:block">
         <div class="genlabels"><span>genus 0</span><span>genus 1</span><span>genus 2</span></div>
-      <figcaption><strong>Genus</strong> is a topological property: the number of handles or
-      through-holes in a solid. <strong>Why you care:</strong> a toy's mechanism <em>is</em> its
-      topology — parts interlock only when tunnels and threads line up, so genus is a fingerprint
-      read straight from the mesh. It's how this index proved the hourglass spirals all share one
-      7-slot thread, caught that the "fixed" Staryu head is still the same part, and verified the
-      held-sphere's ball truly can't escape. A ball is genus 0; bore one cylinder clear through a
-      block and it's genus 1; every extra bore adds one — the passthrough ball's 21 helical
-      channels read genus 21.</figcaption>
+      <figcaption><strong>Genus</strong> is the number of handles or through-holes in a solid. <b>Why you care:</b> a toy's mechanism <i>is</i> its topology — parts interlock only when tunnels and threads line up, so genus is a fingerprint read straight from the mesh. A ball is genus 0; one bore through a block is genus 1; the passthrough ball's 21 helical channels read genus 21.</figcaption>
     </figure>
   </div>
+  </div>
+</section>
+
+<section class="block refs">
+  <details class="ledgerwrap"><summary>Cross-design compatibility</summary>
+  <div class="refbody">
+  <p class="lede">Two pieces mate when their interface genus (slot or thread
+  count) and profile radii match &mdash; diameters alone are not enough.</p>
+  <ul class="fixes">{{COMPAT}}</ul></div></details>
+
+  <details class="ledgerwrap"><summary>Fixes &amp; swapped parts</summary>
+  <div class="refbody">
+  <p class="lede">Verified from part names, metadata and mesh comparison, not
+  guessed from filenames.</p>
+  <ul class="fixes">{{FIXES}}</ul></div></details>
+
+  <details class="ledgerwrap"><summary>File ledger</summary>
+  <div class="refbody">
+  <p class="lede"><strong>Genus</strong> is the count of tunnels passing clear
+  through a closed solid &mdash; a ball is genus 0, a donut genus 1, and each
+  extra handle or helical slot adds one. It is computed from the mesh itself
+  (Euler’s formula: vertices &minus; edges + faces = 2 &minus; 2&middot;genus),
+  so it fingerprints the interlock mechanism no matter how the surface is
+  decorated: the passthrough ball’s 21 helical channels read out as genus 21,
+  and the hourglass bodies’ slot counts as genus 8&ndash;19.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>File</th><th class="num">MB</th><th>Design</th><th>Geometry verdict</th></tr></thead>
+    <tbody>{{ROWS}}</tbody>
+  </table></div></div></details>
 </section>
 </div>
-
-
-<footer>P2S slice numbers are real Bambu Studio CLI slices — 0.2 mm Standard, Bambu PLA
-Basic, textured PEI, 15% infill defaults. Calibration against Bambu Studio on the actual printer
-(2026-08-25, two parts): filament is reliable (Studio −1.5% to −6% vs harness) but the
-harness underestimates time, and more so on long prints — +8% on a 1-hour part, +25% on a
-7-hour one. Read masses as ±6% and add 10–25% to times, scaling with print length. Designs that specify other
-settings (100% infill hourglass solids, PETG) will run heavier and longer. Multi-plate
-projects are labeled with the plate that was sliced.<br><br>Validated 2026-08-24 with trimesh 5.0. Previews are decimated to ≤180 k triangles
-(full counts in each card); originals live in <span class="mono">models/</span>. Weights are
-solid-PLA upper bounds at 1.24 g/cm³ except where the file embeds a slicer estimate.</footer>
 </div>
 
 <script>const MODELS = {{MODELS}};</script>
@@ -664,12 +653,14 @@ function frameModel(v, obj){
 function setModel(v, i){
   const entry = v.entries[i];
   v.idx = i;
+  const key = entry.glb || entry.slug;
   const dimtag = v.el.parentElement.querySelector('.dimtag');
-  if (dimtag) dimtag.textContent =
-    `${entry.dims[0]}×${entry.dims[1]}×${entry.dims[2]} mm · ${entry.tris.toLocaleString()} tris`;
-  if (v.loaded[entry.slug]){
+  if (dimtag) dimtag.textContent = entry.dims && entry.tris
+    ? `${entry.dims[0]}×${entry.dims[1]}×${entry.dims[2]} mm · ${entry.tris.toLocaleString()} tris`
+    : '';
+  if (v.loaded[key]){
     if (v.current) v.scene.remove(v.current);
-    v.current = v.loaded[entry.slug];
+    v.current = v.loaded[key];
     v.scene.add(v.current); frameModel(v, v.current);
     placeCoin(v, new THREE.Box3().setFromObject(v.current));
     return;
@@ -677,14 +668,14 @@ function setModel(v, i){
   const status = document.createElement('div');
   status.className = 'status'; status.textContent = 'loading…';
   v.el.appendChild(status);
-  loader.load('models/glb/' + entry.slug + '.glb', gltf => {
+  loader.load(entry.glb || ('models/glb/' + entry.slug + '.glb'), gltf => {
     status.remove();
     const obj = gltf.scene;
     obj.rotation.x = -Math.PI/2;   // z-up sources
     obj.traverse(o => { if (o.isMesh){
       o.material.metalness = 0.05; o.material.roughness = 0.62;
       o.material.side = THREE.DoubleSide; }});
-    v.loaded[entry.slug] = obj;
+    v.loaded[key] = obj;
     if (v.idx === i){
       if (v.current) v.scene.remove(v.current);
       v.current = obj; v.scene.add(obj); frameModel(v, obj);
@@ -693,9 +684,19 @@ function setModel(v, i){
   }, undefined, () => { status.textContent = 'load failed — serve over http'; });
 }
 
-document.querySelectorAll('.view').forEach(el => {
-  const entries = MODELS[el.dataset.models];
-  if (!entries) return;
+// Every 3D viewport on the page is mounted through here, whether it was in
+// the markup or built a moment ago by the catalog. One code path means a
+// catalog card and a hand-written card behave the same: same lazy load, same
+// expand button, same graph-paper axes.
+const io = new IntersectionObserver(es => es.forEach(e => {
+  const v = views.find(x => x.el === e.target);
+  if (!v) return;
+  v.visible = e.isIntersecting;
+  if (v.visible && !v.started){ v.started = true; setModel(v, 0); }
+}), {rootMargin: '200px'});
+
+function mountView(el, entries){
+  if (!el || !entries || !entries.length) return null;
   const v = {el, entries, idx: 0, loaded: {}, current: null, started: false};
   v.scene = makeScene();
   v.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
@@ -714,7 +715,27 @@ document.querySelectorAll('.view').forEach(el => {
       chips.appendChild(b);
     });
   }
-});
+  addViewChrome(el);
+  io.observe(el);
+  return v;
+}
+
+// Filtering the catalog throws cards away. Each one owns a scene, a camera
+// and an observer entry, so dropping the element without dropping those
+// leaks a renderer's worth of state per keystroke.
+function unmountViews(root){
+  root.querySelectorAll('.view').forEach(el => {
+    const i = views.findIndex(x => x.el === el);
+    if (i < 0) return;
+    const v = views[i];
+    io.unobserve(el);
+    if (v.current) v.scene.remove(v.current);
+    v.controls.dispose();
+    views.splice(i, 1);
+  });
+}
+
+
 
 // ---- lightbox: one reusable large view ----
 const lbRoot = document.getElementById('lightbox');
@@ -748,12 +769,27 @@ lbRoot.querySelector('.lb-backdrop').onclick = closeLightbox;
 addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 views.push(lbV);
 
-document.querySelectorAll('.view').forEach(el => {
-  if (el === lbEl) return;
+// mounted after the lightbox exists: every viewport gets an expand button,
+// and that button needs somewhere to expand into
+document.querySelectorAll('.view').forEach(el =>
+  mountView(el, MODELS[el.dataset.models]));
+
+
+{
+  const gb = document.createElement('button');
+  gb.className = 'lb-close'; gb.style.width = 'auto'; gb.style.padding = '0 12px';
+  gb.style.font = '600 12px IBM Plex Sans, sans-serif'; gb.textContent = 'graph';
+  gb.onclick = () => { lbV.graphOn = !lbV.graphOn;
+    gb.style.color = lbV.graphOn ? '#7ea3e0' : ''; refreshGraph(lbV); };
+  lbRoot.querySelector('.lb-chrome').insertBefore(gb, lbRoot.querySelector('.lb-close'));
+}
+
+function addViewChrome(el){
+  if (el === lbEl || el.parentElement.querySelector('.expand')) return;
   const v0 = views.find(x => x.el === el);
   if (!v0) return;
   const b = document.createElement('button');
-  b.className = 'expand'; b.textContent = '⤢'; b.title = 'open large viewer';
+  b.className = 'expand'; b.textContent = '\u2922'; b.title = 'open large viewer';
   b.onclick = ev => { ev.stopPropagation(); openLightbox(v0); };
   el.parentElement.appendChild(b);
   const gb = document.createElement('button');
@@ -762,14 +798,6 @@ document.querySelectorAll('.view').forEach(el => {
   gb.onclick = ev => { ev.stopPropagation();
     v0.graphOn = !v0.graphOn; gb.classList.toggle('on', v0.graphOn); refreshGraph(v0); };
   el.parentElement.appendChild(gb);
-});
-{
-  const gb = document.createElement('button');
-  gb.className = 'lb-close'; gb.style.width = 'auto'; gb.style.padding = '0 12px';
-  gb.style.font = '600 12px IBM Plex Sans, sans-serif'; gb.textContent = 'graph';
-  gb.onclick = () => { lbV.graphOn = !lbV.graphOn;
-    gb.style.color = lbV.graphOn ? '#7ea3e0' : ''; refreshGraph(lbV); };
-  lbRoot.querySelector('.lb-chrome').insertBefore(gb, lbRoot.querySelector('.lb-close'));
 }
 
 function startTicker(el, label){
@@ -783,116 +811,7 @@ function startTicker(el, label){
   return () => clearInterval(iv);
 }
 // ---- parametric chain card ----
-const pcEl = document.querySelector('.view[data-models="__param_chain"]');
-if (pcEl){
-  const pv = { el: pcEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
-  pv.scene = makeScene();
-  pv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
-  pv.controls = new OrbitControls(pv.camera, pcEl);
-  pv.controls.enableDamping = true; pv.controls.autoRotate = true;
-  pv.controls.autoRotateSpeed = 1.0; pv.controls.enableZoom = false;
-  views.push(pv);
-  const PAL = [0xe97a3c, 0x40a096, 0x6c82c8, 0xd4aa42, 0xaa64aa, 0x64aa5a, 0xc85a64];
-  function stadiumPts(clL, clW, nPer){
-    const s = (clL - clW)/2, r = clW/2, pts = [];
-    for (let k = 0; k < nPer; k++){ const t = -Math.PI/2 + Math.PI*k/(nPer-1); pts.push([s + r*Math.cos(t), r*Math.sin(t)]); }
-    for (let k = 0; k < nPer; k++){ const t = Math.PI/2 + Math.PI*k/(nPer-1); pts.push([-s + r*Math.cos(t), r*Math.sin(t)]); }
-    return pts;
-  }
-  function linkGeometry(clL, clW, dia){
-    const path = stadiumPts(clL, clW, 20).map(p => new THREE.Vector3(p[0], p[1], 0));
-    const curve = new THREE.CatmullRomCurve3(path, true);
-    return new THREE.TubeGeometry(curve, 90, dia/2, 12, true);
-  }
-  function params(){
-    return { n: +document.getElementById('pc-links').value,
-             len: +document.getElementById('pc-len').value,
-             dia: +document.getElementById('pc-dia').value };
-  }
-  function rebuild(){
-    const {n, len, dia} = params();
-    const clW = 2.5*dia + 1.0, clL = len - dia;
-    const short = clL < clW + 2;
-    document.getElementById('pc-links-v').textContent = n;
-    document.getElementById('pc-len-v').textContent = len + ' mm';
-    document.getElementById('pc-dia-v').textContent = 'Ø' + dia + ' mm';
-    if (pv.current){ pv.scene.remove(pv.current); pv.current = null; }
-    if (short){
-      document.getElementById('pc-stats').textContent =
-        'link too short for Ø' + dia + ' — needs ≥ ' + (clW + 2 + dia).toFixed(0) + ' mm';
-      return;
-    }
-    const pitch = (clL - clW) + 0.30*(clW + dia);
-    const geo = linkGeometry(clL, clW, dia);
-    const group = new THREE.Group();
-    for (let i = 0; i < n; i++){
-      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-        color: PAL[i % PAL.length], metalness: 0.05, roughness: 0.62 }));
-      m.rotation.x = (i % 2 === 0 ? 1 : -1) * Math.PI/4;
-      m.position.x = i * pitch;
-      group.add(m);
-    }
-    const box = new THREE.Box3().setFromObject(group);
-    group.position.y = -(box.min.y + box.max.y)/2;
-    group.position.z = -box.min.z;
-    group.rotation.x = -Math.PI/2;   // z-up convention like the GLBs
-    pv.current = group; pv.scene.add(group);
-    const b2 = new THREE.Box3().setFromObject(group);
-    placeCoin(pv, b2);
-    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
-    const size = b2.getSize(new THREE.Vector3()).length();
-    const c = b2.getCenter(new THREE.Vector3());
-    pv.controls.target.copy(c);
-    const fovV = pv.camera.fov*Math.PI/180;
-    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*pv.camera.aspect))/2);
-    pv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
-    pv.camera.near = dist/50; pv.camera.far = dist*20; pv.camera.updateProjectionMatrix();
-    const per = 2*(clL - clW) + Math.PI*clW;
-    const vol = per*Math.PI*(dia/2)**2*n/1000;
-    const totalLen = (n-1)*pitch + len;
-    document.getElementById('pc-stats').textContent =
-      totalLen.toFixed(0) + ' mm long · pitch ' + pitch.toFixed(1) + ' mm · ≈' + (vol*1.24).toFixed(1) + ' g solid PLA';
-    const dt = pcEl.parentElement.querySelector('.dimtag');
-    if (dt) dt.textContent = n + ' links · live';
-  }
-  ['pc-links','pc-len','pc-dia'].forEach(id =>
-    document.getElementById(id).addEventListener('input', rebuild));
-  rebuild();
-  async function generate(){
-    const {n, len, dia} = params();
-    const r = await fetch(`/generate?links=${n}&len=${len}&dia=${dia}`);
-    return await r.json();
-  }
-  document.getElementById('pc-print').onclick = async e => {
-    const b = e.target; b.disabled = true;
-    const stop = startTicker(b, 'Generating + verifying');
-    try {
-      const j = await generate();
-      stop();
-      if (!j.ok) throw new Error(j.error || 'generation failed');
-      const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
-      const j2 = await r2.json();
-      if (!j2.ok) throw new Error(j2.error || 'open failed');
-      b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm joints)` : '');
-    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
-    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4000);
-  };
-  document.getElementById('pc-dl').onclick = async e => {
-    e.preventDefault();
-    const a = e.target; const orig = a.textContent;
-    const stop = startTicker(a, 'generating + verifying');
-    try {
-      const j = await generate();
-      stop();
-      if (!j.ok) throw new Error(j.error || 'generation failed');
-      a.textContent = 'download ' + j.file.split('/').pop() + (j.clearance ? ` · ${j.clearance} mm joints` : '');
-      const link = document.createElement('a');
-      link.href = 'models/' + j.file; link.download = '';
-      document.body.appendChild(link); link.click(); link.remove();
-    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
-    setTimeout(() => { a.textContent = orig; }, 5000);
-  };
-}
+
 
 function geodesic(nu){
   const phi = (1 + Math.sqrt(5))/2;
@@ -943,209 +862,9 @@ function geodesic(nu){
 const CAGE_MAT = new THREE.MeshStandardMaterial({color:0xd9a45c, metalness:0.05, roughness:0.62});
 const BALL_MAT = new THREE.MeshStandardMaterial({color:0x9a7fc0, metalness:0.05, roughness:0.6});
 // ---- parametric held-sphere card ----
-const cgEl = document.querySelector('.view[data-models="__param_cage"]');
-if (cgEl){
-  const cv = { el: cgEl, entries: [{}], idx: 0, current: null, visible: false, started: true };
-  cv.scene = makeScene();
-  cv.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
-  cv.controls = new OrbitControls(cv.camera, cgEl);
-  cv.controls.enableDamping = true; cv.controls.autoRotate = true;
-  cv.controls.autoRotateSpeed = 1.0; cv.controls.enableZoom = false;
-  views.push(cv);
-  function cgParams(){
-    const hasBall = document.getElementById('pg-hasball').checked;
-    return { dia: +document.getElementById('pg-dia').value,
-             sub: +document.getElementById('pg-sub').value,
-             strut: +document.getElementById('pg-strut').value,
-             ball: hasBall ? +document.getElementById('pg-ball').value : 0 };
-  }
-  function cgRebuild(){
-    let {dia, sub, strut, ball} = cgParams();
-    const cageOnly = ball === 0;
-    // stability envelope: spans ≤16 mm (field-bracketed), slenderness ≤8
-    let geo = geodesic(sub);
-    for (let guard = 0; guard < 8; guard++){
-      const eTest = (dia/2) * geo.eMaxU;
-      if (eTest > 16 && sub < 6){ sub++; document.getElementById('pg-sub').value = sub; geo = geodesic(sub); continue; }
-      if (eTest / strut > 8){
-        strut = Math.min(4, Math.ceil(eTest/8*5)/5);
-        document.getElementById('pg-strut').value = strut; continue;
-      }
-      break;
-    }
-    const R = dia/2, sr = strut/2, jr = sr*1.35, br = ball/2;
-    const {verts, edges} = geo;
-    const eLen = R * geo.eMaxU;
-    const opening = 2*(eLen/(2*Math.sqrt(3)) - sr);
-    document.getElementById('pg-dia-v').textContent = 'Ø' + dia + ' mm';
-    document.getElementById('pg-sub-v').textContent = edges.length + ' struts';
-    document.getElementById('pg-strut-v').textContent = 'Ø' + strut.toFixed(1) + ' mm';
-    document.getElementById('pg-ball-v').textContent = 'Ø' + ball + ' mm';
-    const escapes = !cageOnly && ball <= opening + 1.0;
-    const wontFit = !cageOnly && br > R - sr - 2.0;
-    if (cv.current){ cv.scene.remove(cv.current); cv.current = null; }
-    document.getElementById('pg-hasball-v').textContent = cageOnly ? 'cage only' : 'included';
-    document.getElementById('pg-ball').disabled = cageOnly;
-    // pedestal window: same segment rule as the generator
-    const pedR = Math.min(7, 0.34 * R - 3.5, br - 3.5, Math.max(4, br * 0.45));
-    const winR = pedR + 3.5;
-    const yLow = -R + 0.4 * R;
-    const segAxis = (a, b) => {
-      const ax = verts[a][0]*R, az = verts[a][2]*R;
-      const dx = verts[b][0]*R - ax, dz = verts[b][2]*R - az;
-      const L2 = dx*dx + dz*dz;
-      const tq = L2 === 0 ? 0 : Math.min(1, Math.max(0, -(ax*dx + az*dz)/L2));
-      return Math.hypot(ax + tq*dx, az + tq*dz);
-    };
-    const kept = cageOnly ? edges : edges.filter(([a, b]) =>
-      !(Math.max(verts[a][1], verts[b][1]) * R < yLow && segAxis(a, b) < winR));
-    let winOpen = 0;
-    { let dmin = Infinity;
-      for (const [a2, b2] of kept)
-        if (Math.max(verts[a2][1], verts[b2][1]) * R < yLow + 4) dmin = Math.min(dmin, segAxis(a2, b2));
-      winOpen = isFinite(dmin) ? 2 * (dmin - sr) : 0; }
-    const winEscape = !cageOnly && !escapes && !wontFit && ball < winOpen + 1.0;
-    // wobble estimate calibrated to the generator (Ø28 -> 7.13); server is authoritative
-    const wobbleEst = ball >= 24 ? 7.13 * ball / 28 : 9.9 * Math.pow(ball / 28, 3);
-    const tooHeavy = !cageOnly && !escapes && !wontFit && !winEscape && wobbleEst > 8.0;
-    const group = new THREE.Group();
-    const cyl = new THREE.CylinderGeometry(1, 1, 1, 12);
-    for (const [a, b] of kept){
-      const P = new THREE.Vector3(...verts[a]).multiplyScalar(R);
-      const Q = new THREE.Vector3(...verts[b]).multiplyScalar(R);
-      const m = new THREE.Mesh(cyl, CAGE_MAT);
-      const d = Q.clone().sub(P);
-      m.scale.set(sr, d.length(), sr);
-      m.position.copy(P).add(Q).multiplyScalar(0.5);
-      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
-      group.add(m);
-    }
-    const js = new THREE.SphereGeometry(1, 12, 8);
-    const usedV = new Set(kept.flat());
-    for (const i of usedV){
-      const m = new THREE.Mesh(js, CAGE_MAT);
-      m.scale.setScalar(jr);
-      m.position.set(verts[i][0]*R, verts[i][1]*R, verts[i][2]*R);
-      group.add(m);
-    }
-    if (!cageOnly && !escapes && !wontFit && !winEscape && !tooHeavy){
-      const yBed = -R - sr;
-      const yA = yBed + 5.4;                   // pedestal 4 + neck 1.4
-      const bm = new THREE.Mesh(new THREE.SphereGeometry(br, 24, 16), BALL_MAT);
-      bm.position.y = yA + br*Math.SQRT2;
-      group.add(bm);
-      const cn = new THREE.Mesh(new THREE.ConeGeometry(br/Math.SQRT2, br*Math.SQRT2, 32), BALL_MAT);
-      cn.rotation.x = Math.PI;
-      cn.position.y = yA + br*Math.SQRT2/2;
-      group.add(cn);
-      const pd = new THREE.Mesh(new THREE.CylinderGeometry(pedR, pedR, 4, 32), BALL_MAT);
-      pd.position.y = yBed + 2;
-      group.add(pd);
-      const nk = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 1.6, 16), BALL_MAT);
-      nk.position.y = yBed + 4.7;
-      group.add(nk);
-    }
-    cv.current = group; cv.scene.add(group);
-    const b2 = new THREE.Box3().setFromObject(group);
-    placeCoin(cv, b2);
-    b2.min.x -= (COIN_R*2 + 10); b2.min.y = Math.min(b2.min.y, 0);
-    const size = b2.getSize(new THREE.Vector3()).length();
-    const c = b2.getCenter(new THREE.Vector3());
-    cv.controls.target.copy(c);
-    const fovV = cv.camera.fov*Math.PI/180;
-    const dist = 1.08*size/2/Math.sin(Math.min(fovV, 2*Math.atan(Math.tan(fovV/2)*cv.camera.aspect))/2);
-    cv.camera.position.copy(c).add(new THREE.Vector3(1,0.6,1).normalize().multiplyScalar(dist));
-    cv.camera.near = dist/50; cv.camera.far = dist*20; cv.camera.updateProjectionMatrix();
-    const stats = document.getElementById('pg-stats');
-    if (tooHeavy)
-      stats.textContent = '⚠ ball too heavy to print on its breakaway neck (est. wobble ' + wobbleEst.toFixed(0) + ', limit 8 — max ≈ Ø31)';
-    else if (winEscape)
-      stats.textContent = '⚠ ball escapes through the pedestal window (Ø' + winOpen.toFixed(1) + ') — ball needs ≥ ' + (winOpen+1).toFixed(0) + ' mm';
-    else if (escapes)
-      stats.textContent = '⚠ ball escapes: openings Ø' + opening.toFixed(1) + ' — ball needs ≥ ' + (opening+1).toFixed(0) + ' mm';
-    else if (wontFit)
-      stats.textContent = '⚠ ball won\u2019t fit: max ≈ ' + (2*(R - sr - 2)).toFixed(0) + ' mm in this cage';
-    else {
-      stats.textContent = cageOnly
-        ? kept.length + ' struts · cage only, no window carved'
-        : edges.length + ' struts · openings Ø' + opening.toFixed(1) + ' · ball captive ✓';
-      stats.textContent += ' · spans ' + eLen.toFixed(0) + ' mm ✓';
-    }
-    const dt = cgEl.parentElement.querySelector('.dimtag');
-    if (dt) dt.textContent = 'Ø' + dia + ' · live';
-  }
-  ['pg-dia','pg-sub','pg-strut','pg-ball','pg-hasball'].forEach(id =>
-    document.getElementById(id).addEventListener('input', cgRebuild));
-  cgRebuild();
-  async function cgGenerate(){
-    const {dia, sub, strut, ball} = cgParams();
-    const r = await fetch(`/generate?type=cage&dia=${dia}&freq=${sub}&strut=${strut}&ball=${ball}`);
-    return await r.json();
-  }
-  document.getElementById('pg-print').onclick = async e => {
-    const b = e.target; b.disabled = true;
-    const stop = startTicker(b, 'Generating + verifying');
-    try {
-      const j = await cgGenerate();
-      stop();
-      if (!j.ok) throw new Error(j.error || 'generation failed');
-      const r2 = await fetch('/open?f=' + encodeURIComponent(j.file));
-      const j2 = await r2.json();
-      if (!j2.ok) throw new Error(j2.error || 'open failed');
-      b.textContent = 'Sent to Bambu Studio ✓' + (j.clearance ? ` (${j.clearance} mm clear)` : '');
-    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
-    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
-  };
-  document.getElementById('pg-dl').onclick = async e => {
-    e.preventDefault();
-    const a = e.target; const orig = a.textContent;
-    const stop = startTicker(a, 'generating + verifying');
-    try {
-      const j = await cgGenerate();
-      stop();
-      if (!j.ok) throw new Error(j.error || 'generation failed');
-      a.textContent = 'download ' + j.file.split('/').pop();
-      const link = document.createElement('a');
-      link.href = 'models/' + j.file; link.download = '';
-      document.body.appendChild(link); link.click(); link.remove();
-    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
-    setTimeout(() => { a.textContent = orig; }, 5000);
-  };
-}
 
-// ---- Montessori companion parts (geometry from the generated 3MFs) ----
-for (const [btn, dl, part] of [['mn-print','mn-dl','double-nut'],
-                               ['mp-print','mp-dl','plate']]){
-  if (!document.getElementById(btn)) continue;
-  const gen = async () => (await fetch('/generate?type=montessori&part=' + part,
-                                       {method: 'POST'})).json();
-  document.getElementById(btn).onclick = async e => {
-    const b = e.target; b.disabled = true;
-    const stop = startTicker(b, 'Generating + screwing a real bolt in');
-    try {
-      const j = await gen(); stop();
-      if (!j.ok) throw new Error(j.error || 'generation failed');
-      const j2 = await (await fetch('/open?f=' + encodeURIComponent(j.file))).json();
-      if (!j2.ok) throw new Error(j2.error || 'open failed');
-      b.textContent = 'Sent to Bambu Studio ✓';
-    } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
-    setTimeout(() => { b.textContent = 'Generate + open in Bambu Studio'; b.disabled = false; }, 4500);
-  };
-  document.getElementById(dl).onclick = async e => {
-    e.preventDefault();
-    const a = e.target; const orig = a.textContent;
-    const stop = startTicker(a, 'generating + verifying the thread');
-    try {
-      const j = await gen(); stop();
-      if (!j.ok) throw new Error(j.error || 'generation failed');
-      a.textContent = 'download ' + j.file.split('/').pop();
-      const link = document.createElement('a');
-      link.href = 'models/' + j.file; link.download = '';
-      document.body.appendChild(link); link.click(); link.remove();
-    } catch(err){ stop(); a.textContent = '✗ ' + err.message; }
-    setTimeout(() => { a.textContent = orig; }, 5000);
-  };
-}
+
+
 
 // ---- lobster clasp card (geometry from the generated 3MF, via GLB) ----
 if (document.getElementById('cl-print')){
@@ -1216,14 +935,6 @@ if (document.getElementById('pd-print')){
     setTimeout(() => { a.textContent = orig; }, 5000);
   };
 }
-
-const io = new IntersectionObserver(es => es.forEach(e => {
-  const v = views.find(x => x.el === e.target);
-  if (!v) return;
-  v.visible = e.isIntersecting;
-  if (v.visible && !v.started){ v.started = true; setModel(v, 0); }
-}), {rootMargin: '200px'});
-views.forEach(v => io.observe(v.el));
 
 async function openInSlicer(files, btn){
   const orig = btn.textContent;
@@ -1320,8 +1031,12 @@ function renderNotes(box, list){
     box.insertBefore(d, form);
   });
 }
-fetch('/notes').then(r => r.json()).then(all => {
-  document.querySelectorAll('.notes').forEach(box => {
+let ALLNOTES = {};
+function bindNotes(root){
+  (root || document).querySelectorAll('.notes').forEach(box => {
+    if (box.dataset.bound) return;
+    box.dataset.bound = '1';
+    const all = ALLNOTES;
     const cid = box.dataset.cid;
     const form = document.createElement('form');
     const inp = document.createElement('input');
@@ -1339,6 +1054,9 @@ fetch('/notes').then(r => r.json()).then(all => {
     box.appendChild(form);
     renderNotes(box, all[cid]);
   });
+}
+fetch('/notes').then(r => r.json()).then(all => {
+  ALLNOTES = all; bindNotes(document);
 }).catch(() => {});
 
 function animate(){
@@ -1364,14 +1082,15 @@ function animate(){
 }
 renderer.setAnimationLoop(animate);
 
-// ================= print shop =================
-// One catalogue: generated designs, parametric designs and files found on
-// disk are the same kind of thing here. Pick quantities, they land in the
-// bill of materials, and the plates re-pack as you go. The plate view is the
-// arranged geometry itself, exported by the same code that writes the 3MFs.
+// ================= the catalog =================
+// There is one list of designs. A part built by a generator, a part with
+// options, and a file found on disk are the same kind of thing here: a card
+// with a preview, a quantity, and a place on a plate. Choosing a quantity
+// puts it on the plate, and the plates re-pack as you go. The plate view is
+// the arranged geometry itself, exported by the code that writes the 3MFs.
 (async function shop(){
   const $ = id => document.getElementById(id);
-  if (!$('shop-kits')) return;
+  if (!$('cat-grid')) return;
   const qty = new Map(), shared = new Map(), own = new Map();
   let cat = null, plates = [], byId = {};
 
@@ -1401,7 +1120,7 @@ renderer.setAnimationLoop(animate);
       '" aria-label="quantity">' + '<button data-d="1" aria-label="one more">+</button>';
     const inp = d.querySelector('input');
     const set = n => { n = Math.max(0, Math.min(99, n|0)); qty.set(id, n);
-      inp.value = n; renderBom(); schedule(); };
+      inp.value = n; renderBom(); markCards(); schedule(); };
     d.querySelectorAll('button').forEach(b => b.onclick = () =>
       set((qty.get(id)||0) + Number(b.dataset.d)));
     inp.onchange = () => set(Number(inp.value));
@@ -1415,16 +1134,6 @@ renderer.setAnimationLoop(animate);
     r.oninput = () => { show(); set(Number(r.value)); schedule(); };
     show(); l.append(p.label + ' ', r, val); return l;
   }
-  function partRow(part, label){
-    const row = document.createElement('div'); row.className = 'srow';
-    const left = document.createElement('div');
-    left.innerHTML = '<span class="nm">' + (label || part.name) + '</span>' +
-      badge(part.version, part.changed, part.built) +
-      '<span class="dim" data-dim="' + part.id + '">' +
-      (part.blurb || part.family) + '</span>';
-    row.append(left, stepper(part.id));
-    return row;
-  }
   function optionBox(part, defs){
     const sh = document.createElement('div'); sh.className = 'shared';
     const store = own.get(part.id) || {}; own.set(part.id, store);
@@ -1435,55 +1144,206 @@ renderer.setAnimationLoop(animate);
 
   cat = await (await fetch('/shop/catalog')).json();
   byId = Object.fromEntries(cat.parts.map(p => [p.id, p]));
+  cat.kits.forEach(k => {
+    const store = {};
+    (k.shared || []).forEach(d => store[d.key] = d.val);
+    shared.set(k.id, store);
+  });
 
-  for (const kit of cat.kits){
-    const box = document.createElement('div'); box.className = 'kit';
-    box.innerHTML = '<b>' + kit.name + badge(kit.version, kit.changed, kit.built) +
-      '</b><p class="blurb">' + kit.blurb + '</p>';
-    if (kit.shared.length){
+  const esc = t => String(t == null ? '' : t)
+    .replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function spec(p){
+    const bits = [];
+    if (p.dims) bits.push(p.dims);
+    if (p.bodies > 1) bits.push(p.bodies + ' bodies');
+    if (p.tris) bits.push(p.tris.toLocaleString() + ' tris');
+    let out = esc(bits.join(' \u00b7 '));
+    if (p.slice) out += '<br>P2S slice: ' + esc(p.slice);
+    return out;
+  }
+  function metaBox(p){
+    if (!p.meta) return '';
+    const rows = ['Designer','License','Origin','Application','CreationDate']
+      .filter(k => p.meta[k])
+      .map(k => '<div class="mrow"><dt>' + k + '</dt><dd>' +
+                esc(p.meta[k]) + '</dd></div>').join('');
+    const desc = p.meta.Description
+      ? '<p class="mdesc">' + esc(p.meta.Description) + '</p>' : '';
+    const ph = p.meta.photos || [];
+    const gal = ph.length ? '<div class="gal">' + ph.map(u =>
+      '<img src="' + esc(u) + '" loading="lazy" alt="designer photo">')
+      .join('') + '</div>' : '';
+    if (!rows && !desc && !gal) return '';
+    return '<details class="metabox"><summary>designer\u2019s 3MF metadata' +
+      (ph.length ? ' \u00b7 ' + ph.length + ' photos' : '') + '</summary>' +
+      '<dl class="mrows">' + rows + '</dl>' + desc + gal + '</details>';
+  }
+  async function openPart(p, btn){
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Opening\u2026';
+    try {
+      const r = await fetch('/open?id=' + encodeURIComponent(p.id) +
+        '&params=' + encodeURIComponent(JSON.stringify(paramVals(p))));
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || 'server refused');
+      btn.textContent = 'Sent to Bambu Studio \u2713';
+    } catch(e){
+      btn.textContent = /fetch|network/i.test(e.message)
+        ? 'Run make serve first' : '\u2717 ' + e.message;
+    }
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3500);
+  }
+  function photo(entries, pill){
+    return '<div class="photo"><div class="view"></div>' +
+      (pill ? '<span class="pill ' + esc(pill[0]) + '">' + esc(pill[1]) +
+              '</span>' : '') +
+      '<div class="chips"></div><div class="dimtag"></div>' +
+      '<span class="qtytag" hidden></span></div>';
+  }
+
+  function makeCard(p){
+    const el = document.createElement('article');
+    el.className = 'card'; el.dataset.id = p.id;
+    if (p.card) el.dataset.cid = p.card;
+    el.innerHTML = photo(null, p.verdict) +
+      '<div class="body">' +
+      '<p class="eyebrow">' + esc(p.family) +
+        (p.designer ? ' \u00b7 ' + esc(p.designer) : '') + '</p>' +
+      '<h3>' + esc(p.name) +
+        (p.material ? ' <span class="mat">' + esc(p.material) + '</span>' : '') +
+        '</h3>' +
+      (p.version && p.version !== '\u2014'
+        ? '<div class="verline">' + badge(p.version, p.changed, p.built) + '</div>' : '') +
+      (p.blurb ? '<p class="principle">' + esc(p.blurb) + '</p>' : '') +
+      '<p class="specline" data-dim="' + esc(p.id) + '">' + spec(p) + '</p>' +
+      '</div>';
+    const body = el.querySelector('.body');
+    if (p.params && p.params.length) body.append(optionBox(p, p.params));
+    const foot = document.createElement('div'); foot.className = 'cardfoot';
+    const open = document.createElement('button');
+    open.className = 'print'; open.textContent = 'Open in Bambu Studio';
+    open.onclick = () => openPart(p, open);
+    foot.append(open, stepper(p.id));
+    body.append(foot);
+    if (p.card){
+      const n = document.createElement('div');
+      n.className = 'notes'; n.dataset.cid = p.card; body.append(n);
+    }
+    const mb = metaBox(p);
+    if (mb) body.insertAdjacentHTML('beforeend', mb);
+    if (p.preview) mountView(el.querySelector('.view'),
+      [{glb: p.preview, label: p.name, dims: p.dims3, tris: p.tris}]);
+    return el;
+  }
+
+  // A kit is one card, not several: its parts share dials because their
+  // sizes have to agree, and splitting them across cards is what let a
+  // clasp be ordered that no chain in the order would fit.
+  function makeKitCard(k){
+    const el = document.createElement('article');
+    el.className = 'card'; el.dataset.kit = k.id;
+    const mem = k.members.map(m => byId[m.part]).filter(Boolean);
+    el.innerHTML = photo(null, null) +
+      '<div class="body">' +
+      '<p class="eyebrow">kit \u00b7 ' + mem.length + ' parts, one set of sizes</p>' +
+      '<h3>' + esc(k.name) + '</h3>' +
+      '<div class="verline">' + badge(k.version, k.changed, k.built) + '</div>' +
+      (k.blurb ? '<p class="principle">' + esc(k.blurb) + '</p>' : '') +
+      '</div>';
+    const body = el.querySelector('.body');
+    if (k.shared && k.shared.length){
       const sh = document.createElement('div'); sh.className = 'shared';
-      const store = {}; kit.shared.forEach(p => store[p.key] = p.val);
-      shared.set(kit.id, store);
-      kit.shared.forEach(p => sh.append(slider(p, () => store[p.key],
-        v => { store[p.key] = v; })));
-      box.append(sh);
+      const store = shared.get(k.id);
+      k.shared.forEach(d => sh.append(slider(d, () => store[d.key],
+        v => { store[d.key] = v; })));
+      body.append(sh);
     }
-    for (const m of kit.members){
-      const part = byId[m.part]; if (!part) continue;
-      box.append(partRow(part, m.label));
-      if (m.own) box.append(optionBox(part, m.own));
+    for (const m of k.members){
+      const p = byId[m.part]; if (!p) continue;
+      const row = document.createElement('div'); row.className = 'srow';
+      const left = document.createElement('div');
+      left.innerHTML = '<span class="nm">' + esc(m.label || p.name) + '</span>' +
+        '<span class="dim" data-dim="' + esc(p.id) + '">' +
+        esc(p.dims || p.blurb || '') + '</span>';
+      row.append(left, stepper(p.id));
+      body.append(row);
+      if (m.own) body.append(optionBox(p, m.own));
     }
-    $('shop-kits').append(box);
+    const entries = mem.filter(p => p.preview).map(p =>
+      ({glb: p.preview, label: p.name, chip: p.name,
+        dims: p.dims3, tris: p.tris}));
+    if (entries.length) mountView(el.querySelector('.view'), entries);
+    return el;
   }
 
-  // one list for everything else, filtered rather than split by kind
-  const kitParts = new Set(cat.kits.flatMap(k => k.members.map(m => m.part)));
-  const solo = cat.parts.filter(p => !kitParts.has(p.id));
+  // ---- filter, page, render ----
   const fam = $('cat-fam');
-  fam.innerHTML = '<option value="">all sources</option>' +
-    cat.families.map(f => '<option>' + f + '</option>').join('');
-  const CAP = 60;
-  function renderCatalogue(){
+  fam.innerHTML = '<option value="">all families</option>' +
+    cat.families.map(f => '<option>' + esc(f) + '</option>').join('');
+  const inKit = new Set(cat.kits.flatMap(k => k.members.map(m => m.part)));
+  const solo = cat.parts.filter(p => !inKit.has(p.id));
+  const PAGE = 24;
+  let limit = PAGE;
+
+  const hay = p => (p.name + ' ' + p.family + ' ' + (p.blurb || '') + ' ' +
+                    (p.designer || '')).toLowerCase();
+  function chosen(){
     const q = $('cat-q').value.trim().toLowerCase(), f = fam.value;
-    const hit = solo.filter(p => (!f || p.family === f) &&
-      (!q || (p.name + ' ' + p.family + ' ' + (p.blurb||'')).toLowerCase().includes(q)));
-    const host = $('shop-parts'); host.innerHTML = '';
-    const box = document.createElement('div'); box.className = 'kit';
-    box.innerHTML = '<b>Parts</b><p class="blurb">' + hit.length +
-      ' of ' + solo.length + ' shown' + (hit.length > CAP ? ', first ' + CAP : '') +
-      '. Anything with a quantity joins the bill of materials.</p>';
-    // selected items always render, wherever the filter is
-    const shown = hit.slice(0, CAP);
-    for (const p of solo) if ((qty.get(p.id)||0) > 0 && !shown.includes(p)) shown.unshift(p);
-    for (const part of shown){
-      box.append(partRow(part));
-      if (part.params) box.append(optionBox(part, part.params));
-    }
-    host.append(box);
+    const kits = cat.kits.filter(k => {
+      const mem = k.members.map(m => byId[m.part]).filter(Boolean);
+      const t = (k.name + ' ' + (k.blurb || '') + ' ' +
+                 mem.map(p => p.name).join(' ')).toLowerCase();
+      return (!q || t.includes(q)) &&
+             (!f || mem.some(p => p.family === f));
+    }).map(k => ({kit: k}));
+    const parts = solo.filter(p => (!f || p.family === f) &&
+                                   (!q || hay(p).includes(q)))
+                      .map(p => ({part: p}));
+    return kits.concat(parts);
   }
-  $('cat-q').oninput = renderCatalogue;
-  fam.onchange = renderCatalogue;
-  renderCatalogue();
+  const onPlate = e => e.kit
+    ? e.kit.members.some(m => (qty.get(m.part) || 0) > 0)
+    : (qty.get(e.part.id) || 0) > 0;
+
+  function render(){
+    const grid = $('cat-grid');
+    const all = chosen();
+    // what is on the plate sorts to the front of whatever the filter left,
+    // so a long catalog never buries the thing being adjusted
+    all.sort((a, b) => (onPlate(b) ? 1 : 0) - (onPlate(a) ? 1 : 0));
+    const show = all.slice(0, limit);
+    unmountViews(grid);
+    grid.innerHTML = '';
+    if (!show.length){
+      grid.innerHTML = '<p class="emptycat">Nothing matches that.</p>';
+    } else {
+      show.forEach(e => grid.append(e.kit ? makeKitCard(e.kit) : makeCard(e.part)));
+    }
+    $('cat-count').textContent = show.length + ' of ' + all.length +
+      (all.length === 1 ? ' design' : ' designs');
+    $('cat-more').hidden = show.length >= all.length;
+    bindNotes(grid);
+    markCards();
+  }
+  // the quantity a card shows has to survive a re-render and a filter change
+  function markCards(){
+    document.querySelectorAll('#cat-grid .card').forEach(el => {
+      const ids = el.dataset.kit
+        ? cat.kits.find(k => k.id === el.dataset.kit).members.map(m => m.part)
+        : [el.dataset.id];
+      const n = ids.reduce((a, id) => a + (qty.get(id) || 0), 0);
+      el.classList.toggle('oncart', n > 0);
+      const tag = el.querySelector('.qtytag');
+      if (tag){ tag.hidden = !n; tag.textContent = '\u00d7' + n; }
+    });
+  }
+  let redraw = null;
+  $('cat-q').oninput = () => { clearTimeout(redraw);
+    redraw = setTimeout(() => { limit = PAGE; render(); }, 120); };
+  fam.onchange = () => { limit = PAGE; render(); };
+  $('cat-more').onclick = () => { limit += PAGE; render(); };
+  render();
 
   function renderBom(){
     const rows = [...qty].filter(([,n]) => n > 0);
@@ -1521,6 +1381,25 @@ renderer.setAnimationLoop(animate);
     }
     return g;
   }
+  function frameBeds(){
+    const box = new THREE.Box3().setFromObject(beds);
+    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3()).length();
+    CT.target.copy(c);
+    C3.position.copy(c).add(new THREE.Vector3(0.5, 0.85, 0.9)
+      .normalize().multiplyScalar(size * 0.95));
+    C3.updateProjectionMatrix();
+  }
+  // An empty plate is still a plate: show the bed from the first frame
+  // rather than a black rectangle that reads as a broken viewport.
+  function showEmptyBed(){
+    if (beds) S3.remove(beds);
+    if (model){ S3.remove(model); model = null; }
+    const pr = cat.printers[cat.printer];
+    beds = bedGrid(1, 1, pr.bed, 5, 300);
+    S3.add(beds);
+    frameBeds();
+  }
   function show3d(info, bed, margin){
     if (beds){ S3.remove(beds); beds = null; }
     beds = bedGrid(info.cols, info.plates, bed, margin, 300);
@@ -1536,19 +1415,13 @@ renderer.setAnimationLoop(animate);
         o.material = new THREE.MeshStandardMaterial({color: 0xE9A063,
           metalness: 0.05, roughness: 0.6}); }});
       S3.add(model);
-      const box = new THREE.Box3().setFromObject(beds);
-      const c = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3()).length();
-      CT.target.copy(c);
-      C3.position.copy(c).add(new THREE.Vector3(0.5, 0.85, 0.9)
-        .normalize().multiplyScalar(size * 0.95));
-      C3.updateProjectionMatrix();
+      frameBeds();
     });
   }
   (function loop(){
     requestAnimationFrame(loop);
     const r = cv.getBoundingClientRect();
-    if (!r.width || !document.getElementById('pane-shop').classList.contains('on')) return;
+    if (!r.width || !document.getElementById('pane-catalog').classList.contains('on')) return;
     if (cv.width !== Math.round(r.width*devicePixelRatio)){
       R3.setSize(r.width, r.height, false);
       C3.aspect = r.width / r.height; C3.updateProjectionMatrix();
@@ -1560,8 +1433,8 @@ renderer.setAnimationLoop(animate);
   function schedule(){ clearTimeout(timer); timer = setTimeout(layout, 400); }
   async function layout(){
     const o = order();
-    if (!o.length){ plates = []; $('shop-sum').textContent = 'nothing selected';
-      $('shop-warn').textContent = ''; if (model){ S3.remove(model); model = null; }
+    if (!o.length){ plates = []; $('shop-sum').textContent = 'nothing on the plate';
+      $('shop-warn').textContent = ''; showEmptyBed();
       if (beds){ S3.remove(beds); beds = null; } return; }
     if (busy){ schedule(); return; }
     busy = true; $('shop-sum').textContent = 'packing…';
@@ -1580,8 +1453,13 @@ renderer.setAnimationLoop(animate);
         if (!rep.w) continue;
         const dims = rep.w.toFixed(0)+'×'+rep.d.toFixed(0)+'×'+rep.h.toFixed(0)+' mm';
         if (byId[id]) byId[id].dims = dims;
-        const el = document.querySelector('[data-dim="' + id + '"]');
-        if (el) el.textContent = dims + ' each';
+        // the measurement comes back from the real build, so the card and
+        // the kit row both take the corrected size rather than the estimate
+        document.querySelectorAll('[data-dim="' + id + '"]').forEach(el => {
+          if (el.classList.contains('specline') && byId[id])
+            el.innerHTML = spec(byId[id]);
+          else el.textContent = dims + ' each';
+        });
       }
       renderBom();
       if (j.preview) show3d(j.preview, j.bed, j.margin);
@@ -1591,7 +1469,7 @@ renderer.setAnimationLoop(animate);
 
   $('shop-clear').onclick = ev => { ev.preventDefault(); qty.clear();
     document.querySelectorAll('.step input').forEach(i => i.value = 0);
-    renderBom(); layout(); };
+    renderBom(); markCards(); layout(); };
   $('shop-build').onclick = async e => {
     const b = e.target, o = order(); if (!o.length) return;
     b.disabled = true;
@@ -1607,6 +1485,8 @@ renderer.setAnimationLoop(animate);
     } catch(err){ stop(); b.textContent = '✗ ' + err.message; }
     setTimeout(() => { b.textContent = 'Build plates → zip'; b.disabled = false; }, 4500);
   };
+
+  showEmptyBed();     // after the 3D state above exists, not before
 })();
 
 // ---- tabs ----
