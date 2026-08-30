@@ -94,7 +94,9 @@ PARTS = [
     _p("dice_orb", "Dice Orb", "Designed here", "generated",
        "A standard d20 captive in a rib-and-ring shaker sphere.",
        version="3.2.0",
-       gen=["gen_dice_cage.py"], out="dice-cage.3mf", proven=True,
+       gen=["gen_dice_cage.py"], out="dice-cage.3mf",
+       proven="Green PLA, outer brim on — clean; the brim is what holds the "
+              "die pedestal down.",
        # printed twice: it failed brimless and came out perfect with an
        # outer brim holding the die pedestal down
        brim="on"),
@@ -123,6 +125,9 @@ PARTS = [
        "the joint has been measured to bend through.",
        version="1.2.0",
        gen=["gen_chain.py"],
+       proven="48 links coiled, 0.6 mm bed foot, no brim, black PLA at "
+              "220/55 — clean first try. The same chain brimless on a "
+              "tangent-line foot lifted links a few layers in.",
        out="chain-N{links}-L{len:g}-D{dia:g}-F{foot:g}.3mf"),
     _p("sphere_stand", "Sphere Stand", "Sphere Stands", "parametric",
        "A ring that cradles a ball on a conformal spherical seat. Leave the "
