@@ -78,21 +78,26 @@ def thread_plug(nut, length, lead=LEAD):
     return plug.slice_plane([0, 0, length / 2], [0, 0, -1], cap=True)
 
 
-def crest_radius(nut, z=0.0):
-    """How far the thread actually protrudes into the bore.
+def crest_radius(plug, zs=(2.0, 6.0, 10.0)):
+    """How far the thread will protrude into the finished bore.
 
-    The chamfer has to clear this, not the root: the root is where the
-    thread is deepest, the crest is what the hole is measured by and what
-    a ceiling would be built out of.
+    Measured on the plug — the solid that cuts the bore — because that is
+    the surface the part actually ends up with. Measuring the donor nut's
+    own bore instead gives a radius half a millimetre wide of it, and the
+    lead-in aimed there leaves exactly that much thread behind: a sliver
+    that tapers to nothing, which is the feather edge the printer cannot
+    fill.
     """
-    sec = nut.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
-    if sec is None:
-        return BORE_ROOT - 5.0
-    pl, _ = sec.to_2D()
-    p = max(pl.polygons_full, key=lambda q: q.area)
-    if not p.interiors:              # the exterior is the hex, not the bore
-        return BORE_ROOT - 5.0
-    return float(min(np.hypot(x, y) for x, y in p.interiors[0].coords))
+    best = None
+    for z in zs:
+        sec = plug.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
+        if sec is None:
+            continue
+        pl, _ = sec.to_2D()
+        p = max(pl.polygons_full, key=lambda q: q.area)
+        r = float(min(np.hypot(x, y) for x, y in p.exterior.coords))
+        best = r if best is None else min(best, r)
+    return BORE_ROOT - 5.0 if best is None else best
 
 
 def entry_chamfer(z_face, opens_up, to_r=None):
@@ -197,13 +202,18 @@ def build_double_nut(nut, height=42.0, lead=LEAD):
     ring = trimesh.creation.cylinder(radius=HEX_CR - 2.2, height=4.6,
                                      sections=96)
     body = body.difference(groove.difference(ring), engine="manifold")
+    plug = thread_plug(nut, height + 6.0, lead=lead)
+    # aim the lead-in a hair inside the crest it has to clear, so no sliver
+    # of thread is left behind to taper away to nothing
+    crest = crest_radius(plug) - 0.25
     cut = trimesh.boolean.union(
-        [thread_plug(nut, height + 6.0, lead=lead),
-         # the top face flares outward going up, so it is self-supporting and
-         # a cosmetic chamfer is enough. The bottom prints as a ceiling, so
-         # its lead-in runs at 45 degrees all the way to the crest.
-         entry_chamfer(height / 2, True),
-         entry_chamfer(-height / 2, False, to_r=crest_radius(nut))],
+        [plug,
+         # Both ends get the full lead-in. The bottom needs it because it
+         # prints as a ceiling; the top needs it because the thread feathers
+         # to a knife edge there too, and a slice thinner than one extrusion
+         # is what makes that face look unfinished.
+         entry_chamfer(height / 2, True, to_r=crest),
+         entry_chamfer(-height / 2, False, to_r=crest)],
         engine="manifold")
     return body.difference(cut, engine="manifold")
 

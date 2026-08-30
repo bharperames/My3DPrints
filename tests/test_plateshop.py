@@ -359,3 +359,47 @@ class TestChainCoils(unittest.TestCase):
         # overlap in plan, so it welds every link to its neighbour
         rep, _ = self._make(40)
         self.assertFalse(rep["brim"])
+
+
+class TestAPlateSaysWhatItHolds(unittest.TestCase):
+    """A downloaded plate must be identifiable without measuring its mesh."""
+
+    def _build(self, order):
+        import tempfile
+        items, _ = PS.order_items(order)
+        plates, over = PS.pack(items)
+        self.assertFalse(over)
+        out = tempfile.mkdtemp()
+        name, man = PS.build_output(plates, out)
+        return os.path.join(out, name), man
+
+    def test_the_version_is_in_the_name_of_a_single_design_plate(self):
+        path, man = self._build([{"part": "mont_double", "qty": 1}])
+        v = man[0]["versions"][0]["version"]
+        self.assertIn(f"v{v}", os.path.basename(path))
+
+    def test_the_plate_carries_a_readable_parts_list(self):
+        import zipfile
+        path, man = self._build([{"part": "mont_double", "qty": 1}])
+        with zipfile.ZipFile(path) as z:
+            txt = z.read("PARTS.txt").decode()
+            meta = json.loads(z.read("Metadata/print_shop.json"))
+        self.assertIn("Double Nut", txt)
+        self.assertIn(man[0]["versions"][0]["version"], txt)
+        self.assertEqual(meta["parts"][0]["id"], "mont_double")
+        self.assertTrue(meta["parts"][0]["fingerprint"])
+
+    def test_a_rebuilt_part_is_not_served_from_the_mesh_cache(self):
+        # the server holds meshes in memory; a generated part is rebuilt at
+        # the same path, and a cache keyed on the path alone kept handing
+        # out geometry that had been fixed on disk twenty minutes earlier
+        import time
+        path, _ = catalog.ensure(catalog.find("mont_double"))
+        first = PS.load_bodies(path)
+        key1 = PS._BODIES[path][0]
+        time.sleep(1.1)
+        os.utime(path, None)
+        PS.load_bodies(path)
+        self.assertNotEqual(PS._BODIES[path][0], key1,
+                            "the cache did not notice the file changed")
+        self.assertEqual(len(first), len(PS.load_bodies(path)))

@@ -272,7 +272,11 @@ class TestBoreEntryIsPrintable(unittest.TestCase):
         # which is a 3 mm shelf however good the chamfer above it is
         import gen_montessori as GM
         nut, _ = GM.source_parts()
-        crest = GM.crest_radius(nut)
+        # measured on the plug that cuts the bore, not on the donor nut:
+        # the nut's own bore sits half a millimetre wide of the surface the
+        # part ends up with, and a lead-in aimed there leaves that much
+        # thread behind
+        crest = GM.crest_radius(GM.thread_plug(nut, 48.0))
         self.assertLess(crest, GM.BORE_ROOT)
         c = GM.entry_chamfer(0.0, False, to_r=crest)
         rise = float(c.bounds[1][2] - c.bounds[0][2])

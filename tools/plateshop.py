@@ -165,8 +165,20 @@ _BODIES = {}
 
 
 def load_bodies(path):
-    """Every body of a file, in world space, keyed by its geometry name."""
-    if path not in _BODIES:
+    """Every body of a file, in world space, keyed by its geometry name.
+
+    Keyed on the file's size and mtime, not its path alone. A generated part
+    is rebuilt in place at the same path, so a cache keyed on the path holds
+    the old mesh for the life of the process: the server kept handing out a
+    nut whose bore entry had been fixed on disk twenty minutes earlier.
+    """
+    try:
+        st = os.stat(path)
+        key = (path, st.st_size, int(st.st_mtime))
+    except OSError:
+        key = (path, None, None)
+    hit = _BODIES.get(path)
+    if hit is None or hit[0] != key:
         src = trimesh.load(path, force="scene")
         out = []
         for node in src.graph.nodes_geometry:
@@ -174,8 +186,9 @@ def load_bodies(path):
             g = src.geometry[gk].copy()
             g.apply_transform(tf)
             out.append((gk, g))
-        _BODIES[path] = out
-    return [(gk, g.copy()) for gk, g in _BODIES[path]]
+        _BODIES[path] = (key, out)
+        hit = _BODIES[path]
+    return [(gk, g.copy()) for gk, g in hit[1]]
 
 
 def is_assembly(bodies):
@@ -316,6 +329,33 @@ def plate_name(p):
     return stem
 
 
+def _stamp_parts(p):
+    """What is on this plate, by version — so a file can be identified later.
+
+    A downloaded plate was anonymous: nothing in it said which version of a
+    design it held, so "is this the latest?" could only be answered by
+    measuring the mesh. That is not a question a user should have to bring
+    to someone else.
+    """
+    import versions as _v
+    out = []
+    seen = set()
+    for it in p["items"]:
+        if it["key"] in seen:
+            continue
+        seen.add(it["key"])
+        try:
+            part = catalog.find(it["key"])
+        except KeyError:
+            continue
+        led, _ = _v.reconcile([dict(part, kind=part["kind"])], write=False)
+        e = led.get(it["key"], {})
+        out.append(dict(id=it["key"], name=part["name"],
+                        version=e.get("version", part.get("version", "?")),
+                        fingerprint=e.get("fingerprint", "")))
+    return out
+
+
 def write_plate(p, path, brim=False):
     """One plate as a Bambu project. Returns its manifest entry."""
     from embed_settings import embed
@@ -350,7 +390,18 @@ def write_plate(p, path, brim=False):
                 sc.add_geometry(g, geom_name=f"{it['key']}_{n}_{gk}")
     sc.export(path)
     embed(path, brim=brim)
+    stamp = _stamp_parts(p)
+    # written into the project itself, so the answer travels with the file
+    with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("Metadata/print_shop.json", json.dumps(
+            {"plate": p["index"], "brim": bool(brim), "parts": stamp},
+            indent=1))
+        z.writestr("PARTS.txt", "My Print Shop — what is on this plate\n\n"
+                   + "\n".join(f"  {q['name']}  v{q['version']}  "
+                                f"[{q['fingerprint']}]" for q in stamp)
+                   + f"\n\n  brim: {'outer' if brim else 'none'}\n")
     return dict(plate=p["index"], group=p["group"], parts=len(p["items"]),
+                versions=stamp,
                 util=round(p["util"], 3), solid_cm3=round(cm3, 1),
                 brim=bool(brim), file=os.path.basename(path),
                 items=[dict(key=i["key"], name=i["name"],
@@ -372,8 +423,11 @@ def build_output(plates, outdir, oversized=None):
         stem = plate_name(p)
         cm3_path = os.path.join(outdir, f"{stem}.3mf")
         m = write_plate(p, cm3_path, brim=brim)
+        vs = m.get("versions") or []
+        tag = f"_{vs[0]['id']}-v{vs[0]['version']}" if len(vs) == 1 else ""
         named = os.path.join(
-            outdir, f"{stem}_{m['parts']}parts_{round(m['solid_cm3'])}cm3.3mf")
+            outdir,
+            f"{stem}{tag}_{m['parts']}parts_{round(m['solid_cm3'])}cm3.3mf")
         if named != cm3_path:
             os.replace(cm3_path, named)
             m["file"] = os.path.basename(named)
