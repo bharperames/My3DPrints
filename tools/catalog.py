@@ -165,14 +165,37 @@ BY_ID = {p["id"]: p for p in PARTS}
 _LIB_INDEX = {}
 
 
+def _lib_stamp():
+    """What the library is built from: the shelf and the import list."""
+    out = []
+    for f in (IMPORTED,):
+        try:
+            st = os.stat(f)
+            out.append((f, st.st_size, int(st.st_mtime)))
+        except OSError:
+            out.append((f, None, None))
+    try:
+        out.append((MODELS, int(os.stat(MODELS).st_mtime)))
+    except OSError:
+        pass
+    return tuple(out)
+
+
 def find(part_id):
-    """Resolve any catalog id — generated, parametric or library."""
+    """Resolve any catalog id — generated, parametric or library.
+
+    The library index is rebuilt when the shelf or the import list changes.
+    Held for the life of the process instead, a file imported a moment ago
+    is not findable until the server restarts.
+    """
     if part_id in BY_ID:
         return BY_ID[part_id]
-    if part_id not in _LIB_INDEX:
+    stamp = _lib_stamp()
+    if _LIB_INDEX.get("__stamp__") != stamp or part_id not in _LIB_INDEX:
         _LIB_INDEX.clear()
+        _LIB_INDEX["__stamp__"] = stamp
         _LIB_INDEX.update({p["id"]: p for p in library()})
-    if part_id in _LIB_INDEX:
+    if part_id in _LIB_INDEX and part_id != "__stamp__":
         return _LIB_INDEX[part_id]
     raise KeyError(part_id)
 
@@ -455,6 +478,13 @@ def library(dirs=None, limit=400, include_imported=True):
     return out
 
 
+def _tag(stamp):
+    """A short, URL-safe version tag for a preview's source stamp."""
+    if not stamp:
+        return ""
+    return hashlib.md5(str(stamp).encode()).hexdigest()[:8]
+
+
 def previews():
     """id -> preview record, built by previews.py. Empty is not an error."""
     f = os.path.join(MODELS, "previews.json")
@@ -479,7 +509,11 @@ def enrich(part, prev):
     out = dict(part)
     pv = prev.get(part["id"])
     if pv:
-        out.update(preview=pv["glb"], dims3=pv["dims"], bodies=pv["bodies"],
+        # the stamp rides in the URL: a rebuilt preview is a new address, so
+        # the browser cannot keep showing the geometry it cached earlier
+        tag = _tag(pv.get("stamp"))
+        out.update(preview=pv["glb"] + (f"?v={tag}" if tag else ""),
+                   dims3=pv["dims"], bodies=pv["bodies"],
                    tris=pv["tris_full"])
         d = pv["dims"]
         out["dims"] = f"{d[0]} x {d[1]} x {d[2]} mm"
@@ -553,7 +587,9 @@ def catalog(with_library=True):
         pv = prev.get("kit_" + k["id"])
         if pv:
             # the card is for the set, so its preview shows the whole set
-            kit.update(preview=pv["glb"], dims3=pv["dims"], tris=pv["tris_full"],
+            tag = _tag(pv.get("stamp"))
+            kit.update(preview=pv["glb"] + (f"?v={tag}" if tag else ""),
+                       dims3=pv["dims"], tris=pv["tris_full"],
                        bodies=pv["bodies"])
         kits.append(kit)
     fams = []

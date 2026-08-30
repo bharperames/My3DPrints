@@ -35,8 +35,16 @@ class TestOneList(unittest.TestCase):
 
     def test_preview_files_are_on_disk(self):
         for p in self.parts[:40]:
-            self.assertTrue(os.path.exists(os.path.join(ROOT, p["preview"])),
-                            p["preview"])
+            f = p["preview"].split("?")[0]
+            self.assertTrue(os.path.exists(os.path.join(ROOT, f)), f)
+
+    def test_a_preview_url_carries_a_version_tag(self):
+        # a rebuilt preview must be a new address, or the browser keeps
+        # showing the geometry it cached before the fix
+        tagged = [p for p in self.parts if "?v=" in p.get("preview", "")]
+        self.assertGreater(len(tagged), len(self.parts) * 0.9)
+        for p in tagged[:5]:
+            self.assertRegex(p["preview"], r"\?v=[0-9a-f]{8}$")
 
     def test_a_curated_file_keeps_its_designer_and_title(self):
         ball = next(p for p in self.parts if p["name"] == "Mini Fidget Ball")

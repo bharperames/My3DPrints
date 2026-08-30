@@ -59,6 +59,37 @@ shop exported into a new "design" in its own catalog.
 `make clean-cache` prints what the caches cost; `make clean-cache-yes`
 clears them and `make build` puts them back.
 
+## Staying current
+
+Two kinds of part live here — files on the shelf, and parts a generator
+builds to order — and every place one is cached is a place it can go stale.
+It has, four times: a built 3MF returned forever, meshes held in memory
+against a path, a library index frozen at process start, and a server
+running code from before a fix. Each was invisible from outside; the shop
+looked like it was working.
+
+The rule is that **nothing serves geometry older than the code that makes
+it**, and every cache states what invalidates it:
+
+| what is held | invalidated by |
+|---|---|
+| `custom/*.3mf`, a part built to order | its generator's mtime, and `embed_settings.py` |
+| meshes held in memory while packing | the file's size and mtime |
+| the library index | the shelf and `imported.json` |
+| the shop's code inside a running server | any `tools/*.py` it depends on, reloaded in place |
+| a preview in the browser's cache | the URL carries a tag derived from the source |
+| previews and the version ledger | the source file's size and mtime |
+
+So editing a generator is enough: the next order rebuilds the part, reloads
+the code, and re-reads the mesh, with no restart and nothing to remember.
+`tests/test_freshness.py` drives that whole path.
+
+What a plate *is* travels with it. Every exported 3MF carries `PARTS.txt`
+and `Metadata/print_shop.json` naming each design with its version and
+fingerprint, and a single-design plate puts the version in its filename —
+so "is this the latest?" is answered by reading the file rather than by
+measuring its mesh.
+
 ## Run
 
 ```

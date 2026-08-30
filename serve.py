@@ -6,6 +6,7 @@ The page's "Open in Bambu Studio" buttons call GET /open?f=<file in models/>,
 which runs `open -a BambuStudio <file>` so the real (full-resolution) model
 lands in the slicer — from there: slice, then Print to the P2S.
 """
+import glob
 import json
 import os
 import subprocess
@@ -15,6 +16,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
+TOOLS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools")
 MODELS = os.path.join(ROOT, "models")
 PORT = 8742
 APP_CANDIDATES = ["BambuStudio", "Bambu Studio"]
@@ -38,10 +40,54 @@ def load_notes():
         return {}
 
 
+# Reloaded in dependency order: a module that imports another must come
+# after it, so that re-executing its `import` picks up the fresh one.
+_SHOP_MODULES = ("designs", "embed_settings", "meshcheck", "catalog",
+                 "versions", "previews", "plateshop")
+_SEEN = {}
+
+
+def _sources():
+    """mtime of every tool the shop's answers depend on."""
+    out = {}
+    for name in _SHOP_MODULES:
+        f = os.path.join(TOOLS, name + ".py")
+        try:
+            out[name] = os.path.getmtime(f)
+        except OSError:
+            pass
+    for f in sorted(glob.glob(os.path.join(TOOLS, "gen_*.py"))):
+        try:
+            out[os.path.basename(f)] = os.path.getmtime(f)
+        except OSError:
+            pass
+    return out
+
+
 def _shop_modules():
-    """Imported lazily: they pull in trimesh, which is slow to load."""
+    """The shop's code, reloaded if it changed under the running server.
+
+    A long-lived process holds whatever it imported at startup. That is how
+    a generator could be fixed on disk and every order still come back with
+    the old geometry: the server was running code from before the fix, and
+    holding meshes cached against it. Nobody is going to remember to restart
+    a server after every edit, so the server notices instead.
+    """
+    import importlib
     import catalog
     import plateshop
+    now = _sources()
+    if _SEEN and now != _SEEN:
+        changed = [k for k, v in now.items() if _SEEN.get(k) != v]
+        print(f"reloading: {', '.join(sorted(changed))}", flush=True)
+        for name in _SHOP_MODULES:
+            m = sys.modules.get(name)
+            if m is not None:
+                importlib.reload(m)
+        catalog = sys.modules["catalog"]
+        plateshop = sys.modules["plateshop"]
+    _SEEN.clear()
+    _SEEN.update(now)
     return catalog, plateshop
 
 
