@@ -28,3 +28,16 @@ build:
 .PHONY: test
 test:
 	$(PY) -m unittest discover -s tests
+
+# Everything under models/ that can be rebuilt. The shelf (models/*.3mf and
+# *.stl) and the designer photos in meta/ are never touched: those are the
+# only files here that cannot be regenerated.
+clean-cache:
+	@echo "generated parts   $$(ls models/custom 2>/dev/null | wc -l | tr -d ' ') files  $$(du -sh models/custom 2>/dev/null | cut -f1)"
+	@echo "card previews     $$(ls models/glb/prev 2>/dev/null | wc -l | tr -d ' ') files  $$(du -sh models/glb/prev 2>/dev/null | cut -f1)"
+	@echo ""
+	@echo "run 'make clean-cache-yes' to delete them; 'make build' rebuilds"
+
+clean-cache-yes:
+	rm -rf models/custom models/glb/prev models/previews.json
+	@echo "cleared. run 'make build'"

@@ -30,6 +30,35 @@ Every entry carries a semver and a date. The version is declared; the date is
 read from the last commit touching its generator. An amber badge means the
 cached file predates the design and will rebuild when ordered.
 
+## What is in `models/`
+
+Four kinds of thing, and only two of them matter if you lose the rest.
+
+| | what it is | rebuildable |
+|---|---|---|
+| `*.3mf`, `*.stl` (top level) | **the shelf** — the designs themselves, 41 of the catalog's 50 parts | no |
+| `meta/` | designer photos and metadata unpacked out of the 3MFs | from the shelf |
+| `custom/` | **generated parts** — what a generator built for one set of dial settings, named after them (`chain-N48-L19-D3.25-F0.6.3mf`), plus exported plates | yes, on demand |
+| `glb/prev/`, `previews.json`, `versions.json` | card previews and the indexes the page reads | `make build` |
+
+Nine of the fifty parts have a generator and no file until they are ordered:
+wrench, dice orb, double nut, base plate, clasp, jump ring, chain, sphere
+stand, geodesic cage. Ordering one runs its script with the dials you chose
+and caches the result under a filename made from those dials — so a 48-link
+chain and a 40-link chain are two files, and changing a dial makes a third.
+A cached file is rebuilt when its generator is newer than it, so a fix to a
+generator reaches the next order.
+
+The other forty-one are files on the shelf. Nothing is generated for them;
+they are served as they are.
+
+`~/Downloads` is **not** read unless you press *Import from Downloads* — it
+used to be scanned on every page load, which quietly turned every plate the
+shop exported into a new "design" in its own catalog.
+
+`make clean-cache` prints what the caches cost; `make clean-cache-yes`
+clears them and `make build` puts them back.
+
 ## Run
 
 ```
