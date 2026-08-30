@@ -222,3 +222,69 @@ class TestWrench(unittest.TestCase):
             self.assertGreaterEqual(gap, self.W.FIT_MIN, tag)
             self.assertLessEqual(gap, self.W.FIT_MAX, tag)
             self.assertGreater(free, 0, tag)
+
+
+class TestBoreEntryIsPrintable(unittest.TestCase):
+    """The face that prints downward may not be a ceiling.
+
+    The bore entry was cut with `cone(radius=BORE_ROOT + CHAMFER,
+    height=CHAMFER)` — 20 mm of radius over 2 mm of height, a flank 9 across
+    for every 1 up. It reads like a 2.2 mm chamfer and is an 84 degree
+    overhang: a shelf built inward over open air at roughly 1.8 mm of
+    unsupported step per layer, which drooped into the hole and came off the
+    printer as loose strands across the opening.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import trimesh
+        import catalog
+        cls.trimesh = trimesh
+        path, _ = catalog.ensure(catalog.find("mont_double"))
+        cls.m = trimesh.util.concatenate(
+            list(trimesh.load(path, force="scene").geometry.values()))
+
+    def _downward(self, zmax=9.0, rmax=20.5):
+        import numpy as np
+        m = self.m
+        z0 = m.bounds[0][2]
+        c, n, a = m.triangles_center, m.face_normals, m.area_faces
+        sel = ((c[:, 2] - z0 < zmax) & (c[:, 2] - z0 > 0.05)
+               & (np.hypot(c[:, 0], c[:, 1]) < rmax) & (n[:, 2] < -0.05))
+        ang = np.degrees(np.arcsin(np.clip(-n[sel, 2], 0, 1)))
+        return ang, a[sel]
+
+    def test_the_entry_has_no_unsupported_ceiling(self):
+        import numpy as np
+        ang, area = self._downward()
+        severe = float(area[ang >= 60].sum())
+        self.assertLess(severe, 60.0,
+                        f"{severe:.0f} mm2 of the bore entry overhangs past "
+                        f"60 deg; it was 557 mm2 when it strung")
+
+    def test_most_of_the_entry_is_comfortably_printable(self):
+        ang, area = self._downward()
+        ok = float(area[ang < 45].sum())
+        self.assertGreater(ok / max(float(area.sum()), 1e-9), 0.7)
+
+    def test_the_chamfer_reaches_the_thread_crest(self):
+        # relieving only the root leaves the crest to appear in one slice,
+        # which is a 3 mm shelf however good the chamfer above it is
+        import gen_montessori as GM
+        nut, _ = GM.source_parts()
+        crest = GM.crest_radius(nut)
+        self.assertLess(crest, GM.BORE_ROOT)
+        c = GM.entry_chamfer(0.0, False, to_r=crest)
+        rise = float(c.bounds[1][2] - c.bounds[0][2])
+        flare = (GM.BORE_ROOT + GM.CHAMFER) - crest
+        self.assertAlmostEqual(rise, flare, delta=0.15,
+                               msg="the lead-in is not at 45 degrees")
+
+    def test_a_chamfer_solid_is_a_volume_either_way_up(self):
+        # mirroring the profile reverses its winding; the boolean refuses a
+        # solid of negative volume
+        import gen_montessori as GM
+        for up in (True, False):
+            c = GM.entry_chamfer(21.0 if up else -21.0, up)
+            self.assertTrue(c.is_volume, f"opens_up={up}")
+            self.assertGreater(c.volume, 0)

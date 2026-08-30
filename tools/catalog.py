@@ -101,13 +101,17 @@ PARTS = [
        # outer brim holding the die pedestal down
        brim="on"),
     _p("mont_double", "Double Nut (coupler)", "Montessori", "generated",
-       "Joins two Montessori bolts end to end.",
-       version="1.2.0",
+       "Joins two Montessori bolts end to end. The bore's lower entry runs "
+       "out to the thread crest at 45 degrees, so the face that prints "
+       "downward has no ceiling to droop into the hole.",
+       version="1.3.0",
        gen=["gen_montessori.py", "--part", "double-nut"],
        out="montessori-double-nut.3mf"),
     _p("mont_plate", "Base Plate 2×3", "Montessori", "generated",
        "Six threaded sockets to stand the bolts in.",
-       version="1.2.0",
+       # shares the double nut's entry chamfer; its sockets open upward, so
+       # the reshape is cosmetic here rather than a printability fix
+       version="1.2.1",
        gen=["gen_montessori.py", "--part", "plate"],
        out="montessori-plate-2x3.3mf"),
     _p("clasp", "Lobster Clasp", "Designed here", "generated",

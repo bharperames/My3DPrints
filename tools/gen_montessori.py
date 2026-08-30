@@ -78,18 +78,65 @@ def thread_plug(nut, length, lead=LEAD):
     return plug.slice_plane([0, 0, length / 2], [0, 0, -1], cap=True)
 
 
-def entry_chamfer(z_face, opens_up):
-    """A cone that flares the bore where it meets a face of the part.
+def crest_radius(nut, z=0.0):
+    """How far the thread actually protrudes into the bore.
+
+    The chamfer has to clear this, not the root: the root is where the
+    thread is deepest, the crest is what the hole is measured by and what
+    a ceiling would be built out of.
+    """
+    sec = nut.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
+    if sec is None:
+        return BORE_ROOT - 5.0
+    pl, _ = sec.to_2D()
+    p = max(pl.polygons_full, key=lambda q: q.area)
+    if not p.interiors:              # the exterior is the hex, not the bore
+        return BORE_ROOT - 5.0
+    return float(min(np.hypot(x, y) for x, y in p.interiors[0].coords))
+
+
+def entry_chamfer(z_face, opens_up, to_r=None):
+    """A 45 degree flare where the bore meets a face of the part.
 
     It must sit at the part's face, not at the end of the cutting plug —
     a plug that overshoots the part carries its chamfer outside the
     material, where it cuts nothing.
+
+    A frustum, not a cone. `cone(radius=BORE_ROOT + CHAMFER, height=CHAMFER)`
+    reads like a 2.2 mm chamfer and is not one: 20.2 mm of radius over 2.2 mm
+    of height is a flank 9.2 across for every 1 up, an 84 degree overhang.
+    On the face that prints downward that is a ceiling built inward over open
+    air, about 1.8 mm of unsupported step per layer, and it droops into the
+    bore as the loose strands that came off the printer. At 45 degrees each
+    layer steps in by one layer height, which is the limit an 0.4 nozzle
+    holds unaided.
     """
-    c = trimesh.creation.cone(radius=BORE_ROOT + CHAMFER, height=CHAMFER,
-                              sections=96)
+    # a wedge ring, not a cone reaching the axis: the thread plug already
+    # takes everything inside BORE_ROOT, and a profile that touches the axis
+    # revolves into a shape the boolean will not accept as a volume
+    # The inner wall runs a millimetre inside BORE_ROOT so it overlaps the
+    # thread plug rather than sharing a surface with it: coincident faces
+    # leave the union non-manifold, which the export check refuses.
+    # `to_r` is where the flare has to reach before the wall goes vertical.
+    # Stopping at BORE_ROOT relieves the root and leaves the crest to appear
+    # in one slice — a 3 mm shelf, which is the ceiling that actually drooped.
+    outer = BORE_ROOT + CHAMFER
+    inner = BORE_ROOT if to_r is None else to_r
+    rise = outer - inner                       # 45 degrees
+    prof = np.array([
+        [inner - 1.0, 0.0],
+        [outer, 0.0],
+        [inner, rise],
+        [inner - 1.0, rise],
+        [inner - 1.0, 0.0],
+    ])
     if opens_up:
-        c.apply_transform(trimesh.transformations.rotation_matrix(
-            np.pi, [1, 0, 0]))          # wide at the face, tapering inward
+        # wide at the face, tapering inward. Mirroring alone reverses the
+        # profile's orientation and revolves into a solid of negative volume,
+        # which the boolean refuses; reversing the order restores it.
+        prof[:, 1] = -prof[:, 1]
+        prof = prof[::-1]
+    c = trimesh.creation.revolve(prof, sections=96)
     c.apply_translation([0, 0, z_face])
     return c
 
@@ -152,8 +199,12 @@ def build_double_nut(nut, height=42.0, lead=LEAD):
     body = body.difference(groove.difference(ring), engine="manifold")
     cut = trimesh.boolean.union(
         [thread_plug(nut, height + 6.0, lead=lead),
+         # the top face flares outward going up, so it is self-supporting and
+         # a cosmetic chamfer is enough. The bottom prints as a ceiling, so
+         # its lead-in runs at 45 degrees all the way to the crest.
          entry_chamfer(height / 2, True),
-         entry_chamfer(-height / 2, False)], engine="manifold")
+         entry_chamfer(-height / 2, False, to_r=crest_radius(nut))],
+        engine="manifold")
     return body.difference(cut, engine="manifold")
 
 
