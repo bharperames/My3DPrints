@@ -1470,6 +1470,61 @@ renderer.setAnimationLoop(animate);
   CT.enableDamping = true;
   let model = null, beds = null;
 
+  // Orbit about whatever is under the cursor, not about the middle of the
+  // plate. OrbitControls always looks at its target, so moving the target
+  // to a clicked point swings the view to centre it — the part jumps away
+  // from under the pointer. Instead the camera and its target are both
+  // rotated about the picked point, which leaves the view exactly where it
+  // was and only changes what the drag pivots on. Without this, a part
+  // packed at the edge of the bed cannot be turned round to look at.
+  const RAY = new THREE.Raycaster();
+  const NDC = new THREE.Vector2();
+  let pivot = null, last = null;
+
+  function pickPivot(ev){
+    const r = cv.getBoundingClientRect();
+    NDC.set(((ev.clientX - r.left) / r.width) * 2 - 1,
+            -((ev.clientY - r.top) / r.height) * 2 + 1);
+    RAY.setFromCamera(NDC, C3);
+    const hits = model ? RAY.intersectObject(model, true) : [];
+    if (hits.length) return hits[0].point.clone();
+    // nothing under the cursor: fall back to where the ray meets the bed,
+    // which is still nearer the thing being looked at than the plate centre
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const p = new THREE.Vector3();
+    return RAY.ray.intersectPlane(plane, p) ? p : null;
+  }
+
+  cv.addEventListener('pointerdown', ev => {
+    if (ev.button !== 0) return;
+    pivot = pickPivot(ev);
+    if (!pivot) return;
+    CT.enableRotate = false;               // we do the rotating
+    last = {x: ev.clientX, y: ev.clientY};
+    cv.setPointerCapture(ev.pointerId);
+  });
+  cv.addEventListener('pointermove', ev => {
+    if (!pivot || !last) return;
+    const dx = (ev.clientX - last.x) * 0.008;
+    const dy = (ev.clientY - last.y) * 0.008;
+    last = {x: ev.clientX, y: ev.clientY};
+    const right = new THREE.Vector3().setFromMatrixColumn(C3.matrix, 0);
+    const q = new THREE.Quaternion()
+      .setFromAxisAngle(new THREE.Vector3(0, 1, 0), -dx)
+      .multiply(new THREE.Quaternion().setFromAxisAngle(right, -dy));
+    for (const o of [C3.position, CT.target]){
+      o.sub(pivot).applyQuaternion(q).add(pivot);
+    }
+    C3.quaternion.premultiply(q);          // the view comes with it
+    C3.updateMatrixWorld();
+  });
+  for (const e of ['pointerup', 'pointercancel', 'pointerleave'])
+    cv.addEventListener(e, ev => {
+      if (!pivot) return;
+      pivot = last = null; CT.enableRotate = true;
+      try { cv.releasePointerCapture(ev.pointerId); } catch (_){}
+    });
+
   // A slicer bed, not a bare grid: a solid surface that takes the shadow,
   // 10 mm graph-paper ruling with a heavier 50 mm line, and the usable area
   // outlined inside the plate's own edge.
@@ -1669,7 +1724,9 @@ renderer.setAnimationLoop(animate);
 
   // a hook for the browser checks: the plate's renderer and light rig
   window.__plateObjs = () => ({R3, S3, C3, KEY, beds: () => beds,
-                              model: () => model});
+                              model: () => model, pivot: () => pivot});
+  window.__V3 = THREE.Vector3; window.__V2 = THREE.Vector2;
+  window.__RC = THREE.Raycaster;
   window.__plate = () => ({shadows: R3.shadowMap.enabled,
     shadowMaps: R3.info.memory.textures,
     calls: R3.info.render.calls, tris: R3.info.render.triangles,

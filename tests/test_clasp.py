@@ -30,7 +30,10 @@ class TestClasp(unittest.TestCase):
 
     def test_each_part_is_one_connected_piece(self):
         self.assertEqual(self.clasp.geom_type, "Polygon")
-        self.assertEqual(self.ring.geom_type, "Polygon")
+        # the ring is round wire now, built as a solid rather than an
+        # outline to extrude
+        self.assertTrue(self.ring.is_watertight)
+        self.assertEqual(len(self.ring.split(only_watertight=False)), 1)
 
     def test_gate_retains_the_link_when_closed(self):
         self.assertLess(self.rep["closed_gap_mm"], D - 0.6)
@@ -53,15 +56,19 @@ class TestClasp(unittest.TestCase):
         # nominal anchor; the generator must account for that taper
         self.assertGreater(self.rep["weld_root_deg"], 1.0)
 
-    def test_ring_opens_in_plane_not_across_layers(self):
+    def test_the_ring_opens_by_bending_within_budget(self):
+        # the old ring was radially thinner than it was tall, so it would
+        # rather flex in-plane than twist out of its layers. Round wire has
+        # no such preference — it bends the same about every diameter — so
+        # what has to hold is the strain when its ends are pulled apart
         rr_t, height = self.rep["ring_section"]
-        self.assertLess(rr_t, height)
+        self.assertAlmostEqual(rr_t, height, places=2)
+        self.assertLessEqual(self.rep["ring_strain"], GC.STRAIN_LIMIT)
 
     def test_ring_threads_the_chain_link_and_the_tail(self):
-        rr_t, height = self.rep["ring_section"]
-        diag = np.hypot(rr_t, height)
-        self.assertLess(diag, self.rep["link_bore"] - 0.4)
-        self.assertLess(diag, self.rep["tail_bore"] - 0.4)
+        wire = self.rep["ring_wire_mm"]
+        self.assertLess(wire, self.rep["link_bore"] - 0.4)
+        self.assertLess(wire, self.rep["tail_bore"] - 0.4)
 
     def test_tail_bore_is_the_only_closed_hole(self):
         # the bowl is open through the mouth by design — that is how the link
@@ -159,3 +166,43 @@ class TestItHasFormNotJustOutline(unittest.TestCase):
         # a crown deeper than the part would come to a knife edge
         for th in (2.0, 3.58, 8.0):
             self.assertLessEqual(min(GC.CROWN, 0.28 * th), 0.28 * th)
+
+
+class TestTheRingIsWire(unittest.TestCase):
+    """Round section, the same as the chain links it joins.
+
+    A flat annulus read as a washer beside them. A circular section bends
+    the same about every diameter, which is fine — a C-ring is opened by
+    pulling its ends apart, and that is bending. What it costs is size: the
+    splay strain goes with the section depth, so round wire this thick needs
+    a bigger ring to open without over-straining.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.clasp, cls.ring, cls.rep, cls.th = GC.build(D)[:4]
+
+    def test_the_wire_matches_the_chain_it_joins(self):
+        self.assertAlmostEqual(self.rep["ring_wire_mm"], D, places=2)
+
+    def test_the_section_is_round(self):
+        import numpy as np
+        # a vertical slice through the wire is as tall as it is wide, bar
+        # the flat cut off its underside
+        m = self.ring
+        h = float(m.bounds[1][2] - m.bounds[0][2])
+        self.assertAlmostEqual(h, D - GC.RING_FOOT, delta=0.15)
+
+    def test_it_lands_on_a_pad_not_a_line(self):
+        # the same trick the chain links needed
+        self.assertGreater(self.rep["ring_bed_mm2"], 40)
+
+    def test_the_ring_grew_to_keep_its_splay_in_budget(self):
+        self.assertLessEqual(self.rep["ring_strain"], GC.STRAIN_LIMIT)
+        # round wire is deeper than the old rectangle, so the ring has to be
+        # bigger; if it were not, the strain gate would have caught it
+        self.assertGreater(self.rep["ring_outer_dia"], 4.0 * D)
+
+    def test_the_wire_still_threads_what_it_has_to(self):
+        self.assertLess(self.rep["ring_wire_mm"], self.rep["link_bore"] - 0.4)
+        self.assertLess(self.rep["ring_wire_mm"], self.rep["tail_bore"] - 0.4)

@@ -37,7 +37,10 @@ OVERRIDES = {
     "curr_bed_type": "Textured PEI Plate",
     "brim_type": "outer_only",
     "brim_width": "5",
-    "brim_object_gap": "0.1",
+    # 0, not 0.1: a brim that does not touch the part is decoration. The
+    # field guide is explicit about it, and grip is the only reason a brim
+    # is ever switched on here.
+    "brim_object_gap": "0",
     "enable_support": "0",             # template came from a supported print
     # Travels that cross an open bore drag a string across it, once or more
     # per layer, and a helical thread turns each one a little further round

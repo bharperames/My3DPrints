@@ -126,11 +126,11 @@ PARTS = [
        "Flexure-gate clasp, sized to the chain it ends. Chunky against its "
        "width the way a real one is, flat on the bed and crowned above, so "
        "it has form in the hand instead of the square edges of a cut-out.",
-       version="2.2.0",
+       version="2.3.0",
        gen=["gen_clasp.py", "--part", "clasp"], out="clasp-only-D{dia:g}.3mf"),
     _p("jump_ring", "Jump Ring", "Designed here", "generated",
        "Butt C-ring that threads the link bore and the clasp's eye.",
-       version="1.3.0",     # keeps a wire section while the clasp thickens
+       version="2.0.0",     # round wire, the same section as the chain
        gen=["gen_clasp.py", "--part", "ring"], out="ring-only-D{dia:g}.3mf"),
     _p("chain", "Chain", "Designed here", "parametric",
        "Print-in-place stadium links, cut flat where they meet the bed so "

@@ -53,6 +53,9 @@ def wedge(a0, a1, r_in, r_out):
     return Polygon(np.vstack([outer, inner]))
 
 
+RING_FOOT = 0.4   # flat cut off the bottom of the ring's wire, mm — the
+                  # same trick the chain links needed: a round tube meets
+                  # the bed on a line and the slicer lays a single bead
 CROWN = 1.4       # how far the top rounds over, mm. At 0.8 on a 3.6 mm
                   # body the rounding was there and invisible — the printed
                   # part still read as a flat cut-out.
@@ -220,53 +223,63 @@ def build(D, T=None):
                          f"{THUMB_MAX:.0f}) — thinner body or longer beam")
 
     # --- jump ring -------------------------------------------------------
-    # A butt C-ring, as a metal jump ring is. A ball-and-socket snap was the
-    # first attempt and does not fit: a socket with walls either side needs
-    # more radial section than the ring can spare without going stiffer than
-    # PLA tolerates when sprung open. Section is radially thinner than it is
-    # tall on purpose, so it opens in-plane instead of twisting out of its
-    # layers.
-    rr_t = max(1.30, 0.40 * D)              # radial thickness
-    # The ring is wire, not a body: it has to thread a link and the clasp's
-    # own tail, so it keeps a wire-like section however chunky the clasp
-    # gets. Thickening it with the clasp took its section past both bores.
-    th_r = max(rr_t + 0.6, 1.10 * D)
-    Rr_out = 1.90 * D
-    Rr_mid = Rr_out - rr_t / 2
-    if rr_t >= th_r:
-        raise ValueError("ring must be radially thinner than it is tall, "
-                         "or it opens by twisting out of its layers")
-    half = np.degrees(np.arctan2(SEAT_CLR / 2, Rr_mid))
-    ring = ((Point(0, 0).buffer(Rr_out, 128)
-             .difference(Point(0, 0).buffer(Rr_out - rr_t, 128)))
-            .difference(wedge(90 - half, 90 + half,
-                              Rr_out - rr_t - 0.1, Rr_out + 0.1)))
-    if ring.geom_type != "Polygon":
-        raise ValueError("jump ring did not close into one part")
-    rep["ring_gap_mm"] = round(SEAT_CLR, 2)
-
-    # ring must splay wide enough to pass a link tube, without over-straining
-    Lr = np.pi * Rr_mid                      # each end is half the ring
+    # Round wire, the same section as the chain links it joins: a flat
+    # annulus read as a washer beside them. A circular section bends the
+    # same about every diameter, so it has no in-plane preference the way
+    # the old rectangle did — which is fine, because a C-ring is opened by
+    # pulling its ends apart, and that is bending, not twisting. What it
+    # costs is size: the splay strain goes with the section depth, so round
+    # wire this thick needs a bigger ring to open without over-straining.
+    rw = D                                   # wire diameter, as the chain
     dr = (D + 0.5 - SEAT_CLR) / 2            # how far each end must travel
-    strain_r = 3 * rr_t * dr / (2 * Lr ** 2)
-    rep.update(ring_open_mm=round(D + 0.5, 2), ring_strain=round(strain_r, 4))
+    # smallest ring whose splay stays under the limit, with margin
+    Rr_mid = 1.12 * np.sqrt(3 * rw * dr / (2 * STRAIN_LIMIT)) / np.pi
+    Rr_out = Rr_mid + rw / 2
+    Lr = np.pi * Rr_mid                      # each end is half the ring
+    strain_r = 3 * rw * dr / (2 * Lr ** 2)
+    rep.update(ring_open_mm=round(D + 0.5, 2), ring_strain=round(strain_r, 4),
+               ring_wire_mm=round(rw, 2), ring_outer_dia=round(2 * Rr_out, 1))
     if strain_r > STRAIN_LIMIT:
         raise ValueError(f"jump-ring strain {strain_r*100:.1f}% over limit")
 
-    # threading: the ring's section must pass the chain link's bore and the
-    # clasp's tail bore
-    sec_diag = np.hypot(rr_t, th_r)
+    half = np.degrees(np.arctan2(SEAT_CLR / 2, Rr_mid))
+    ring_mesh = trimesh.creation.torus(major_radius=Rr_mid,
+                                       minor_radius=rw / 2,
+                                       major_sections=128, minor_sections=24)
+    gap = trimesh.creation.box(extents=[SEAT_CLR, 2 * Rr_out + rw, rw + 1.0])
+    gap.apply_translation([0, (Rr_out + rw) / 2 + Rr_mid / 2, 0])
+    ring_mesh = ring_mesh.difference(gap, engine="manifold")
+    # the same flat the chain links get: round wire meets the bed on a
+    # tangent line, and the slicer can only lay one bead along it
+    cut = ring_mesh.slice_plane([0, 0, -rw / 2 + RING_FOOT], [0, 0, 1],
+                                cap=True)
+    if cut is not None and len(cut.faces):
+        ring_mesh = cut
+    ring_mesh.apply_translation([0, 0, -ring_mesh.bounds[0][2]])
+    if not ring_mesh.is_watertight:
+        raise ValueError("jump ring did not close into one solid")
+    rn, ra = ring_mesh.face_normals, ring_mesh.area_faces
+    rep["ring_bed_mm2"] = round(float(ra[
+        (rn[:, 2] < -0.9)
+        & (ring_mesh.triangles_center[:, 2] < 0.1)].sum()), 1)
+    if rep["ring_bed_mm2"] < 30:
+        raise ValueError(f"the ring stands on {rep['ring_bed_mm2']:.0f} mm2 "
+                         f"— it will come off the bed")
+    rep["ring_gap_mm"] = round(SEAT_CLR, 2)
+
+    # threading: the wire must pass the chain link's bore and the clasp's
+    # tail bore
     link_bore = (2.5 * D + 1.0) - D          # stadium width minus the tube
     tail_bore = 2 * (R2 - tw)
-    rep.update(ring_section=[round(rr_t, 2), round(th_r, 2)],
+    rep.update(ring_section=[round(rw, 2), round(rw, 2)],
                link_bore=round(link_bore, 2), tail_bore=round(tail_bore, 2))
-    if sec_diag > link_bore - 0.4 or sec_diag > tail_bore - 0.4:
-        raise ValueError(f"ring section {sec_diag:.1f} mm will not thread the "
+    if rw > link_bore - 0.4 or rw > tail_bore - 0.4:
+        raise ValueError(f"ring wire {rw:.1f} mm will not thread the "
                          f"link ({link_bore:.1f}) or tail ({tail_bore:.1f})")
     rep.update(wall_mm=round(tw, 2), gate_mm=round(tg, 2),
                height_mm=round(th, 2), bowl_dia=round(2 * R1, 1),
                length_mm=round(R1 - yt + R2, 1))
-    return clasp, ring, rep, th, th_r
+    return clasp, ring_mesh, rep, th
 
 
 def main():
@@ -283,21 +296,23 @@ def main():
         print(json.dumps({"ok": False, "error": "dia must be 2-8 mm"}))
         return 1
     try:
-        clasp, ring, rep, th, th_r = build(a.dia)
+        clasp, ring_mesh, rep, th = build(a.dia)
     except ValueError as e:
         print(json.dumps({"ok": False, "error": str(e)}))
         return 1
     # the crown costs the gate beam some of its section, so the flexure is
     # checked against what is left, not against the full slab
     cm = crown(clasp, th, min(CROWN, 0.28 * th))
-    rm = crown(ring, th_r, min(CROWN, 0.28 * th_r))
-    rm.apply_translation([clasp.bounds[2] - ring.bounds[0] + 4.0, 0, 0])
+    rm = ring_mesh          # already round; nothing to crown
+    rm.apply_translation([clasp.bounds[2] - rm.bounds[0][0] + 4.0, 0, 0])
     wanted = {"both": (("clasp", cm), ("ring", rm)),
               "clasp": (("clasp", cm),), "ring": (("ring", rm),)}[a.part]
     for name, m in (("clasp", cm), ("ring", rm)):
         rep[f"{name}_watertight"] = bool(m.is_watertight)
         rep[f"{name}_bodies"] = int(len(m.split(only_watertight=False)))
-    rep["bed_mm2"] = round(clasp.area + ring.area)
+    # the ring is round wire on a flat: its bed contact is the cut face,
+    # not its plan area
+    rep["bed_mm2"] = round(clasp.area + rep["ring_bed_mm2"])
     ok = (cm.is_watertight and rm.is_watertight
           and rep["clasp_bodies"] == 1 and rep["ring_bodies"] == 1)
     rep["emitted"] = [n for n, _ in wanted]

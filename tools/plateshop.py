@@ -247,7 +247,18 @@ def order_items(order):
         # that needs one must not share a plate with a part a brim would
         # ruin. The packer already partitions by group, so the brim choice
         # is the group.
-        brim = part.get("brim", "off")
+        #
+        # A design here declares its own. A file off disk cannot, so the
+        # measurement speaks for it: the shop was printing "brim, or it will
+        # come loose" on the card and shipping the plate with no brim. Only
+        # the brim is automatic — a support inside a captive cage cannot be
+        # got out again, so that stays advice.
+        brim = part.get("brim")
+        if brim is None:
+            pr = (catalog.previews().get(part["id"], {})
+                  .get("printability") or {})
+            brim = ("on" if any("brim" in a for a in pr.get("advice", []))
+                    else "off")
         for i in range(int(line.get("qty", 1))):
             for j, keys in enumerate(groups):
                 items.append(dict(
