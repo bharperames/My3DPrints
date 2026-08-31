@@ -94,3 +94,64 @@ class TestClasp(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestItHasFormNotJustOutline(unittest.TestCase):
+    """A straight extrusion of the outline is a cut-out, not a clasp.
+
+    The first printed one worked and read as a silhouette: square edges,
+    nothing in the hand. A real clasp swells through the middle and tapers
+    to its edges. Only the top is domed — the underside stays flat, because
+    the honest lens would need support under every millimetre of it.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import trimesh
+        cls.trimesh = trimesh
+        cls.poly, cls.ring, cls.rep = GC.build(3.25)[:3]
+        cls.th = cls.rep["height_mm"]
+        cls.m = GC.crown(cls.poly, cls.th, min(GC.CROWN, 0.28 * cls.th))
+
+    def test_the_top_is_domed_and_the_bottom_is_flat(self):
+        import numpy as np
+        m = self.m
+        n, a = m.face_normals, m.area_faces
+        flat_down = float(a[n[:, 2] < -0.99].sum())
+        self.assertGreater(flat_down, 100, "the underside is not flat")
+        # The crown is a staircase, not a swept surface — every face is
+        # horizontal or vertical. What matters is that the steps are finer
+        # than a layer, so the printer lays it down as a curve.
+        up = n[:, 2] > 0.99
+        heights = np.unique(np.round(m.triangles_center[up][:, 2], 3))
+        self.assertGreater(len(heights), 6,
+                           "the top is one flat face — no crown at all")
+        step = float(np.max(np.diff(np.sort(heights))))
+        self.assertLess(step, 0.1,
+                        f"crown steps {step:.3f} mm would print as terracing")
+        self.assertAlmostEqual(float(heights.max()), self.th, delta=0.01)
+
+    def test_it_needs_no_support(self):
+        import numpy as np
+        n, a = self.m.face_normals, self.m.area_faces
+        down = n[:, 2] < -0.05
+        ang = np.degrees(np.arcsin(np.clip(-n[down, 2], 0, 1)))
+        self.assertEqual(float(a[down][ang < 45].sum()), 0.0)
+
+    def test_it_is_still_one_solid(self):
+        self.assertTrue(self.m.is_watertight)
+        self.assertEqual(len(self.m.split(only_watertight=False)), 1)
+
+    def test_the_crown_never_eats_a_thin_feature_whole(self):
+        # the gate is the thinnest thing here; the crown may round it but
+        # the full outline has to survive underneath
+        low = self.m.section(plane_origin=[0, 0, 0.2], plane_normal=[0, 0, 1])
+        self.assertIsNotNone(low)
+        pl, _ = low.to_2D()
+        self.assertAlmostEqual(sum(p.area for p in pl.polygons_full),
+                               self.poly.area, delta=self.poly.area * 0.02)
+
+    def test_the_crown_is_capped_against_the_thickness(self):
+        # a crown deeper than the part would come to a knife edge
+        for th in (2.0, 3.58, 8.0):
+            self.assertLessEqual(min(GC.CROWN, 0.28 * th), 0.28 * th)

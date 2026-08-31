@@ -154,6 +154,11 @@ def reconcile(parts, led=None, write=True):
                     id=pid, name=p["name"], version=ver,
                     why=f"{os.path.basename((p.get('gen') or ['?'])[0])} "
                         f"changed but {pid} still declares v{ver}"))
+                # Leave the recorded fingerprint alone. Writing the new one
+                # here would clear the fault on the next run without anyone
+                # fixing it — the guard would fire once and then forget.
+                led[pid] = was
+                continue
         entry = dict(version=ver, fingerprint=fp, stamp=st,
                      first_seen=(was or {}).get("first_seen", today),
                      revisions=(was or {}).get("revisions", 0))

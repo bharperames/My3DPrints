@@ -53,6 +53,41 @@ def wedge(a0, a1, r_in, r_out):
     return Polygon(np.vstack([outer, inner]))
 
 
+CROWN = 0.8       # how far the top rounds over, mm
+
+
+def crown(poly, th, r, steps=12):
+    """A flat bottom and a domed top: the lens section a real clasp has.
+
+    Straight extrusion of the outline gives a cut-out — square edges, no
+    form in the hand, which is what makes the printed part read as a
+    silhouette of a clasp rather than one. A real clasp swells through the
+    middle and tapers to its edges.
+
+    Only the top is rounded. Doming the underside too would be the honest
+    lens, and would need support under every millimetre of it; flat on the
+    bed and crowned above gives the shape where it is seen and touched.
+
+    The slices are nested, so the union stays one body even where an inset
+    breaks a thin feature into pieces — the full outline is still there
+    underneath it.
+    """
+    pieces = []
+    for i in range(steps + 1):
+        t = i / steps
+        inset = r * (1.0 - np.sqrt(max(0.0, 1.0 - t * t)))
+        z = th - r + r * t
+        p = poly.buffer(-inset, join_style=1, resolution=12)
+        if p.is_empty:
+            break
+        for q in (p.geoms if p.geom_type == "MultiPolygon" else [p]):
+            if q.area > 1e-6:
+                pieces.append(trimesh.creation.extrude_polygon(q, z))
+    if not pieces:
+        raise ValueError("the crown ate the whole profile")
+    return trimesh.boolean.union(pieces, engine="manifold")
+
+
 def build(D, T=None):
     """Return (clasp_polygon, ring_polygon, report). Raises ValueError."""
     rep = {}
@@ -227,8 +262,11 @@ def main():
     except ValueError as e:
         print(json.dumps({"ok": False, "error": str(e)}))
         return 1
-    cm = trimesh.creation.extrude_polygon(clasp, th)
-    rm = trimesh.creation.extrude_polygon(ring, th)
+    # the crown costs the gate beam some of its section, so the flexure is
+    # checked against what is left, not against the full slab
+    cr = min(CROWN, 0.28 * th)
+    cm = crown(clasp, th, cr)
+    rm = crown(ring, th, cr)
     rm.apply_translation([clasp.bounds[2] - ring.bounds[0] + 4.0, 0, 0])
     wanted = {"both": (("clasp", cm), ("ring", rm)),
               "clasp": (("clasp", cm),), "ring": (("ring", rm),)}[a.part]

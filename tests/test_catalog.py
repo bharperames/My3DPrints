@@ -289,3 +289,36 @@ class TestEveryPartIsVersioned(unittest.TestCase):
 
     def test_the_shipped_catalog_has_no_version_faults(self):
         self.assertEqual(self.cat["version_faults"], [])
+
+
+class TestAVersionFaultDoesNotForgetItself(unittest.TestCase):
+    """The guard has to keep firing until someone fixes it.
+
+    Recording the new fingerprint while reporting the fault clears it on the
+    next run, so the build fails once and then goes quiet with the wrong
+    version still declared — which is worse than not checking.
+    """
+
+    def setUp(self):
+        import versions
+        self.V = versions
+        self.parts = catalog.catalog()["parts"]
+        self.led, _ = versions.reconcile(self.parts, write=False)
+
+    def test_the_fault_survives_a_second_pass(self):
+        t = {k: dict(v) for k, v in self.led.items()}
+        t["wrench"]["fingerprint"] = "0" * 16
+        first, f1 = self.V.reconcile(self.parts, led=t, write=False)
+        self.assertTrue(f1)
+        second, f2 = self.V.reconcile(self.parts, led=first, write=False)
+        self.assertTrue(f2, "the fault cleared itself without a version bump")
+        self.assertEqual(f1[0]["id"], f2[0]["id"])
+
+    def test_a_bump_is_what_clears_it(self):
+        t = {k: dict(v) for k, v in self.led.items()}
+        t["wrench"]["fingerprint"] = "0" * 16
+        after, _ = self.V.reconcile(self.parts, led=t, write=False)
+        bumped = [dict(p, version="9.9.9") if p["id"] == "wrench" else p
+                  for p in self.parts]
+        _, clean = self.V.reconcile(bumped, led=after, write=False)
+        self.assertEqual(clean, [])

@@ -90,7 +90,9 @@ PARTS = [
        "Combination spanner for the Montessori hex: a six-point box end one "
        "side, an open jaw the other. One size drives the nuts and both bolt "
        "heads.",
-       version="1.0.0", gen=["gen_wrench.py"], out="wrench-af50.3mf"),
+       version="1.0.0", gen=["gen_wrench.py"], out="wrench-af50.3mf",
+       proven="Printed perfect. Turns the nuts and both bolt heads; the "
+              "0.45 mm fit and the 2.67 jaw safety hold up in the hand."),
     _p("dice_orb", "Dice Orb", "Designed here", "generated",
        "A standard d20 captive in a rib-and-ring shaker sphere.",
        version="3.2.0",
@@ -105,22 +107,30 @@ PARTS = [
        "the thread crest at 45 degrees, so the face that prints downward "
        "has no ceiling to droop into the hole.",
        version="1.3.1",
+       proven="Clean bottom face. The thin first thread is inherent and is "
+              "still there; what stopped the strings was taking the "
+              "unsupported ceiling under it from 557 to 15 mm2.",
        gen=["gen_montessori.py", "--part", "double-nut"],
        out="montessori-double-nut.3mf"),
     _p("mont_plate", "Base Plate 2×3", "Montessori", "generated",
        "Six threaded sockets to stand the bolts in.",
+       proven="Printed well at 390 g. Shares the double nut's entry "
+              "chamfer; its sockets open upward, so they were never the "
+              "face at risk.",
        # shares the double nut's entry chamfer; its sockets open upward, so
        # the reshape is cosmetic here rather than a printability fix
        version="1.2.2",
        gen=["gen_montessori.py", "--part", "plate"],
        out="montessori-plate-2x3.3mf"),
     _p("clasp", "Lobster Clasp", "Designed here", "generated",
-       "Flexure-gate clasp, sized to the chain it ends.",
-       version="2.0.0",
+       "Flexure-gate clasp, sized to the chain it ends. Flat on the bed and "
+       "crowned above, so it has form in the hand instead of the square "
+       "edges of a cut-out.",
+       version="2.1.0",
        gen=["gen_clasp.py", "--part", "clasp"], out="clasp-only-D{dia:g}.3mf"),
     _p("jump_ring", "Jump Ring", "Designed here", "generated",
        "Butt C-ring that threads the link bore and the clasp's eye.",
-       version="1.1.0",
+       version="1.2.0",     # crowned with the clasp it belongs to
        gen=["gen_clasp.py", "--part", "ring"], out="ring-only-D{dia:g}.3mf"),
     _p("chain", "Chain", "Designed here", "parametric",
        "Print-in-place stadium links, cut flat where they meet the bed so "
