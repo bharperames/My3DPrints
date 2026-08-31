@@ -101,7 +101,44 @@ def build_one(pid, path, budget=BUDGET, tile=True):
     dest = os.path.join(OUT, pid + ".glb")
     sc.export(dest)
     ext = sc.bounds[1] - sc.bounds[0]
+    # what the printer will make of it. A generated part is gated by its
+    # generator; a downloaded one arrives however its author saved it, and
+    # the first sign the orientation is wrong is spaghetti.
+    try:
+        import orient
+        # As-saved only. The layer-by-layer check costs about half a second
+        # a body, and searching ten orientations for every body of every
+        # design turns a rebuild into a coffee break. `orient.py FILE` does
+        # the full search when the question is actually "which way up".
+        adv, worst = [], None
+        for g in meshes:
+            q = g.copy()
+            q.apply_translation([0, 0, -q.bounds[0][2]])
+            asis = dict(orient._measure(q), rot="as saved")
+            best = asis
+            for line in orient.verdict(best, asis):
+                # one line per kind of problem, keeping the worst body's
+                # number: three bodies saying the same thing three ways is
+                # noise, not detail
+                kind = line.split(" ")[0] + line.split("—")[0][-12:]
+                if not any(k == kind for k, _ in adv):
+                    adv.append((kind, line))
+            if worst is None or best["overhang_mm2"] > worst["overhang_mm2"]:
+                worst = best
+        adv = [line for _, line in adv]
+        # "prints as it stands" is the all-clear, and it is only the truth
+        # when there is nothing else to say. One body's clean bill of health
+        # beside another body's warning reads as a contradiction.
+        real = [x for x in adv if not x.startswith("prints as it stands")]
+        adv = real if real else adv
+        printability = dict(advice=adv, bed_mm2=worst["bed_mm2"],
+                            overhang_mm2=worst["overhang_mm2"],
+                            lever=worst["lever"])
+    except Exception as e:                       # noqa: BLE001
+        printability = {"advice": [], "error": str(e)[:80]}
+
     out = dict(id=pid, glb=f"models/glb/prev/{pid}.glb", bodies=len(meshes),
+               printability=printability,
                tris=kept, tris_full=full,
                dims=[round(float(v), 1) for v in ext],
                kb=round(os.path.getsize(dest) / 1024))

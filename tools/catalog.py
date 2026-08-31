@@ -123,14 +123,14 @@ PARTS = [
        gen=["gen_montessori.py", "--part", "plate"],
        out="montessori-plate-2x3.3mf"),
     _p("clasp", "Lobster Clasp", "Designed here", "generated",
-       "Flexure-gate clasp, sized to the chain it ends. Flat on the bed and "
-       "crowned above, so it has form in the hand instead of the square "
-       "edges of a cut-out.",
-       version="2.1.0",
+       "Flexure-gate clasp, sized to the chain it ends. Chunky against its "
+       "width the way a real one is, flat on the bed and crowned above, so "
+       "it has form in the hand instead of the square edges of a cut-out.",
+       version="2.2.0",
        gen=["gen_clasp.py", "--part", "clasp"], out="clasp-only-D{dia:g}.3mf"),
     _p("jump_ring", "Jump Ring", "Designed here", "generated",
        "Butt C-ring that threads the link bore and the clasp's eye.",
-       version="1.2.0",     # crowned with the clasp it belongs to
+       version="1.3.0",     # keeps a wire section while the clasp thickens
        gen=["gen_clasp.py", "--part", "ring"], out="ring-only-D{dia:g}.3mf"),
     _p("chain", "Chain", "Designed here", "parametric",
        "Print-in-place stadium links, cut flat where they meet the bed so "
@@ -525,6 +525,8 @@ def enrich(part, prev):
         out.update(preview=pv["glb"] + (f"?v={tag}" if tag else ""),
                    dims3=pv["dims"], bodies=pv["bodies"],
                    tris=pv["tris_full"])
+        if pv.get("printability"):
+            out["printability"] = pv["printability"]
         d = pv["dims"]
         out["dims"] = f"{d[0]} x {d[1]} x {d[2]} mm"
     cur = designs.curation(os.path.basename(part.get("path", "")))

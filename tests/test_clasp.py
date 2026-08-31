@@ -26,7 +26,7 @@ def inscribed(poly):
 class TestClasp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.clasp, cls.ring, cls.rep, cls.th = GC.build(D)
+        cls.clasp, cls.ring, cls.rep, cls.th = GC.build(D)[:4]
 
     def test_each_part_is_one_connected_piece(self):
         self.assertEqual(self.clasp.geom_type, "Polygon")
@@ -122,7 +122,9 @@ class TestItHasFormNotJustOutline(unittest.TestCase):
         # The crown is a staircase, not a swept surface — every face is
         # horizontal or vertical. What matters is that the steps are finer
         # than a layer, so the printer lays it down as a curve.
-        up = n[:, 2] > 0.99
+        # a union of two dozen slabs leaves slivers of a millionth of a
+        # square millimetre; they are not faces of the object
+        up = (n[:, 2] > 0.99) & (a > 1e-4)
         heights = np.unique(np.round(m.triangles_center[up][:, 2], 3))
         self.assertGreater(len(heights), 6,
                            "the top is one flat face — no crown at all")
@@ -136,7 +138,9 @@ class TestItHasFormNotJustOutline(unittest.TestCase):
         n, a = self.m.face_normals, self.m.area_faces
         down = n[:, 2] < -0.05
         ang = np.degrees(np.arcsin(np.clip(-n[down, 2], 0, 1)))
-        self.assertEqual(float(a[down][ang < 45].sum()), 0.0)
+        # boolean slivers aside — a hundredth of a square millimetre is not
+        # something the printer has to bridge
+        self.assertLess(float(a[down][ang < 45].sum()), 0.01)
 
     def test_it_is_still_one_solid(self):
         self.assertTrue(self.m.is_watertight)

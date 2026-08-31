@@ -322,3 +322,65 @@ class TestAVersionFaultDoesNotForgetItself(unittest.TestCase):
                   for p in self.parts]
         _, clean = self.V.reconcile(bumped, led=after, write=False)
         self.assertEqual(clean, [])
+
+
+class TestPrintabilityAdviceIsTrustworthy(unittest.TestCase):
+    """Advice that cries wolf is worse than none.
+
+    Checked against three parts whose outcome on the printer is known: the
+    wrench came out perfect, the dice orb failed bare and worked with
+    supports and a brim, and the fidget ball's disc finished while its ball
+    came loose part-way up.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import orient
+        cls.O = orient
+        cls.parts = {p["name"]: p for p in catalog.catalog()["parts"]}
+
+    def _adv(self, name):
+        p = self.parts.get(name)
+        if p is None:
+            self.skipTest(f"{name} not in the catalog")
+        return (p.get("printability") or {}).get("advice", [])
+
+    def test_a_part_that_printed_perfectly_is_not_flagged(self):
+        adv = self._adv("Nut Wrench")
+        self.assertTrue(adv)
+        self.assertNotIn("support", " ".join(adv).lower())
+        self.assertNotIn("brim", " ".join(adv).lower())
+
+    def test_the_part_that_needed_supports_says_so(self):
+        self.assertIn("support", " ".join(self._adv("Dice Orb")).lower())
+
+    def test_the_part_whose_ball_came_loose_says_brim(self):
+        self.assertIn("brim", " ".join(self._adv("Mini Fidget Ball")).lower())
+
+    def test_facing_down_is_not_mistaken_for_unsupported(self):
+        # a cage strut points straight down and is carried by its own
+        # previous layer; counting normals scored the dice orb at 4700 mm2
+        import trimesh
+        path, _ = catalog.ensure(catalog.find("dice_orb"))
+        sc = trimesh.load(path, force="scene")
+        g = max(sc.geometry.values(), key=lambda m: len(m.faces))
+        g = g.copy()
+        g.apply_translation([0, 0, -g.bounds[0][2]])
+        m = self.O._measure(g)
+        self.assertGreater(m["facing_down_mm2"], 1000)
+        self.assertLess(m["overhang_mm2"], m["facing_down_mm2"] / 4)
+
+    def test_as_saved_can_win_the_orientation_search(self):
+        # leaving it out let the search "improve" a part into a worse
+        # orientation than the one it arrived in
+        import trimesh
+        p = self.parts.get("Mini Fidget Ball")
+        if p is None:
+            self.skipTest("not present")
+        sc = trimesh.load(p["path"], force="scene")
+        ball = [g for g in sc.geometry.values()
+                if abs(g.bounds[1][2] - g.bounds[0][2]) > 20]
+        if not ball:
+            self.skipTest("no ball body")
+        asis, rest = self.O.evaluate(ball[0], limit=6)
+        self.assertLessEqual(rest[0]["overhang_mm2"], asis["overhang_mm2"])

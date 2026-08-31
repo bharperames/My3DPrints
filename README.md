@@ -59,6 +59,32 @@ shop exported into a new "design" in its own catalog.
 `make clean-cache` prints what the caches cost; `make clean-cache-yes`
 clears them and `make build` puts them back.
 
+## Before you print
+
+A part this shop generates is gated by its generator — it will not emit a
+design whose overhangs, clearances or stresses fail. A file somebody else
+designed carries no such promise: it arrives in whatever orientation its
+author saved it, and the first sign that it will not print is spaghetti.
+
+So every catalog entry is measured the way a slicer would: layer against
+layer, counting the area that has nothing under it, plus how much of it
+touches the bed and how slender it stands. Cards say what a part needs
+before it is ordered.
+
+Face normals alone cannot answer this and the first version of the check
+got it wrong: the underside of a cage strut points straight down with open
+air beneath it and prints perfectly, carried by the previous layer of its
+own strut. Counting normals scored the dice orb at 4,700 mm2 unsupported —
+a part that prints clean on a brim. Comparing each layer with the one below
+scores it at 347, which is the number that matches what came off the bed.
+
+Calibrated against parts whose outcome is known: the wrench (printed
+perfect) reads clean, the dice orb (failed bare, worked with supports and a
+brim) asks for supports, and the Mini Fidget Ball asks for a brim — its
+disc finished while its ball, on 12 mm2 of contact, came loose part-way up.
+`orient.py FILE` searches the orientations a part can rest in when the
+question is which way up.
+
 ## Staying current
 
 Two kinds of part live here — files on the shelf, and parts a generator

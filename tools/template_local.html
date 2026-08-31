@@ -352,6 +352,17 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
 .refs .fixes{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .ver.proven{color:var(--pass);border-color:var(--pass);margin-left:6px}
 .srow + .note{margin:0 0 8px}
+.bver{display:block;font:400 10.5px/1.5 "IBM Plex Mono",monospace;
+  color:var(--faint)}
+.srow .ver{margin-left:6px}
+.needs{font-size:12.5px;color:var(--ink);background:var(--warn-bg);
+  border:1px solid var(--warn);border-radius:8px;padding:9px 11px;margin:0}
+.needs b{display:block;font:600 10.5px/1 "IBM Plex Sans",sans-serif;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--warn);
+  margin-bottom:6px}
+.needs span{display:block;margin-bottom:4px;line-height:1.45}
+.needs em{display:block;font:400 11px "IBM Plex Mono",monospace;
+  color:var(--muted);font-style:normal;margin-top:2px}
 </style>
 </head>
 <body>
@@ -1188,6 +1199,20 @@ renderer.setAnimationLoop(animate);
     if (p.slice) out += '<br>P2S slice: ' + esc(p.slice);
     return out;
   }
+  // A generated part is gated by its generator. A file off disk arrives
+  // however its author saved it, and the first sign that it will not print
+  // is spaghetti — so the card says what it needs before it is ordered.
+  function advice(p){
+    const pr = p.printability;
+    if (!pr || !pr.advice || !pr.advice.length) return '';
+    const hard = pr.advice.some(a => /support|brim/.test(a));
+    if (!hard) return '';
+    return '<p class="needs"><b>Before you print</b>' +
+      pr.advice.map(a => '<span>' + esc(a) + '</span>').join('') +
+      '<em>' + Math.round(pr.bed_mm2) + ' mm\u00b2 on the bed, ' +
+      Math.round(pr.overhang_mm2) + ' mm\u00b2 overhanging</em></p>';
+  }
+
   function metaBox(p){
     if (!p.meta) return '';
     const rows = ['Designer','License','Origin','Application','CreationDate']
@@ -1244,6 +1269,7 @@ renderer.setAnimationLoop(animate);
       (p.blurb ? '<p class="principle">' + esc(p.blurb) + '</p>' : '') +
       (typeof p.proven === 'string'
         ? '<p class="note">Printed: ' + esc(p.proven) + '</p>' : '') +
+      advice(p) +
       '<p class="specline" data-dim="' + esc(p.id) + '">' + spec(p) + '</p>' +
       '</div>';
     const body = el.querySelector('.body');
@@ -1293,7 +1319,11 @@ renderer.setAnimationLoop(animate);
       const p = byId[m.part]; if (!p) continue;
       const row = document.createElement('div'); row.className = 'srow';
       const left = document.createElement('div');
+      // a member is a row rather than a card, and it was the one place in
+      // the shop that never said which version it was
       left.innerHTML = '<span class="nm">' + esc(m.label || p.name) +
+        (p.version && p.version !== '\u2014'
+          ? ' ' + badge(p.version, p.changed, p.built, p) : '') +
         (p.proven ? ' <span class="ver proven">printed</span>' : '') +
         '</span>' +
         '<span class="dim" data-dim="' + esc(p.id) + '">' +
@@ -1391,14 +1421,23 @@ renderer.setAnimationLoop(animate);
   $('cat-more').onclick = () => { limit += PAGE; render(); };
   render();
 
+  let lastReports = {};
   function renderBom(){
     const rows = [...qty].filter(([,n]) => n > 0);
     const el = $('shop-bom');
-    if (!rows.length){ el.innerHTML = '<p class="empty">nothing selected yet</p>'; return; }
+    if (!rows.length){ el.innerHTML = '<p class="empty">nothing on the plate yet</p>'; return; }
     el.innerHTML = '<table><thead><tr><th>part</th><th>each</th>' +
       '<th>qty</th></tr></thead><tbody>' +
-      rows.map(([id,n]) => { const p = byId[id]; const d = p.dims || '';
-        return '<tr><td>' + p.name + '</td><td class="d">' + d +
+      rows.map(([id,n]) => {
+        const p = byId[id], d = p.dims || '', r = lastReports[id];
+        // which version, and whether this order built it or reused a file:
+        // the shop knew both and showed neither
+        const how = r ? (r.cached ? 'from cache' : 'built now') : '';
+        const ver = (p.version && p.version !== '\u2014')
+          ? 'v' + p.version + (how ? ' \u00b7 ' + how : '') : how;
+        return '<tr><td>' + esc(p.name) +
+          (ver ? '<span class="bver">' + esc(ver) + '</span>' : '') +
+          '</td><td class="d">' + esc(d) +
           '</td><td class="q">' + n + '</td></tr>'; }).join('') +
       '</tbody></table>';
   }
@@ -1563,6 +1602,7 @@ renderer.setAnimationLoop(animate);
         ' · ' + n + ' parts · ' + Math.round(avg*100) + '% avg fill';
       $('shop-warn').textContent = (j.oversized||[]).map(o =>
         '! ' + o.name + ' does not fit the plate (' + o.reason + ')').join('  ');
+      lastReports = j.reports || {};
       for (const [id, rep] of Object.entries(j.reports||{})){
         if (!rep.w) continue;
         const dims = rep.w.toFixed(0)+'×'+rep.d.toFixed(0)+'×'+rep.h.toFixed(0)

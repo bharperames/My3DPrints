@@ -53,10 +53,17 @@ def wedge(a0, a1, r_in, r_out):
     return Polygon(np.vstack([outer, inner]))
 
 
-CROWN = 0.8       # how far the top rounds over, mm
+CROWN = 1.4       # how far the top rounds over, mm. At 0.8 on a 3.6 mm
+                  # body the rounding was there and invisible — the printed
+                  # part still read as a flat cut-out.
+E_PLA = 3500.0    # MPa
+THUMB_MAX = 8.0   # N at the tab. A clasp is opened with one thumb, so the
+                  # force is a design limit as much as the strain is; it was
+                  # not gated, which is why the body could be thickened
+                  # without anyone noticing what it cost to open.
 
 
-def crown(poly, th, r, steps=12):
+def crown(poly, th, r, steps=None):
     """A flat bottom and a domed top: the lens section a real clasp has.
 
     Straight extrusion of the outline gives a cut-out — square edges, no
@@ -72,6 +79,10 @@ def crown(poly, th, r, steps=12):
     breaks a thin feature into pieces — the full outline is still there
     underneath it.
     """
+    # the step has to stay well under a layer or the curve prints as
+    # terracing; a fixed count does that at 0.8 mm and not at 1.4
+    if steps is None:
+        steps = max(12, int(np.ceil(r / 0.05)))
     pieces = []
     for i in range(steps + 1):
         t = i / steps
@@ -94,7 +105,9 @@ def build(D, T=None):
     tw = max(1.9, 0.66 * D)                 # head wall: reads solid,
                                             # not a second ring
     tg = max(1.00, 0.31 * D)                # gate beam thickness
-    th = T if T else max(3.4, 1.10 * D)     # extrusion height
+    th = T if T else max(4.6, 1.70 * D)     # body thickness. A real clasp
+                                            # is chunky against its width;
+                                            # at 1.10*D this was a plate
     R1 = 2.60 * D                           # bowl outer radius
     Rin = R1 - tw                           # bowl bore
     gc = 0.62 * D                           # closed gap, gate to bore
@@ -197,6 +210,14 @@ def build(D, T=None):
     if strain > STRAIN_LIMIT:
         raise ValueError(f"gate strain {strain*100:.1f}% over "
                          f"{STRAIN_LIMIT*100:.1f}% — longer or thinner beam")
+    # what it takes to open, which scales with the body thickness the strain
+    # calculation is blind to
+    I = th * tg ** 3 / 12.0
+    force = 3 * E_PLA * I * delta_tab / L ** 3
+    rep["thumb_N"] = round(float(force), 2)
+    if force > THUMB_MAX:
+        raise ValueError(f"needs {force:.1f} N at the tab (max "
+                         f"{THUMB_MAX:.0f}) — thinner body or longer beam")
 
     # --- jump ring -------------------------------------------------------
     # A butt C-ring, as a metal jump ring is. A ball-and-socket snap was the
@@ -206,9 +227,13 @@ def build(D, T=None):
     # tall on purpose, so it opens in-plane instead of twisting out of its
     # layers.
     rr_t = max(1.30, 0.40 * D)              # radial thickness
+    # The ring is wire, not a body: it has to thread a link and the clasp's
+    # own tail, so it keeps a wire-like section however chunky the clasp
+    # gets. Thickening it with the clasp took its section past both bores.
+    th_r = max(rr_t + 0.6, 1.10 * D)
     Rr_out = 1.90 * D
     Rr_mid = Rr_out - rr_t / 2
-    if rr_t >= th:
+    if rr_t >= th_r:
         raise ValueError("ring must be radially thinner than it is tall, "
                          "or it opens by twisting out of its layers")
     half = np.degrees(np.arctan2(SEAT_CLR / 2, Rr_mid))
@@ -230,10 +255,10 @@ def build(D, T=None):
 
     # threading: the ring's section must pass the chain link's bore and the
     # clasp's tail bore
-    sec_diag = np.hypot(rr_t, th)
+    sec_diag = np.hypot(rr_t, th_r)
     link_bore = (2.5 * D + 1.0) - D          # stadium width minus the tube
     tail_bore = 2 * (R2 - tw)
-    rep.update(ring_section=[round(rr_t, 2), round(th, 2)],
+    rep.update(ring_section=[round(rr_t, 2), round(th_r, 2)],
                link_bore=round(link_bore, 2), tail_bore=round(tail_bore, 2))
     if sec_diag > link_bore - 0.4 or sec_diag > tail_bore - 0.4:
         raise ValueError(f"ring section {sec_diag:.1f} mm will not thread the "
@@ -241,7 +266,7 @@ def build(D, T=None):
     rep.update(wall_mm=round(tw, 2), gate_mm=round(tg, 2),
                height_mm=round(th, 2), bowl_dia=round(2 * R1, 1),
                length_mm=round(R1 - yt + R2, 1))
-    return clasp, ring, rep, th
+    return clasp, ring, rep, th, th_r
 
 
 def main():
@@ -258,15 +283,14 @@ def main():
         print(json.dumps({"ok": False, "error": "dia must be 2-8 mm"}))
         return 1
     try:
-        clasp, ring, rep, th = build(a.dia)
+        clasp, ring, rep, th, th_r = build(a.dia)
     except ValueError as e:
         print(json.dumps({"ok": False, "error": str(e)}))
         return 1
     # the crown costs the gate beam some of its section, so the flexure is
     # checked against what is left, not against the full slab
-    cr = min(CROWN, 0.28 * th)
-    cm = crown(clasp, th, cr)
-    rm = crown(ring, th, cr)
+    cm = crown(clasp, th, min(CROWN, 0.28 * th))
+    rm = crown(ring, th_r, min(CROWN, 0.28 * th_r))
     rm.apply_translation([clasp.bounds[2] - ring.bounds[0] + 4.0, 0, 0])
     wanted = {"both": (("clasp", cm), ("ring", rm)),
               "clasp": (("clasp", cm),), "ring": (("ring", rm),)}[a.part]
