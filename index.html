@@ -1346,8 +1346,15 @@ renderer.setAnimationLoop(animate);
     if (k.preview) entries.push({glb: k.preview, label: k.name,
                                  chip: 'all ' + mem.length,
                                  dims: k.dims3, tris: k.tris});
+    // the label the set gives a member, not the filename the library
+    // derived: "Spiral — eased lead-in" says what it is,
+    // "cone-spiral-small-eased" says where it came from
+    const labelOf = p => {
+      const m = k.members.find(x => x.part === p.id);
+      return (m && m.label) || p.name;
+    };
     mem.filter(p => p.preview).forEach(p => entries.push(
-      {glb: p.preview, label: p.name, chip: p.name,
+      {glb: p.preview, label: labelOf(p), chip: labelOf(p),
        dims: p.dims3, tris: p.tris}));
     if (entries.length) mountView(el.querySelector('.view'), entries);
     return el;
@@ -1364,17 +1371,22 @@ renderer.setAnimationLoop(animate);
 
   const hay = p => (p.name + ' ' + p.family + ' ' + (p.blurb || '') + ' ' +
                     (p.designer || '')).toLowerCase();
+  // Every word has to appear, not the whole phrase in order: "hourglass
+  // cone 90" found nothing, because the name reads "Hourglass — cone,
+  // 90 mm" and the punctuation sits between the words being typed.
+  const terms = q => q.split(/\s+/).filter(Boolean);
+  const hits = (text, q) => terms(q).every(t => text.includes(t));
   function chosen(){
     const q = $('cat-q').value.trim().toLowerCase(), f = fam.value;
     const kits = cat.kits.filter(k => {
       const mem = k.members.map(m => byId[m.part]).filter(Boolean);
       const t = (k.name + ' ' + (k.blurb || '') + ' ' +
                  mem.map(p => p.name).join(' ')).toLowerCase();
-      return (!q || t.includes(q)) &&
+      return (!q || hits(t, q)) &&
              (!f || mem.some(p => p.family === f));
     }).map(k => ({kit: k}));
     const parts = solo.filter(p => (!f || p.family === f) &&
-                                   (!q || hay(p).includes(q)))
+                                   (!q || hits(hay(p), q)))
                       .map(p => ({part: p}));
     return kits.concat(parts);
   }

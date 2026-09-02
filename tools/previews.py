@@ -18,6 +18,7 @@ import json
 import os
 import sys
 
+import numpy as np
 import trimesh
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -65,16 +66,34 @@ def _tile(meshes):
 
 
 def build_one(pid, path, budget=BUDGET, tile=True):
+    srcs = [path] if isinstance(path, str) else list(path)
     meshes = []
-    for one in ([path] if isinstance(path, str) else path):
+    for one in srcs:
         meshes += _load(one)
+    # Parts that come from different files are separate objects whatever
+    # their coordinates say. Each is modelled about its own origin, so an
+    # hourglass body and the spiral that screws through it both sit at
+    # (75, 0, 45) and the overlap test reads them as one positioned
+    # assembly — the preview stacks them in the same place.
+    many = len(srcs) > 1
     if not meshes:
         raise ValueError("no printable body in the file")
     full = sum(len(m.faces) for m in meshes)
+    # Measure before tiling. The preview spreads a multi-body file out so
+    # its parts do not hide each other, and reporting that arrangement's
+    # extents describes a layout this app invented: the straight T-Rex read
+    # as 176 x 176 when the file is 244 x 150, and the dragon as 203 x 393
+    # when it is 508 x 195.
+    _lo = np.min([m.bounds[0] for m in meshes], axis=0)
+    _hi = np.max([m.bounds[1] for m in meshes], axis=0)
+    src_ext = [round(float(v), 1) for v in (_hi - _lo)]
+    big = max(meshes, key=lambda m: float(m.volume))
+    be = big.bounds[1] - big.bounds[0]
+    biggest = [round(float(v), 1) for v in be]
     # A file that ships several loose objects is a set, not an assembly:
     # tile it. One that overlaps its own bodies is an assembly already
     # positioned, and moving the parts apart would misrepresent it.
-    if tile and len(meshes) > 1 and not _overlapping(meshes):
+    if tile and len(meshes) > 1 and (many or not _overlapping(meshes)):
         _tile(meshes)
     sc, kept = trimesh.Scene(), 0
     for i, m in enumerate(meshes):
@@ -145,7 +164,8 @@ def build_one(pid, path, budget=BUDGET, tile=True):
     out = dict(id=pid, glb=f"models/glb/prev/{pid}.glb", bodies=len(meshes),
                printability=printability,
                tris=kept, tris_full=full,
-               dims=[round(float(v), 1) for v in ext],
+               dims=src_ext, tiled_dims=[round(float(v), 1) for v in ext],
+               biggest_body=biggest,
                kb=round(os.path.getsize(dest) / 1024))
     if kept > budget:
         # The decimator stops well short on some meshes and there is no one
@@ -192,6 +212,21 @@ def _overlapping(meshes):
                (b.bounds[0] < a.bounds[1]).all():
                 return True
     return False
+
+
+def _builder_stamp():
+    """This file's own mtime, folded into every preview's cache key.
+
+    The stamp covered the source files and not the code that turns them
+    into a preview, so fixing the layout changed nothing: every preview
+    stayed cached with the arrangement the old code produced. A cache that
+    does not notice its builder changed is the same bug as one that does
+    not notice its source changed.
+    """
+    try:
+        return int(os.path.getmtime(os.path.abspath(__file__)))
+    except OSError:
+        return 0
 
 
 def stamp(path):
@@ -249,6 +284,7 @@ def main():
         try:
             s = "|".join(stamp(x)
                          for x in ([path] if isinstance(path, str) else path))
+            s += f"|b{_builder_stamp()}"
         except OSError:
             continue
         old = have.get(pid)

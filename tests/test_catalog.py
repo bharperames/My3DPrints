@@ -201,7 +201,11 @@ class TestPreviewIndex(unittest.TestCase):
                 break
         if not path:
             self.skipTest("source for the first preview is gone")
-        self.assertEqual(previews.stamp(path), e["stamp"])
+        # the key is the source stamp plus the builder's, so a change to
+        # either rebuilds the preview
+        self.assertTrue(e["stamp"].startswith(previews.stamp(path)),
+                        f"{e['stamp']} does not start with the source stamp")
+        self.assertIn(f"|b{previews._builder_stamp()}", e["stamp"])
 
     def test_an_assembly_is_not_pulled_apart(self):
         # bodies that overlap are positioned on purpose - a captive ball
@@ -422,3 +426,97 @@ class TestPrintabilityAdviceIsTrustworthy(unittest.TestCase):
             self.skipTest("no ball body")
         asis, rest = self.O.evaluate(ball[0], limit=6)
         self.assertLessEqual(rest[0]["overhang_mm2"], asis["overhang_mm2"])
+
+
+class TestMultiPartToysAreOneCard(unittest.TestCase):
+    """An hourglass is a body and the spiral that screws through it.
+
+    They ship as separate files because they print separately, and the
+    catalog listed them as separate designs — thirteen cards for four toys,
+    with nothing saying which spiral goes through which body.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cat = catalog.catalog()
+        cls.kits = cls.cat["kits"]
+        cls.parts = cls.cat["parts"]
+
+    def test_the_hourglass_pairs_are_sets(self):
+        ids = {k["id"] for k in self.kits}
+        for want in ("hourglass_cone_90", "hourglass_cone_180",
+                     "hourglass_pyramid_90", "hourglass_pyramid_180"):
+            self.assertIn(want, ids)
+
+    def test_a_set_holds_a_body_and_a_spiral(self):
+        s = next(k for k in self.kits if k["id"] == "hourglass_cone_90")
+        labels = " ".join(m["label"] for m in s["members"]).lower()
+        self.assertIn("body", labels)
+        self.assertIn("spiral", labels)
+        self.assertGreaterEqual(len(s["members"]), 2)
+
+    def test_set_members_do_not_also_stand_alone(self):
+        inset = {m["part"] for k in self.kits for m in k["members"]}
+        solo = [p for p in self.parts if p["id"] not in inset]
+        # the parts absorbed into sets are gone from the loose list
+        self.assertLess(len(solo), len(self.parts))
+        for p in solo:
+            self.assertNotIn(p["id"], inset)
+
+    def test_a_set_is_dropped_rather_than_shown_with_holes(self):
+        # nothing resolves against an empty shelf, so nothing is offered
+        self.assertEqual(catalog.sets([]), [])
+        one = [{"id": "x", "path": "/tmp/cone-solid-small.stl"}]
+        self.assertEqual(catalog.sets(one), [])
+
+
+class TestPreviewsDoNotPileParts(unittest.TestCase):
+    """Parts from different files are separate objects, whatever their
+    coordinates say — each is modelled about its own origin."""
+
+    @staticmethod
+    def _world(path):
+        import trimesh
+        sc = trimesh.load(path, force="scene")
+        out = []
+        for node in sc.graph.nodes_geometry:
+            tf, gk = sc.graph[node]
+            g = sc.geometry[gk].copy()
+            g.apply_transform(tf)
+            out.append(g)
+        return out
+
+    def test_a_set_preview_lays_its_parts_out(self):
+        import numpy as np
+        f = os.path.join(ROOT, "models/glb/prev/kit_chain_set.glb")
+        if not os.path.exists(f):
+            self.skipTest("chain set preview not built")
+        gs = self._world(f)
+        self.assertGreater(len(gs), 1)
+        c = [g.bounds.mean(axis=0) for g in gs]
+        d = min(float(np.linalg.norm(c[i][:2] - c[j][:2]))
+                for i in range(len(c)) for j in range(i + 1, len(c)))
+        self.assertGreater(d, 2.0, "the parts are stacked on one spot")
+
+    def test_a_captive_assembly_is_left_alone(self):
+        # the die belongs inside its cage; spreading them out would be a
+        # lie about what the object is
+        import trimesh
+        path, _ = catalog.ensure(catalog.find("dice_orb"))
+        ms = self._world(os.path.join(ROOT, "models/glb/prev/dice_orb.glb"))
+        self.assertEqual(len(ms), 2)
+        a, b = sorted(ms, key=lambda m: m.volume)
+        self.assertTrue((a.bounds[0] >= b.bounds[0] - 1).all()
+                        and (a.bounds[1] <= b.bounds[1] + 1).all(),
+                        "the die is no longer inside the cage")
+
+    def test_the_builder_is_part_of_the_cache_key(self):
+        # the stamp covered the source files and not the code that turns
+        # them into a preview, so fixing the layout changed nothing
+        import previews
+        import json as _j
+        with open(os.path.join(ROOT, "models/previews.json")) as fh:
+            idx = _j.load(fh)
+        self.assertTrue(idx)
+        for e in idx[:5]:
+            self.assertIn(f"|b{previews._builder_stamp()}", e["stamp"])

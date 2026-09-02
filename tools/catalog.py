@@ -570,6 +570,73 @@ def _meta(path):
     return keep or None
 
 
+# --- sets: parts from separate files that are one toy ---------------------
+# An hourglass is a body and the spiral that screws through it. They ship as
+# separate files because they print separately, and the catalog showed them
+# as separate designs — thirteen cards for four toys, with nothing saying
+# which spiral goes through which body. Declared by filename so the grouping
+# survives re-indexing, since a library id is derived from a path.
+SETS = [
+    dict(id="hourglass_cone_90", version="1.0.0",
+         name="Hourglass — cone, 90 mm", family="Hourglass · Cone",
+         blurb="A cone body and the spiral that threads through it. The "
+               "spiral screws down under its own weight; the eased cut has "
+               "a 0.05-0.15 mm lead-in so it starts without being forced.",
+         files=[("cone-solid-small.stl", "Body"),
+                ("cone-spiral-small.stl", "Spiral"),
+                ("cone-spiral-small-eased.stl", "Spiral — eased lead-in"),
+                ("cone-hourglass-pair-small.3mf", "Both, on one plate")]),
+    dict(id="hourglass_cone_180", version="1.0.0",
+         name="Hourglass — cone, dubbel 180 mm", family="Hourglass · Cone",
+         blurb="The same pair at double height. Twice the lever on the same "
+               "footprint, so it wants a brim and a slow outer wall.",
+         files=[("cone-solid.stl", "Body"),
+                ("cone-spiral.stl", "Spiral"),
+                ("cone-spiral-eased.stl", "Spiral — eased lead-in"),
+                ("cone-hourglass-pair-dubbel.3mf", "Both, on one plate")]),
+    dict(id="hourglass_pyramid_90", version="1.0.0",
+         name="Hourglass — pyramid, 90 mm", family="Hourglass · Pyramid",
+         blurb="The pyramid cut of the same mechanism. The original body "
+               "carries the duplicate-face defect; the fixed one is the "
+               "copy to print.",
+         files=[("pyramid-solid-small-fixed.stl", "Body — fixed"),
+                ("pyramid-solid-small.stl", "Body — original, has the defect"),
+                ("pyramid-spiral-small.stl", "Spiral"),
+                ("pyramid-spiral-small-eased.stl", "Spiral — eased lead-in"),
+                ("pyramid-hourglass-pair-small.3mf", "Both, on one plate")]),
+    dict(id="hourglass_pyramid_180", version="1.0.0",
+         name="Hourglass — pyramid, dubbel 180 mm",
+         family="Hourglass · Pyramid",
+         blurb="The pyramid pair at double height.",
+         files=[("pyramid-solid.stl", "Body"),
+                ("pyramid-spiral.stl", "Spiral"),
+                ("pyramid-spiral-eased.stl", "Spiral — eased lead-in"),
+                ("pyramid-hourglass-pair-dubbel.3mf", "Both, on one plate")]),
+]
+
+
+def sets(parts):
+    """SETS resolved against what is actually on the shelf.
+
+    A set whose files are missing is dropped rather than shown with holes.
+    """
+    by_file = {}
+    for p in parts:
+        f = os.path.basename(p.get("path", ""))
+        if f:
+            by_file.setdefault(f, p["id"])
+    out = []
+    for spec in SETS:
+        mem = [dict(part=by_file[f], label=lab)
+               for f, lab in spec["files"] if f in by_file]
+        if len(mem) < 2:
+            continue
+        out.append(dict(id=spec["id"], version=spec["version"],
+                        name=spec["name"], family=spec["family"],
+                        blurb=spec["blurb"], shared=[], members=mem))
+    return out
+
+
 def catalog(with_library=True):
     """One list. A part is a part; some of them have options."""
     entries = list(PARTS) + (library() if with_library else [])
@@ -591,7 +658,7 @@ def catalog(with_library=True):
                                else "observed")
     by = {p["id"]: p for p in parts}
     kits = []
-    for k in KITS:
+    for k in list(KITS) + sets(parts):
         mem = [by[m["part"]] for m in k["members"] if m["part"] in by]
         dates = [p["changed"] for p in mem if p["changed"]]
         builts = [p["built"] for p in mem if p["built"]]
