@@ -29,16 +29,17 @@ OUT = os.path.join(ROOT, "models", "glb", "prev")
 INDEX = os.path.join(ROOT, "models", "previews.json")
 PALETTE = [(233, 160, 99), (90, 178, 168), (129, 146, 214), (214, 176, 88),
            (183, 122, 183), (120, 180, 108), (208, 112, 118), (110, 162, 206)]
-# Faces per preview. Not a quality target — a ceiling, because two dozen
-# cards are mounted at once and each is a live scene. Measured on this
-# page: at 150,000 a screenful is 3.9 M triangles and runs at 11 fps.
+# No ceiling: previews are the real geometry. The machinery below still
+# honours a budget if one is set, and the fair share is what it should
+# always have used — but on the machine this runs on, two dozen live cards
+# sit at the display's refresh rate with the full meshes, so there is
+# nothing to buy by throwing detail away.
 #
-# What ruined the wrench was never this number, it was sharing it in
-# proportion — 4,736 faces cut to 1,086 to make room for a base plate that
-# would not miss them, and a prismatic part without its corners renders as
-# a ribbon. Shared max-min instead, everything under a fair share is kept
-# whole, so the wrench is untouched here and at any sane budget.
-BUDGET = 40_000
+# The earlier ceiling was chosen from frame rates measured in headless
+# Chromium, which falls back to SwiftShader and rasterises on the CPU.
+# Those numbers described a renderer nobody uses.
+BUDGET = None
+
 GAP = 6.0
 
 
@@ -109,10 +110,11 @@ def build_one(pid, path, budget=BUDGET, tile=True):
     # a base plate that will not miss them, and a prismatic part that has
     # lost its corners renders as a ribbon.
     import meshcheck
-    targets = meshcheck.budget_faces([len(m.faces) for m in meshes], budget)
+    targets = (meshcheck.budget_faces([len(m.faces) for m in meshes], budget)
+               if budget else [len(m.faces) for m in meshes])
     sc, kept = trimesh.Scene(), 0
     for i, m in enumerate(meshes):
-        if full > budget:
+        if budget and full > budget:
             want = max(300, targets[i])
             if want < len(m.faces):
                 try:
@@ -182,7 +184,7 @@ def build_one(pid, path, budget=BUDGET, tile=True):
                dims=src_ext, tiled_dims=[round(float(v), 1) for v in ext],
                biggest_body=biggest,
                kb=round(os.path.getsize(dest) / 1024))
-    if kept > budget:
+    if budget and kept > budget:
         # The decimator stops well short on some meshes and there is no one
         # cause: a lattice cannot lose a handle without becoming a different
         # object, and other files simply refuse to collapse. Record what was

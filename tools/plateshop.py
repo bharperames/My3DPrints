@@ -271,7 +271,7 @@ def order_items(order):
     return items, reports
 
 
-def arranged_scene(plates, pitch=300.0, simplify=60_000):
+def arranged_scene(plates, pitch=300.0, simplify=None):
     """Every plate, laid out side by side, as one scene.
 
     The same placement maths the exporter uses, so the preview is the plate —
@@ -299,7 +299,7 @@ def arranged_scene(plates, pitch=300.0, simplify=60_000):
             used[it["key"]] = k
             total += sum(len(g.faces) for _, g in bodies)
             staged.append((p["index"], it, k, ox, oy, bodies))
-    if total > simplify:
+    if simplify and total > simplify:
         # Shared max-min, so a small part on a plate beside a big one keeps
         # the faces that give it its shape. Cut everything by the same
         # proportion and the wrench loses three quarters of its corners to

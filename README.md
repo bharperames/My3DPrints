@@ -59,6 +59,33 @@ shop exported into a new "design" in its own catalog.
 `make clean-cache` prints what the caches cost; `make clean-cache-yes`
 clears them and `make build` puts them back.
 
+## Measuring on the real thing
+
+Nothing here trades quality away until evidence from the real target says
+it must — and a simulated environment is not that evidence.
+
+Preview geometry was capped because headless Chromium reported 11–24 fps
+with two dozen cards on screen. Headless Chromium falls back to SwiftShader
+and rasterises on the CPU; read `UNMASKED_RENDERER_WEBGL` and it says so.
+The same page on the GPU it actually runs on (`--use-angle=metal
+--enable-gpu`) holds the display's 120 Hz with every mesh at full
+resolution. The cap bought nothing and cost a small part its shape: sharing
+the budget in proportion cut the wrench from 4,736 faces to 1,086, and a
+prismatic part without its corners renders as a ribbon.
+
+Previews are the real geometry now. The budgeting code is still there and
+still shares max-min if a budget is ever set, because the proportional rule
+was wrong independently of whether any cap was needed.
+
+The slicing harness had the same fault from the other direction: it loaded
+a system process preset that silently overrode `reduce_crossing_wall`, so
+every travel figure measured settings nobody prints with. Check what the
+harness is doing before believing what it reports.
+
+And when the evidence says there is no problem, stop measuring. Having
+established there was no practical cap, hunting for the theoretical one is
+looking for a number to justify a decision already made.
+
 ## Before you print
 
 A part this shop generates is gated by its generator — it will not emit a
