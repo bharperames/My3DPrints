@@ -534,6 +534,8 @@ def enrich(part, prev):
         out.update(name=cur["title"], family=cur["family"],
                    designer=cur["designer"], material=cur["mat"],
                    verdict=list(cur["v"]), card=cur["cid"])
+        if cur.get("proven"):
+            out["proven"] = cur["proven"]
         if not out.get("blurb"):
             out["blurb"] = cur["blurb"]
         sl = designs.SLICE.get(cur["cid"])

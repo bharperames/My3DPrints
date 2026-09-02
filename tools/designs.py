@@ -11,10 +11,17 @@ can pick up its curation by matching the filename it already has.
 """
 
 C = []
-def add(cid, file, glb, family, designer, mat, title, blurb, v, mate=None, hide=False, reveals=None, reveal_label=None, pair=None):
+def add(cid, file, glb, family, designer, mat, title, blurb, v, mate=None,
+        hide=False, reveals=None, reveal_label=None, pair=None, proven=None):
+    """`proven` is what happened on this printer, not what the page claims.
+
+    A design here can declare it in the catalog; a downloaded file has no
+    entry there to declare it in, so it says so through its curation.
+    """
     C.append(dict(cid=cid, file=file, glb=glb, family=family, designer=designer,
                   mat=mat, title=title, blurb=blurb, v=v, mate=mate, hide=hide,
-                  reveals=reveals, reveal_label=reveal_label, pair=pair))
+                  reveals=reveals, reveal_label=reveal_label, pair=pair,
+                  proven=proven))
 
 UNK = "(unattributed export)"
 add("sphere1", "sphere_stand_1.0in.3mf", "sphere_stand_1in", "Sphere Stands", UNK, "PLA",
@@ -124,19 +131,30 @@ add("flexi_dragon", "Flexi Factory Dragon Square Bed.3mf", "flexi_dragon",
     "own plate; the designer's file lays both side by side at 508 mm, which "
     "no P2S plate takes. Wide-bed and Printmill cuts of the same dragon are "
     "in the download and are not here — they are for other bed shapes.",
-    ("pass", "Clean"))
+    ("pass", "Clean"),
+    proven="PLA, no supports — both halves clean. The check reads it as 0 "
+           "island and 1678 mm2 of bridged ledge, which is what a "
+           "print-in-place model should look like.")
 add("flexi_trex_curved", "Bambu Flexi Factory Skeleton T-Rex_Curved.3mf",
     "flexi_trex_curved", "Flexi Factory", "Flexi Factory", "PLA",
     "Flexi Skeleton T-Rex — curved", "Print-in-place articulated skeleton, "
     "four bodies on one 179 x 152 mm plate, laid out in the curved pose. "
     "The Prusa cut of the same model is in the download and is not here.",
-    ("pass", "Clean"))
+    ("pass", "Clean"),
+    proven="PLA, no supports. Which of the two poses went on the plate was "
+           "not recorded, and they are the same four bodies laid out "
+           "differently, so it stands for both rather than for a guess at "
+           "one.")
 add("flexi_trex_straight", "Bambu Flexi Factory Skeleton T-Rex_Straight.3mf",
     "flexi_trex_straight", "Flexi Factory", "Flexi Factory", "PLA",
     "Flexi Skeleton T-Rex — straight", "The same skeleton laid out straight "
     "rather than curved: four bodies on a 176 x 176 mm plate. One pose or "
     "the other, not both.", ("pass", "Clean"),
-    mate="Flexi Skeleton T-Rex — curved")
+    mate="Flexi Skeleton T-Rex — curved",
+    proven="PLA, no supports. Which of the two poses went on the plate was "
+           "not recorded, and they are the same four bodies laid out "
+           "differently, so it stands for both rather than for a guess at "
+           "one.")
 add("flexi_trex_stand", "Bambu Flexi Factory Skeleton T-Rex Stand.3mf",
     "flexi_trex_stand", "Flexi Factory", "Flexi Factory", "PLA",
     "Flexi Skeleton T-Rex stand", "Display stand for the skeleton, 114 x 126 "

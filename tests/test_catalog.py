@@ -354,8 +354,11 @@ class TestPrintabilityAdviceIsTrustworthy(unittest.TestCase):
     def test_a_part_that_prints_support_free_is_not_told_to_use_supports(self):
         # every one of these came off the plate without supports; an earlier
         # version of the check asked for them on all of them
-        for name in ("Dice Orb", "Base Plate 2×3", "Flexi Imperial Dragon",
-                     "Flexi Skeleton T-Rex — curved"):
+        # every one of these has now come off this printer support-free
+        for name in ("Dice Orb", "Base Plate 2×3", "Nut Wrench",
+                     "Flexi Imperial Dragon",
+                     "Flexi Skeleton T-Rex — curved",
+                     "Flexi Skeleton T-Rex — straight"):
             adv = self._adv(name)
             if not adv:
                 continue
