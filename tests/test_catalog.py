@@ -351,8 +351,43 @@ class TestPrintabilityAdviceIsTrustworthy(unittest.TestCase):
         self.assertNotIn("support", " ".join(adv).lower())
         self.assertNotIn("brim", " ".join(adv).lower())
 
-    def test_the_part_that_needed_supports_says_so(self):
-        self.assertIn("support", " ".join(self._adv("Dice Orb")).lower())
+    def test_a_part_that_prints_support_free_is_not_told_to_use_supports(self):
+        # every one of these came off the plate without supports; an earlier
+        # version of the check asked for them on all of them
+        for name in ("Dice Orb", "Base Plate 2×3", "Flexi Imperial Dragon",
+                     "Flexi Skeleton T-Rex — curved"):
+            adv = self._adv(name)
+            if not adv:
+                continue
+            self.assertNotIn("supports:", " ".join(adv).lower(), name)
+
+    def test_an_island_is_told_apart_from_a_ledge(self):
+        # a joint's overhang is joined to what is under it and bridges; a
+        # part that starts in mid-air is not and does not
+        import trimesh
+        a = trimesh.creation.box(extents=[20, 20, 2])
+        a.apply_translation([0, 0, 1])
+        b = trimesh.creation.box(extents=[12, 12, 2])
+        b.apply_translation([0, 0, 9])
+        island, ledge = self.O._unsupported(
+            trimesh.util.concatenate([a, b]))
+        self.assertGreater(island, 100, "a floating slab is an island")
+        cone = trimesh.creation.cone(radius=15, height=15, sections=64)
+        self.assertEqual(self.O._unsupported(cone)[0], 0.0)
+        self.assertEqual(
+            self.O._unsupported(trimesh.creation.box(extents=[20, 20, 20]))[0],
+            0.0)
+
+    def test_a_gap_in_the_part_does_not_reset_the_check(self):
+        # an empty slice used to mean "no previous layer", which skipped the
+        # comparison on the layer after it — the island itself
+        import trimesh
+        a = trimesh.creation.box(extents=[20, 20, 2])
+        a.apply_translation([0, 0, 1])
+        b = trimesh.creation.box(extents=[12, 12, 2])
+        b.apply_translation([0, 0, 20])          # a much bigger gap
+        island, _ = self.O._unsupported(trimesh.util.concatenate([a, b]))
+        self.assertGreater(island, 100)
 
     def test_the_part_whose_ball_came_loose_says_brim(self):
         self.assertIn("brim", " ".join(self._adv("Mini Fidget Ball")).lower())

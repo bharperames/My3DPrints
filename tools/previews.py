@@ -110,6 +110,11 @@ def build_one(pid, path, budget=BUDGET, tile=True):
         # a body, and searching ten orientations for every body of every
         # design turns a rebuild into a coffee break. `orient.py FILE` does
         # the full search when the question is actually "which way up".
+        # Analysed at full resolution. The decimated copy is 26k faces for
+        # a 400 mm dragon, and slicing that gives jagged sections whose
+        # layers stop covering each other — it reported 2584 mm2 of island
+        # on a model that has none. What is bounded instead is the number
+        # of slices, in orient itself.
         adv, worst = [], None
         for g in meshes:
             q = g.copy()

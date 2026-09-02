@@ -35,6 +35,10 @@ LAYER = 0.4          # mm; the step the check walks in
 BEAD = 0.42          # mm; how far a layer may hang past the one below
 
 
+MAX_SLICES = 160     # a tall part is stepped more coarsely rather than
+                     # sliced thousands of times; the measure is comparative
+
+
 def _unsupported(m, layer=LAYER, bead=BEAD):
     """Area that has nothing under it, layer by layer.
 
@@ -50,6 +54,7 @@ def _unsupported(m, layer=LAYER, bead=BEAD):
     printer has to put down over air.
     """
     z0, z1 = float(m.bounds[0][2]), float(m.bounds[1][2])
+    layer = max(layer, (z1 - z0) / MAX_SLICES)
     zs = np.arange(z0 + layer / 2, z1, layer)
     if len(zs) < 2:
         return 0.0
@@ -58,23 +63,46 @@ def _unsupported(m, layer=LAYER, bead=BEAD):
                                     plane_normal=[0, 0, 1], heights=zs)
     except BaseException:                          # noqa: BLE001
         return float("nan")
-    prev, total = None, 0.0
+    from shapely.geometry import MultiPolygon, Polygon
+    # A gap in the part must not reset the comparison. Treating an empty
+    # slice as "no previous layer" skipped the check on the layer that comes
+    # after it — which is the island, the one case this exists to catch.
+    EMPTY = Polygon()
+    prev, ledge, island, first = None, 0.0, 0.0, True
     for s in secs:
-        if s is None:
-            prev = None
+        polys = list(s.polygons_full) if s is not None else []
+        cur = (polys[0] if len(polys) == 1
+               else (_union(polys) if polys else None))
+        if cur is None or cur.is_empty:
+            if not first:
+                prev = EMPTY
             continue
-        cur = s.polygons_full
-        cur = cur[0] if len(cur) == 1 else _union(cur)
-        if cur is None:
-            prev = None
+        if first:                    # the bed carries the first layer
+            first, prev = False, cur
             continue
-        if prev is not None:
+        if True:
             try:
-                total += float(cur.difference(prev.buffer(bead)).area)
+                grown = prev.buffer(bead) if not prev.is_empty else prev
+                # Two different problems wear the same face. Ask it of each
+                # connected piece of the layer, not of the uncovered rim:
+                # the rim lies outside the layer below by construction, so
+                # it never touches it. A piece that sits on material below
+                # is a ledge and bridges — every articulated joint and every
+                # strut has them, and they print. A piece with nothing under
+                # it at all is an island and has to be held up.
+                for q in (cur.geoms if isinstance(cur, MultiPolygon)
+                          else [cur]):
+                    if q.is_empty:
+                        continue
+                    free = float(q.difference(grown).area)
+                    if q.intersects(prev):
+                        ledge += free
+                    else:
+                        island += float(q.area)
             except BaseException:                  # noqa: BLE001
                 pass
         prev = cur
-    return round(total, 1)
+    return round(island, 1), round(ledge, 1)
 
 
 def _union(polys):
@@ -94,11 +122,13 @@ def _measure(m):
     down = n[:, 2] < -0.05
     ang = np.degrees(np.arcsin(np.clip(-n[down, 2], 0, 1)))
     over_all = float(a[down][ang < FLAT].sum())
-    over = _unsupported(m)
+    island, ledge = _unsupported(m)
+    over = island
     ceil = float(a[down][ang > 85.0].sum())
     ext = m.bounds[1] - m.bounds[0]
     half = max(1e-6, min(ext[0], ext[1]) / 2)
     return dict(bed_mm2=round(bed, 1), overhang_mm2=round(over, 1),
+                bridged_mm2=round(ledge, 1),
                 facing_down_mm2=round(over_all, 1),
                 ceiling_mm2=round(ceil, 1),
                 height=round(float(ext[2]), 1),
@@ -146,10 +176,9 @@ def evaluate(m, limit=24):
 def verdict(best, asis):
     """What to actually do, in words a person can act on."""
     notes = []
-    if best["overhang_mm2"] > 300:
-        notes.append(f"supports: {best['overhang_mm2']:.0f} mm2 of it goes "
-                     f"down over open air, in every orientation it can rest "
-                     f"in")
+    if best["overhang_mm2"] > 60:
+        notes.append(f"supports: {best['overhang_mm2']:.0f} mm2 starts in "
+                     f"mid-air with nothing under it to build on")
     elif asis["overhang_mm2"] > best["overhang_mm2"] * 1.5 + 50:
         notes.append(f"re-orient: as saved it overhangs "
                      f"{asis['overhang_mm2']:.0f} mm2, laid on its best face "

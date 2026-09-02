@@ -112,6 +112,36 @@ SLICE = {
  "held": "43 m · 8.9 g — bridged struts; tree supports optional", "chain2x": "32 m · 10.6 g — brimless-friendly", "held_chain": "1 h 01 m · 13.5 g (Studio on the P2S: 1 h 06 m · 12.72 g)", "chain": "9 m · 2.3 g",
 }
 
+# --- flexi print-in-place models, downloaded 2026-09-02 -------------------
+# Flexi Factory ships each design cut for several bed shapes and for two
+# slicers. Only the Bambu variants are here, and of the dragon only the
+# square-bed cut: its file spans 508 mm because the two halves are laid
+# side by side, but each half is 203 x 193 and fits the P2S on its own.
+add("flexi_dragon", "Flexi Factory Dragon Square Bed.3mf", "flexi_dragon",
+    "Flexi Factory", "Flexi Factory", "PLA",
+    "Flexi Imperial Dragon", "Print-in-place articulated dragon, cut in two "
+    "halves for a square bed. Each half is 203 x 193 mm and prints on its "
+    "own plate; the designer's file lays both side by side at 508 mm, which "
+    "no P2S plate takes. Wide-bed and Printmill cuts of the same dragon are "
+    "in the download and are not here — they are for other bed shapes.",
+    ("pass", "Clean"))
+add("flexi_trex_curved", "Bambu Flexi Factory Skeleton T-Rex_Curved.3mf",
+    "flexi_trex_curved", "Flexi Factory", "Flexi Factory", "PLA",
+    "Flexi Skeleton T-Rex — curved", "Print-in-place articulated skeleton, "
+    "four bodies on one 179 x 152 mm plate, laid out in the curved pose. "
+    "The Prusa cut of the same model is in the download and is not here.",
+    ("pass", "Clean"))
+add("flexi_trex_straight", "Bambu Flexi Factory Skeleton T-Rex_Straight.3mf",
+    "flexi_trex_straight", "Flexi Factory", "Flexi Factory", "PLA",
+    "Flexi Skeleton T-Rex — straight", "The same skeleton laid out straight "
+    "rather than curved: four bodies on a 176 x 176 mm plate. One pose or "
+    "the other, not both.", ("pass", "Clean"),
+    mate="Flexi Skeleton T-Rex — curved")
+add("flexi_trex_stand", "Bambu Flexi Factory Skeleton T-Rex Stand.3mf",
+    "flexi_trex_stand", "Flexi Factory", "Flexi Factory", "PLA",
+    "Flexi Skeleton T-Rex stand", "Display stand for the skeleton, 114 x 126 "
+    "mm.", ("pass", "Clean"), mate="Flexi Skeleton T-Rex")
+
 BY_FILE = {}
 for _c in C:
     BY_FILE.setdefault(_c["file"].rsplit("/", 1)[-1], _c)
