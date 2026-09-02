@@ -67,7 +67,8 @@ KITS = [
                        # a round tube meets the bed on a line and the slicer
                        # lays a single bead per link; the flat gives it a pad
                        dict(key="foot", label="bed foot", unit="mm",
-                            min=0.0, max=0.8, step=0.1, val=0.4)]),
+                            min=0.0, max=0.8, step=0.1, val=0.4,
+                            derived="the printer")]),
              dict(part="clasp", label="Lobster clasp"),
              dict(part="jump_ring", label="Jump ring"),
          ]),
@@ -144,18 +145,21 @@ PARTS = [
               "tangent-line foot lifted links a few layers in.",
        out="chain-N{links}-L{len:g}-D{dia:g}-F{foot:g}.3mf"),
     _p("sphere_stand", "Sphere Stand", "Sphere Stands", "parametric",
-       "A ring that cradles a ball on a conformal spherical seat. Leave the "
-       "last three blank and they follow the ball at a 45 deg contact.",
-       version="1.0.0",
+       "A ring that cradles a ball on a conformal spherical seat. Set the "
+       "ball; the rest follow it at a 45 degree contact.",
+       version="1.0.1",
        gen=["gen_sphere_stand.py"], params=[
            dict(key="ball", label="ball", unit="mm", min=8, max=120,
                 step=0.5, val=25.4),
+           # derived from the ball. The blurb used to say "leave the last
+           # three blank", which was written for a form with text boxes —
+           # a slider is never blank, it always says something.
            dict(key="wall", label="wall", unit="mm", min=1.2, max=12,
-                step=0.1, val=2.5),
+                step=0.1, val=2.5, derived="ball"),
            dict(key="chamfer", label="rim chamfer", unit="mm", min=0, max=8,
-                step=0.1, val=0.8),
+                step=0.1, val=0.8, derived="ball"),
            dict(key="seat", label="air gap", unit="mm", min=0.4, max=12,
-                step=0.1, val=1.0)],
+                step=0.1, val=1.0, derived="ball")],
        out="sphere-stand"),
     _p("cage", "Geodesic Cage", "Designed here", "parametric",
        "Strut sphere, optionally with a captive ball.",
@@ -582,36 +586,40 @@ SETS = [
          blurb="A cone body and the spiral that threads through it. The "
                "spiral screws down under its own weight; the eased cut has "
                "a 0.05-0.15 mm lead-in so it starts without being forced.",
-         files=[("cone-solid-small.stl", "Body"),
-                ("cone-spiral-small.stl", "Spiral"),
-                ("cone-spiral-small-eased.stl", "Spiral — eased lead-in"),
-                ("cone-hourglass-pair-small.3mf", "Both, on one plate")]),
+         files=[("cone-solid-small.stl", "Body", "part"),
+                ("cone-spiral-small.stl", "Spiral", "part"),
+                ("cone-spiral-small-eased.stl", "Spiral — eased lead-in", "alt"),
+                ("cone-hourglass-pair-small.3mf", "Both, on one plate", "alt")]),
     dict(id="hourglass_cone_180", version="1.0.0",
          name="Hourglass — cone, dubbel 180 mm", family="Hourglass · Cone",
          blurb="The same pair at double height. Twice the lever on the same "
                "footprint, so it wants a brim and a slow outer wall.",
-         files=[("cone-solid.stl", "Body"),
-                ("cone-spiral.stl", "Spiral"),
-                ("cone-spiral-eased.stl", "Spiral — eased lead-in"),
-                ("cone-hourglass-pair-dubbel.3mf", "Both, on one plate")]),
+         files=[("cone-solid.stl", "Body", "part"),
+                ("cone-spiral.stl", "Spiral", "part"),
+                ("cone-spiral-eased.stl", "Spiral — eased lead-in", "alt"),
+                ("cone-hourglass-pair-dubbel.3mf", "Both, on one plate", "alt")]),
     dict(id="hourglass_pyramid_90", version="1.0.0",
          name="Hourglass — pyramid, 90 mm", family="Hourglass · Pyramid",
          blurb="The pyramid cut of the same mechanism. The original body "
                "carries the duplicate-face defect; the fixed one is the "
                "copy to print.",
-         files=[("pyramid-solid-small-fixed.stl", "Body — fixed"),
-                ("pyramid-solid-small.stl", "Body — original, has the defect"),
-                ("pyramid-spiral-small.stl", "Spiral"),
-                ("pyramid-spiral-small-eased.stl", "Spiral — eased lead-in"),
-                ("pyramid-hourglass-pair-small.3mf", "Both, on one plate")]),
+         files=[("pyramid-solid-small-fixed.stl", "Body — fixed", "part"),
+                ("pyramid-spiral-small.stl", "Spiral", "part"),
+                ("pyramid-solid-small.stl",
+                 "Body — original, has the defect", "alt"),
+                ("pyramid-spiral-small-eased.stl",
+                 "Spiral — eased lead-in", "alt"),
+                ("pyramid-hourglass-pair-small.3mf",
+                 "Both, on one plate", "alt")]),
     dict(id="hourglass_pyramid_180", version="1.0.0",
          name="Hourglass — pyramid, dubbel 180 mm",
          family="Hourglass · Pyramid",
          blurb="The pyramid pair at double height.",
-         files=[("pyramid-solid.stl", "Body"),
-                ("pyramid-spiral.stl", "Spiral"),
-                ("pyramid-spiral-eased.stl", "Spiral — eased lead-in"),
-                ("pyramid-hourglass-pair-dubbel.3mf", "Both, on one plate")]),
+         files=[("pyramid-solid.stl", "Body", "part"),
+                ("pyramid-spiral.stl", "Spiral", "part"),
+                ("pyramid-spiral-eased.stl", "Spiral — eased lead-in", "alt"),
+                ("pyramid-hourglass-pair-dubbel.3mf",
+                 "Both, on one plate", "alt")]),
 ]
 
 
@@ -627,13 +635,18 @@ def sets(parts):
             by_file.setdefault(f, p["id"])
     out = []
     for spec in SETS:
-        mem = [dict(part=by_file[f], label=lab)
-               for f, lab in spec["files"] if f in by_file]
+        # `role` separates the toy from its alternatives: an hourglass is a
+        # body and a spiral, and the eased spiral and the both-on-one-plate
+        # file are other ways to get the same two parts. Counting them as
+        # members showed five bodies in the preview of a two-part toy.
+        mem = [dict(part=by_file[f], label=lab, role=role)
+               for f, lab, role in spec["files"] if f in by_file]
         if len(mem) < 2:
             continue
         out.append(dict(id=spec["id"], version=spec["version"],
                         name=spec["name"], family=spec["family"],
-                        blurb=spec["blurb"], shared=[], members=mem))
+                        blurb=spec["blurb"], shared=[], members=mem,
+                        parts_n=sum(1 for m in mem if m["role"] == "part")))
     return out
 
 

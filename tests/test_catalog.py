@@ -157,6 +157,16 @@ class TestPreviewIndex(unittest.TestCase):
             self.assertGreater(e["tris"], 0)
             self.assertEqual(len(e["dims"]), 3)
 
+    def test_a_small_part_is_not_cut_to_fit_a_big_one(self):
+        # the wrench shares a set with an 88,000-face base plate; sharing
+        # the budget in proportion took three quarters of its faces and it
+        # rendered as a ribbon
+        w = next((e for e in self.index if e["id"] == "wrench"), None)
+        if w is None:
+            self.skipTest("no wrench preview")
+        self.assertEqual(w["tris"], w["tris_full"],
+                         "the wrench was decimated")
+
     def test_a_preview_over_budget_says_so(self):
         # (only previews the catalog still shows)
         # some meshes will not decimate — a lattice cannot lose a handle
@@ -173,17 +183,17 @@ class TestPreviewIndex(unittest.TestCase):
         # what governs the page is the weight of a screenful, not the worst
         # single file: cards load lazily, roughly two dozen at a time. Only
         # previews the catalog still shows count.
-        # The median moved when Downloads stopped being scanned by default:
-        # what is left is the curated shelf, which is the detailed end of the
-        # collection. So the bar is the two things a viewer actually feels —
-        # what the first screenful costs, and whether any one card is absurd —
-        # rather than a median calibrated against a population we no longer
-        # show.
+        # Measured on this page rather than guessed: with two dozen cards
+        # mounted and rotating it runs at 24 fps, and at a 150,000-face
+        # budget it ran at 11. Most of that cost is per-card rendering, not
+        # triangles — scrolled so few cards are in view it reaches 63 —
+        # but the budget is still worth a couple of frames a second.
         live = {p["id"] for p in catalog.catalog()["parts"]}
-        kb = sorted(e["kb"] for e in self.index if e["id"] in live)
+        kb = sorted((e["kb"] for e in self.index if e["id"] in live),
+                    reverse=True)
         self.assertTrue(kb, "no live previews")
-        self.assertLess(sum(kb[:24]) / min(24, len(kb)), 400,
-                        "a first screenful is heavy")
+        self.assertLess(sum(kb[:24]) / min(24, len(kb)), 1600,
+                        "the heaviest screenful got heavier")
         # A heavy card is allowed only where the index says why it is heavy:
         # some meshes will not decimate, and that is recorded rather than
         # hidden. An unexplained 4 MB card is the thing to catch.
@@ -520,3 +530,61 @@ class TestPreviewsDoNotPileParts(unittest.TestCase):
         self.assertTrue(idx)
         for e in idx[:5]:
             self.assertIn(f"|b{previews._builder_stamp()}", e["stamp"])
+
+
+class TestAVersionCountsRealChanges(unittest.TestCase):
+    """A rebuild is not a revision.
+
+    A 3MF is a zip and both layers carry something that moves on its own:
+    the zip records when it was written, and trimesh stamps a fresh random
+    UUID into the model XML on every export. Hashing the bytes made every
+    `make build` look like a new version — the held sphere reached its
+    thirtieth in four days without anyone touching it.
+    """
+
+    def setUp(self):
+        import versions
+        self.V = versions
+
+    def _fp(self, path):
+        return self.V.fingerprint({"kind": "library", "path": path})[0]
+
+    def test_re_exporting_the_same_geometry_keeps_its_version(self):
+        import tempfile
+        import time
+        import trimesh
+        d = tempfile.mkdtemp()
+        sc = trimesh.Scene()
+        sc.add_geometry(trimesh.creation.box(extents=[10, 10, 10]), geom_name="b")
+        a, b = os.path.join(d, "a.3mf"), os.path.join(d, "b.3mf")
+        sc.export(a)
+        time.sleep(0.05)
+        sc.export(b)
+        self.assertEqual(self._fp(a), self._fp(b))
+
+    def test_a_real_change_is_still_seen(self):
+        import tempfile
+        import trimesh
+        d = tempfile.mkdtemp()
+        for name, z in (("a.3mf", 10), ("c.3mf", 11)):
+            sc = trimesh.Scene()
+            sc.add_geometry(trimesh.creation.box(extents=[10, 10, z]),
+                            geom_name="b")
+            sc.export(os.path.join(d, name))
+        self.assertNotEqual(self._fp(os.path.join(d, "a.3mf")),
+                            self._fp(os.path.join(d, "c.3mf")))
+
+    def test_the_uuid_is_what_was_moving(self):
+        self.assertEqual(
+            self.V._stable(b'<object id="1" p:UUID="'
+                           b'adfa7ff5-b4df-4f61-b563-8a7d95c6e098" x="1"/>'),
+            self.V._stable(b'<object id="1" p:UUID="'
+                           b'372aaf3a-61b4-4479-bdc1-5feb0e5c9a73" x="1"/>'))
+
+    def test_the_superseded_chain_tests_are_gone(self):
+        # gen_chain.py proves the same joint for any length, and the two
+        # fixed test chains were left in the catalog as cards nobody would
+        # choose — regenerated, and so re-versioned, on every build
+        names = {p["name"] for p in catalog.catalog()["parts"]}
+        self.assertNotIn("chain-test-5seg", names)
+        self.assertNotIn("chain-test-5seg-2x", names)

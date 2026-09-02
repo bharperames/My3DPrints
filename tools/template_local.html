@@ -363,6 +363,11 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
 .needs span{display:block;margin-bottom:4px;line-height:1.45}
 .needs em{display:block;font:400 11px "IBM Plex Mono",monospace;
   color:var(--muted);font-style:normal;margin-top:2px}
+.params label.derived,.shared label.derived{opacity:.72}
+.params label.derived b,.shared label.derived b{color:var(--muted)}
+.follows{grid-column:1/-1;font:400 10.5px "IBM Plex Mono",monospace;
+  color:var(--faint);font-style:normal;margin:-2px 0 2px 0}
+.shared label.derived{flex-basis:100%}
 </style>
 </head>
 <body>
@@ -1164,11 +1169,23 @@ renderer.setAnimationLoop(animate);
   }
   function slider(p, get, set){
     const l = document.createElement('label');
+    if (p.derived){
+      // A dial that follows another one is not a choice on the same footing
+      // as the one it follows. It is shown, because it can be overridden,
+      // but it says whose value it is carrying.
+      l.className = 'derived';
+      l.title = 'follows ' + p.derived + ' — change only if you have a '
+              + 'reason to override it';
+    }
     const val = document.createElement('b'), r = document.createElement('input');
     r.type = 'range'; r.min = p.min; r.max = p.max; r.step = p.step; r.value = get();
     const show = () => val.textContent = num(r.value) + (p.unit ? ' '+p.unit : '');
     r.oninput = () => { show(); set(Number(r.value)); schedule(); };
-    show(); l.append(p.label + ' ', r, val); return l;
+    show();
+    l.append(p.label + ' ', r, val);
+    if (p.derived) l.append(Object.assign(document.createElement('i'),
+      {className: 'follows', textContent: 'follows ' + p.derived}));
+    return l;
   }
   function optionBox(part, defs){
     const sh = document.createElement('div'); sh.className = 'shared';

@@ -32,6 +32,7 @@ import json
 import os
 import re
 import sys
+import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import catalog  # noqa: E402
@@ -60,6 +61,19 @@ def declared_version(part):
     return f"{int(a)}.{int(b)}.{int(c)}"
 
 
+# A 3MF is a zip, and both layers carry something that changes without the
+# model changing: the zip records when it was written, and trimesh stamps a
+# fresh random UUID into the model XML on every export. Hashing the raw
+# bytes made a rebuild look like a new revision — the held sphere reached
+# its thirtieth in four days with nobody touching it.
+_UUID = re.compile(rb'\s*(?:p:)?UUID="[0-9a-fA-F-]{36}"')
+
+
+def _stable(blob):
+    """One zip entry, with what changes per export taken out."""
+    return _UUID.sub(b"", blob)
+
+
 def stamp(path):
     try:
         st = os.stat(path)
@@ -84,10 +98,22 @@ def fingerprint(part, was=None):
         if was and st and was.get("stamp") == st and was.get("fingerprint"):
             return was["fingerprint"], st
         try:
-            with open(p, "rb") as f:
-                for chunk in iter(lambda: f.read(1 << 20), b""):
-                    h.update(chunk)
-        except OSError:
+            if p.lower().endswith(".3mf"):
+                # A 3MF is a zip and a zip records the time it was written,
+                # so re-exporting geometry that has not changed by a single
+                # vertex produces different bytes. Hashing those bytes made
+                # every rebuild look like a new revision: the held sphere
+                # was on its thirtieth in four days without anyone touching
+                # it. Hash what the entries contain, not the envelope.
+                with zipfile.ZipFile(p) as z:
+                    for name in sorted(z.namelist()):
+                        h.update(name.encode())
+                        h.update(_stable(z.read(name)))
+            else:
+                with open(p, "rb") as f:
+                    for chunk in iter(lambda: f.read(1 << 20), b""):
+                        h.update(chunk)
+        except (OSError, zipfile.BadZipFile, KeyError):
             return None, st
         return h.hexdigest()[:16], st
     gen = part.get("gen") or []

@@ -29,7 +29,16 @@ OUT = os.path.join(ROOT, "models", "glb", "prev")
 INDEX = os.path.join(ROOT, "models", "previews.json")
 PALETTE = [(233, 160, 99), (90, 178, 168), (129, 146, 214), (214, 176, 88),
            (183, 122, 183), (120, 180, 108), (208, 112, 118), (110, 162, 206)]
-BUDGET = 26_000          # faces per preview; a card is 320 px of canvas
+# Faces per preview. Not a quality target — a ceiling, because two dozen
+# cards are mounted at once and each is a live scene. Measured on this
+# page: at 150,000 a screenful is 3.9 M triangles and runs at 11 fps.
+#
+# What ruined the wrench was never this number, it was sharing it in
+# proportion — 4,736 faces cut to 1,086 to make room for a base plate that
+# would not miss them, and a prismatic part without its corners renders as
+# a ribbon. Shared max-min instead, everything under a fair share is kept
+# whole, so the wrench is untouched here and at any sane budget.
+BUDGET = 40_000
 GAP = 6.0
 
 
@@ -95,10 +104,16 @@ def build_one(pid, path, budget=BUDGET, tile=True):
     # positioned, and moving the parts apart would misrepresent it.
     if tile and len(meshes) > 1 and (many or not _overlapping(meshes)):
         _tile(meshes)
+    # Shared max-min, not proportionally: cutting every mesh by the same
+    # fraction takes three quarters of the wrench's faces to make room for
+    # a base plate that will not miss them, and a prismatic part that has
+    # lost its corners renders as a ribbon.
+    import meshcheck
+    targets = meshcheck.budget_faces([len(m.faces) for m in meshes], budget)
     sc, kept = trimesh.Scene(), 0
     for i, m in enumerate(meshes):
         if full > budget:
-            want = max(300, int(len(m.faces) * budget / full))
+            want = max(300, targets[i])
             if want < len(m.faces):
                 try:
                     # aggression 7: the default refuses collapses that cost
@@ -256,7 +271,9 @@ def sources():
             print(f"  ! {p['id']}: {e}", file=sys.stderr)
     for k in cat["kits"]:
         paths = []
-        for m in k["members"]:
+        # the toy, not every file that can supply a piece of it
+        core = [m for m in k["members"] if m.get("role", "part") == "part"]
+        for m in (core or k["members"]):
             try:
                 paths.append(_source_of(m["part"]))
             except Exception as e:                   # noqa: BLE001

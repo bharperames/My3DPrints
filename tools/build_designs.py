@@ -190,8 +190,14 @@ def build_chain(scale, fname):
           f"bed contact/link≈{area:.1f} mm² extents {np.round(ext.bounds[1]-ext.bounds[0],1)}")
 
 
-build_chain(1.0, "chain-test-5seg.3mf")
-build_chain(2.0, "chain-test-5seg-2x.3mf")
+# The two fixed 5-link test chains are gone. They were the proof that the
+# 45-degree print-in-place joint worked, and gen_chain.py has taken that
+# over: it proves the same joint for any length and cross-section, and it
+# is what the Chain Set card orders. Leaving them regenerated every build
+# left two cards in the catalog that nobody would choose, and rewrote them
+# on every run — a 3MF is a zip, and a zip records timestamps, so identical
+# geometry hashed differently every time and the version ledger counted
+# thirty revisions of a file that never changed.
 
 
 # ---------- 3. Held sphere + 10-link chain (chainmail pendant) ----------

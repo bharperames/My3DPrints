@@ -300,14 +300,25 @@ def arranged_scene(plates, pitch=300.0, simplify=60_000):
             total += sum(len(g.faces) for _, g in bodies)
             staged.append((p["index"], it, k, ox, oy, bodies))
     if total > simplify:
-        for _, _, _, _, _, bodies in staged:
-            for i, (gk, g) in enumerate(bodies):
-                try:
-                    bodies[i] = (gk, g.simplify_quadric_decimation(
-                        face_count=max(200,
-                                       int(len(g.faces) * simplify / total))))
-                except Exception:
-                    pass
+        # Shared max-min, so a small part on a plate beside a big one keeps
+        # the faces that give it its shape. Cut everything by the same
+        # proportion and the wrench loses three quarters of its corners to
+        # make room for a base plate that will not miss them.
+        import meshcheck
+        flat = [(bodies, i)
+                for (_, _, _, _, _, bodies) in staged
+                for i in range(len(bodies))]
+        want = meshcheck.budget_faces(
+            [len(bodies[i][1].faces) for bodies, i in flat], simplify)
+        for (bodies, i), w in zip(flat, want):
+            gk, g = bodies[i]
+            if w >= len(g.faces):
+                continue
+            try:
+                bodies[i] = (gk, g.simplify_quadric_decimation(
+                    face_count=max(200, w)))
+            except Exception:
+                pass
     sc = trimesh.Scene()
     for idx, it, k, ox, oy, bodies in staged:
         lo = np.min([g.bounds[0] for _, g in bodies], axis=0)
