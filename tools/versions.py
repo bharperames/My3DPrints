@@ -26,6 +26,7 @@ when. Deleting it is safe -- it rebuilds -- but the history goes with it.
 Usage: versions.py [--check] [--json]
 """
 import argparse
+import ast
 import datetime
 import hashlib
 import json
@@ -41,6 +42,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 LEDGER = os.path.join(ROOT, "models", "versions.json")
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
+# Bumped whenever the way a fingerprint is computed changes. Without it,
+# changing the method makes every part look edited at once and the fault
+# report — which deliberately holds its ground until a version moves —
+# would never let the ledger re-baseline.
+FP_ALGO = 2
 # "Vortex v3", "Mini Stackable V2", "thing v1.2" -- a version the designer
 # put in the name. Bare numbers are not versions: "voro_sphere_2" is a file
 # name, and "c-shape copy 16" is a copy count.
@@ -67,6 +73,31 @@ def declared_version(part):
 # bytes made a rebuild look like a new revision — the held sphere reached
 # its thirtieth in four days with nobody touching it.
 _UUID = re.compile(rb'\s*(?:p:)?UUID="[0-9a-fA-F-]{36}"')
+
+
+def _code_only(src):
+    """A generator's code, without its comments or prose.
+
+    The fingerprint exists to catch a design that changed while its version
+    stood still. Hashing the file byte for byte also catches a typo fixed in
+    a comment, and a guard that fires on spelling is one nobody reads. The
+    parse tree ignores comments and formatting; docstrings are dropped too,
+    because in this repo they carry the reasoning rather than the behavior.
+    """
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return src                      # unparseable: fall back to the bytes
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef,
+                                 ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        body = node.body
+        if (body and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)):
+            node.body = body[1:] or [ast.Pass()]
+    return ast.dump(tree).encode()
 
 
 def _stable(blob):
@@ -122,9 +153,10 @@ def fingerprint(part, was=None):
     src = os.path.join(HERE, gen[0])
     try:
         with open(src, "rb") as f:
-            h.update(f.read())
+            raw = f.read()
     except OSError:
         return None, None
+    h.update(_code_only(raw))
     h.update("\x00".join(gen[1:]).encode())
     return h.hexdigest()[:16], stamp(src)
 
@@ -174,7 +206,8 @@ def reconcile(parts, led=None, write=True):
                 ver = bump_patch(ver)
         else:
             ver = p.get("version", "0.1.0")
-            if (was and was.get("fingerprint") != fp
+            rebased = was is not None and was.get("algo") != FP_ALGO
+            if (was and not rebased and was.get("fingerprint") != fp
                     and was.get("version") == ver):
                 faults.append(dict(
                     id=pid, name=p["name"], version=ver,
@@ -185,10 +218,13 @@ def reconcile(parts, led=None, write=True):
                 # fixing it — the guard would fire once and then forget.
                 led[pid] = was
                 continue
-        entry = dict(version=ver, fingerprint=fp, stamp=st,
+        entry = dict(version=ver, fingerprint=fp, stamp=st, algo=FP_ALGO,
                      first_seen=(was or {}).get("first_seen", today),
                      revisions=(was or {}).get("revisions", 0))
-        if was and was.get("fingerprint") != fp:
+        if was and was.get("algo") != FP_ALGO:
+            # the method changed, not the design
+            entry["updated"] = was.get("updated", entry["first_seen"])
+        elif was and was.get("fingerprint") != fp:
             entry["revisions"] = entry["revisions"] + 1
             entry["updated"] = today
         elif was:
