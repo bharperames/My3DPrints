@@ -356,7 +356,7 @@ class TestChainCoils(unittest.TestCase):
 
     def test_no_brim_by_default(self):
         # any brim follows the plan-view outline, and interlocked links
-        # overlap in plan, so it welds every link to its neighbour
+        # overlap in plan, so it welds every link to its neighbor
         rep, _ = self._make(40)
         self.assertFalse(rep["brim"])
 

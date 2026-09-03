@@ -66,7 +66,7 @@ it must — and a simulated environment is not that evidence.
 
 Preview geometry was capped because headless Chromium reported 11–24 fps
 with two dozen cards on screen. Headless Chromium falls back to SwiftShader
-and rasterises on the CPU; read `UNMASKED_RENDERER_WEBGL` and it says so.
+and rasterizes on the CPU; read `UNMASKED_RENDERER_WEBGL` and it says so.
 The same page on the GPU it actually runs on (`--use-angle=metal
 --enable-gpu`) holds the display's 120 Hz with every mesh at full
 resolution. The cap bought nothing and cost a small part its shape: sharing

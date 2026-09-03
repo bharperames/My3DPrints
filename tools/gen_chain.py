@@ -5,7 +5,7 @@ Usage: gen_chain.py --links N --len L_MM --dia D_MM [--layout auto|straight|coil
                     [--bed MM] --out FILE.3mf
 Geometry: stadium links, alternating +/-45 tilt, resting on the bed. Link
 width follows the cross-section (CL_W = 2.5*D + 1.0) so the opening always
-admits the neighbour's tube. Pitch starts at the tested ratio and backs off
+admits the neighbor's tube. Pitch starts at the tested ratio and backs off
 until FCL proves every joint free and threaded.
 
 A long chain laid out straight runs off the end of the plate. Past that it is
@@ -13,7 +13,7 @@ coiled instead, on an Archimedean spiral whose turn per link is no sharper
 than the joint has been measured to tolerate: the same collision and
 threading tests that pass the straight joint are run on a curved pair, and
 the tightest radius that passes sets the coil. Every pair of links in the
-finished layout is then checked, neighbours and rings alike, so a coil that
+finished layout is then checked, neighbors and rings alike, so a coil that
 laps back onto itself is refused rather than shipped.
 """
 import argparse
@@ -214,12 +214,12 @@ def main():
         """Prove the finished layout, not the pair model it was built from.
 
         Every pair for collision — a coil laps back on itself, and a
-        neighbour-only check never sees ring touching ring — and every
-        neighbour for threading, because links that merely pass close to
+        neighbor-only check never sees ring touching ring — and every
+        neighbor for threading, because links that merely pass close to
         each other make a row of rings, not a chain.
         """
         worst_ = None
-        # Two links cannot touch if their centres are further apart than the
+        # Two links cannot touch if their centers are further apart than the
         # sum of their reaches, so most of the n^2 pairs need no collision
         # test at all. Without this a long coil spends minutes proving that
         # opposite sides of the spiral are not in contact.

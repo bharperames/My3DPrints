@@ -88,7 +88,7 @@ def pack(items, bed=(256.0, 256.0), height=256.0, margin=MARGIN, gap=GAP,
          rotate=True):
     """Pack per-copy items onto plates.
 
-    Returns (plates, oversized). Coordinates are plate-centred, which is
+    Returns (plates, oversized). Coordinates are plate-centered, which is
     what a 3MF build item wants. Oversized parts are refused by name and
     reason rather than dropped off the edge.
     """
@@ -129,7 +129,7 @@ def pack(items, bed=(256.0, 256.0), height=256.0, margin=MARGIN, gap=GAP,
                 # 90 deg rotation. Reporting the unrotated pair (which the
                 # reference implementation does) leaves x/y describing one
                 # box and w/d another, and any preview drawn from them puts
-                # rotated parts through their neighbours.
+                # rotated parts through their neighbors.
                 placed.append(dict(
                     it, rot=spot["rot"], pw=spot["w"] - gap,
                     pd=spot["d"] - gap,

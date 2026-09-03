@@ -5,7 +5,7 @@ The catalog carries two kinds of entry that used to look nothing alike in
 the page: the handful built by the generators, which had hand-authored
 cards with live 3D, and the couple of hundred files found on disk, which
 were a name and a family in a list. This builds the same asset for both --
-a small, decimated, coloured GLB -- so one card template can render either.
+a small, decimated, colored GLB -- so one card template can render either.
 
 Previews are cached on the source's size and mtime: rebuilding is cheap
 when nothing changed, and a file that is edited on disk gets a new preview
@@ -36,7 +36,7 @@ PALETTE = [(233, 160, 99), (90, 178, 168), (129, 146, 214), (214, 176, 88),
 # nothing to buy by throwing detail away.
 #
 # The earlier ceiling was chosen from frame rates measured in headless
-# Chromium, which falls back to SwiftShader and rasterises on the CPU.
+# Chromium, which falls back to SwiftShader and rasterizes on the CPU.
 # Those numbers described a renderer nobody uses.
 BUDGET = None
 
@@ -81,7 +81,7 @@ def build_one(pid, path, budget=BUDGET, tile=True):
     for one in srcs:
         meshes += _load(one)
     # Parts that come from different files are separate objects whatever
-    # their coordinates say. Each is modelled about its own origin, so an
+    # their coordinates say. Each is modeled about its own origin, so an
     # hourglass body and the spiral that screws through it both sit at
     # (75, 0, 45) and the overlap test reads them as one positioned
     # assembly — the preview stacks them in the same place.
@@ -146,7 +146,7 @@ def build_one(pid, path, budget=BUDGET, tile=True):
         # a body, and searching ten orientations for every body of every
         # design turns a rebuild into a coffee break. `orient.py FILE` does
         # the full search when the question is actually "which way up".
-        # Analysed at full resolution. The decimated copy is 26k faces for
+        # Analyzed at full resolution. The decimated copy is 26k faces for
         # a 400 mm dragon, and slicing that gives jagged sections whose
         # layers stop covering each other — it reported 2584 mm2 of island
         # on a model that has none. What is bounded instead is the number

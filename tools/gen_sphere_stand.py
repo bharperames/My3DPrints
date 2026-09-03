@@ -6,7 +6,7 @@ ring by hand as interleaved Three.js vertex rings. The shape is a surface of
 revolution, so here it is one revolved profile instead — same geometry, a
 tenth of the code, and watertight by construction.
 
-Profile, in (radius, height), with the ball's centre at z_off above the bed:
+Profile, in (radius, height), with the ball's center at z_off above the bed:
 
     R_in  = base - wall/2        inner lip
     R_out = base + wall/2        outer rim      (base is the MID-WALL radius)

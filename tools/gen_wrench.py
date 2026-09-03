@@ -45,11 +45,11 @@ JAW_ARM = 16.5          # open-jaw arm at the boss. Real spanners run ~0.28x
                         # material before the root section
 THICK = 14.0            # extrusion; the hex's flat band is ~18 mm
 JAW_DEG = 15.0          # open jaw angle, as a real spanner has
-THROAT_FWD = 12.0       # throat ahead of the head centre
+THROAT_FWD = 12.0       # throat ahead of the head center
 JAW_DEPTH = 24.0        # throat to tip. A real spanner's jaw is short — it
                         # only has to clear the nut's corner, and long arms
                         # read as a tuning fork — but it still has to close
-                        # well past the nut's centreline or it cams off
+                        # well past the nut's centerline or it cams off
 JAW_TAPER = 0.55        # arm thickness at the tip, over its thickness at the
                         # root. Parallel arms give a rectangular head that
                         # reads as a fork; a real jaw narrows into a C
@@ -83,7 +83,7 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     bore_af = af + clr
     bore_cr = bore_af / np.sqrt(3)
     r_box = bore_cr + box_wall
-    span = af * 2.0                        # centre to centre. A real spanner
+    span = af * 2.0                        # center to center. A real spanner
                                            # runs long for leverage; a toy for
                                            # a 50 mm nut is chunky and short,
                                            # about 3.5x across-flats overall.
@@ -94,8 +94,8 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     ang = np.radians(JAW_DEG)
     d = np.array([np.cos(ang), np.sin(ang)])      # down the jaw
     n = np.array([-d[1], d[0]])                   # across it
-    centre = np.array([span, 0.0])
-    throat = centre + d * THROAT_FWD
+    center = np.array([span, 0.0])
+    throat = center + d * THROAT_FWD
     tip = throat + d * JAW_DEPTH
     seat = throat + d * (NUT_CR / 2 + 1.0)
 
@@ -103,14 +103,14 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     # The open head is a boss with a squared jaw block on the front, not a
     # disc: a disc tapers both arms to points, where a real spanner keeps
     # them parallel and cuts the tips off square.
-    boss = Point(*centre).buffer(r_open, 96)
+    boss = Point(*center).buffer(r_open, 96)
     # The jaw block starts on the boss's own diameter, not at the throat: a
-    # block that starts forward of the centre overhangs the circle by a
-    # couple of millimetres and leaves a step on each arm that no fillet of
+    # block that starts forward of the center overhangs the circle by a
+    # couple of millimeters and leaves a step on each arm that no fillet of
     # a sensible radius will take out.
     r_tip = bore_af / 2 + jaw_arm * JAW_TAPER
-    jaw_block = Polygon([centre + n * r_open, tip + n * r_tip,
-                         tip - n * r_tip, centre - n * r_open])
+    jaw_block = Polygon([center + n * r_open, tip + n * r_tip,
+                         tip - n * r_tip, center - n * r_open])
     # tips chamfered back on their outer corners, as a real jaw is. Cut as
     # two corner triangles: clipping the block against a tapered outline
     # instead thins the arm all the way to its root, where the load is.
@@ -139,7 +139,7 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     # A hex will not enter a round-capped slot past the point where its rear
     # pair of side corners — half a corner-radius back, 0.866 out — fall
     # behind the throat plane, since the cap cannot reach them. So the throat
-    # sits forward of the head centre and the nut seats half a corner-radius
+    # sits forward of the head center and the nut seats half a corner-radius
     # in front of it.
     slot = LineString([throat, throat + d * (r_open + af)]
                       ).buffer(bore_af / 2, cap_style=1, resolution=32)
@@ -224,7 +224,7 @@ def fit_test(mesh, nut, at, thick, sweep=1.0):
     def probe(deg):
         T = trimesh.transformations.rotation_matrix(np.radians(deg), [0, 0, 1])
         T[0, 3], T[1, 3] = at[0], at[1]
-        T[2, 3] = thick / 2 - 15.0            # centre the hex band on the jaw
+        T[2, 3] = thick / 2 - 15.0            # center the hex band on the jaw
         if cm.in_collision_single(nut, transform=T):
             return None
         return float(cm.min_distance_single(nut, transform=T))

@@ -297,7 +297,7 @@ def stale(part, path):
     Without this a cached 3MF is served forever: a generator can be fixed
     and every order still gets the old geometry, while the shop's own badge
     says the part rebuilds when ordered. The badge was telling the truth
-    about the intent and not about the behaviour.
+    about the intent and not about the behavior.
     """
     if not os.path.exists(path):
         return True

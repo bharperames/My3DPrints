@@ -202,7 +202,7 @@ class TestWrench(unittest.TestCase):
     def test_head_keeps_material_behind_the_throat(self):
         self.assertGreaterEqual(self.rep["behind_throat_mm"], self.W.MIN_WALL)
 
-    def test_jaw_grips_past_the_nuts_centre(self):
+    def test_jaw_grips_past_the_nuts_center(self):
         self.assertGreater(self.rep["grip_past_nut_mm"], 8.0)
 
     def test_it_fits_the_bed(self):
@@ -273,7 +273,7 @@ class TestBoreEntryIsPrintable(unittest.TestCase):
         import gen_montessori as GM
         nut, _ = GM.source_parts()
         # measured on the plug that cuts the bore, not on the donor nut:
-        # the nut's own bore sits half a millimetre wide of the surface the
+        # the nut's own bore sits half a millimeter wide of the surface the
         # part ends up with, and a lead-in aimed there leaves that much
         # thread behind
         crest = GM.crest_radius(GM.thread_plug(nut, 48.0))

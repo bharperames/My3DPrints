@@ -84,7 +84,7 @@ class TestClasp(unittest.TestCase):
 
     def test_link_fits_the_bowl_once_captured(self):
         from shapely.geometry import Point
-        # free space around the bowl centre, out to the nearest material
+        # free space around the bowl center, out to the nearest material
         self.assertGreater(2 * Point(0, 0).distance(self.clasp), D + 1.0)
 
     def test_flat_extrusion_has_no_overhangs(self):
@@ -109,7 +109,7 @@ class TestItHasFormNotJustOutline(unittest.TestCase):
     The first printed one worked and read as a silhouette: square edges,
     nothing in the hand. A real clasp swells through the middle and tapers
     to its edges. Only the top is domed — the underside stays flat, because
-    the honest lens would need support under every millimetre of it.
+    the honest lens would need support under every millimeter of it.
     """
 
     @classmethod
@@ -130,7 +130,7 @@ class TestItHasFormNotJustOutline(unittest.TestCase):
         # horizontal or vertical. What matters is that the steps are finer
         # than a layer, so the printer lays it down as a curve.
         # a union of two dozen slabs leaves slivers of a millionth of a
-        # square millimetre; they are not faces of the object
+        # square millimeter; they are not faces of the object
         up = (n[:, 2] > 0.99) & (a > 1e-4)
         heights = np.unique(np.round(m.triangles_center[up][:, 2], 3))
         self.assertGreater(len(heights), 6,
@@ -145,7 +145,7 @@ class TestItHasFormNotJustOutline(unittest.TestCase):
         n, a = self.m.face_normals, self.m.area_faces
         down = n[:, 2] < -0.05
         ang = np.degrees(np.arcsin(np.clip(-n[down, 2], 0, 1)))
-        # boolean slivers aside — a hundredth of a square millimetre is not
+        # boolean slivers aside — a hundredth of a square millimeter is not
         # something the printer has to bridge
         self.assertLess(float(a[down][ang < 45].sum()), 0.01)
 

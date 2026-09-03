@@ -75,7 +75,7 @@ def crown(poly, th, r, steps=None):
     middle and tapers to its edges.
 
     Only the top is rounded. Doming the underside too would be the honest
-    lens, and would need support under every millimetre of it; flat on the
+    lens, and would need support under every millimeter of it; flat on the
     bed and crowned above gives the shape where it is seen and touched.
 
     The slices are nested, so the union stays one body even where an inset
@@ -114,7 +114,7 @@ def build(D, T=None):
     R1 = 2.60 * D                           # bowl outer radius
     Rin = R1 - tw                           # bowl bore
     gc = 0.62 * D                           # closed gap, gate to bore
-    Rg = Rin - gc - tg / 2                  # gate centreline radius
+    Rg = Rin - gc - tg / 2                  # gate centerline radius
     if Rg - tg / 2 < 0.5 * (D + 1.0):
         raise ValueError("bowl too small to hold the link once it is in")
 
@@ -128,7 +128,7 @@ def build(D, T=None):
 
     # --- body: one pear silhouette, head through waist to the eye --------
     R2 = 1.45 * D                           # eye outer radius
-    yt = -(R1 + R2 + 2.2)                   # eye centre, on a neck
+    yt = -(R1 + R2 + 2.2)                   # eye center, on a neck
     outer = unary_union([Point(0, 0).buffer(R1, 160),
                          Point(0, yt).buffer(R2, 96)]).convex_hull
     # a hull joins the circles with dead-straight tangents; a real clasp

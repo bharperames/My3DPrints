@@ -83,7 +83,7 @@ def crest_radius(plug, zs=(2.0, 6.0, 10.0)):
 
     Measured on the plug — the solid that cuts the bore — because that is
     the surface the part actually ends up with. Measuring the donor nut's
-    own bore instead gives a radius half a millimetre wide of it, and the
+    own bore instead gives a radius half a millimeter wide of it, and the
     lead-in aimed there leaves exactly that much thread behind: a sliver
     that tapers to nothing, which is the feather edge the printer cannot
     fill.
@@ -119,7 +119,7 @@ def entry_chamfer(z_face, opens_up, to_r=None):
     # a wedge ring, not a cone reaching the axis: the thread plug already
     # takes everything inside BORE_ROOT, and a profile that touches the axis
     # revolves into a shape the boolean will not accept as a volume
-    # The inner wall runs a millimetre inside BORE_ROOT so it overlaps the
+    # The inner wall runs a millimeter inside BORE_ROOT so it overlaps the
     # thread plug rather than sharing a surface with it: coincident faces
     # leave the union non-manifold, which the export check refuses.
     # `to_r` is where the flare has to reach before the wall goes vertical.
@@ -195,7 +195,7 @@ def end_chamfers(height):
 def build_double_nut(nut, height=42.0, lead=LEAD):
     body = trimesh.creation.extrude_polygon(hexagon(HEX_CR), height)
     body = body.intersection(end_chamfers(height), engine="manifold")
-    body.apply_translation([0, 0, -height / 2])   # centred while cutting
+    body.apply_translation([0, 0, -height / 2])   # centered while cutting
     # a waist groove marks the two halves and gives fingers a purchase
     groove = trimesh.creation.cylinder(radius=HEX_CR + 1.0, height=4.0,
                                        sections=96)

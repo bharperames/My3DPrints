@@ -131,13 +131,13 @@ def embed(path, overrides=None, brim=True):
         pass
     if abs(dz) < 1e-4:
         dz = 0.0
-    # move build items from the origin corner to the plate centre
+    # move build items from the origin corner to the plate center
     pa = cfg.get("printable_area", ["0x0", "256x0", "256x256", "0x256"])
     xs = [float(p.split("x")[0]) for p in pa]
     ys = [float(p.split("x")[1]) for p in pa]
     cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
-    # centre the mesh's own bounds on the plate, not its origin: a part
-    # modelled from its corner would otherwise be pushed a half-bed sideways
+    # center the mesh's own bounds on the plate, not its origin: a part
+    # modeled from its corner would otherwise be pushed a half-bed sideways
     # and fall off the plate
     mdl = mdl.replace(
         'transform="1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0"',

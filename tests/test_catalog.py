@@ -171,7 +171,7 @@ class TestPreviewIndex(unittest.TestCase):
         """No detail is thrown away without evidence that it has to be.
 
         A ceiling was set here from frame rates measured in headless
-        Chromium, which falls back to SwiftShader and rasterises on the
+        Chromium, which falls back to SwiftShader and rasterizes on the
         CPU — numbers describing a renderer nobody uses. On the machine
         this runs on, two dozen live cards sit at the display's 120 Hz
         with the full meshes. The trade was paid for before anything asked
@@ -470,7 +470,7 @@ class TestMultiPartToysAreOneCard(unittest.TestCase):
 
 class TestPreviewsDoNotPileParts(unittest.TestCase):
     """Parts from different files are separate objects, whatever their
-    coordinates say — each is modelled about its own origin."""
+    coordinates say — each is modeled about its own origin."""
 
     @staticmethod
     def _world(path):

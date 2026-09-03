@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The curated designs: what a human knows about a file that a mesh cannot say.
 
-Designer, licence-ish attribution, what the thing does, and the verdict from
+Designer, license-ish attribution, what the thing does, and the verdict from
 the geometry review. This used to live inside the page builder, which meant
 the shop and the design cards were two descriptions of the same objects that
 could drift apart. It is data now, and both read it.
@@ -39,15 +39,15 @@ add("stackable", "Mini+Stackable+Supports+added+back+in.3mf", "mini_stackable", 
 add("top", "magic_spinning_top_+23+de+fight+d.3mf", "spinning_top", "Spinning Top", "AeroDesigns", "PLA",
     "Magic Spinning Top", "Floating-ring illusion: two genus-3 halves (ring + 3 spokes) plus two connector sizes — standard and +0.07 mm for slippery filaments. Never rescale.", ("pass", "Clean"))
 add("skull", "Quantum+Skull.3mf", "quantum_skull", "Quantum Skull", "Gmino", "PLA",
-    "Quantum Skull", "Two identical 31.5 cm³ skull halves that nest and slide as a two-hand fidget. Print each half in its own colour (two plates).", ("pass", "Clean"))
+    "Quantum Skull", "Two identical 31.5 cm³ skull halves that nest and slide as a two-hand fidget. Print each half in its own color (two plates).", ("pass", "Clean"))
 add("puffer", "pufferfish.3mf", "pufferfish", "Pufferfish", "Legend Lee", "PETG",
     "Pufferfish — original", "Articulated squeeze-ball: hinged spike plates around a multi-body core, pulled by rubber bands. One leaky object of 10 — every slicer auto-repairs it.", ("warn", "1 leaky object"))
 add("puffer3p", "pufferfish-p2s-threeplates.3mf", "pufferfish_threeplates", "Pufferfish", "Legend Lee", "PETG",
     "Pufferfish — 3-plate re-save", "Same 10 parts as the original (verified rotation-invariant), re-arranged across three plates for easier printing.", ("warn", "Same leaky part"))
 add("puffer1c", "pufferfish-p2s-onecolor.3mf", "pufferfish_onecolor", "Pufferfish", "Legend Lee", "PETG",
-    "Pufferfish — one-colour re-save", "Same parts, colour scheme flattened. A 1.3× scale is baked into mesh coords and cancelled by transforms — prints the same size.", ("warn", "Same leaky part"))
+    "Pufferfish — one-color re-save", "Same parts, color scheme flattened. A 1.3× scale is baked into mesh coords and canceled by transforms — prints the same size.", ("warn", "Same leaky part"))
 add("pikachu", "pikachu+more+resistant+one+color.3mf", "pikachu", "Pikachu Flexy", "B-Forge3D · v2", "PETG",
-    "Pikachu Flexy Keychain", "Print-in-place flexy of 7 hinged bodies. This file is itself the fix — the reinforced single-colour v2 of a fragile original.", ("warn", "Minor defects"))
+    "Pikachu Flexy Keychain", "Print-in-place flexy of 7 hinged bodies. This file is itself the fix — the reinforced single-color v2 of a fragile original.", ("warn", "Minor defects"))
 add("staryu", "Staryu_Starmie_Spin_Spin.3mf", "staryu_starmie", "Staryu & Starmie", "pythong · remix", "PLA",
     "Staryu & Starmie — original", "Two spinners on one bearing recipe, friction tuned by the diff_disc washer stack. Star heads carry 152 k duplicate faces — slicers discard them.", ("warn", "Dup-face defect"), reveals="staryu_dup", reveal_label="duplicate download")
 add("staryu_dup", "Staryu_Starmie_Spin_Spin (1).3mf", "staryu_starmie", "Staryu & Starmie", "pythong · remix", "PLA",

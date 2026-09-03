@@ -12,10 +12,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import embed_settings  # noqa: E402
 
 
-def make_plain_3mf(path, centred=False):
+def make_plain_3mf(path, centered=False):
     sc = trimesh.Scene()
     box = trimesh.creation.box(extents=[10, 10, 10])
-    if not centred:
+    if not centered:
         box.apply_translation([0, 0, 5])
     sc.add_geometry(box, geom_name="cube")
     sc.export(path)
@@ -56,13 +56,13 @@ class TestEmbed(unittest.TestCase):
             mdl = z.read("3D/3dmodel.model").decode()
         self.assertEqual(mdl.count("BambuStudio:3mfVersion"), 1)
 
-    def test_a_part_centred_on_z_is_stood_on_the_bed(self):
+    def test_a_part_centered_on_z_is_stood_on_the_bed(self):
         # a project trusts stored placement: a mesh built around z=0 would
         # sit half under the bed and silently slice to half its height
-        centred = os.path.join(self.tmp, "c.3mf")
-        make_plain_3mf(centred, centred=True)
-        embed_settings.embed(centred)
-        sc = trimesh.load(centred, force="scene")
+        centered = os.path.join(self.tmp, "c.3mf")
+        make_plain_3mf(centered, centered=True)
+        embed_settings.embed(centered)
+        sc = trimesh.load(centered, force="scene")
         self.assertAlmostEqual(float(sc.bounds[0][2]), 0.0, delta=0.01)
 
     def test_brim_is_optional(self):
