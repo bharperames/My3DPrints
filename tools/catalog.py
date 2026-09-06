@@ -174,6 +174,139 @@ PARTS = [
                 max=40, step=1, val=19)],
        out="cage-D{dia:g}-F{freq}-T{strut:g}-B{ball:g}.3mf",
        brim="on"),      # same thin first layer as the dice orb
+    _p("puzzle_seed", "Puzzle Seed Cube", "Designed here", "parametric",
+       "A cube split across the bolt rather than along it. Only the lower "
+       "half is threaded, and that is not a simplification: a keyed head "
+       "can never be screwed into its own keyway. It arrives at the pocket "
+       "turning, so it can present the right rotation only once every sixty "
+       "degrees \u2014 0.89 mm of descent on this lead \u2014 and it lands "
+       "on the top face and grinds instead. So the upper half takes a plain "
+       "clearance bore: the bolt drops through it by pure translation, "
+       "seats its head, and only then is turned, with the upper half keyed "
+       "to the head serving as the wrench that drives it home. Pull and "
+       "nothing happens \u2014 the upper half is capped by the head above "
+       "and floored by the lower half below. Split it the other way, along "
+       "the bolt, and it would not lock at all: a plane through a round "
+       "bore leaves one arc over 180 degrees and one under, and the half "
+       "holding the shallow arc is a groove, which lifts straight off a "
+       "cylinder. Every claim here is proved as a motion rather than a "
+       "pose, because a pose cannot tell an assembly that goes together "
+       "from one that does not: the insertion is swept at half the running "
+       "clearance and the screw-home path over four thousand samples, and "
+       "the same sweep run left-handed has to foul. The thread is the "
+       "Montessori profile rebuilt rather than copied \u2014 an axial "
+       "section of the toddler set\u2019s bolt is a pure cosine whose flank "
+       "sits 32.5 degrees off the axis at every scale, which is why a bore "
+       "of this family never needs support. The diameter is not kept, so "
+       "nothing here fits that set. Ships as three parts on one plate.",
+       version="1.1.0",
+       proven="Printed and works: it goes together, turns, and comes apart "
+              "the way the sweeps said it would. Printed in PLA Silk the "
+              "bolt broke in several places while being turned in the "
+              "block \u2014 the mechanism was not at fault, the filament "
+              "was. Silk PLA is the most brittle thing on the shelf and a "
+              "thread in torsion is the worst thing to ask of it. PETG "
+              "next.",
+       gen=["gen_puzzle.py"], params=[
+           dict(key="side", label="block", unit="mm", min=32, max=64,
+                step=1, val=40),
+           dict(key="thread", label="thread \u00d8", unit="mm", min=10,
+                max=26, step=1, val=16),
+           dict(key="pocket", label="head pocket", unit="mm", min=3, max=12,
+                step=0.5, val=5, derived="thread"),
+           # the upper half carries no thread now, so moving the seam up
+           # costs it nothing and buys the lower half engagement
+           dict(key="split", label="seam height", min=0.35, max=0.65,
+                step=0.01, val=0.5, derived="block")],
+       out="puzzle-seed-S{side:g}-T{thread:g}-P{pocket:g}-X{split:g}.3mf"),
+    _p("binary_rings", "Coded Ring Insert", "Designed here", "parametric",
+       "A coded disc for a rubber toy that reads concentric rings as bits. "
+       "The reader has five plungers, each at its own radius so the code "
+       "reads at any rotation, and one of them sits on the axis \u2014 so "
+       "the coding is five positions inside \u00d827.88: a \u00d84.75 disc "
+       "at the centre and four rings around it. That is 2^5 = 32 codes, the "
+       "number of animals. Bit 1 is the centre and bit 5 the outermost "
+       "ring, worth 1, 2, 4, 8 and 16, so an odd code stands its centre up "
+       "and an even one sinks a pocket there. The \u00d833.3 lip outside "
+       "them carries no code: it "
+       "is what presses the switch that starts a read, which the toy takes "
+       "at any rotation. Outside the lip a flat land 2.85 wide takes the "
+       "disc to \u00d839 \u2014 the face the toy meets, and the stop that "
+       "keeps the plug from going in further than the switch travels. On a "
+       "real accessory that flat is the body the coded disc is set into; "
+       "printed on its own it has to carry its own. Every other dimension "
+       "is measured off the toy and fixed here, because the plug only works "
+       "in that one socket. Ask for one code or any set of them \u2014 7, "
+       "or 0-31, or 1,2,4,8,16 \u2014 and a set arrives on one plate, each "
+       "disc with its own number engraved underneath so they stay told "
+       "apart in a drawer. Every surface is a vertical extrusion off a flat "
+       "base \u2014 the land is a step down from the lip, not a brim over "
+       "air \u2014 so it prints face-down with no supports. Printed, it "
+       "seats and reads. It also bound on the reader going on and wanted a "
+       "firm press to talk, so the cavity is built 0.10 wider across than "
+       "drawn \u2014 the wall where bit 5 ends is the only surface the "
+       "reader touches \u2014 and the raised features stand at the tall end "
+       "of what the measurements allow.",
+       # 1.1.0: rim 11.66 -> 11.55 (mean of three readings on rubber) and
+       #        relief 3.46 -> 3.35, which follows it through the 8.20
+       # 1.2.0: band widths became a dial -- the measurements fix their sum
+       #        and one boundary, not the split, so the default is a choice
+       # 2.0.0: the outermost band is the flange, not a bit. Every code
+       #        addresses different geometry than it did, hence the major.
+       # 2.1.0: the code is an engraved numeral underneath, replacing the
+       #        row of pips -- thirty-two of these look alike in a drawer
+       # 2.1.1: a width override that does not sum back to the measured
+       #        inner diameter now says so instead of moving it quietly
+       # 3.0.0: the code is the only dial. Heights and band widths were
+       #        cast from one socket, and a slider on them offers a plug
+       #        that fits nothing; the set card folded in here as 0-31.
+       # 3.1.0: the generator can build the activation lip -- the second
+       #        wall that presses the switch outside the bore. Minor, not
+       #        major: with its numbers unmeasured the lip is not built,
+       #        and every code comes out the shape it came out before.
+       # 4.0.0: the lip is the switch, and the flat land around it is what
+       #        the toy's face meets. Ø33.3 -> Ø39 and 6.9 -> 11.8 g: every
+       #        code is a different object than it was, and the discs
+       #        printed before this are the plug without its outer face.
+       # 4.1.0: relief 3.35 -> 3.77. The nub and the bit rings read 7.78
+       #        below the rim together, and the nub reads 3.74 off the bore
+       #        floor: two readings 0.03 apart, replacing a single 8.20.
+       # 5.0.0: the centre is a bit, not a permanent nub. The reader has
+       #        five plungers, one of them on the axis, and the animals
+       #        vary there -- tiger stands a boss, seal sinks a pocket. So
+       #        the field is a disc and four rings, not a nub and five
+       #        rings, and every code number addresses new geometry.
+       # 5.1.0: the first print talked. It needed pressing, so the rim goes
+       #        to the largest reading (11.75, not the mean 11.55) and the
+       #        relief follows it to 3.97 through the same 7.78 drop -- both
+       #        inside what the readings bracket. And it bound going on, so
+       #        the cavity is built 0.10 wider across: the disc is a hollow
+       #        cylinder that goes over the reader, and the wall where bit 5
+       #        ends is the only surface that touches it. The outside of the
+       #        lip plays no part and did not move.
+       # 5.2.0: 5.1.0 put that clearance on the outside of the lip, which
+       #        the reader never touches, so it bought nothing. It moves to
+       #        the cavity wall, and the number is measured across the hole
+       #        rather than on the radius -- the way the hole is measured
+       #        and the way the fault was reported.
+       # 6.0.0, not 5.3.0: every band boundary moved. The bands were
+       # regridded onto the reader's five plunger radii (midpoints between
+       # them, so no boundary lands on a switch) and the outermost 1.75 mm
+       # became a seat for the reader's raised rim rather than code. A disc
+       # from 5.x and a disc from 6.x are not the same design, and the old
+       # ones are superseded rather than merely older -- codes 16-31 built
+       # under 5.x filled the rim's seat and the toy stayed silent.
+       version="6.0.0",
+       gen=["gen_binary_rings.py"], params=[
+           dict(key="codes", label="codes", type="text", val="10",
+                placeholder="7  \u00b7  0-31  \u00b7  1,2,4,8,16",
+                hint="one code, a range, or a list \u2014 0 to 31")],
+       # Brimless, flat-bottomed and vertical-walled, so 2 mm between them
+       # is ample -- and it is what puts all thirty-two ø39 discs on one
+       # plate instead of two. The generator lays its own set out on the
+       # same 2 mm, so the file and the packed order agree.
+       gap=2.0,
+       out="binary-ring-{codes}.3mf"),
 ]
 BY_ID = {p["id"]: p for p in PARTS}
 _LIB_INDEX = {}
@@ -215,7 +348,20 @@ def find(part_id):
 
 
 def _fmt(v):
-    return f"{v:g}" if isinstance(v, (int, float)) else str(v)
+    """A parameter value as a fragment of a filename.
+
+    A number formats itself. A string is whatever was typed into a box --
+    a code spec arrives as "1,2,4,8,16" -- so it is reduced to letters,
+    digits and dashes, and a long one is replaced by a short digest of
+    itself rather than a filename nobody can read or a path nobody can
+    open.
+    """
+    if isinstance(v, (int, float)):
+        return f"{v:g}"
+    t = re.sub(r"[^A-Za-z0-9-]+", "_", str(v)).strip("_")
+    if len(t) > 32:
+        t = t[:24] + "-" + hashlib.sha1(str(v).encode()).hexdigest()[:6]
+    return t or "none"
 
 
 _GIT = {}
@@ -326,6 +472,10 @@ def out_path(part, params=None):
         # it, and provenance asks for the path with no parameters at all.
         full = dict(defaults(part))
         full.update(params)
+        # numbers keep their format spec ({dia:g}); anything typed is a
+        # filename fragment before it reaches format()
+        full = {k: (_fmt(v) if isinstance(v, str) else v)
+                for k, v in full.items()}
         name = name.format(**full)
     return os.path.join(CUSTOM, name)
 

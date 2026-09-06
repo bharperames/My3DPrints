@@ -11,6 +11,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -18,7 +19,23 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 TOOLS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools")
 MODELS = os.path.join(ROOT, "models")
-PORT = 8742
+# Reports from /preview, keyed on the parameterised filename. The GLB itself
+# is cached on disk beside the 3MF it was made from; this only saves
+# re-deriving the triangle count and extents for one already built.
+_PREVIEW_CACHE = {}
+# The server is threaded, so two cards (or one card typed at twice) can ask
+# for the same file at once. Both would run the generator into the same
+# path and the loser would read a half-written 3MF.
+_PREVIEW_LOCKS = {}
+_PREVIEW_GATE = threading.Lock()
+
+
+def _preview_lock(key):
+    with _PREVIEW_GATE:
+        return _PREVIEW_LOCKS.setdefault(key, threading.Lock())
+# Overridable so a second copy can be run alongside the one you have
+# open, rather than restarting yours to try a change.
+PORT = int(os.environ.get("PORT", 8742))
 APP_CANDIDATES = ["BambuStudio", "Bambu Studio"]
 
 
@@ -244,6 +261,50 @@ class Handler(SimpleHTTPRequestHandler):
             return self.do_POST()
         if url.path == "/notes":
             return self._json(200, load_notes())
+        if url.path == "/preview":
+            # A dial that moves the geometry has to move the picture too.
+            # The card's own GLB is built once from the defaults, so before
+            # this a part could be ordered at one code and previewed at
+            # another. The 3MF is already keyed on its parameters, so the
+            # GLB beside it is keyed the same way and both survive a reload.
+            q = parse_qs(url.query)
+            pid = unquote(q.get("id", [""])[0])
+            try:
+                params = json.loads(unquote(q.get("params", ["{}"])[0]) or "{}")
+            except ValueError:
+                params = {}
+            cat, _ = _shop_modules()
+            try:
+                part = cat.find(pid)
+            except KeyError:
+                return self._json(404, {"ok": False, "error": "unknown part"})
+            try:
+                src = cat.ensure(part, params or cat.defaults(part))[0]
+            except Exception as e:                          # noqa: BLE001
+                return self._json(400, {"ok": False, "error": str(e)})
+            import previews
+            slug = "live-" + os.path.splitext(os.path.basename(src))[0]
+            dest = os.path.join(MODELS, "glb", "prev", slug + ".glb")
+            with _preview_lock(slug):
+                rep = _PREVIEW_CACHE.get(slug)
+                if (rep is None or not os.path.exists(dest)
+                        or os.path.getmtime(dest) < os.path.getmtime(src)):
+                    try:
+                        # tile=False: this file's own arrangement is the
+                        # answer. A set of coded discs is laid out on the
+                        # bed by the generator, and re-tiling it here would
+                        # show a plate this app invented — 190 x 269 for a
+                        # set that is 220 square and fits.
+                        rep = previews.build_one(slug, src, tile=False,
+                                                 probe=False)
+                    except Exception as e:                  # noqa: BLE001
+                        return self._json(500, {"ok": False,
+                                                "error": str(e)})
+                    _PREVIEW_CACHE[slug] = rep
+            return self._json(200, {
+                "ok": True, "glb": rep["glb"], "dims": rep["dims"],
+                "tris": rep["tris"], "bodies": rep["bodies"],
+                "stamp": int(os.path.getmtime(dest))})
         if url.path != "/open":
             return super().do_GET()
         q = parse_qs(url.query)

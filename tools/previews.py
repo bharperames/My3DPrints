@@ -75,7 +75,7 @@ def _tile(meshes):
         row = max(row, d)
 
 
-def build_one(pid, path, budget=BUDGET, tile=True):
+def build_one(pid, path, budget=BUDGET, tile=True, probe=True):
     srcs = [path] if isinstance(path, str) else list(path)
     meshes = []
     for one in srcs:
@@ -137,7 +137,18 @@ def build_one(pid, path, budget=BUDGET, tile=True):
     dest = os.path.join(OUT, pid + ".glb")
     sc.export(dest)
     ext = sc.bounds[1] - sc.bounds[0]
-    # what the printer will make of it. A generated part is gated by its
+    # The printability probe below costs about a sixth of a second a body,
+    # which was seven eighths of the wait on a set of thirty-two discs --
+    # and a preview being redrawn while someone types is not being read
+    # for printing advice. probe=False is for that caller.
+    if not probe:
+        return dict(id=pid, glb=f"models/glb/prev/{pid}.glb",
+                    bodies=len(meshes), printability={"advice": []},
+                    tris=kept, tris_full=full, dims=src_ext,
+                    tiled_dims=[round(float(v), 1) for v in ext],
+                    biggest_body=biggest,
+                    kb=round(os.path.getsize(dest) / 1024))
+    # What the printer will make of it. A generated part is gated by its
     # generator; a downloaded one arrives however its author saved it, and
     # the first sign the orientation is wrong is spaghetti.
     try:

@@ -368,6 +368,24 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
 .follows{grid-column:1/-1;font:400 10.5px "IBM Plex Mono",monospace;
   color:var(--faint);font-style:normal;margin:-2px 0 2px 0}
 .shared label.derived{flex-basis:100%}
+/* A typed dial takes a row of its own. A code spec is longer than a
+   number and unreadable squeezed in beside sliders. */
+.shared label.text{flex-basis:100%;flex-wrap:wrap;gap:6px 8px}
+.shared label.text input{flex:1 1 160px;min-width:0;background:var(--ground);
+  border:1px solid var(--edge);border-radius:6px;color:var(--ink);
+  padding:5px 9px;font:500 12.5px "IBM Plex Mono",monospace}
+.shared label.text input:focus{outline:none;border-color:var(--accent)}
+.shared label.text input.bad{border-color:var(--warn);color:var(--warn)}
+.shared .hint{flex-basis:100%;font:400 10.5px "IBM Plex Mono",monospace;
+  color:var(--faint);font-style:normal;margin:-4px 0 0}
+/* The live status sits in a corner, not across the middle: the old model
+   stays on screen while the new one builds, and a label over its face
+   hides the thing being compared. */
+.view .status.live{top:auto;left:50%;bottom:10px;transform:translateX(-50%);
+  background:rgba(11,14,16,.78);border:1px solid var(--line);z-index:6;
+  border-radius:99px;padding:4px 11px;white-space:nowrap;
+  font:500 11px "IBM Plex Mono",monospace;color:var(--accent-ink)}
+.view .status.live.bad{color:var(--warn);border-color:var(--warn)}
 </style>
 </head>
 <body>
@@ -666,23 +684,35 @@ function placeCoin(v, box){
   v.lastBox = box.clone();
   refreshGraph(v);
 }
-function frameModel(v, obj){
+// keep: this is the same part rebuilt, not a different one. Re-express the
+// camera in the new model's frame instead of resetting it — same direction,
+// same zoom relative to the part's size. A code that changed and a size that
+// did not leaves the camera exactly where the hand left it; a part that grew
+// (one disc to thirty-two) stays framed without snapping back to the default
+// three-quarter view.
+function frameModel(v, obj, keep){
   const box = new THREE.Box3().setFromObject(obj);
   box.min.x -= (COIN_R*2 + 10); box.min.y = Math.min(box.min.y, 0);
   const size = box.getSize(new THREE.Vector3()).length();
   const r = size / 2;
   const c = box.getCenter(new THREE.Vector3());
-  v.controls.target.copy(c);
   const fovV = v.camera.fov * Math.PI / 180;
   const fovH = 2 * Math.atan(Math.tan(fovV / 2) * v.camera.aspect);
-  const dist = 1.08 * r / Math.sin(Math.min(fovV, fovH) / 2);
-  const dir = new THREE.Vector3(1, 0.6, 1).normalize();
+  let dist = 1.08 * r / Math.sin(Math.min(fovV, fovH) / 2);
+  let dir = new THREE.Vector3(1, 0.6, 1).normalize();
+  const off = v.camera.position.clone().sub(v.controls.target);
+  if (keep && v.framedR > 0 && off.lengthSq() > 1e-9){
+    dist = off.length() * (r / v.framedR);   // the same zoom on a new size
+    dir = off.normalize();
+  }
+  v.framedR = r;
+  v.controls.target.copy(c);
   v.camera.position.copy(c).addScaledVector(dir, dist);
   v.camera.near = dist/50; v.camera.far = dist*20;
   v.camera.updateProjectionMatrix();
 }
 
-function setModel(v, i){
+function setModel(v, i, keep){
   const entry = v.entries[i];
   v.idx = i;
   const key = entry.glb || entry.slug;
@@ -693,7 +723,7 @@ function setModel(v, i){
   if (v.loaded[key]){
     if (v.current) v.scene.remove(v.current);
     v.current = v.loaded[key];
-    v.scene.add(v.current); frameModel(v, v.current);
+    v.scene.add(v.current); frameModel(v, v.current, keep);
     placeCoin(v, new THREE.Box3().setFromObject(v.current));
     return;
   }
@@ -710,7 +740,7 @@ function setModel(v, i){
     v.loaded[key] = obj;
     if (v.idx === i){
       if (v.current) v.scene.remove(v.current);
-      v.current = obj; v.scene.add(obj); frameModel(v, obj);
+      v.current = obj; v.scene.add(obj); frameModel(v, obj, keep);
       placeCoin(v, new THREE.Box3().setFromObject(obj));
     }
   }, undefined, () => { status.textContent = 'load failed — serve over http'; });
@@ -752,6 +782,50 @@ function mountView(el, entries){
   return v;
 }
 
+// A view mounted from the catalog shows the part as its defaults built it.
+// When a dial moves, the geometry behind the card changes, so the view has
+// to be handed the new mesh rather than left showing the old one.
+function swapModel(el, entry){
+  const v = views.find(x => x.el === el);
+  if (!v) return;
+  v.entries = [entry]; v.idx = 0;
+  // Dragging a dial makes a distinct mesh per resting place. setModel caches
+  // every one it loads, so without eviction a minute on a slider holds a
+  // page's worth of geometry for the life of the tab.
+  const keys = Object.keys(v.loaded);
+  for (const k of keys.slice(0, Math.max(0, keys.length - 8))){
+    const o = v.loaded[k];
+    if (o === v.current) continue;
+    o.traverse(n => { if (n.isMesh){ n.geometry.dispose(); n.material.dispose(); } });
+    delete v.loaded[k];
+  }
+  // An off-screen card has not loaded anything yet; the observer will pick
+  // up the new entries when it scrolls in.
+  if (v.started) setModel(v, 0, true);
+  // The large view is a window onto the same card. Opened on a part that is
+  // still being adjusted, it went on showing the geometry the card had when
+  // it was opened.
+  if (lbV.visible && lbV.src === v){ lbV.entries = [entry]; lbV.idx = 0;
+    setModel(lbV, 0, true); }
+}
+// a hook for the browser checks: which mesh each card viewport is showing
+// and where its camera is standing, so a rebuild that moves the camera is
+// visible as numbers rather than as an impression of a screenshot
+window.__views = () => views.map(v => ({
+  card: v.el.closest('.card') ? v.el.closest('.card').dataset.id : 'lightbox',
+  glb: v.entries && v.entries[v.idx] ? v.entries[v.idx].glb : null,
+  started: !!v.started, r: v.framedR || 0,
+  cam: v.camera.position.toArray().map(x => +x.toFixed(3)),
+  target: v.controls.target.toArray().map(x => +x.toFixed(3))}));
+function setViewStatus(el, text, bad){
+  let s = el && el.querySelector('.status.live');
+  if (!text){ if (s) s.remove(); return; }
+  if (!s){ s = document.createElement('div'); s.className = 'status live';
+           el.appendChild(s); }
+  s.classList.toggle('bad', !!bad);
+  s.textContent = text;
+}
+
 // Filtering the catalog throws cards away. Each one owns a scene, a camera
 // and an observer entry, so dropping the element without dropping those
 // leaks a renderer's worth of state per keystroke.
@@ -781,7 +855,7 @@ lbV.controls.autoRotateSpeed = 0.8; lbV.controls.enableZoom = true;
 let lbSuspended = [];
 function openLightbox(v){
   const entry = v.entries[v.idx];
-  lbV.entries = [entry]; lbV.idx = 0;
+  lbV.entries = [entry]; lbV.idx = 0; lbV.src = v; lbV.framedR = 0;
   lbRoot.classList.add('open'); lbV.visible = true;
   lbRoot.querySelector('.lb-title').textContent =
     v.el.closest('.card').querySelector('h3').textContent.trim();
@@ -791,7 +865,7 @@ function openLightbox(v){
   document.body.style.overflow = 'hidden';
 }
 function closeLightbox(){
-  lbRoot.classList.remove('open'); lbV.visible = false;
+  lbRoot.classList.remove('open'); lbV.visible = false; lbV.src = null;
   if (lbV.current){ lbV.scene.remove(lbV.current); lbV.current = null; }
   lbSuspended.forEach(x => x.suspend = false); lbSuspended = [];
   document.body.style.overflow = '';
@@ -824,6 +898,21 @@ function addViewChrome(el){
   b.className = 'expand'; b.textContent = '\u2922'; b.title = 'open large viewer';
   b.onclick = ev => { ev.stopPropagation(); openLightbox(v0); };
   el.parentElement.appendChild(b);
+  // The picture is the obvious thing to click, and the corner button only
+  // appears on hover — so clicking anywhere in the preview opens the large
+  // view. A press that travels is an orbit, not a click.
+  el.title = 'click to open the large view \u00b7 drag to orbit';
+  let press = null;
+  el.addEventListener('pointerdown', ev => {
+    press = {x: ev.clientX, y: ev.clientY, t: Date.now()}; });
+  el.addEventListener('pointerup', ev => {
+    const p0 = press; press = null;
+    if (!p0 || ev.button !== 0) return;
+    if (Math.hypot(ev.clientX - p0.x, ev.clientY - p0.y) > 5) return;
+    if (Date.now() - p0.t > 500) return;
+    openLightbox(v0);
+  });
+  el.addEventListener('pointercancel', () => { press = null; });
   const gb = document.createElement('button');
   gb.className = 'axisbtn'; gb.textContent = 'graph';
   gb.title = 'graph-paper axes (1\u2033 / \u215b\u2033 rulings)';
@@ -1187,11 +1276,108 @@ renderer.setAnimationLoop(animate);
       {className: 'follows', textContent: 'follows ' + p.derived}));
     return l;
   }
+  // Not every parameter is a position on a scale. A set of codes is
+  // "0-31" or "1,2,4,8,16" — a spec, which a slider cannot express and
+  // cannot be dragged to without passing through every value between.
+  function dial(p, get, set){
+    return p.type === 'text' ? textbox(p, get, set) : slider(p, get, set);
+  }
+  function textbox(p, get, set){
+    const l = document.createElement('label'); l.className = 'text';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.value = get(); inp.spellcheck = false;
+    inp.autocomplete = 'off';
+    if (p.placeholder) inp.placeholder = p.placeholder;
+    inp.setAttribute('aria-label', p.label);
+    inp.oninput = () => { set(inp.value.trim()); schedule(); };
+    l.append(p.label + ' ', inp);
+    if (p.hint) l.append(Object.assign(document.createElement('i'),
+      {className: 'hint', textContent: p.hint}));
+    return l;
+  }
+  // The generator runs server-side, so a change is a round trip. Three
+  // things keep the picture close behind the typing: a short settle so a
+  // half-typed spec is not built, a memo so anything asked for twice comes
+  // back without a trip, and an abort so the answer that matters is not
+  // queued behind one nobody is waiting for any more.
+  const liveTimers = new Map(), liveSeen = new Map(), liveReq = new Map();
+  function queueLivePreview(part, viewEl, now){
+    if (!viewEl) return;
+    clearTimeout(liveTimers.get(part.id));
+    if (now) return livePreview(part, viewEl);
+    liveTimers.set(part.id, setTimeout(() => livePreview(part, viewEl), 150));
+  }
+  function liveTicker(viewEl, label){
+    const t0 = Date.now();
+    setViewStatus(viewEl, label + '\u2026');
+    const iv = setInterval(() => setViewStatus(viewEl, label + '\u2026 ' +
+      Math.round((Date.now() - t0) / 1000) + 's'), 1000);
+    return () => clearInterval(iv);
+  }
+  // The card has to say what it would build. Its size and triangle count
+  // came from the file the defaults made, so a spec that asks for a
+  // different set left the line under the blurb describing one disc while
+  // the picture above it showed thirty-two.
+  function applySpec(part, entry){
+    const p = byId[part.id];
+    if (!p || !entry.dims) return;
+    p.dims3 = entry.dims; p.tris = entry.tris; p.bodies = entry.bodies;
+    p.dims = entry.dims.join(' \u00d7 ') + ' mm';
+    document.querySelectorAll('[data-dim="' + part.id + '"]').forEach(el => {
+      if (el.classList.contains('specline')) el.innerHTML = spec(p);
+      else el.textContent = p.dims + ' each'; });
+    renderBom();
+  }
+  function markSpec(viewEl, bad){
+    const card = viewEl.closest('.card');
+    if (card) card.querySelectorAll('.shared input[type=text]')
+      .forEach(i => i.classList.toggle('bad', !!bad));
+  }
+  async function livePreview(part, viewEl){
+    const want = JSON.stringify(paramVals(part));
+    if (viewEl.dataset.live === want) return;
+    viewEl.dataset.live = want;
+    const seen = liveSeen.get(part.id) || {};
+    liveSeen.set(part.id, seen);
+    if (seen[want]){                    // built already, still on disk
+      setViewStatus(viewEl, ''); markSpec(viewEl, false);
+      swapModel(viewEl, seen[want]);
+      return applySpec(part, seen[want]);
+    }
+    const prev = liveReq.get(part.id); if (prev) prev.abort();
+    const ctl = new AbortController(); liveReq.set(part.id, ctl);
+    const stop = liveTicker(viewEl, 'rebuilding');
+    try {
+      const r = await fetch('/preview?id=' + encodeURIComponent(part.id) +
+                            '&params=' + encodeURIComponent(want),
+                            {signal: ctl.signal});
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || 'server refused');
+      stop();
+      const entry = {glb: j.glb + '?v=' + j.stamp, label: part.name,
+                     dims: j.dims, tris: j.tris, bodies: j.bodies};
+      seen[want] = entry;
+      // A slower build that started earlier must not overwrite a newer one
+      if (viewEl.dataset.live !== want) return;
+      swapModel(viewEl, entry);
+      setViewStatus(viewEl, ''); markSpec(viewEl, false);
+      applySpec(part, entry);
+    } catch(e){
+      stop();
+      if (e.name === 'AbortError') return;   // a newer spec took over
+      viewEl.dataset.live = '';        // let the next change retry
+      markSpec(viewEl, true);
+      // 'not running' and 'running code older than this page' look the
+      // same from here -- both answer nothing -- and a restart fixes either
+      setViewStatus(viewEl, /fetch|network|Failed/i.test(e.message)
+        ? 'no answer \u2014 restart the server (make serve)' : e.message, true);
+    }
+  }
   function optionBox(part, defs){
     const sh = document.createElement('div'); sh.className = 'shared';
     const store = own.get(part.id) || {}; own.set(part.id, store);
     defs.forEach(p => { if (store[p.key] === undefined) store[p.key] = p.val;
-      sh.append(slider(p, () => store[p.key], v => { store[p.key] = v; })); });
+      sh.append(dial(p, () => store[p.key], v => { store[p.key] = v; })); });
     return sh;
   }
 
@@ -1290,7 +1476,16 @@ renderer.setAnimationLoop(animate);
       '<p class="specline" data-dim="' + esc(p.id) + '">' + spec(p) + '</p>' +
       '</div>';
     const body = el.querySelector('.body');
-    if (p.params && p.params.length) body.append(optionBox(p, p.params));
+    if (p.params && p.params.length){
+      const box = optionBox(p, p.params);
+      // input events bubble, so one listener on the box catches every dial
+      // without reaching into the controls. change is the settled value —
+      // a slider let go of, a box left or entered — and does not wait.
+      const view = () => el.querySelector('.view');
+      box.addEventListener('input', () => queueLivePreview(p, view()));
+      box.addEventListener('change', () => queueLivePreview(p, view(), true));
+      body.append(box);
+    }
     const foot = document.createElement('div'); foot.className = 'cardfoot';
     const open = document.createElement('button');
     open.className = 'print'; open.textContent = 'Open in Bambu Studio';
@@ -1328,7 +1523,7 @@ renderer.setAnimationLoop(animate);
     if (k.shared && k.shared.length){
       const sh = document.createElement('div'); sh.className = 'shared';
       const store = shared.get(k.id);
-      k.shared.forEach(d => sh.append(slider(d, () => store[d.key],
+      k.shared.forEach(d => sh.append(dial(d, () => store[d.key],
         v => { store[d.key] = v; })));
       body.append(sh);
     }
@@ -1670,9 +1865,11 @@ renderer.setAnimationLoop(animate);
   function schedule(){ clearTimeout(timer); timer = setTimeout(layout, 400); }
   async function layout(){
     const o = order();
+    // An empty order is an empty bed, not an empty scene: showEmptyBed puts
+    // the plate back, and taking the beds away again behind it was what left
+    // a black rectangle until something was ordered.
     if (!o.length){ plates = []; $('shop-sum').textContent = 'nothing on the plate';
-      $('shop-warn').textContent = ''; showEmptyBed();
-      if (beds){ S3.remove(beds); beds = null; } return; }
+      $('shop-warn').textContent = ''; showEmptyBed(); return; }
     if (busy){ schedule(); return; }
     busy = true; $('shop-sum').textContent = 'packing…';
     try {

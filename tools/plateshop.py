@@ -30,7 +30,11 @@ import catalog
 # best-short-side-fit, largest-area-first, 0/90 rotation. Shelf packing was
 # the first cut here and wastes noticeably more on mixed part sizes.
 MARGIN = 5.0        # inset from every plate edge -> 246 x 246 usable
-GAP = 3.0           # between parts; items are inflated by it, then deflated
+# Between parts; items are inflated by it, then deflated. 3 mm suits a plate
+# of mixed shapes, some of them brimmed. A design that knows better says so:
+# a part carrying its own `gap` uses that instead, which is how thirty-two
+# ø39 discs make one plate (six 41 mm cells across the 246) rather than two.
+GAP = 3.0
 
 
 class MaxRects:
@@ -95,7 +99,8 @@ def pack(items, bed=(256.0, 256.0), height=256.0, margin=MARGIN, gap=GAP,
     uw, ud = bed[0] - 2 * margin, bed[1] - 2 * margin
     queue, oversized = [], []
     for it in items:
-        w, d = it["w"] + gap, it["d"] + gap
+        g = gap if it.get("gap") is None else float(it["gap"])
+        w, d = it["w"] + g, it["d"] + g
         fits = (w <= uw + 1e-9 and d <= ud + 1e-9) or (
             rotate and d <= uw + 1e-9 and w <= ud + 1e-9)
         if not fits:
@@ -103,7 +108,7 @@ def pack(items, bed=(256.0, 256.0), height=256.0, margin=MARGIN, gap=GAP,
         elif it.get("h", 0) > height + 1e-9:
             oversized.append(dict(it, reason="height"))
         else:
-            queue.append(dict(it, w=w, d=d))
+            queue.append(dict(it, w=w, d=d, gap=g))
     queue.sort(key=lambda i: (-(i["w"] * i["d"]), -max(i["w"], i["d"]),
                               str(i["key"])))
     groups, order = {}, []
@@ -131,8 +136,8 @@ def pack(items, bed=(256.0, 256.0), height=256.0, margin=MARGIN, gap=GAP,
                 # box and w/d another, and any preview drawn from them puts
                 # rotated parts through their neighbors.
                 placed.append(dict(
-                    it, rot=spot["rot"], pw=spot["w"] - gap,
-                    pd=spot["d"] - gap,
+                    it, rot=spot["rot"], pw=spot["w"] - it["gap"],
+                    pd=spot["d"] - it["gap"],
                     x=spot["x"] + spot["w"] / 2 - uw / 2,
                     y=spot["y"] + spot["d"] / 2 - ud / 2))
             if not placed:
@@ -265,7 +270,7 @@ def order_items(order):
                     key=part["id"], path=path, copy=i, bodies=keys,
                     name=(part["name"] if one
                           else f"{part['name']} ({j + 1}/{len(groups)})"),
-                    assembly=one, brim=brim,
+                    assembly=one, brim=brim, gap=part.get("gap"),
                     group=("brim" if brim == "on" else ""),
                     **_extent(bodies, set(keys))))
     return items, reports
