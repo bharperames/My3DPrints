@@ -108,7 +108,8 @@ class Mobility:
         # BVHs are built here, once, and never again: FCL rebuilds one for
         # every mesh handed to `in_collision_single`, which costs 80x the
         # query and is the whole reason a search this dense is affordable.
-        self.rest_cm, self.move_cm = tc.CollisionManager(), tc.CollisionManager()
+        self.rest_cm = tc.CollisionManager()
+        self.move_cm = tc.CollisionManager()
         for n, m in self.parts.items():
             self.rest_cm.add_object(n, m)
             self.move_cm.add_object(n, m)
@@ -133,10 +134,18 @@ class Mobility:
         return {n: np.eye(4) for n in self.names}
 
     def key(self, poses):
+        """Two poses within the running clearance are one state.
+
+        Resolution is the clearance, not the move quantum. Keying off the
+        quantum tied "how far a hand moves a part" to "which positions are
+        distinct", and asking for maximal moves only — a quantum of a metre
+        — collapsed every configuration onto home and the search ended one
+        state in, reporting a design that opens as one that does not.
+        """
         out = []
         for n in sorted(poses):
             T = poses[n]
-            t = np.round(T[:3, 3] / (self.quantum / 4.0)).astype(int)
+            t = np.round(T[:3, 3] / self.clearance).astype(int)
             r = np.round(T[:3, :3] * 8.0).astype(int)
             out.append((n, tuple(t), tuple(r.ravel())))
         return tuple(out)
@@ -223,6 +232,15 @@ class Mobility:
         while k * self.quantum <= abs(free_to) + 1e-9:
             stops.append(direction * k * self.quantum)
             k += 1
+        if not escaped and (not stops or abs(stops[-1]) < abs(free_to) - 1e-9):
+            # As far as it will go, whether or not that is a whole quantum.
+            # The quantum is one lead, because that is the unit a hand turns
+            # in — but a puzzle's key move is very often SHORTER than that:
+            # the few millimetres of float a slot buys. Emitting only whole
+            # quanta made a five millimetre slot and no slot at all produce
+            # byte-identical searches, which is the tell. Three geometries
+            # that differ cannot all be the same.
+            stops.append(direction * abs(free_to))
         if escaped:
             # The escape stop is emitted even when it is shorter than the
             # standoff. A body that is already clear along this line — a lid

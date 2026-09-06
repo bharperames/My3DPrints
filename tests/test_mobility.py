@@ -127,6 +127,21 @@ class TestMobility(unittest.TestCase):
         self.assertGreaterEqual(len(crude.moves(crude.home())),
                                 len(fine.moves(fine.home())))
 
+    def test_float_shorter_than_a_quantum_is_still_a_move(self):
+        """A body with 2 mm of play, searched in 6 mm steps, still moves.
+
+        The quantum is one lead because that is the unit a hand turns in,
+        but the move that opens a puzzle is usually shorter: the few
+        millimetres a slot buys. Rounding it down to nothing made a slotted
+        design and an unslotted one produce identical searches.
+        """
+        shell = box(40, 40, 40).difference(box(20, 20, 24), engine="manifold")
+        m = Mobility({"shell": shell, "pea": box(19, 19, 19)},
+                     self.LINES, 6.0, quantum=6.0)
+        mv = [x for x in m.moves(m.home()) if "pea" in x["parts"]]
+        self.assertTrue(mv, "2 mm of float reported as no move at all")
+        self.assertLess(max(abs(x["distance"]) for x in mv), 6.0)
+
     def test_retrograde_is_a_move_against_the_way_out(self):
         seq = [{"parts": ["bolt"], "line": 0, "direction": -1,
                 "coupling": 1, "distance": -5.0, "frees": False},
