@@ -46,8 +46,17 @@ NUT_H = 1.717
 class Thread:
     """One thread of the family, named by its major radius."""
 
-    def __init__(self, major_r=8.0, clearance=CLEARANCE):
+    def __init__(self, major_r=8.0, clearance=CLEARANCE, hex_af=None,
+                 head_h=None):
+        """`hex_af` and `head_h` in mm override the family's proportions.
+
+        The toy's head is 2.844 R across flats so a toddler can grip it. A
+        head that is never gripped -- sunk in a pocket, turned by the block
+        around it -- only has to key and to bear, and can be sized to that.
+        """
         self.major_r = float(major_r)
+        self._hex_af = None if hex_af is None else float(hex_af)
+        self._head_h = None if head_h is None else float(head_h)
         self.minor_r = 2.0 / 3.0 * self.major_r
         self.lead = 2.0 / 3.0 * self.major_r
         self.mean = (self.major_r + self.minor_r) / 2.0
@@ -149,7 +158,7 @@ class Thread:
 
     @property
     def hex_af(self):
-        return HEX_AF * self.major_r
+        return HEX_AF * self.major_r if self._hex_af is None else self._hex_af
 
     @property
     def hex_cr(self):
@@ -157,7 +166,7 @@ class Thread:
 
     @property
     def head_h(self):
-        return HEAD_H * self.major_r
+        return HEAD_H * self.major_r if self._head_h is None else self._head_h
 
     def hexagon(self, cr=None, rot=0.0):
         cr = self.hex_cr if cr is None else cr
