@@ -358,10 +358,16 @@ class Mobility:
                 best, seq = n, path
                 break
             if len(seen) > self.budget:
+                # A budget, not a verdict. Seven moves deep with a
+                # branching factor of four is more states than a thousand,
+                # and a design that opens in seven is not loose. What is
+                # exact regardless is the first-move count above; the walk
+                # bounds the solve length from above until this finishes.
                 return {**report, "comes_apart": None,
-                        "why": f"more than {self.budget} states reachable — "
-                               f"the assembly is loose, not deep",
-                        "queries": self.queries}
+                        "why": f"search budget of {self.budget} states "
+                               f"exhausted at depth {n} — raise it, or "
+                               f"take the walk's length as an upper bound",
+                        "depth_reached": n, "queries": self.queries}
             for mv in (first if not path else self.moves(poses)):
                 nxt = self.apply(poses, mv)
                 kk = self.key(nxt)
