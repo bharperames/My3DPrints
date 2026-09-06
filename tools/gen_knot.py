@@ -442,8 +442,14 @@ def layout(t, a, entry="slot", slot=0.0):
     the orientation that makes that true, and the bolt heads are clocked
     to match so it is not a choice that could be made differently.
 
-    Bolts stand on their heads, thread up, for the same reason. They are
-    75 mm tall on a 27 mm base and get the brim `embed` puts on by default.
+    Bolts stand on their heads, thread up, for the same reason, and with no
+    brim. The seed cube's bolt printed the same way without one, at nearly
+    the same slenderness, and a brim is not free here: it attaches to the
+    chamfered rim of the head's underside, which is the bearing face -- on
+    the key bolt, the only thing stopping the bolt sliding through its own
+    block. A brim exists to stop a curled overhang edge being struck by the
+    nozzle, and this bolt has no edge to curl: the flank is 32.5 degrees at
+    every layer and the head is chamfered.
     """
     from gen_puzzle import tidy
     up = trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0])
@@ -633,8 +639,9 @@ def main():
             sc.add_geometry(g, geom_name=n)
         sc.export(a_.out)
         from embed_settings import embed
-        # bolts stand 75 mm on a 27 mm head, lever ratio over five: brim on
-        embed(a_.out)
+        # no brim: nothing here has an overhang edge to curl, and a brim on
+        # the underside of a head is a scar on a bearing face
+        embed(a_.out, brim=False)
         # the honest check is the exported file, not the mesh in memory:
         # 3MF precision collapses tangent surfaces into duplicate faces
         from meshcheck import export_defects
