@@ -47,7 +47,7 @@ class Thread:
     """One thread of the family, named by its major radius."""
 
     def __init__(self, major_r=8.0, clearance=CLEARANCE, hex_af=None,
-                 head_h=None):
+                 head_h=None, head_cham=None):
         """`hex_af` and `head_h` in mm override the family's proportions.
 
         The toy's head is 2.844 R across flats so a toddler can grip it. A
@@ -57,6 +57,7 @@ class Thread:
         self.major_r = float(major_r)
         self._hex_af = None if hex_af is None else float(hex_af)
         self._head_h = None if head_h is None else float(head_h)
+        self._head_cham = None if head_cham is None else float(head_cham)
         self.minor_r = 2.0 / 3.0 * self.major_r
         self.lead = 2.0 / 3.0 * self.major_r
         self.mean = (self.major_r + self.minor_r) / 2.0
@@ -176,7 +177,9 @@ class Thread:
     def head(self, z0=0.0, height=None, cham=None):
         """A hex head chamfered top and bottom, as the originals are."""
         h = self.head_h if height is None else height
-        cham = 0.18 * self.major_r if cham is None else cham
+        if cham is None:
+            cham = (0.18 * self.major_r if self._head_cham is None
+                    else self._head_cham)
         body = trimesh.creation.extrude_polygon(self.hexagon(), h)
         # keep the profile off the axis: a revolve through r=0 leaves
         # degenerate polar triangles that survive the boolean

@@ -208,17 +208,22 @@ if __name__ == "__main__":
 # it comes off. The couplings are never written down, so they cannot be
 # written down wrong.
 
-def _clear_along(mover_span, static_span, s, gap=0.05):
-    """Has the mover travelled far enough along the axis to be past it."""
-    return (mover_span[0] + s > static_span[1] + gap or
-            mover_span[1] + s < static_span[0] - gap)
+def _clear_along(mover_span, static_span, s, direction, gap=0.05):
+    """Has the mover travelled far enough along the axis to be past it.
+
+    Past it on the side it is travelling toward. A body that starts beyond
+    the static one and moves back at it is apart at its first sample and
+    is not escaping.
+    """
+    if direction > 0:
+        return mover_span[0] + s > static_span[1] + gap
+    return mover_span[1] + s < static_span[0] - gap
 
 
 Z_AXIS = ((0.0, 0.0, 1.0), (0.0, 0.0, 0.0))
 
 
-def escapes(rest, mover, lead, axes=(Z_AXIS,), span=None, clearance=0.30,
-            start_gap=None):
+def escapes(rest, mover, lead, axes=(Z_AXIS,), span=None, clearance=0.30):
     """Every motion that frees `mover` from `rest`.
 
     Each result is (axis index, direction, coupling): coupling None is a
@@ -229,21 +234,15 @@ def escapes(rest, mover, lead, axes=(Z_AXIS,), span=None, clearance=0.30,
     clear along the axis, so a successful escape costs only the travel it
     actually needs.
 
-    Paths begin a half-clearance off home, not at home. Assembled parts are
-    in contact by design — seam face on seam face, head on the floor of its
-    pocket, bolt tip flush with the underside — and FCL scores contact as
-    collision, so a path starting at home dies on its first sample and every
-    body reports as welded. Leaving contact is not an obstruction. The first
-    build of this search had no standoff and called the working design
-    welded exactly as loudly as the broken one, which is the only reason it
-    was caught: two designs that differ cannot both be right.
-
-    The helix is phased to home rather than to the standoff. A screw is only
-    free to back out along the one helix it is already sitting on; start the
-    rotation at zero a half-clearance out and the thread is asked to jump a
-    fraction of a turn it has no room for.
+    The home sample itself is never tested. Assembled parts are in contact
+    by design — seam face on seam face, head on the floor of its pocket —
+    and FCL scores contact as collision, so a search that tested home would
+    call every body welded. The first build of this search did exactly
+    that, and called the working design welded as loudly as the broken one,
+    which is the only reason it was caught: two designs that differ cannot
+    both be right. Every sample after home is tested, and none of the
+    motion between home and the first sample is skipped.
     """
-    gap = clearance / 2.0 if start_gap is None else start_gap
     s = Sweep(rest, mover)
     out = []
     for ai, (d, o) in enumerate(axes):
@@ -254,18 +253,26 @@ def escapes(rest, mover, lead, axes=(Z_AXIS,), span=None, clearance=0.30,
         max_r = s.radius(d, o)
         for direction in (1, -1):
             for coupling in (None, 1, -1):
-                s0, s1 = direction * gap, direction * reach
+                s0, s1 = 0.0, direction * reach
                 lead_s = None if coupling is None else coupling * lead
-                th0 = 0.0 if lead_s is None else 2.0 * np.pi * s0 / lead_s
-                path = helix(s0, s1, d, o, lead_s, th0, max_r,
+                path = helix(s0, s1, d, o, lead_s, 0.0, max_r,
                              clearance=clearance)
                 ok = False
                 for i, T in enumerate(path):
+                    # Home is not tested, and nothing between home and the
+                    # first sample is skipped. The old standoff started a
+                    # half-clearance out along the axis, which on a screw
+                    # phased to home is a rotation taken before the first
+                    # sample -- 10 degrees on this lead -- and a body
+                    # turning about a line far from its features moves them
+                    # millimetres in that jump.
+                    if i == 0:
+                        continue
                     s.cm.set_transform("mover", T)
                     if s.cm.in_collision_internal():
                         break
                     if _clear_along(ms, rs, s0 + (s1 - s0) * i
-                                    / (len(path) - 1)):
+                                    / (len(path) - 1), direction):
                         ok = True
                         break
                 if ok:

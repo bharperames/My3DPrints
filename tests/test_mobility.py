@@ -18,6 +18,12 @@ from assembly import extent_along, helix, screw_path            # noqa: E402
 from mobility import Mobility                                   # noqa: E402
 
 
+def _along_y(at):
+    T = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
+    T[:3, 3] = at
+    return T
+
+
 def box(sx, sy, sz, at=(0, 0, 0)):
     m = trimesh.creation.box((sx, sy, sz))
     m.apply_translation(at)
@@ -114,18 +120,26 @@ class TestMobility(unittest.TestCase):
                      self.LINES, 6.0, quantum=6.0)
         self.assertTrue(m.solve()["comes_apart"])
 
-    def test_coarse_search_only_ever_over_reports(self):
-        """The coarse pass may skip a collision; it may not invent one.
+    def test_coarse_search_never_misses_an_escape(self):
+        """Every freeing move the fine sweep finds, the coarse sweep finds.
 
-        That is what makes 'search coarse, confirm fine' safe: everything it
-        gets wrong is caught by the confirm pass, and nothing it gets wrong
-        is a working motion declared impossible.
+        That is what makes 'search coarse, confirm fine' safe. A coarse
+        sweep tests a subset of the fine sweep's samples, so if the fine
+        path reaches clear air without a collision the coarse one does too;
+        it can only ever ADD escapes that a skipped obstacle would have
+        stopped, and those the confirm pass throws out. How far a partial
+        move gets is approximate at either step and is re-measured on the
+        answer, so it is not what is asserted here.
         """
         parts = {"a": box(10, 10, 10), "b": box(10, 10, 10, (0, 0, 10.4))}
         fine = Mobility(parts, self.LINES, 6.0, quantum=6.0, coarse=1.0)
         crude = Mobility(parts, self.LINES, 6.0, quantum=6.0, coarse=40.0)
-        self.assertGreaterEqual(len(crude.moves(crude.home())),
-                                len(fine.moves(fine.home())))
+
+        def frees(m):
+            return {(tuple(x["parts"]), x["line"], x["direction"],
+                     x["coupling"]) for x in m.moves(m.home()) if x["frees"]}
+        self.assertTrue(frees(fine))
+        self.assertTrue(frees(fine) <= frees(crude))
 
     def test_float_shorter_than_a_quantum_is_still_a_move(self):
         """A body with 2 mm of play, searched in 6 mm steps, still moves.
@@ -141,6 +155,30 @@ class TestMobility(unittest.TestCase):
         mv = [x for x in m.moves(m.home()) if "pea" in x["parts"]]
         self.assertTrue(mv, "2 mm of float reported as no move at all")
         self.assertLess(max(abs(x["distance"]) for x in mv), 6.0)
+
+    def test_a_screw_sweep_does_not_skip_its_first_degrees(self):
+        """A bar pinned near its far end cannot turn about its near end.
+
+        A standoff of half a clearance along the axis is, on a screw phased
+        to home, a rotation of 2 pi gap / lead before the first sample --
+        13 degrees on a 4 mm lead. The pin here fouls the bar's hole from
+        about 2 degrees to about 10 and is in open air by 13, so a sweep
+        that begins at the standoff reports a full turn free. That is how
+        the Knot's third move was reported as a three-quarter turn of a
+        block that in fact collides at three degrees.
+        """
+        bar = box(60, 10, 12, (30, 0, 0)).difference(
+            trimesh.creation.cylinder(radius=5.3, height=14,
+                                      transform=_along_y((50, 0, 0))),
+            engine="manifold")
+        pin = trimesh.creation.cylinder(radius=5.0, height=14,
+                                        transform=_along_y((50, 0, 0)))
+        m = Mobility({"bar": bar, "pin": pin}, [((0, 1, 0), (0, 0, 0))],
+                     4.0, quantum=4.0)
+        for coupling in (1, -1):
+            stops, esc = m.travel(m.home(), ("bar",), 0, 1, coupling)
+            self.assertFalse(esc)
+            self.assertLess(max((abs(s) for s in stops), default=0.0), 0.5)
 
     def test_retrograde_is_a_move_against_the_way_out(self):
         seq = [{"parts": ["bolt"], "line": 0, "direction": -1,

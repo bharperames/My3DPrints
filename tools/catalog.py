@@ -231,18 +231,18 @@ PARTS = [
        "symmetric it is not a puzzle but a solid: every body has two bores "
        "at right angles, and sliding along either drags the other sideways "
        "across a shank, so nothing can translate at all, and what cannot "
-       "come apart cannot go together either. The way in has to be built. "
-       "One block\u2019s own bore is a plain slip fit rather than a "
-       "thread, and its pocket is elongated along its own axis by exactly "
-       "the depth of the key; that one block, and only that one, slides "
-       "five millimetres out of the cube, the bolt it uncovers is pushed "
-       "further IN to lift its head clear of the keyway, and the cycle "
-       "unzips from there. Only the bottom of each pocket is hexagonal. A "
-       "head keys in five millimetres of hex as surely as in its whole "
-       "height, and the rest of it sits in a round counterbore that keys "
-       "nothing \u2014 which matters because the slide, and so the block, "
-       "and so the cube, are all sized by that depth. The head itself is "
-       "sized to what it does rather than to the toddler set\u2019s "
+       "come apart cannot go together either. The way in has to be built, "
+       "and it is one thing: one block\u2019s pocket is elongated along "
+       "that block\u2019s own axis by exactly the depth of a head. The "
+       "block and the bolt threaded through it are a single unit \u2014 the "
+       "thread holds them together and the block\u2019s face caps the "
+       "head \u2014 and that unit, and only that unit, slides five "
+       "millimetres out of the cube, carrying its head clear of the next "
+       "block\u2019s pocket. That block is then free to turn, and the "
+       "cycle unzips from there. The head is as tall as the key and no "
+       "taller, because the slide has to clear the whole head, and the "
+       "slide sizes the block and the block sizes the cube. And the head "
+       "is sized to what it does rather than to the toddler set\u2019s "
        "proportion: it is never gripped, so it is as wide as it needs to "
        "be to key and to bear on the pocket floor, and no wider. Those two "
        "choices are the difference between the 98 mm cube this design "
@@ -252,7 +252,7 @@ PARTS = [
        "handednesses, from every configuration it can reach, and reports "
        "the number of legal first moves (one), the length of the shortest "
        "solution, and whether that solution needs a move in the wrong "
-       "direction (it does). The same search was first shown to read the "
+       "direction. The same search was first shown to read the "
        "seed cube as two moves and a deliberately welded cube as zero, "
        "because an instrument that has not been made to read zero is not "
        "evidence. The thread is the seed cube\u2019s family at 12 mm: the "
@@ -260,7 +260,7 @@ PARTS = [
        "axis, which is why the blocks stand with their threaded bores "
        "vertical and the pockets on their sides. PETG, not PLA \u2014 the "
        "seed cube\u2019s bolt snapped in silk PLA under hand torque.",
-       version="0.2.0",
+       version="0.3.0",
        gen=["gen_knot.py"], params=[
            dict(key="thread", label="thread \u00d8", unit="mm", min=10,
                 max=20, step=1, val=12)],

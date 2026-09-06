@@ -109,12 +109,17 @@ welded -- not hard, impossible, and impossible to ASSEMBLE too, which is the
 same fact read backwards. The search says so: `--entry none` reports zero
 legal first moves, in four hundred queries.
 
-The way in therefore cannot be found by looking harder; it has to be built,
-and it costs two things rather than one. One own-line bore is plain instead
-of threaded, because the last thread in a cycle cannot be closed by turning
--- by then nothing is free to turn. And one pocket is elongated along its
-block's own axis, because a plain bore alone still leaves the block pinned
-sideways by the head it holds.
+The way in therefore cannot be found by looking harder; it has to be
+built, and it is one thing: one pocket elongated along its block's own
+axis, by the depth of the pocket. That block and the bolt threaded through
+it are a single rigid unit -- the thread couples them axially and the
+block's face caps the head -- and the slot lets that UNIT slide out of the
+cube until the head it carries is clear of the neighbor's pocket. The
+neighbor is then free to turn, and the cycle unzips. Every own-line bore
+stays threaded. An earlier cut made the key block's bore a plain slip fit
+so the cycle could be closed by a slide, and that was the wrong joint to
+give up: it is the thread that holds the unit together. The slide that
+closes the cycle is the slot's.
 
 The pocket opens on the face that ABUTS the next block, not on the outside
 of the cube, and that is the lock rather than a detail. Opening outward, a
@@ -124,7 +129,7 @@ found that: with the first bolt lifted out, every remaining body had zero
 legal moves and the object was as welded five parts in as it had been at
 six.
 
-Usage: gen_knot.py [--a MM] [--thread MM] [--entry none|slip|slot]
+Usage: gen_knot.py [--a MM] [--thread MM] [--entry none|slot]
                    [--float MM] [--measure] [--out FILE.3mf]
 """
 import argparse
@@ -136,7 +141,7 @@ import numpy as np
 import trimesh
 import trimesh.collision as tc
 from shapely import affinity
-from shapely.geometry import MultiPolygon, Point
+from shapely.geometry import MultiPolygon
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from thread import Thread                                    # noqa: E402
@@ -159,19 +164,22 @@ FACE_GAP = 0.20        # per face; neighbors are two of these apart
 # half the slack the pocket already carries, which is also what a printed
 # part needs at both ends rather than all of it at one.
 AXIAL_SLACK = 0.15     # head to pocket floor, and head to mouth
-# Only the bottom of the pocket is hexagonal. A head keys in five
+# The head is as tall as the key and no taller. A head keys in five
 # millimetres of hex as surely as in thirteen, and the release distance --
-# how far a block has to slide before the head it holds can turn -- is the
-# hex depth, not the head height. The rest of the head sits in a round
-# counterbore that keys nothing. That change is most of what took the cube
-# from 98 mm to 68: the slot, and so the block, are sized by it.
+# how far the block-and-bolt unit has to slide before the head it carries is
+# clear of the neighbor's pocket -- is the head's height. The first cut at
+# this kept a full-height head and sank the rest of it in a round
+# counterbore, which was wrong twice over: the head was out of the key but
+# still inside the pocket, so the neighbor could not turn, and a round
+# counterbore printed on its side has a crown that droops. A short head
+# needs neither.
 KEY_DEPTH = 5.0
 # The head is never gripped, so it is sized to what it does: it keys, and
 # it bears on the annulus of pocket floor outside the bore. Two millimetres
 # of that annulus is the floor of the design, because on the key bolt it is
 # the only thing stopping the bolt sliding straight through its own block.
 BEARING = 2.0
-CBORE_CLR = 0.30       # counterbore radius past the hex corners
+HEAD_CHAM = 0.5        # the family's 0.18 R would eat most of a 5 mm head
 
 # The cyclic map: (p, q, r) -> (r, p, q), a 120 degree turn about [1,1,1].
 # It carries axis x to y to z, block 0 to block 1, and bolt 2 to bolt 0, so
@@ -189,45 +197,37 @@ def thread_for(major_d, clearance=None):
     """The Knot's thread: the family's profile, a head sized to its job."""
     r = major_d / 2.0
     clr = Thread(major_r=r).clearance if clearance is None else clearance
-    return Thread(major_r=r, clearance=clr,
-                  hex_af=2.0 * (r + clr + BEARING))
+    return Thread(major_r=r, clearance=clr, hex_af=2.0 * (r + clr + BEARING),
+                  head_h=KEY_DEPTH, head_cham=HEAD_CHAM)
 
 
 def pocket_cr(t):
     return t.hex_cr + POCKET_SLOP / 2.0 / np.cos(np.radians(30.0))
 
 
-def cbore_r(t):
-    return pocket_cr(t) + CBORE_CLR
+def pocket_depth(t):
+    return t.head_h + 2 * AXIAL_SLACK
 
 
 def release(t):
-    """How far a block slides before the head it holds is free to turn."""
-    return KEY_DEPTH + AXIAL_SLACK
+    """How far the unit slides before the head it carries is clear."""
+    return pocket_depth(t)
 
 
 def min_spacing(t, slot=0.0, gap=FACE_GAP):
     """The smallest `a` that leaves WALL_MIN of wall around a head pocket.
 
-    Two constraints, and the second is the one that decides whether the
-    puzzle can open at all.
-
-    Across the block, the pocket has to fit in the section with wall
-    outside it, which is what moved the design from the 22 mm the first
-    sketch guessed to 36: the head, not the shank, is the widest thing a
-    block has to contain.
-
-    Along the block, the SLOT has to fit too -- the pocket plus its
-    elongation plus the same wall at both ends, inside the block's own
-    length of a - gap. That bound is why the first Knot could not open. A
-    block frees its neighbor's bolt by sliding until the head clears the
-    pocket, so the slot has to be as long as the pocket is deep; at a = 36
-    the longest slot that fits is under a millimetre and the pocket is
-    thirteen deep. No amount of searching finds a way through that, because
-    there isn't one -- the design was asking a 36 mm block to swallow a
-    13 mm slide it had 1 mm of room for.
+    Three constraints. Across the block the pocket has to fit in the
+    section with wall outside it, which is what moved the design from the
+    22 mm the first sketch guessed to the mid thirties: the head, not the
+    shank, is the widest thing a block has to contain. Along the block the
+    SLOT has to fit too -- pocket, elongation and the same wall at both
+    ends, inside the block's own length of a - gap -- and since the slot
+    has to be as long as the pocket is deep, a full-height head costs a
+    98 mm cube and a head as tall as its key costs 68. The third is the
+    threaded bore with wall around it, which never binds at these sizes.
     """
-    cr = cbore_r(t)
+    cr = pocket_cr(t)
     across = 2.0 * (cr + WALL_MIN + gap)
     along = 2.0 * cr + 2.0 * WALL_MIN + float(slot) + gap
     bore = 2.0 * (t.major_r + t.clearance + WALL_MIN)
@@ -236,7 +236,7 @@ def min_spacing(t, slot=0.0, gap=FACE_GAP):
 
 def max_slot(t, a, gap=FACE_GAP):
     """The longest elongation that still leaves WALL_MIN at both ends."""
-    return (a - gap) - 2.0 * cbore_r(t) - 2.0 * WALL_MIN
+    return (a - gap) - 2.0 * pocket_cr(t) - 2.0 * WALL_MIN
 
 
 def onto_x(mesh, origin):
@@ -310,46 +310,37 @@ def datum(t, a, gap=FACE_GAP):
     of `a` and interfered at the next millimetre down, which is what a thing
     that works by luck looks like.
     """
-    return a / 2.0 - gap - (t.head_h + 2 * AXIAL_SLACK)
+    return a / 2.0 - gap - pocket_depth(t)
 
 
-def block(t, a, threaded=True, slot=0.0, gap=FACE_GAP):
+def block(t, a, slot=0.0, gap=FACE_GAP):
     """One block: a threaded bore on its own line, a head pocket on the last.
 
     The pocket opens on the face that ABUTS the next block, not on the
-    outside of the cube, and that is the whole lock rather than a detail.
+    outside of the cube, and that is the lock rather than a detail.
     Opening outward, a block has to travel outward to slide off the head it
-    holds -- and outward is exactly where its neighbor is, half a millimetre
-    away. The search found that: with the first bolt lifted out, every
-    remaining body had zero legal moves, and the object was as welded five
-    parts in as it had been at six. Turned inward, the same slide runs into
-    open air, the neighbor's face caps the head instead of blocking the
-    block, and the cycle unzips.
+    holds -- and outward is exactly where its neighbor is, half a
+    millimetre away. The search found that: with the first bolt lifted out,
+    every remaining body had zero legal moves. Turned inward, the same
+    slide runs into open air, the neighbor's face caps the head instead of
+    blocking the block, and the cycle unzips.
 
-    So the pocket is blind. No bore passes through to the outer face, and
-    the finished cube shows three flush bolt tips and three blank faces.
+    So the pocket is blind, and a plain hexagon as deep as the head. No
+    bore passes through to the outer face, and the finished cube shows
+    three flush bolt tips and three blank faces.
 
-    `threaded=False` makes the own-line bore a plain slip fit -- the one
-    joint a cyclic weave has to have, because the last thread in a cycle
-    cannot be closed by turning: by then nothing is free to turn. `slot`
-    elongates the pocket along the block's own axis, which is the only
-    translation any body in this weave has, and so the way in.
+    `slot` elongates the pocket along the block's own axis, which is the
+    only translation any body in this weave has, and so the whole way in.
     """
     w = a / 2.0
     m = bar(a, w, gap=gap)
-    p_depth = t.head_h + 2 * AXIAL_SLACK
+    p_depth = pocket_depth(t)
     x0 = datum(t, a, gap)
 
     # Its own line, L0: along x at y = a, over world x in [w+gap, a+w].
     near, far = w + gap - x0, a + w - x0
-    if threaded:
-        own = t.cutter(far - near + 2 * RO * t.lead, z0=near - RO * t.lead,
-                       runout=[(near, RO * t.lead), (far, RO * t.lead)])
-    else:
-        own = trimesh.creation.cylinder(radius=t.major_r + t.clearance,
-                                        height=far - near + 4.0,
-                                        sections=192)
-        own.apply_translation([0, 0, (near + far) / 2.0])
+    own = t.cutter(far - near + 2 * RO * t.lead, z0=near - RO * t.lead,
+                   runout=[(near, RO * t.lead), (far, RO * t.lead)])
     cuts = [onto_x(own, (x0, a, 0)),
             onto_x(t.mouth_chamfer(near, False), (x0, a, 0)),
             onto_x(t.mouth_chamfer(far, True), (x0, a, 0))]
@@ -361,29 +352,20 @@ def block(t, a, threaded=True, slot=0.0, gap=FACE_GAP):
     # hexagon is as far from aligned as it can be, and neither construction
     # looks wrong on its own. The head simply would not go in.
     hexp = t.hexagon(pocket_cr(t))
-    cb = Point(0, 0).buffer(cbore_r(t), resolution=48)
     if slot > 0:
         # Swept along what becomes the block's own axis: for a convex
         # section the hull of the two ends IS the sweep, and it stays one
         # simple polygon. Toward -y, which the cyclic map turns into the
-        # block's own -x: the block has to travel the OTHER way, out of the
+        # block's own -x: the unit has to travel the OTHER way, out of the
         # cube and into open air. Elongated the other way it would travel
         # into its neighbor, four tenths of a millimetre off, and the slot
-        # would buy exactly that much. The counterbore is swept too -- it
-        # pins the head sideways just as the hex does.
+        # would buy exactly that much.
         hexp = MultiPolygon([hexp, affinity.translate(hexp, 0, -slot)]) \
             .convex_hull
-        cb = MultiPolygon([cb, affinity.translate(cb, 0, -slot)]).convex_hull
-    # hex from the floor up to KEY_DEPTH; round from just below that to
-    # past the mouth. The overlap is so that no two cuts share a face.
-    pk = trimesh.creation.extrude_polygon(hexp, KEY_DEPTH + 0.3)
-    cbo = trimesh.creation.extrude_polygon(cb, p_depth + 2.0 - KEY_DEPTH
-                                           + 0.3)
-    cbo.apply_translation([0, 0, KEY_DEPTH - 0.3])
-    for g in (pk, cbo):
-        g = onto_x(g, (x0, a, 0))
-        g.apply_transform(CYCLE @ CYCLE)
-        cuts.append(g)
+    pk = trimesh.creation.extrude_polygon(hexp, p_depth + 2.0)
+    pk = onto_x(pk, (x0, a, 0))
+    pk.apply_transform(CYCLE @ CYCLE)
+    cuts.append(pk)
     return m.difference(trimesh.boolean.union(cuts, engine="manifold"),
                         engine="manifold")
 
@@ -401,19 +383,21 @@ def bolt(t, a, gap=FACE_GAP):
                   (datum(t, a, gap) + AXIAL_SLACK, a, 0))
 
 
-def assemble(t, a, entry="slot", slot=4.0):
+def assemble(t, a, entry="slot", slot=None):
     """The six bodies in their home poses, keyed by name.
 
     One block and one bolt, rotated twice. Bolt i's head is captured in
     block i+1 and its thread engages block i, which is the law -- clearance
     hole near, thread far -- and the cyclic map carries the whole
-    relationship round with it. The block that carries the asymmetry is
-    block 0, and the bolt that slips into it is bolt 0.
+    relationship round with it. Every own-line bore is threaded; the one
+    joint in the cycle that is not closed by turning is the slot, and the
+    block that carries it is block 0. Block 0 and bolt 0 are one unit --
+    threaded together, the head capped by the block's face -- and that
+    unit is what slides.
     """
-    plain = entry in ("slip", "slot")
-    sl = slot if entry == "slot" else 0.0
-    b0 = block(t, a, threaded=not plain, slot=sl)
-    bl = block(t, a, threaded=True, slot=0.0)
+    sl = (release(t) if slot is None else slot) if entry == "slot" else 0.0
+    b0 = block(t, a, slot=sl)
+    bl = block(t, a)
     k0 = bolt(t, a)
     parts, m = {}, np.eye(4)
     for i in range(3):
@@ -453,9 +437,9 @@ def layout(t, a, entry="slot", slot=0.0):
     """
     from gen_puzzle import tidy
     up = trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0])
-    plain = entry in ("slip", "slot")
-    blocks = [block(t, a, threaded=not plain, slot=slot if entry == "slot"
-                    else 0.0), block(t, a), block(t, a)]
+    keyed = entry == "slot"
+    blocks = [block(t, a, slot=slot if keyed else 0.0), block(t, a),
+              block(t, a)]
     out = {}
     pitch = a + 8.0
     for i, g in enumerate(blocks):
@@ -463,7 +447,7 @@ def layout(t, a, entry="slot", slot=0.0):
         g.apply_translation([-g.bounds[0][0] + (i - 1) * pitch
                              - g.extents[0] / 2.0, -g.bounds[0][1]
                              - g.extents[1] / 2.0, -g.bounds[0][2]])
-        out[f"knot_block{'_key' if i == 0 and plain else ''}{i}"] = tidy(g)
+        out[f"knot_block{'_key' if i == 0 and keyed else ''}{i}"] = tidy(g)
     row = a + 8.0 + t.hex_cr + 4.0
     for i in range(3):
         g = bolt(t, a)
@@ -504,7 +488,7 @@ def head_descends(t, a, parts):
                        clearance=t.clearance, axis=0)
         hit = s.run(p)
         # where along the travel the head first reaches the pocket mouth
-        mouth = (start - (t.head_h + 2 * AXIAL_SLACK)) / travel
+        mouth = (start - pocket_depth(t)) / travel
         out[deg] = {"home": hit is None,
                     "free_to_pocket": hit is None or hit / (len(p) - 1)
                     >= mouth - 0.02}
@@ -539,8 +523,7 @@ def main():
                     help="axis spacing; default is the derived minimum")
     ap.add_argument("--thread", type=float, default=12.0,
                     help="major diameter of the thread")
-    ap.add_argument("--entry", choices=("none", "slip", "slot"),
-                    default="slot")
+    ap.add_argument("--entry", choices=("none", "slot"), default="slot")
     ap.add_argument("--float", dest="slot", type=float, default=None,
                     help="pocket elongation, mm — the way in. Default is "
                          "the release distance, which is what the slot has "
@@ -565,7 +548,7 @@ def main():
            "cube_mm": 2 * a, "slot_mm": round(slot, 2),
            "shank_gap_mm": round(a - 2 * t.major_r, 2),
            "head_af_mm": round(t.hex_af, 2), "key_depth_mm": KEY_DEPTH,
-           "pocket_wall_mm": round(a / 2.0 - cbore_r(t), 2)}
+           "pocket_wall_mm": round(a / 2.0 - pocket_cr(t), 2)}
     if a < need:
         why = (f"spacing {a} below the derived minimum {need:.2f} — a "
                f"{slot:.1f} mm slot and {WALL_MIN} mm of wall do not both "

@@ -207,24 +207,41 @@ class Mobility:
             trimesh.transform_points(self.parts[n].vertices, poses[n]), d, o)
             for n in group)
 
-        gap = self.clearance / 2.0
-        s0 = direction * gap
+        # The path starts AT home and the home sample is not tested: home
+        # is a legal state by definition. It used to start a half-clearance
+        # along the axis instead, to step off designed contact -- and for a
+        # screw phased to home that half-clearance is also a rotation, 13
+        # degrees on a 4 mm lead, taken before the first sample. A block
+        # turning about a line 34 mm from its pocket moves the pocket 8 mm
+        # in that jump, straight through the head it holds, and the sweep
+        # reported a three-quarter turn free that collides at three
+        # degrees. Contact at home is a geometry defect and has its own
+        # gate now; the sweep does not get to skip motion to paper over it.
+        s0 = 0.0
         s1 = direction * self.reach
         lead_s = None if coupling is None else coupling * self.lead
-        th0 = 0.0 if lead_s is None else 2.0 * np.pi * s0 / lead_s
-        path = helix(s0, s1, d, o, lead_s, th0, max_r,
+        path = helix(s0, s1, d, o, lead_s, 0.0, max_r,
                      delta=self.coarse if delta is None else delta)
         span = s1 - s0
+        gap = 0.0
         free_to = 0.0
         escaped = False
         self._place_rest(poses, group)
         for i, T in enumerate(path):
+            if i == 0:
+                continue
             self._place_mover(poses, group, T)
             if self._hits():
                 break
             s = s0 + span * i / (len(path) - 1)
             free_to = s
-            if (g_lo + s > r_hi + 0.05) or (g_hi + s < r_lo - 0.05):
+            # Clear on the side it is travelling TOWARD. A body that starts
+            # entirely beyond its neighbor and moves back at it is clear
+            # along the axis at its first sample and was being reported as
+            # escaped after a fiftieth of a millimetre in the wrong
+            # direction. Escaping means leaving, not merely being apart.
+            if ((direction > 0 and g_lo + s > r_hi + 0.05) or
+                    (direction < 0 and g_hi + s < r_lo - 0.05)):
                 escaped = True
                 break
         stops = []
@@ -250,8 +267,8 @@ class Mobility:
             # loosest joint in the assembly welded.
             stops.append(free_to)
             return stops, True
-        if abs(free_to) <= gap + 1e-9:
-            return [], False
+        if abs(free_to) <= self.clearance / 2.0:
+            return [], False       # did not leave home by a running clearance
         return stops, False
 
     # --- the move set at one state --------------------------------------
