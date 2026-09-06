@@ -34,27 +34,55 @@ import trimesh
 import trimesh.collision as tc
 
 
-def screw_path(z0, z1, lead=None, theta0=0.0, max_r=1.0, delta=None,
-               clearance=0.30, axis=2):
-    """Transforms sampling a screw motion, or a pure slide when lead is None.
+def helix(s0, s1, direction=(0, 0, 1), origin=(0, 0, 0), lead=None,
+          theta0=0.0, max_r=1.0, delta=None, clearance=0.30):
+    """Transforms sampling a screw along an arbitrary line, or a pure slide.
 
-    Right-handed: advancing by one lead in +z turns the mover one full turn
-    counter-clockwise seen from +z, which is the sense the generated thread
-    is cut in. Getting this backwards produces a path that collides
-    immediately and reads as a geometry failure.
+    The line is (origin, direction); travel and rotation share it, which is
+    what a screw is. The seed cube only ever needed the z axis, but the Knot
+    has three mutually skew ones, and a search that can only sweep along z
+    cannot report on it at all — it would call every body welded, and that
+    is exactly the failure this project has already paid for once.
+
+    Right-handed: advancing one lead along +direction turns the mover one
+    full turn counter-clockwise seen from +direction, the sense the
+    generated thread is cut in. Getting this backwards produces a path that
+    collides immediately and reads as a geometry failure.
     """
+    d = np.asarray(direction, dtype=float)
+    d = d / np.linalg.norm(d)
+    o = np.asarray(origin, dtype=float)
     delta = clearance / 2.0 if delta is None else delta
-    dz = float(z1 - z0)
-    dth = 0.0 if lead is None else 2.0 * np.pi * dz / float(lead)
-    n = int(np.ceil(np.hypot(abs(max_r * dth), abs(dz)) / delta)) + 1
+    ds = float(s1 - s0)
+    dth = 0.0 if lead is None else 2.0 * np.pi * ds / float(lead)
+    n = int(np.ceil(np.hypot(abs(max_r * dth), abs(ds)) / delta)) + 1
     n = max(n, 2)
     out = []
     for u in np.linspace(0.0, 1.0, n):
-        T = trimesh.transformations.rotation_matrix(theta0 + dth * u,
-                                                    [0, 0, 1])
-        T[axis, 3] = z0 + dz * u
+        T = trimesh.transformations.rotation_matrix(theta0 + dth * u, d, o)
+        T[:3, 3] += d * (s0 + ds * u)
         out.append(T)
     return out
+
+
+def screw_path(z0, z1, lead=None, theta0=0.0, max_r=1.0, delta=None,
+               clearance=0.30, axis=2):
+    """`helix` down a coordinate axis, which is what the seed cube uses."""
+    d = np.zeros(3)
+    d[axis] = 1.0
+    return helix(z0, z1, d, (0, 0, 0), lead, theta0, max_r, delta, clearance)
+
+
+def extent_along(mesh, direction):
+    """(min, max) of the mesh projected onto a direction.
+
+    Vertices, not the axis-aligned bounds: a box's AABB overstates its reach
+    along any direction that is not one of its own axes, and overstating
+    reach means declaring a body clear of an obstacle it is still inside.
+    """
+    p = mesh.vertices @ (np.asarray(direction, dtype=float)
+                         / np.linalg.norm(direction))
+    return float(p.min()), float(p.max())
 
 
 class Sweep:
@@ -65,8 +93,22 @@ class Sweep:
         self.cm.add_object("static", static)
         self.cm.add_object("mover", mover)
         self.mover = mover
-        self.max_r = float(np.hypot(mover.vertices[:, 0],
-                                    mover.vertices[:, 1]).max())
+        self.max_r = self.radius()
+
+    def radius(self, direction=(0, 0, 1), origin=(0, 0, 0)):
+        """The mover's true bounding radius about a line.
+
+        The sampling step is derived from this, so it has to be the radius
+        of the whole body and not of whatever part of it seems relevant:
+        "seems relevant" is the assumption the geometry is supposed to be
+        testing. About a line the mover straddles, the far corner is what
+        moves fastest, and it is the far corner that skips an obstacle if
+        the step is too coarse.
+        """
+        d = np.asarray(direction, dtype=float)
+        d = d / np.linalg.norm(d)
+        v = self.mover.vertices - np.asarray(origin, dtype=float)
+        return float(np.linalg.norm(v - np.outer(v @ d, d), axis=1).max())
 
     def run(self, transforms):
         """Index of the first colliding sample, or None if the path is free."""
@@ -166,17 +208,26 @@ if __name__ == "__main__":
 # it comes off. The couplings are never written down, so they cannot be
 # written down wrong.
 
-def _axial_clear(mover_z, static_z, dz, gap=0.05):
-    return (mover_z[0] + dz > static_z[1] + gap or
-            mover_z[1] + dz < static_z[0] - gap)
+def _clear_along(mover_span, static_span, s, gap=0.05):
+    """Has the mover travelled far enough along the axis to be past it."""
+    return (mover_span[0] + s > static_span[1] + gap or
+            mover_span[1] + s < static_span[0] - gap)
 
 
-def escapes(rest, mover, lead, span=None, clearance=0.30, start_gap=None):
-    """Every motion that frees `mover` from `rest`, as (direction, coupling).
+Z_AXIS = ((0.0, 0.0, 1.0), (0.0, 0.0, 0.0))
 
-    coupling None is a pure slide; +1 and -1 are the two handednesses of a
-    screw at this lead. Sweeps stop the moment the two bodies are axially
-    clear, so a successful escape costs only the travel it actually needs.
+
+def escapes(rest, mover, lead, axes=(Z_AXIS,), span=None, clearance=0.30,
+            start_gap=None):
+    """Every motion that frees `mover` from `rest`.
+
+    Each result is (axis index, direction, coupling): coupling None is a
+    pure slide, +1 and -1 the two handednesses of a screw at this lead.
+    `axes` is a sequence of (direction, origin) lines — the seed cube has
+    one, the Knot has three, and a body is only asked about the lines it
+    could actually travel on. Sweeps stop the moment the two bodies are
+    clear along the axis, so a successful escape costs only the travel it
+    actually needs.
 
     Paths begin a half-clearance off home, not at home. Assembled parts are
     in contact by design — seam face on seam face, head on the floor of its
@@ -186,41 +237,43 @@ def escapes(rest, mover, lead, span=None, clearance=0.30, start_gap=None):
     build of this search had no standoff and called the working design
     welded exactly as loudly as the broken one, which is the only reason it
     was caught: two designs that differ cannot both be right.
+
+    The helix is phased to home rather than to the standoff. A screw is only
+    free to back out along the one helix it is already sitting on; start the
+    rotation at zero a half-clearance out and the thread is asked to jump a
+    fraction of a turn it has no room for.
     """
-    sz = (float(rest.bounds[0][2]), float(rest.bounds[1][2]))
-    mz = (float(mover.bounds[0][2]), float(mover.bounds[1][2]))
-    if span is None:
-        span = (sz[1] - sz[0]) + (mz[1] - mz[0]) + 4.0
     gap = clearance / 2.0 if start_gap is None else start_gap
     s = Sweep(rest, mover)
     out = []
-    for direction in (1, -1):
-        for coupling in (None, 1, -1):
-            z0, dz = direction * gap, direction * span
-            lead_s = None if coupling is None else coupling * lead
-            path = screw_path(z0, dz, lead_s, 0.0, s.max_r,
-                              clearance=clearance)
-            if lead_s is not None:
-                # keep the helix phased to home, not to the standoff
-                for T in path:
-                    a = 2.0 * np.pi * T[2, 3] / lead_s
-                    c_, s_ = np.cos(a), np.sin(a)
-                    T[0, 0], T[0, 1] = c_, -s_
-                    T[1, 0], T[1, 1] = s_, c_
-            ok = False
-            for T in path:
-                s.cm.set_transform("mover", T)
-                if s.cm.in_collision_internal():
-                    break
-                if _axial_clear(mz, sz, T[2, 3]):
-                    ok = True
-                    break
-            if ok:
-                out.append((direction, coupling))
+    for ai, (d, o) in enumerate(axes):
+        ms = extent_along(mover, d)
+        rs = extent_along(rest, d)
+        reach = (rs[1] - rs[0]) + (ms[1] - ms[0]) + 4.0 if span is None \
+            else span
+        max_r = s.radius(d, o)
+        for direction in (1, -1):
+            for coupling in (None, 1, -1):
+                s0, s1 = direction * gap, direction * reach
+                lead_s = None if coupling is None else coupling * lead
+                th0 = 0.0 if lead_s is None else 2.0 * np.pi * s0 / lead_s
+                path = helix(s0, s1, d, o, lead_s, th0, max_r,
+                             clearance=clearance)
+                ok = False
+                for i, T in enumerate(path):
+                    s.cm.set_transform("mover", T)
+                    if s.cm.in_collision_internal():
+                        break
+                    if _clear_along(ms, rs, s0 + (s1 - s0) * i
+                                    / (len(path) - 1)):
+                        ok = True
+                        break
+                if ok:
+                    out.append((ai, direction, coupling))
     return out
 
 
-def disassemble(parts, lead, clearance=0.30, max_group=2):
+def disassemble(parts, lead, axes=(Z_AXIS,), clearance=0.30, max_group=2):
     """Take the assembly apart, or report what stays stuck.
 
     Bodies are tried alone and in groups, because the seed cube only comes
@@ -239,8 +292,8 @@ def disassemble(parts, lead, clearance=0.30, max_group=2):
                 if not rest:
                     continue
                 mover = trimesh.util.concatenate([parts[n] for n in grp])
-                found = escapes(trimesh.util.concatenate(rest), mover, lead,
-                                clearance=clearance)
+                found = escapes(trimesh.util.concatenate(rest), mover,
+                                lead, axes=axes, clearance=clearance)
                 if found:
                     moved = (grp, found)
                     break
@@ -250,6 +303,6 @@ def disassemble(parts, lead, clearance=0.30, max_group=2):
             return steps, sorted(remaining)      # welded: nothing can leave
         grp, how = moved
         steps.append({"free": list(grp), "by": [
-            {"direction": d, "coupling": c} for d, c in how]})
+            {"axis": a, "direction": d, "coupling": c} for a, d, c in how]})
         remaining -= set(grp)
     return steps, []
