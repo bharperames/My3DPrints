@@ -185,3 +185,104 @@ def assemble(t, a, entry="free", gap=FACE_GAP):
             parts[name] = g
         m = k.CYCLE @ m
     return parts
+
+
+def layout(t, a, entry="free", gap=FACE_GAP):
+    """Six parts on the bed. Threaded bores stand vertical, because printed
+    along its axis this thread's flank never exceeds 32.5 degrees from
+    vertical at any scale, and printed across it the same bore is a 12.6 mm
+    horizontal hole whose crown droops onto the crest the bolt turns on.
+    The clearance bore and its counterbore then lie on their sides, which
+    they can afford to: nothing threads in them."""
+    from gen_puzzle import tidy
+    up = trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0])
+    out, pitch = {}, a + 10.0
+    bars = [bar(t, a, keyed=(entry == "none"), gap=gap),
+            bar(t, a, keyed=True, gap=gap), bar(t, a, keyed=True, gap=gap)]
+    for i, g in enumerate(bars):
+        g.apply_transform(up)
+        g.apply_translation([-g.bounds[0][0] + (i - 1) * pitch - g.extents[0] / 2,
+                             -g.bounds[0][1] - g.extents[1] / 2,
+                             -g.bounds[0][2]])
+        out[f"knot_bar{'_key' if i == 0 and entry != 'none' else ''}{i}"] = tidy(g)
+    row = a + 10.0 + t.hex_cr + 6.0
+    for i in range(3):
+        g = bolt(t, a, gap)
+        g.apply_transform(up)
+        g.apply_translation([-g.bounds[0][0] + (i - 1) * pitch - g.extents[0] / 2,
+                             row - g.bounds[0][1] - g.extents[1] / 2,
+                             -g.bounds[0][2]])
+        out[f"knot_bolt{i}"] = tidy(g)
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--thread", type=float, default=12.0)
+    ap.add_argument("--a", type=float, default=None)
+    ap.add_argument("--entry", choices=("none", "free"), default="free")
+    ap.add_argument("--out")
+    A = ap.parse_args()
+    t = thread_for(A.thread)
+    need = min_spacing(t)
+    a = float(np.ceil(need)) if A.a is None else A.a
+    rep = {"part": "knot-bolted", "thread": repr(t), "entry": A.entry,
+           "spacing_mm": a, "min_spacing_mm": round(need, 2), "cube_mm": 2 * a,
+           "head_af_mm": round(t.hex_af, 2), "head_h_mm": t.head_h,
+           "counterbore_mm": round(pocket_depth(t), 2),
+           "wall_mm": round(a / 2.0 - pocket_cr(t), 2)}
+    if a < need:
+        why = (f"spacing {a} below the derived minimum {need:.2f} — the "
+               f"counterbore would leave under {WALL_MIN} mm of wall")
+        print(json.dumps({"ok": False, **rep, "error": why}))
+        return 1
+    parts = assemble(t, a, entry=A.entry, gap=FACE_GAP)
+    rep["watertight"] = all(m.is_watertight for m in parts.values())
+    import itertools
+    worst = max(float(parts[x].intersection(parts[y], engine="manifold").volume)
+                for x, y in itertools.combinations(sorted(parts), 2))
+    rep["worst_overlap_mm3"] = round(worst, 2)
+    cm = tc.CollisionManager()
+    for n, g in parts.items():
+        cm.add_object(n, g)
+    rep["touching_at_home"] = sorted("|".join(sorted(x))
+                                     for x in cm.in_collision_internal(
+                                         return_names=True)[1])
+    plate = layout(t, a, entry=A.entry)
+    rep["bodies"] = sum(len(g.split(only_watertight=False))
+                        for g in plate.values())
+    ext = trimesh.util.concatenate(list(plate.values())).extents
+    rep["plate_mm"] = [round(float(x), 1) for x in ext]
+    vol = sum(float(g.volume) for g in plate.values()) / 1000.0
+    rep["volume_cm3"] = round(vol, 1)
+    rep["est_g"] = round(vol * 1.27, 1)
+    gates = [("watertight", rep["watertight"]),
+             ("no_overlap", worst < 1.0),
+             ("nothing_touching", not rep["touching_at_home"]),
+             ("six_bodies", rep["bodies"] == 6)]
+    failed = [n for n, ok in gates if not ok]
+    ok = not failed
+    if failed:
+        rep["failed"] = failed
+        rep["error"] = "gate failed: " + ", ".join(failed)
+    if A.out and ok:
+        os.makedirs(os.path.dirname(A.out), exist_ok=True)
+        sc = trimesh.Scene()
+        for n, g in plate.items():
+            sc.add_geometry(g, geom_name=n)
+        sc.export(A.out)
+        from embed_settings import embed
+        embed(A.out, brim=False)
+        from meshcheck import export_defects
+        bad = export_defects(A.out)
+        rep["watertight"] = not bad
+        if bad:
+            rep["defects"] = bad
+            ok = False
+        rep["file"] = os.path.basename(A.out)
+    print(json.dumps({"ok": ok, **rep}))
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

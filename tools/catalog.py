@@ -260,11 +260,55 @@ PARTS = [
        "axis, which is why the blocks stand with their threaded bores "
        "vertical and the pockets on their sides. PETG, not PLA \u2014 the "
        "seed cube\u2019s bolt snapped in silk PLA under hand torque.",
-       version="0.3.0",
+       version="0.3.1",
+       proven="Not printed, and not to be: it does not hold. A directed "
+              "pull of half a newton \u2014 fifty grams, less than the "
+              "weight of a part \u2014 takes it apart, because a head "
+              "resting in a blind socket resists sideways and resists "
+              "nothing at all in tension, and because its release sequence "
+              "points the same way you pull, so handling it performs its "
+              "own solution. Kept as the negative control the bolted "
+              "version is measured against.",
+       pages=[dict(label="Watch it", href="knot.html")],
        gen=["gen_knot.py"], params=[
            dict(key="thread", label="thread \u00d8", unit="mm", min=10,
                 max=20, step=1, val=12)],
        out="knot-T{thread:g}.3mf"),
+    _p("knot_bolted", "The Knot (bolted)", "Designed here", "parametric",
+       "Three bars, three bolts, and every bolt in tension. Each one passes "
+       "right THROUGH the bar whose counterbore holds its head and threads "
+       "into the next bar along, so the three are clamped in a ring and a "
+       "pull on the object loads a screw thread. The burr version of this "
+       "same weave stopped each head in a blind socket instead \u2014 which "
+       "resists sideways and resists nothing whatever against a pull \u2014 "
+       "and it came apart under fifty grams. This one does not move: swept "
+       "along every direction, in every combination of two bars moving at "
+       "once, and again with rotation over seven thousand random screw "
+       "motions, the most any part shifts relative to another is nine "
+       "tenths of a millimetre, which is the clearance it was built with. "
+       "The only way in is to unscrew something, and a pull cannot turn a "
+       "screw. Two of the three bolts are keyed \u2014 head sunk in a "
+       "hexagonal counterbore, so the bolt can only turn if its bar turns, "
+       "and no bar can. The third sits in a round counterbore and turns "
+       "freely, which is both the way it was assembled and the way out: "
+       "the last thread in a ring cannot be closed by turning a bar, "
+       "because by then nothing is free to turn. So the puzzle is to find "
+       "which one of three identical faces has the bolt that moves, and "
+       "the answer is invisible until you try it. Sizing comes from the "
+       "counterbore alone now that nothing has to slide, which brings the "
+       "cube down from 68 mm to 58. Prints with every threaded bore "
+       "vertical, since a bore of this cosine family never presents more "
+       "than a 32.5 degree overhang along its own axis at any scale, and "
+       "the plain bores lie on their sides where droop costs nothing. "
+       "PETG, not PLA \u2014 the seed cube\u2019s bolt snapped in silk PLA "
+       "under hand torque, and these are longer and take real tension.",
+       version="0.4.0",
+       pages=[dict(label="Watch it go together",
+                   href="knot.html?design=bolted")],
+       gen=["gen_bolted.py"], params=[
+           dict(key="thread", label="thread \u00d8", unit="mm", min=10,
+                max=20, step=1, val=12)],
+       out="knot-bolted-T{thread:g}.3mf"),
     _p("binary_rings", "Coded Ring Insert", "Designed here", "parametric",
        "A coded disc for a rubber toy that reads concentric rings as bits. "
        "The reader has five plungers, each at its own radius so the code "

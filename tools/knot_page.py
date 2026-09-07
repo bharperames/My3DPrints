@@ -241,8 +241,53 @@ def build(thread=12.0, design="burr", entry=None):
             d["colliders"][f"unit{i}"] = [
                 mesh_json(p) for p in
                 bolted_collider(t, a, i, keyed=(entry == "none" or i != 0))]
-        d["steps"] = [{"unit": f"unit{i}", "from": [0, 0, 0], "to": [0, 0, 0],
-                       "title": f"unit {i}", "text": "clamped"} for i in range(3)]
+        # The order the object has to be built in, and it is forced. Bars go
+        # together first, because a bolt can only be tightened while
+        # something is still free to turn; the last bolt closes the ring and
+        # after that nothing turns at all.
+        L = [np.asarray(x[0], float) for x in k.lines(a)]
+        far = 2.4 * a
+        d["steps"] = [
+            {"unit": "bar0", "from": [0, 0, 0], "to": [0, 0, 0],
+             "title": "One bar",
+             "text": "Three of these, identical but for one counterbore. "
+                     "Each has a threaded bore down its own length and, "
+                     "across it, a clearance bore with a counterbore at the "
+                     "outer face."},
+            {"unit": "bar1", "from": list(-L[0] * far), "to": [0, 0, 0],
+             "title": "Second bar, face to face",
+             "text": "Nothing holds them together yet. They only meet on one "
+                     "plane, so the second bar slides straight up to the "
+                     "first."},
+            {"unit": "bolt0", "from": list(-L[0] * far), "to": [0, 0, 0],
+             "screw": True,
+             "title": "First bolt — right through",
+             "text": "Through the second bar's clearance bore and into the "
+                     "first bar's thread. This is the joint the burr never "
+                     "had: the bolt does not stop in a socket, it passes "
+                     "through one bar and bites the next, so a pull loads a "
+                     "thread instead of sliding a head out of a hole."},
+            {"unit": "bar2", "from": list(-L[1] * far), "to": [0, 0, 0],
+             "title": "Third bar",
+             "text": "Laid against the second. Still free — nothing is "
+                     "clamped to it yet."},
+            {"unit": "bolt1", "from": list(-L[1] * far), "to": [0, 0, 0],
+             "screw": True,
+             "title": "Second bolt",
+             "text": "Turned by holding the third bar, which is keyed to the "
+                     "head by its hexagonal counterbore. That is the trick "
+                     "the seed cube taught: the block IS the wrench."},
+            {"unit": "bolt2", "from": list(-L[2] * far), "to": [0, 0, 0],
+             "screw": True,
+             "title": "Last bolt — the ring closes",
+             "text": "By now no bar can turn, so this one cannot be driven "
+                     "by a bar. Its counterbore is round rather than "
+                     "hexagonal, so the bolt itself turns freely and can be "
+                     "driven directly. Once home, every bar is clamped to "
+                     "the next and nothing moves: measured, 0.7 mm of play "
+                     "under two newtons of pull. Undoing it means finding "
+                     "which one of three identical faces has the bolt that "
+                     "turns."}]
         return d, parts
     t = k.thread_for(thread)
     a = float(np.ceil(k.min_spacing(t, k.release(t))))

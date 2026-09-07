@@ -159,6 +159,17 @@ h1 .tld{color:var(--accent)}
   vertical-align:3px;margin-left:6px;letter-spacing:.05em}
 .designer{color:var(--muted);font-size:13px;margin-top:2px}
 .principle{font-size:14.5px}
+.pdetails{margin:6px 0 2px;border-top:1px solid var(--line);padding-top:6px}
+.pdetails>summary{cursor:pointer;font-size:12px;color:var(--muted);
+  list-style:none;user-select:none;padding:2px 0}
+.pdetails>summary::-webkit-details-marker{display:none}
+.pdetails>summary::before{content:'\25B8 ';display:inline-block;
+  transition:transform .15s}
+.pdetails[open]>summary::before{transform:rotate(90deg)}
+.pdetails>summary:hover{color:var(--ink)}
+.pagelink{color:var(--accent);text-decoration:none;font-weight:600;
+  font-size:12.5px;align-self:center}
+.pagelink:hover{text-decoration:underline}
 .card h4{font:600 11.5px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;
   letter-spacing:.1em;color:var(--accent-ink);margin-bottom:-4px}
 .drivers{list-style:none;padding:0;display:flex;flex-direction:column;gap:5px}
@@ -1448,6 +1459,24 @@ renderer.setAnimationLoop(animate);
     }
     setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3500);
   }
+  /* The first two sentences of a blurb, which is the part in a nutshell. */
+  function lede(txt, n){
+    const parts = String(txt).match(/[^.!?]+[.!?]+/g);
+    if (!parts) return txt;
+    const head = parts.slice(0, n || 2).join('').trim();
+    return head.length < 40 ? parts.slice(0, 3).join('').trim() : head;
+  }
+  function detailsBlock(p){
+    const rest = p.blurb ? String(p.blurb).slice(lede(p.blurb).length).trim() : '';
+    const printed = (typeof p.proven === 'string')
+      ? '<p class="note">Printed: ' + esc(p.proven) + '</p>' : '';
+    const adv = advice(p);
+    if (!rest && !printed && !adv) return '';
+    return '<details class="pdetails"><summary>Print details</summary>'
+      + (rest ? '<p class="principle">' + esc(rest) + '</p>' : '')
+      + printed + adv + '</details>';
+  }
+
   function photo(entries, pill){
     return '<div class="photo"><div class="view"></div>' +
       (pill ? '<span class="pill ' + esc(pill[0]) + '">' + esc(pill[1]) +
@@ -1459,6 +1488,12 @@ renderer.setAnimationLoop(animate);
   function makeCard(p){
     const el = document.createElement('article');
     el.className = 'card'; el.dataset.id = p.id;
+    // A card is a picture and a control. Everything a design has learned
+    // about itself — why it is shaped this way, what the printer did to it,
+    // what the slicer warns — grows without limit, and on the cards that
+    // have been iterated hardest it had pushed the model and the buttons a
+    // screen apart. The first sentences stay; the rest goes behind a
+    // disclosure that is shut until asked for.
     if (p.card) el.dataset.cid = p.card;
     el.innerHTML = photo(null, p.proven ? ['pass', 'Printed'] : p.verdict) +
       '<div class="body">' +
@@ -1469,10 +1504,8 @@ renderer.setAnimationLoop(animate);
         '</h3>' +
       (p.version && p.version !== '\u2014'
         ? '<div class="verline">' + badge(p.version, p.changed, p.built, p) + '</div>' : '') +
-      (p.blurb ? '<p class="principle">' + esc(p.blurb) + '</p>' : '') +
-      (typeof p.proven === 'string'
-        ? '<p class="note">Printed: ' + esc(p.proven) + '</p>' : '') +
-      advice(p) +
+      (p.blurb ? '<p class="principle">' + esc(lede(p.blurb)) + '</p>' : '') +
+      detailsBlock(p) +
       '<p class="specline" data-dim="' + esc(p.id) + '">' + spec(p) + '</p>' +
       '</div>';
     const body = el.querySelector('.body');
@@ -1490,7 +1523,13 @@ renderer.setAnimationLoop(animate);
     const open = document.createElement('button');
     open.className = 'print'; open.textContent = 'Open in Bambu Studio';
     open.onclick = () => openPart(p, open);
-    foot.append(open, stepper(p.id));
+    foot.append(open);
+    for (const u of (p.pages || [])){
+      const a = document.createElement('a');
+      a.className = 'pagelink'; a.href = u.href; a.textContent = u.label + ' \u2192';
+      foot.append(a);
+    }
+    foot.append(stepper(p.id));
     body.append(foot);
     // A print note is the point of the whole shop: what happened on the
     // printer. It used to bind only to the hand-written cards, so the parts

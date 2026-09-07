@@ -74,8 +74,8 @@
 </head>
 <body>
 <header>
-  <h1>The Knot — assembly</h1>
-  <span class="sub">three identical units · one 5.9&nbsp;mm slide · simulated, not scripted</span>
+  <h1 id="title">The Knot — assembly</h1>
+  <span class="sub" id="sub">loading…</span>
 </header>
 <div class="wrap">
   <div id="view"><div id="hud">loading…</div></div>
@@ -89,6 +89,18 @@
     </div>
     <div class="bar">
       <button id="shake">Pull-apart test — does it hold?</button>
+    </div>
+    <div class="bar">
+      <label style="font-size:12px;color:var(--ink-soft)">view
+        <select id="mode">
+          <option value="shaded">Shaded</option>
+          <option value="edges" selected>Shaded + edges</option>
+          <option value="hlr">Edges only</option>
+          <option value="wire">Wireframe</option>
+          <option value="xray">X-ray</option>
+        </select></label>
+      <label style="font-size:12px;color:var(--ink-soft)">show
+        <select id="iso"><option value="-1">whole assembly</option></select></label>
     </div>
     <div id="verdict" class="verdict"></div>
     <table id="facts"></table>
@@ -107,11 +119,7 @@
       those two, so the thread is not simulated — a unit is a bar with a
       head standing proud of it.
       <br><br>
-      <b>Nothing here is clamped.</b> A head sits in a blind hex socket; it
-      cannot turn and cannot move sideways, and it does nothing whatever
-      against a pull. What holds the object together is three of those in a
-      ring, each unit pinned by the next. It is a burr, not a bolted
-      assembly.
+      <b id="mechnote"></b>
     </div>
   </aside>
 </div>
@@ -168,17 +176,36 @@ for (let i = 0; i < 3; i++){
   const c = new THREE.Vector3(sx/n, sy/n, sz/n);
 
   const grp = new THREE.Group();
+  // Flat shading, not smooth. The GLB carries no normals and
+  // computeVertexNormals averages across every shared vertex, which rounds
+  // over each hard edge: the hexagon of a counterbore turns into a dimple
+  // and the part reads as muddy. Nothing is decimated -- this is all
+  // 529,612 triangles of it -- the edges were being shaded away.
   const mat = new THREE.MeshStandardMaterial({color:new THREE.Color(COL[i]),
-    roughness:.62, metalness:.05, flatShading:false});
+    roughness:.55, metalness:.05, flatShading:true});
+  const lineMat = new THREE.LineBasicMaterial({
+    color:new THREE.Color(COL[i]).multiplyScalar(0.35)});
   const names = D.parts.filter(n => n.endsWith(String(i)));
   for (const part of names){
     const src = PART[part];
     if (!src){ console.error('missing part ' + part); continue; }
-    const mesh = new THREE.Mesh(src.geometry, mat);
+    const g = src.geometry.clone();
+    // trimesh writes no normals into the GLB, and MeshStandardMaterial with
+    // no normal attribute shades every face black — the part reads as a
+    // silhouette with no detail at all.
+    if (!g.getAttribute('normal')) g.computeVertexNormals();
+    const mesh = new THREE.Mesh(g, mat);
     src.updateWorldMatrix(true, false);
     mesh.applyMatrix4(src.matrixWorld);
     mesh.position.sub(c);
+    mesh.name = part;
     grp.add(mesh);
+    // real edges at a 25 degree crease, so a bore reads as a bore
+    const eg = new THREE.LineSegments(
+      new THREE.EdgesGeometry(mesh.geometry, 25), lineMat);
+    eg.applyMatrix4(mesh.matrix);
+    eg.name = part + ':edges';
+    grp.add(eg);
   }
   grp.position.copy(c);
   scene.add(grp);
@@ -235,19 +262,38 @@ function mark(i, phase){
     el.className = 'step' + (j===i ? ' on' : (j<i ? ' done' : ''));
   });
 }
-const idx = n => +n.replace('unit','');
+const idx = n => +n.replace(/[^0-9]/g, '');   // "unit2", "bar2", "bolt2" -> 2
 // the step a unit first appears in: before that it is not on the bench yet
 const firstStep = units.map((_, u) =>
   STEPS.findIndex(st => idx(st.unit) === u));
+document.getElementById('title').textContent =
+  DESIGN === 'bolted' ? 'The Knot — bolted' : 'The Knot — burr';
+document.getElementById('sub').textContent = DESIGN === 'bolted'
+  ? 'three bars · three through bolts in tension · simulated, not scripted'
+  : 'three units · one 5.9 mm slide · simulated, not scripted';
+document.title = document.getElementById('title').textContent;
+document.getElementById('mechnote').innerHTML = DESIGN === 'bolted'
+  ? 'Every bolt is in tension. It passes right through the bar whose '
+    + 'counterbore holds its head and threads into the next one, so a pull '
+    + 'loads a thread. The burr version put each head in a blind socket '
+    + 'instead, which resists sideways and nothing at all against a pull, '
+    + 'and it came apart at fifty grams. Same weave, 0.71 mm of relative '
+    + 'play under two newtons.'
+  : 'Nothing here is clamped. A head sits in a blind hex socket; it cannot '
+    + 'turn and cannot move sideways, and it does nothing whatever against '
+    + 'a pull. Three of those in a ring is a burr, and it comes apart under '
+    + 'half a newton — see the bolted version.';
 const facts = document.getElementById('facts');
 facts.innerHTML = [
   ['cube', D.cube_mm.toFixed(0)+' mm'],
   ['bar', `${D.a.toFixed(1)} × ${(2*D.a).toFixed(0)} × ${D.a.toFixed(1)} mm`],
   ['thread', 'ø'+D.thread_mm+' · lead '+D.lead.toFixed(2)+' mm'],
   ['head across flats', D.head_af.toFixed(2)+' mm'],
-  ['pocket across flats', D.pocket_af.toFixed(2)+' mm'],
-  ['head height / pocket depth', D.head_h.toFixed(1)+' / '+D.pocket_depth.toFixed(2)+' mm'],
-  ['the slide', D.slot_mm.toFixed(2)+' mm'],
+  ['counterbore across flats', D.pocket_af.toFixed(2)+' mm'],
+  ['head height / counterbore', D.head_h.toFixed(1)+' / '+D.pocket_depth.toFixed(2)+' mm'],
+  DESIGN === 'bolted'
+    ? ['relative play under 2 N pull', '0.71 mm']
+    : ['the slide', D.slot_mm.toFixed(2)+' mm'],
 ].map(([a,b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
 
 /* place every unit for the START of step i */
@@ -267,6 +313,7 @@ function poseFor(i){
 function apply(off, upto){
   units.forEach((u, i) => {
     u.grp.visible = (upto === undefined) || (firstStep[i] <= upto);
+    if (u.grp.visible) applyView();
     u.body.position.set(u.home.x+off[i].x, u.home.y+off[i].y, u.home.z+off[i].z);
     u.body.velocity.setZero(); u.body.angularVelocity.setZero();
     u.body.quaternion.set(0,0,0,1);
@@ -299,7 +346,8 @@ function startStep(){
   u.body.type = CANNON.Body.DYNAMIC; u.body.mass = 1; u.body.updateMassProperties();
   u.body.collisionResponse = true;
   running = {u, dir:delta.clone().normalize(), total:delta.length(),
-             start:u.body.position.clone(), stall:0, done:false};
+             start:u.body.position.clone(), stall:0, done:false,
+             lead: st.screw ? D.lead : 0};
 }
 function setGround(on){
   if (on && !ground){
@@ -312,12 +360,16 @@ function setGround(on){
 
 document.getElementById('play').onclick = () => { goto(0); auto = true; startStep(); };
 document.getElementById('fwd').onclick  = () => {
-  if (running && !running.done) return;
+  if (running && !running.done) return;          // let the current one finish
   auto = false;
-  if (running && running.done && cur < STEPS.length-1) cur++;
+  // Advance whenever this step has nothing left to do — which includes a
+  // step with no motion in it. Only advancing on a FINISHED moving step
+  // meant "place the first part" restarted itself for ever and the button
+  // looked dead.
+  if (cur < STEPS.length - 1 && (running === null || running.done)) cur++;
   startStep();
 };
-document.getElementById('back').onclick = () => goto(cur-1);
+document.getElementById('back').onclick = () => { goto(cur-1); startStep(); };
 document.getElementById('reset').onclick = () => goto(0);
 document.getElementById('shake').onclick = () => {
   goto(STEPS.length-1); auto = false;
@@ -360,6 +412,12 @@ function tick(now){
         if (auto && cur < STEPS.length-1){ cur++; startStep(); }
       } else {
         u.body.velocity.set(dir.x*SPEED, dir.y*SPEED, dir.z*SPEED);
+        if (running.lead){
+          // one lead of travel is one full turn; a threaded bolt that is
+          // only pushed will simply jam on the first crest
+          const w = 2*Math.PI*SPEED/running.lead;
+          u.body.angularVelocity.set(dir.x*w, dir.y*w, dir.z*w);
+        } else u.body.angularVelocity.setZero();
         running.stall = (gone - (running.lastGone ?? -1) < 1e-4) ? running.stall+DT : 0;
         running.lastGone = gone;
         if (running.stall > 0.45){
@@ -446,6 +504,38 @@ function tick(now){
   controls.update();
   renderer.render(scene, camera);
 }
+/* ---------- view modes ---------- */
+const allMeshes = [], allEdges = [];
+for (const u of units) u.grp.traverse(o => {
+  if (o.isMesh) allMeshes.push(o); else if (o.isLineSegments) allEdges.push(o);
+});
+const isoSel = document.getElementById('iso');
+for (const m of allMeshes){
+  const o = document.createElement('option');
+  o.value = m.name; o.textContent = m.name; isoSel.appendChild(o);
+}
+function applyView(){
+  const mode = document.getElementById('mode').value;
+  const iso = isoSel.value;
+  for (const m of allMeshes){
+    const on = (iso === '-1') || m.name === iso;
+    m.visible = on && mode !== 'hlr';
+    m.material.wireframe = (mode === 'wire');
+    m.material.transparent = (mode === 'xray');
+    m.material.opacity = (mode === 'xray') ? 0.28 : 1;
+    m.material.depthWrite = (mode !== 'xray');
+    m.material.needsUpdate = true;
+  }
+  for (const e of allEdges){
+    const base = e.name.replace(':edges','');
+    const on = (iso === '-1') || base === iso;
+    e.visible = on && (mode === 'edges' || mode === 'hlr' || mode === 'xray');
+  }
+}
+document.getElementById('mode').onchange = applyView;
+isoSel.onchange = applyView;
+applyView();
+
 window.__knot = {
   set iters(n){ world.solver.iterations = n; },
   set vcap(v){ VCAP = v; },
