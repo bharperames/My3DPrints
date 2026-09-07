@@ -36,8 +36,13 @@
   #hud { position:absolute; left:12px; bottom:12px; font-size:11.5px;
     color:var(--ink-soft); background:color-mix(in srgb,var(--surface) 85%,transparent);
     border:1px solid var(--line); border-radius:6px; padding:6px 9px; font-variant-numeric:tabular-nums; }
+  /* Every word in the panel comes from the JSON, so the panel has nothing
+     to say until that has loaded. Showing the empty frame first and filling
+     it afterwards is two paints and a jump. */
   aside { width:390px; flex:0 0 390px; border-left:1px solid var(--line);
-    background:var(--surface); overflow-y:auto; padding:16px; }
+    background:var(--surface); overflow-y:auto; padding:16px;
+    visibility:hidden; }
+  aside.ready { visibility:visible; }
   @media (max-width:900px){ aside{ width:auto; flex:auto; border-left:0; border-top:1px solid var(--line);} }
   .step { border:1px solid var(--line); border-radius:8px; padding:10px 12px;
     margin-bottom:8px; background:var(--surface-2); transition:background .2s,border-color .2s; }
@@ -68,8 +73,9 @@
   td:last-child { text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
   .key { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
   .modebar { position:relative; margin:10px 0; }
-  .modepop { position:absolute; z-index:20; top:100%; left:0; margin-top:6px;
-    display:none; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px;
+  .modepop { position:absolute; z-index:20; top:100%; left:0; right:0;
+    margin-top:6px;
+    display:none; grid-template-columns:repeat(2,1fr); gap:6px; padding:8px;
     background:var(--surface); border:1px solid var(--line);
     border-radius:9px; box-shadow:0 8px 24px rgba(0,0,0,.18); }
   .modepop.open { display:grid; }
@@ -82,17 +88,23 @@
   .modecur b { font-size:12.5px; font-weight:600; }
   .modecur i { font-style:normal; margin-left:auto; color:var(--ink-soft);
     font-size:10px; }
-  .modebtn { width:88px; padding:0; border:2px solid var(--line);
+  .modebtn { width:100%; padding:0; border:2px solid var(--line);
     border-radius:7px; background:var(--surface-2); cursor:pointer;
-    overflow:hidden; display:block; text-align:left; }
-  .modebtn .thumb { display:block; height:60px; width:100%;
-    background:var(--surface-2) center/cover no-repeat;
-    border-bottom:1px solid var(--line); }
-  .modebtn span { display:block; font-size:10.5px; padding:3px 4px;
-    color:var(--ink-soft); line-height:1.2; }
+    overflow:hidden; display:block; text-align:left; position:relative; }
+  .modebtn .thumb { display:block; height:104px; width:100%;
+    background:var(--surface-2) center/cover no-repeat; }
+  /* the name sits ON the render, as in the part inspector, so the picture
+     gets the whole tile */
+  .modebtn span { position:absolute; left:0; right:0; bottom:0;
+    font-size:10.5px; padding:3px 5px; line-height:1.2; font-weight:600;
+    color:var(--ink); border-top:1px solid var(--line);
+    background:color-mix(in srgb,var(--surface) 84%,transparent); }
   .modebtn:hover { border-color:var(--accent); }
   .modebtn.on { border-color:var(--accent); }
   .modebtn.on span { color:var(--ink); font-weight:600; }
+  /* an odd number of modes in two columns leaves a hole; the last one
+     takes the whole row instead */
+  .modebtn:last-child { grid-column:1 / -1; }
   .verdict { font-size:12.5px; padding:8px 10px; border-radius:6px; margin-top:8px; display:none; }
   .verdict.ok { display:block; background:color-mix(in srgb,var(--good) 15%,transparent); color:var(--good); }
   .verdict.bad { display:block; background:color-mix(in srgb,var(--risk) 15%,transparent); color:var(--risk); }
@@ -112,7 +124,6 @@
 <div class="wrap">
   <div id="view"><div id="hud">loading…</div></div>
   <aside>
-    <div id="steps"></div>
     <div class="bar">
       <button id="play" class="primary">▶ Play assembly</button>
       <button id="back">◀ Step</button>
@@ -124,23 +135,23 @@
     </div>
     <div id="modes" class="modebar"></div>
     <div id="verdict" class="verdict"></div>
+    <div id="steps"></div>
     <table id="facts"></table>
     <div class="note">
-      <b>What is simulated and what is drawn.</b> What you see is the real
-      generated mesh — bores, thread, chamfers. What the solver feels is an
-      exact convex decomposition of the same solid: a box minus a convex
-      pocket is the union of the box on the outer side of each pocket face,
-      each convex by construction, so nothing is rounded off and the
-      0.25&nbsp;mm keying fit still means what it says. Every collider was
-      checked to contain its mesh completely, so the simulation is a shade
-      tighter than the part, never looser.
+      <b>Drawn and simulated.</b> The mesh is the generated part at full
+      resolution — bores, thread, chamfers. The solver reads an exact convex
+      decomposition of the same solid: a box minus a convex pocket is the
+      union of the box outside each pocket face, every piece convex by
+      construction. Nothing is rounded off, and each collider contains its
+      mesh completely, so what is simulated is a shade tighter than the
+      part, never looser — the 0.25&nbsp;mm keying fit means what it says.
       <br><br>
-      <b>A unit is one rigid body.</b> Each bolt is threaded eight turns
-      through its own bar. Nothing in a motion that takes seconds separates
-      those two, so the thread is not simulated — a unit is a bar with a
+      <b>A unit is one rigid body.</b> Each bolt is threaded seven turns
+      into its bar, so through a motion of a few seconds the two are one
+      part and the thread itself is not simulated. A unit is a bar with a
       head standing proud of it.
       <br><br>
-      <b id="mechnote"></b>
+      <span id="mechnote"></span>
     </div>
   </aside>
 </div>
@@ -296,14 +307,19 @@ document.getElementById('sub').textContent = DESIGN === 'bolted'
   : 'three units · one 5.9 mm slide · simulated, not scripted';
 document.title = document.getElementById('title').textContent;
 document.getElementById('mechnote').innerHTML = DESIGN === 'bolted'
-  ? 'Every bolt is in tension. It passes right through the bar whose '
-    + 'counterbore holds its head and threads into the next one, so a pull '
-    + 'loads a thread. The burr version put each head in a blind socket '
-    + 'instead, which resists sideways and nothing at all against a pull, '
-    + 'and it came apart at fifty grams. Same weave: swept along every '
-    + 'direction, in every combination of two bars moving at once, the most '
-    + 'any part shifts relative to another is three tenths of a millimetre.'
-  : 'Nothing here is clamped. A head sits in a blind hex socket; it cannot '
+  ? '<b>Every bolt is in tension.</b> Each one passes through the bar whose '
+    + 'counterbore holds its head and threads into the next, so a pull '
+    + 'loads a thread rather than a face. Swept along every direction, and '
+    + 'in every combination of two bars moving at once, no part shifts more '
+    + 'than 0.30 mm relative to another.'
+    + '<br><br><b>The trick.</b> Two of the three heads are keyed in hex '
+    + 'counterbores and cannot turn, so the bar around a bolt is what turns '
+    + 'instead. The third counterbore is round and its head stands one '
+    + 'thread lead proud: that bolt is the only thing in the finished '
+    + 'object that turns, and the only way in or out. Coming apart is the '
+    + 'assembly run backwards — including leaving the red bar a quarter '
+    + 'turn short, which is what gives the green bar room to swing past.'
+  : '<b>Nothing here is clamped.</b> A head sits in a blind hex socket; it cannot '
     + 'turn and cannot move sideways, and it does nothing whatever against '
     + 'a pull. Three of those in a ring is a burr, and it comes apart under '
     + 'half a newton — see the bolted version.';
@@ -771,11 +787,29 @@ function makeThumbs(){
   // happens inside the render loop — capture before it and every thumbnail
   // is a picture of empty space.
   controls.update();
-  const keep = mode, W = 168, H = 116;
+  const keep = mode, W = 340, H = 208;      // 2x the tile, for a retina panel
   const vis = units.map(u => u.grp.visible);
-  units.forEach(u => u.grp.visible = true);
+  const camPos = camera.position.clone(), camTgt = controls.target.clone();
+  const aspect = camera.aspect;
+  // ONE JOINT, CLOSE UP. At whole-assembly size shaded and shaded+edges
+  // are the same picture and the choice means nothing. A bar with its bolt
+  // through it is the whole mechanism in miniature and gives every mode
+  // something of its own to draw: the box and bore circles for edges,
+  // eight turns of thread for wireframe density, and the buried shank for
+  // x-ray. The bolt alone has no edge over the crease threshold, so the
+  // edges-only tile came out blank.
+  const cast = ['bar1', 'bolt0'];
+  units.forEach(u => u.grp.visible = cast.includes(u.key));
+  const box = new THREE.Box3();
+  for (const u of units) if (u.grp.visible) box.expandByObject(u.grp);
+  const mid = box.getCenter(new THREE.Vector3());
+  const rad = box.getSize(new THREE.Vector3()).length() / 2;
   renderer.setSize(W, H, false);
   camera.aspect = W/H; camera.updateProjectionMatrix();
+  const dist = 0.62 * rad / Math.sin(camera.fov * Math.PI/360);
+  camera.position.copy(mid).add(
+    new THREE.Vector3(0.62, 0.45, 1).normalize().multiplyScalar(dist));
+  camera.lookAt(mid);
   for (const [id] of MODES){
     mode = id; applyView();
     renderer.render(scene, camera);
@@ -785,6 +819,8 @@ function makeThumbs(){
   }
   mode = keep; applyView(); setCurrent();
   units.forEach((u,i) => u.grp.visible = vis[i]);
+  camera.position.copy(camPos); controls.target.copy(camTgt);
+  camera.aspect = aspect; camera.updateProjectionMatrix(); controls.update();
   resize();
 }
 
@@ -833,6 +869,7 @@ units.forEach(u => u.grp.visible = true);
 renderer.render(scene, camera);
 makeThumbs();
 goto(0);
+document.querySelector('aside').classList.add('ready');
 requestAnimationFrame(tick);
 </script>
 </body>
