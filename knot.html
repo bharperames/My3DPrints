@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Knot — Assembly</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪢</text></svg>">
+<style>
+  :root {
+    --bg:#F6F6F3; --surface:#FFFFFF; --surface-2:#EDEEE9;
+    --ink:#24292E; --ink-soft:#565D66; --line:#D8DAD3;
+    --accent:#2E6E63; --accent-ink:#FFFFFF;
+    --good:#2A7136; --warn:#855C0F; --risk:#B03A2E;
+    --u0:#C2554B; --u1:#3E7C99; --u2:#5A8F4E;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#1B1E21; --surface:#23272B; --surface-2:#2A2F34;
+      --ink:#E6E4DE; --ink-soft:#A6ACB2; --line:#3A4046;
+      --accent:#5FA893; --accent-ink:#14201C;
+      --good:#7CC287; --warn:#D9A84E; --risk:#E08578;
+      --u0:#D9736A; --u1:#63A6C4; --u2:#7FB872;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.5 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line);
+    background:var(--surface); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; letter-spacing:-0.01em; }
+  .sub { color:var(--ink-soft); font-size:12.5px; }
+  .wrap { display:flex; gap:0; height:calc(100vh - 58px); }
+  @media (max-width:900px){ .wrap{ flex-direction:column; height:auto; } }
+  #view { flex:1; min-width:0; min-height:420px; position:relative; background:var(--surface-2); }
+  #view canvas { display:block; }
+  #hud { position:absolute; left:12px; bottom:12px; font-size:11.5px;
+    color:var(--ink-soft); background:color-mix(in srgb,var(--surface) 85%,transparent);
+    border:1px solid var(--line); border-radius:6px; padding:6px 9px; font-variant-numeric:tabular-nums; }
+  aside { width:390px; flex:0 0 390px; border-left:1px solid var(--line);
+    background:var(--surface); overflow-y:auto; padding:16px; }
+  @media (max-width:900px){ aside{ width:auto; flex:auto; border-left:0; border-top:1px solid var(--line);} }
+  .step { border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+    margin-bottom:8px; background:var(--surface-2); transition:background .2s,border-color .2s; }
+  .step.on { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 10%,var(--surface)); }
+  .step.done { opacity:.55; }
+  .step b { display:block; font-size:13px; margin-bottom:3px; }
+  .step p { margin:0; font-size:12.5px; color:var(--ink-soft); }
+  .step .n { display:inline-block; width:18px; height:18px; border-radius:50%;
+    background:var(--accent); color:var(--accent-ink); font-size:11px; font-weight:700;
+    text-align:center; line-height:18px; margin-right:6px; }
+  .bar { display:flex; gap:6px; margin:12px 0; flex-wrap:wrap; }
+  button { font:inherit; font-size:12.5px; padding:6px 12px; border-radius:6px;
+    border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  button:disabled { opacity:.45; cursor:default; }
+  .note { font-size:11.5px; color:var(--ink-soft); border-top:1px solid var(--line);
+    margin-top:14px; padding-top:12px; }
+  .note b { color:var(--ink); }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  td { padding:3px 0; border-bottom:1px solid var(--line); }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
+  .key { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+  .verdict { font-size:12.5px; padding:8px 10px; border-radius:6px; margin-top:8px; display:none; }
+  .verdict.ok { display:block; background:color-mix(in srgb,var(--good) 15%,transparent); color:var(--good); }
+  .verdict.bad { display:block; background:color-mix(in srgb,var(--risk) 15%,transparent); color:var(--risk); }
+</style>
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
+"cannon-es":"./vendor/cannon-es.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1>The Knot — assembly</h1>
+  <span class="sub">three identical units · one 5.9&nbsp;mm slide · simulated, not scripted</span>
+</header>
+<div class="wrap">
+  <div id="view"><div id="hud">loading…</div></div>
+  <aside>
+    <div id="steps"></div>
+    <div class="bar">
+      <button id="play" class="primary">▶ Play assembly</button>
+      <button id="back">◀ Step</button>
+      <button id="fwd">Step ▶</button>
+      <button id="reset">Reset</button>
+    </div>
+    <div class="bar">
+      <button id="shake">Shake test — does it hold?</button>
+    </div>
+    <div id="verdict" class="verdict"></div>
+    <table id="facts"></table>
+    <div class="note">
+      <b>What is simulated and what is drawn.</b> What you see is the real
+      generated mesh — bores, thread, chamfers. What the solver feels is an
+      exact convex decomposition of the same solid: a box minus a convex
+      pocket is the union of the box on the outer side of each pocket face,
+      each convex by construction, so nothing is rounded off and the
+      0.25&nbsp;mm keying fit still means what it says. Every collider was
+      checked to contain its mesh completely, so the simulation is a shade
+      tighter than the part, never looser.
+      <br><br>
+      <b>A unit is one rigid body.</b> Each bolt is threaded eight turns
+      through its own bar. Nothing in a motion that takes seconds separates
+      those two, so the thread is not simulated — a unit is a bar with a
+      head standing proud of it.
+      <br><br>
+      <b>Nothing here is clamped.</b> A head sits in a blind hex socket; it
+      cannot turn and cannot move sideways, and it does nothing whatever
+      against a pull. What holds the object together is three of those in a
+      ring, each unit pinned by the next. It is a burr, not a bolted
+      assembly.
+    </div>
+  </aside>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as CANNON from 'cannon-es';
+
+const COL = ['--u0','--u1','--u2'].map(v =>
+  getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+const hud = document.getElementById('hud');
+const D = await (await fetch('models/knot_assembly.json')).json();
+
+/* ---------- scene ---------- */
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(devicePixelRatio);
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(
+  getComputedStyle(document.documentElement).getPropertyValue('--surface-2').trim());
+const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+const C = D.a;                                   // assembly centre
+camera.position.set(C+150, C+110, C+150);
+controls.target.set(C, C, C);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 2.0));
+const key = new THREE.DirectionalLight(0xffffff, 2.2);
+key.position.set(1, 1.4, 0.8); scene.add(key);
+function resize(){
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+/* ---------- geometry ---------- */
+function geom(m){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(m.v, 3));
+  g.setIndex(m.f); g.computeVertexNormals(); return g;
+}
+const units = [];
+for (let i = 0; i < 3; i++){
+  // centre every representation on one point so a rotation is about the
+  // body's own centre and the mesh follows the collider exactly
+  const hulls = D.colliders['unit'+i];
+  let sx=0, sy=0, sz=0, n=0;
+  for (const h of hulls) for (let j=0;j<h.v.length;j+=3){ sx+=h.v[j]; sy+=h.v[j+1]; sz+=h.v[j+2]; n++; }
+  const c = new THREE.Vector3(sx/n, sy/n, sz/n);
+
+  const grp = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:new THREE.Color(COL[i]),
+    roughness:.62, metalness:.05});
+  for (const part of ['block'+i, 'bolt'+i]){
+    const mesh = new THREE.Mesh(geom(D.render[part]), mat);
+    mesh.position.sub(c);
+    grp.add(mesh);
+  }
+  grp.position.copy(c);
+  scene.add(grp);
+
+  const body = new CANNON.Body({mass:1, material:new CANNON.Material('u')});
+  for (const h of hulls){
+    // Each piece is centred on ITSELF and added at an offset. cannon checks
+    // a face normal by dotting it with one of the face's own vertices,
+    // which only tells you anything if the solid straddles the origin — an
+    // off-centre hull makes it warn that every normal points inward. It is
+    // also the only way the inertia tensor comes out right.
+    let cx=0, cy=0, cz=0, n=h.v.length/3;
+    for (let j=0;j<h.v.length;j+=3){ cx+=h.v[j]; cy+=h.v[j+1]; cz+=h.v[j+2]; }
+    cx/=n; cy/=n; cz/=n;
+    const verts = [];
+    for (let j=0;j<h.v.length;j+=3)
+      verts.push(new CANNON.Vec3(h.v[j]-cx, h.v[j+1]-cy, h.v[j+2]-cz));
+    // Winding is passed through unchanged. cannon's computeNormal takes
+    // (vc-vb) x (vb-va), which is the NEGATIVE of the usual right-hand
+    // normal, and then negates it -- so it wants exactly what trimesh
+    // gives: counter-clockwise seen from outside. Reversing it, as the
+    // console warning seems to ask, inverts every solid and the assembly
+    // blows apart on the first contact.
+    const faces = [];
+    for (let j=0;j<h.f.length;j+=3) faces.push([h.f[j], h.f[j+1], h.f[j+2]]);
+    body.addShape(new CANNON.ConvexPolyhedron({vertices:verts, faces}),
+                  new CANNON.Vec3(cx-c.x, cy-c.y, cz-c.z));
+  }
+  body.position.set(c.x, c.y, c.z);
+  body.linearDamping = 0.25; body.angularDamping = 0.85;
+  units.push({grp, body, home:c.clone()});
+}
+
+const world = new CANNON.World({gravity:new CANNON.Vec3(0,0,0)});
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.solver.iterations = 20;
+world.defaultContactMaterial.friction = 0.35;
+world.defaultContactMaterial.restitution = 0.0;
+for (const u of units) world.addBody(u.body);
+let ground = null;
+
+/* ---------- steps ---------- */
+const STEPS = D.steps;
+const stepsEl = document.getElementById('steps');
+STEPS.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'step'; d.id = 'step'+i;
+  d.innerHTML = `<b><span class="n">${i+1}</span>${s.title}</b><p>${s.text}</p>`;
+  stepsEl.appendChild(d);
+});
+function mark(i, phase){
+  STEPS.forEach((_, j) => {
+    const el = document.getElementById('step'+j);
+    el.className = 'step' + (j===i ? ' on' : (j<i ? ' done' : ''));
+  });
+}
+const idx = n => +n.replace('unit','');
+// the step a unit first appears in: before that it is not on the bench yet
+const firstStep = units.map((_, u) =>
+  STEPS.findIndex(st => idx(st.unit) === u));
+const facts = document.getElementById('facts');
+facts.innerHTML = [
+  ['cube', D.cube_mm.toFixed(0)+' mm'],
+  ['bar', `${D.a.toFixed(1)} × ${(2*D.a).toFixed(0)} × ${D.a.toFixed(1)} mm`],
+  ['thread', 'ø'+D.thread_mm+' · lead '+D.lead.toFixed(2)+' mm'],
+  ['head across flats', D.head_af.toFixed(2)+' mm'],
+  ['pocket across flats', D.pocket_af.toFixed(2)+' mm'],
+  ['head height / pocket depth', D.head_h.toFixed(1)+' / '+D.pocket_depth.toFixed(2)+' mm'],
+  ['the slide', D.slot_mm.toFixed(2)+' mm'],
+].map(([a,b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
+
+/* place every unit for the START of step i */
+function poseFor(i){
+  const off = units.map(() => new THREE.Vector3());
+  for (let s = 0; s <= i; s++){
+    const st = STEPS[s], u = idx(st.unit);
+    off[u].set(...(s === i ? st.from : st.to));
+  }
+  // units not yet introduced sit far off along their own approach
+  for (let s = i+1; s < STEPS.length; s++){
+    const st = STEPS[s], u = idx(st.unit);
+    if (!STEPS.slice(0, i+1).some(x => idx(x.unit) === u)) off[u].set(...st.from);
+  }
+  return off;
+}
+function apply(off, upto){
+  units.forEach((u, i) => {
+    u.grp.visible = (upto === undefined) || (firstStep[i] <= upto);
+    u.body.position.set(u.home.x+off[i].x, u.home.y+off[i].y, u.home.z+off[i].z);
+    u.body.velocity.setZero(); u.body.angularVelocity.setZero();
+    u.body.quaternion.set(0,0,0,1);
+    u.body.type = CANNON.Body.STATIC; u.body.updateMassProperties();
+    u.body.collisionResponse = u.grp.visible;
+  });
+}
+
+let cur = 0, running = null, shaking = false, auto = false;
+function goto(i){
+  cur = Math.max(0, Math.min(STEPS.length-1, i));
+  running = null; shaking = false; auto = false; setGround(false);
+  apply(poseFor(cur), cur); mark(cur);
+  hud.textContent = `step ${cur+1}/${STEPS.length} — ready`;
+  document.getElementById('verdict').className = 'verdict';
+}
+function startStep(){
+  const st = STEPS[cur];
+  const u = units[idx(st.unit)];
+  const from = new THREE.Vector3(...st.from), to = new THREE.Vector3(...st.to);
+  const delta = to.clone().sub(from);
+  apply(poseFor(cur), cur); mark(cur);
+  if (delta.length() < 1e-6){
+    // a step with no motion: "here is the part you start from"
+    hud.textContent = `step ${cur+1}/${STEPS.length} — placed`;
+    running = null;
+    if (auto && cur < STEPS.length-1){ cur++; startStep(); }
+    return;
+  }
+  u.body.type = CANNON.Body.DYNAMIC; u.body.mass = 1; u.body.updateMassProperties();
+  u.body.collisionResponse = true;
+  running = {u, dir:delta.clone().normalize(), total:delta.length(),
+             start:u.body.position.clone(), stall:0, done:false};
+}
+function setGround(on){
+  if (on && !ground){
+    ground = new CANNON.Body({mass:0, shape:new CANNON.Plane()});
+    ground.quaternion.setFromEuler(-Math.PI/2, 0, 0);
+    ground.position.set(0, -60, 0);
+    world.addBody(ground);
+  } else if (!on && ground){ world.removeBody(ground); ground = null; }
+}
+
+document.getElementById('play').onclick = () => { goto(0); auto = true; startStep(); };
+document.getElementById('fwd').onclick  = () => {
+  if (running && !running.done) return;
+  auto = false;
+  if (running && running.done && cur < STEPS.length-1) cur++;
+  startStep();
+};
+document.getElementById('back').onclick = () => goto(cur-1);
+document.getElementById('reset').onclick = () => goto(0);
+document.getElementById('shake').onclick = () => {
+  goto(STEPS.length-1); auto = false;
+  apply(units.map(() => new THREE.Vector3()));
+  units.forEach(u => u.grp.visible = true);
+  units.forEach(u => { u.body.type = CANNON.Body.DYNAMIC; u.body.mass = 1;
+    u.body.updateMassProperties(); });
+  world.gravity.set(0, -2000, 0); setGround(true);
+  shaking = {t:0, worst:0, home:units.map(u => u.body.position.clone())};
+  hud.textContent = 'shaking…';
+};
+
+/* ---------- loop ---------- */
+const DT = 1/300, SPEED = 26;      // mm/s — small steps for 0.25 mm fits
+let last = performance.now();
+function tick(now){
+  requestAnimationFrame(tick);
+  let acc = Math.min((now-last)/1000, 0.05); last = now;
+  while (acc > DT){
+    if (running && !running.done){
+      const {u, dir, total, start} = running;
+      const p = u.body.position.vsub(new CANNON.Vec3(start.x,start.y,start.z));
+      const gone = p.x*dir.x + p.y*dir.y + p.z*dir.z;
+      if (gone >= total - 0.02){
+        running.done = true;
+        u.body.velocity.setZero(); u.body.angularVelocity.setZero();
+        u.body.position.set(start.x+dir.x*total, start.y+dir.y*total, start.z+dir.z*total);
+        u.body.type = CANNON.Body.STATIC; u.body.updateMassProperties();
+        hud.textContent = `step ${cur+1} — seated, ${gone.toFixed(2)} of ${total.toFixed(2)} mm`;
+        if (auto && cur < STEPS.length-1){ cur++; startStep(); }
+      } else {
+        u.body.velocity.set(dir.x*SPEED, dir.y*SPEED, dir.z*SPEED);
+        running.stall = (gone - (running.lastGone ?? -1) < 1e-4) ? running.stall+DT : 0;
+        running.lastGone = gone;
+        if (running.stall > 0.45){
+          hud.textContent = `step ${cur+1} — JAMMED at ${gone.toFixed(2)} of ${total.toFixed(2)} mm`;
+          u.body.velocity.setZero(); running.done = true;
+        } else {
+          hud.textContent = `step ${cur+1} — ${gone.toFixed(2)} / ${total.toFixed(2)} mm`;
+        }
+      }
+    }
+    if (shaking){
+      shaking.t += DT;
+      if (shaking.t % 0.30 < DT)
+        for (const u of units)
+          u.body.applyImpulse(new CANNON.Vec3((Math.random()-.5)*70,
+            (Math.random()-.5)*70, (Math.random()-.5)*70));
+      // Nothing may move more than a quarter of the pocket clearance in one
+      // step, or a body simply teleports through a 0.25 mm fit and the test
+      // measures the timestep instead of the joint.
+      const VMAX = 0.25 / DT * 0.25;
+      for (const u of units){
+        const v = u.body.velocity;
+        const sp = v.length();
+        if (sp > VMAX) v.scale(VMAX/sp, v);
+        const w = u.body.angularVelocity, ws = w.length();
+        if (ws > 6) w.scale(6/ws, w);
+      }
+      let worst = 0;
+      for (let i=0;i<3;i++) for (let j=i+1;j<3;j++){
+        const a = units[i].body.position.vsub(units[j].body.position);
+        const b = shaking.home[i].vsub(shaking.home[j]);
+        worst = Math.max(worst, a.vsub(b).length());
+      }
+      shaking.worst = Math.max(shaking.worst, worst);
+      if (shaking.t > 5){
+        const v = document.getElementById('verdict');
+        const held = shaking.worst < 3;
+        v.className = 'verdict ' + (held ? 'ok' : 'bad');
+        v.textContent = held
+          ? `Held. Five seconds of gravity, random impulses and a drop onto a floor; the units never drifted more than ${shaking.worst.toFixed(2)} mm out of register, against the ${D.slot_mm.toFixed(1)} mm the ring needs to open.`
+          : `Came apart: units drifted ${shaking.worst.toFixed(1)} mm out of register.`;
+        hud.textContent = 'shake finished';
+        shaking = false; world.gravity.setZero();
+      }
+    }
+    world.step(DT);
+    acc -= DT;
+  }
+  units.forEach(u => {
+    u.grp.position.copy(u.body.position);
+    u.grp.quaternion.copy(u.body.quaternion);
+  });
+  controls.update();
+  renderer.render(scene, camera);
+}
+window.__knot = { get step(){ return cur; }, get running(){ return running && {done:running.done, gone:running.lastGone}; },
+                  get shaking(){ return shaking && {t:shaking.t, worst:shaking.worst}; },
+                  get pos(){ return units.map(u => [u.body.position.x, u.body.position.y, u.body.position.z]); } };
+resize(); goto(0); requestAnimationFrame(tick);
+</script>
+</body>
+</html>

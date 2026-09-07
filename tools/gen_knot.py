@@ -164,6 +164,13 @@ FACE_GAP = 0.20        # per face; neighbors are two of these apart
 # half the slack the pocket already carries, which is also what a printed
 # part needs at both ends rather than all of it at one.
 AXIAL_SLACK = 0.15     # head to pocket floor, and head to mouth
+# A hex head meets a hex pocket at one of six angles, and the bolt's angle
+# is set by its thread. Lining them up means turning the bolt by up to 30
+# degrees, which on this lead moves it a third of a millimetre along its
+# axis -- so the pocket carries that much extra depth, or the last joint
+# cannot close. It costs the threaded joints nothing: their blocks screw
+# down until faces meet, wherever the head happens to sit.
+CLOCK_SLACK = 0.40
 # The head is as tall as the key and no taller. A head keys in five
 # millimetres of hex as surely as in thirteen, and the release distance --
 # how far the block-and-bolt unit has to slide before the head it carries is
@@ -179,7 +186,7 @@ KEY_DEPTH = 5.0
 # of that annulus is the floor of the design, because on the key bolt it is
 # the only thing stopping the bolt sliding straight through its own block.
 BEARING = 2.0
-HEAD_CHAM = 0.5        # the family's 0.18 R would eat most of a 5 mm head
+HEAD_CHAM = 0.8        # lead-in; the family's 0.18 R would eat a 5 mm head
 
 # The cyclic map: (p, q, r) -> (r, p, q), a 120 degree turn about [1,1,1].
 # It carries axis x to y to z, block 0 to block 1, and bolt 2 to bolt 0, so
@@ -206,7 +213,7 @@ def pocket_cr(t):
 
 
 def pocket_depth(t):
-    return t.head_h + 2 * AXIAL_SLACK
+    return t.head_h + 2 * AXIAL_SLACK + CLOCK_SLACK
 
 
 def release(t):

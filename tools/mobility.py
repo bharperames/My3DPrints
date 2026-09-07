@@ -227,11 +227,13 @@ class Mobility:
         free_to = 0.0
         escaped = False
         self._place_rest(poses, group)
+        hit_at = None
         for i, T in enumerate(path):
             if i == 0:
                 continue
             self._place_mover(poses, group, T)
             if self._hits():
+                hit_at = i
                 break
             s = s0 + span * i / (len(path) - 1)
             free_to = s
@@ -244,6 +246,26 @@ class Mobility:
                     (direction < 0 and g_hi + s < r_lo - 0.05)):
                 escaped = True
                 break
+        if hit_at is not None and hit_at > 1 and not escaped:
+            # The coarse sweep says "free to the last sample before the one
+            # that hit", which is only true to within one coarse step --
+            # 1.2 mm here -- and a maximal move is worth exactly its last
+            # millimetre. The key unit's slot is 5.7 mm and the coarse sweep
+            # reported it free to 4.8, which left the head it carries still
+            # inside the neighbor's pocket, and the neighbor could not turn.
+            # So the last coarse interval is swept again at the fine step.
+            lo = s0 + span * (hit_at - 1) / (len(path) - 1)
+            hi = s0 + span * hit_at / (len(path) - 1)
+            fine = helix(lo, hi, d, o, lead_s,
+                         0.0 if lead_s is None else 2.0 * np.pi * lo / lead_s,
+                         max_r, delta=self.delta)
+            for j, T in enumerate(fine):
+                if j == 0:
+                    continue
+                self._place_mover(poses, group, T)
+                if self._hits():
+                    break
+                free_to = lo + (hi - lo) * j / (len(fine) - 1)
         stops = []
         k = 1
         while k * self.quantum <= abs(free_to) + 1e-9:
