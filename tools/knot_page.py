@@ -37,8 +37,9 @@ from shapely.geometry import Polygon
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gen_knot as k                                       # noqa: E402
 
-OUT_JSON = os.path.join(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))), "models", "knot_assembly.json")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT_JSON = os.path.join(ROOT, "models", "knot_assembly.json")
+OUT_GLB = os.path.join(ROOT, "models", "glb", "knot_assembly.glb")
 
 
 def _dedupe_planes(hull, tol=1e-4):
@@ -127,12 +128,12 @@ def head_collider(t, a, gap=k.FACE_GAP):
     return [k.onto_x(g, (x0, a, 0)) for g in (head, neck)]
 
 
-def mesh_json(m, decimate=None):
-    g = m
-    if decimate and len(g.faces) > decimate:
-        g = g.simplify_quadric_decimation(face_count=decimate)
-    return {"v": [round(float(x), 3) for x in g.vertices.ravel()],
-            "f": [int(x) for x in g.faces.ravel()]}
+def mesh_json(m):
+    """Colliders only. They are boxes and prisms of a couple of dozen
+    vertices, so they go in the JSON; the parts themselves ship as a GLB at
+    full resolution, because a decimated thread is a different thread."""
+    return {"v": [round(float(x), 4) for x in m.vertices.ravel()],
+            "f": [int(x) for x in m.faces.ravel()]}
 
 
 def build(thread=12.0):
@@ -146,9 +147,7 @@ def build(thread=12.0):
          * float(np.cos(np.radians(30.0))), "lead": t.lead,
          "axes": [{"dir": list(map(float, dd)), "origin": list(map(float, oo))}
                   for dd, oo in k.lines(a)],
-         "render": {}, "colliders": {}}
-    for n, m in parts.items():
-        d["render"][n] = mesh_json(m, decimate=12000)
+         "parts": sorted(parts), "colliders": {}}
     for i in range(3):
         d["colliders"][f"unit{i}"] = [mesh_json(p)
                                       for p in unit_collider(t, a, i, slot)]
@@ -189,14 +188,24 @@ def build(thread=12.0):
 
 
 if __name__ == "__main__":
+    t = k.thread_for(12.0)
+    a = float(np.ceil(k.min_spacing(t, k.release(t))))
+    parts = k.assemble(t, a, entry="slot")
     d = build()
-    os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
+    for path in (OUT_JSON, OUT_GLB):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(OUT_JSON, "w") as f:
         json.dump(d, f, separators=(",", ":"))
-    tris = sum(len(v["f"]) // 3 for v in d["render"].values())
+    # Full resolution, at the assembled poses. The page is meant to answer
+    # "what IS this shape", so the shape it shows is the generated one.
+    sc = trimesh.Scene()
+    for n, m in sorted(parts.items()):
+        sc.add_geometry(m, geom_name=n, node_name=n)
+    sc.export(OUT_GLB)
+    tris = sum(len(m.faces) for m in parts.values())
     hulls = sum(len(v) for v in d["colliders"].values())
-    print(json.dumps({"ok": True, "file": os.path.basename(OUT_JSON),
-                      "kb": round(os.path.getsize(OUT_JSON) / 1024),
+    print(json.dumps({"ok": True, "json_kb": round(os.path.getsize(OUT_JSON) / 1024),
+                      "glb_kb": round(os.path.getsize(OUT_GLB) / 1024),
                       "render_tris": tris, "convex_hulls": hulls,
                       "a": d["a"], "cube_mm": d["cube_mm"],
                       "slot_mm": round(d["slot_mm"], 2),
