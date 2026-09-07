@@ -91,6 +91,13 @@ KEY_DEPTH = 5.0        # hex engagement inside the counterbore
 # an eighth of a turn out, and the bolt fouls its own thread over the whole
 # engagement. One lead of grip is enough to pinch a 16.6 mm hex.
 PROUD_LEADS = 1
+# The plain through bore is NOT the running fit. 0.30 mm radial is what the
+# thread wants and what the printed seed cube proved, but a hole the bolt
+# only has to pass through wants more: it is printed horizontally, where the
+# crown of a 12 mm hole droops, and any binding there fights every joint.
+# So the clearance bore is opened to 0.5 mm radial -- a whole millimetre on
+# diameter -- and the threaded bore is left exactly where it was proved.
+CLEAR_RADIAL = 0.50
 def thread_for(major_d):
     r = major_d / 2.0
     clr = Thread(major_r=r).clearance
@@ -121,7 +128,7 @@ def min_spacing(t, gap=FACE_GAP):
     to be wide enough for the head's counterbore with wall around it.
     """
     return max(2.0 * (pocket_cr(t) + WALL_MIN + gap),
-               2.0 * (t.major_r + t.clearance + WALL_MIN + gap))
+               2.0 * (t.major_r + CLEAR_RADIAL + WALL_MIN + gap))
 
 
 def bar_solid(a, w, gap=FACE_GAP):
@@ -169,7 +176,7 @@ def bar(t, a, keyed=True, gap=FACE_GAP, threaded=True):
         # about its own line, a 58 mm bar sweeps a 45 mm radius and fouls
         # whatever is already built. A joint that closes by pure translation
         # does not care what the bar sweeps.
-        own = trimesh.creation.cylinder(radius=t.major_r + t.clearance,
+        own = trimesh.creation.cylinder(radius=t.major_r + CLEAR_RADIAL,
                                         height=far - near + 4.0, sections=192)
         own.apply_translation([0, 0, (near + far) / 2.0])
     cuts = [k.onto_x(own, (x0, a, 0)),
@@ -178,7 +185,7 @@ def bar(t, a, keyed=True, gap=FACE_GAP, threaded=True):
 
     # the PREVIOUS line: clearance right through, counterbore at the outer
     # face, built on L0 and carried round by the map that carries the bolt
-    thru = trimesh.creation.cylinder(radius=t.major_r + t.clearance,
+    thru = trimesh.creation.cylinder(radius=t.major_r + CLEAR_RADIAL,
                                      height=2 * a, sections=192)
     thru.apply_translation([0, 0, a / 2.0 - x0 - a / 2.0])
     prof = (t.hexagon(pocket_cr(t)) if keyed
@@ -305,6 +312,8 @@ def main():
            "wall_mm": round(a / 2.0 - pocket_cr(t), 2),
            "head_proud_mm": proud_of(t), "key_depth_mm": KEY_DEPTH,
            "round_counterbores": 1, "distinct_parts": 4,
+           "thread_clearance_mm": t.clearance,
+           "hole_clearance_mm": CLEAR_RADIAL,
            "overall_mm": round(2 * a + proud_of(t), 1)}
     if a < need:
         why = (f"spacing {a} below the derived minimum {need:.2f} — the "

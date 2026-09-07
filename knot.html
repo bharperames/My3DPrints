@@ -339,13 +339,29 @@ function poseFor(i){
     }
   return off;
 }
+// The rotation of any part on a threaded line is a function of how far it
+// sits from home along that line. Recomputing it here means a parked part
+// keeps its part-turn when the next step starts — resetting every
+// quaternion to identity silently undid the park each time.
+const lineOf = {};
+for (const st of STEPS) if (st.screw && st.line !== undefined)
+  for (const p of stepParts(st)) lineOf[p] = st.line;
+function screwQuat(key, offVec){
+  const li = lineOf[key];
+  if (li === undefined || !D.axes) return null;
+  const ax = new THREE.Vector3(...D.axes[li].dir).normalize();
+  const ang = 2*Math.PI*offVec.dot(ax)/D.lead;
+  return new THREE.Quaternion().setFromAxisAngle(ax, ang);
+}
 function apply(off, upto){
   units.forEach((u, i) => {
     u.grp.visible = (upto === undefined) || (firstStep[i] <= upto);
 
     u.body.position.set(u.home.x+off[i].x, u.home.y+off[i].y, u.home.z+off[i].z);
     u.body.velocity.setZero(); u.body.angularVelocity.setZero();
-    u.body.quaternion.set(0,0,0,1);
+    const q = screwQuat(u.key, off[i]);
+    if (q) u.body.quaternion.set(q.x, q.y, q.z, q.w);
+    else u.body.quaternion.set(0,0,0,1);
     u.body.type = CANNON.Body.STATIC; u.body.updateMassProperties();
     u.body.collisionResponse = u.grp.visible;
   });
@@ -386,9 +402,14 @@ function startStep(){
   const ax = (D.axes && st.line !== undefined) ? D.axes[st.line] : null;
   running = {u, movers, to:to.clone(),
              axis: new THREE.Vector3(...(ax ? ax.origin : [0,0,0])),
+             axisDir: new THREE.Vector3(...(ax ? ax.dir : [1,0,0])).normalize(),
              dir:delta.clone().normalize(), total:delta.length(),
              start:u.body.position.clone(), stall:0, done:false,
-             lead: st.screw ? D.lead * (st.spin || 1) : 0,
+             // Right-handed, by construction of the thread family:
+             // advancing one lead along the line turns one full turn about
+             // it, right-hand rule. Not a free sign to pick — I had it as a
+             // per-step "spin" and guessed two of the three wrong.
+             lead: st.screw ? D.lead : 0,
              // How much of the travel is actually threading. Left off, the
              // comparison below runs against `undefined`, which is false for
              // every value, so a screw step never enters its turning phase
@@ -496,16 +517,17 @@ function tick(now){
         // part-turned — the red bar is parked half a turn short so the
         // green bar can sweep past it — and snapping its rotation to square
         // would undo exactly the thing the step is for.
-        const endAng = running.lead
-          ? 2*Math.PI*(total - (total - running.engage))/running.lead : 0;
-        const endQ = new THREE.Quaternion().setFromAxisAngle(dir, endAng);
         for (const m of movers){
           m.body.velocity.setZero(); m.body.angularVelocity.setZero();
           const base = new THREE.Vector3(m.home.x + running.to.x,
                                          m.home.y + running.to.y,
                                          m.home.z + running.to.z);
           if (running.lead){
-            const p0 = m.startPos.clone().addScaledVector(dir, total);
+            const off = base.clone().sub(m.home).dot(running.axisDir);
+            const endAng = 2*Math.PI*off/running.lead;
+            const endQ = new THREE.Quaternion()
+              .setFromAxisAngle(running.axisDir, endAng);
+            const p0 = base.clone();
             p0.sub(running.axis).applyQuaternion(endQ).add(running.axis);
             m.body.position.set(p0.x, p0.y, p0.z);
             m.body.quaternion.set(endQ.x, endQ.y, endQ.z, endQ.w);
@@ -535,10 +557,18 @@ function tick(now){
           // spins a body about its CENTRE OF MASS, which for a bar is
           // nowhere near the line it threads on, so it spirals away instead
           // of turning on the bolt. This is exact and cannot wander.
-          const ang = 2*Math.PI*(gone - (total - running.engage))/running.lead;
-          const q = new THREE.Quaternion().setFromAxisAngle(dir, ang);
+          // The angle is a function of WHERE THE PART IS relative to home,
+          // not of how far it has come in this step. Measuring it from the
+          // step's start made a whole number of leads of travel land at
+          // zero rotation — which is right for a step that ends at home and
+          // wrong for one that ends deliberately part-turned, so the parked
+          // bar arrived square and the park never appeared at all.
           for (const m of movers){
-            const base = m.startPos.clone().addScaledVector(dir, gone);
+            const p = m.startPos.clone().addScaledVector(dir, gone);
+            const off = p.clone().sub(m.home).dot(running.axisDir);
+            const ang = 2*Math.PI*off/running.lead;
+            const q = new THREE.Quaternion().setFromAxisAngle(running.axisDir, ang);
+            const base = p.clone();
             base.sub(running.axis).applyQuaternion(q).add(running.axis);
             m.body.position.set(base.x, base.y, base.z);
             m.body.quaternion.set(q.x, q.y, q.z, q.w);
@@ -749,6 +779,8 @@ window.__knot = {
     const h=u.home.clone().sub(r.axis);
     const hperp=h.clone().sub(r.dir.clone().multiplyScalar(h.dot(r.dir)));
     return Math.abs(perp.length()-hperp.length()); },
+  get quats(){ return units.map(u=>{ const q=u.body.quaternion;
+    return 2*Math.acos(Math.min(1,Math.abs(q.w))); }); },
   get raw(){ const r=running; if(!r) return null;
     const u=r.movers[0];
     const p=u.body.position.vsub(new CANNON.Vec3(r.start.x,r.start.y,r.start.z));

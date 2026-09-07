@@ -206,7 +206,7 @@ def bolted_collider(t, a, i, keyed=True, gap=None, part="bar"):
         B.pocket_depth(t) + 2.0)
     cav_c.apply_translation([0, 0, -2.0])
     cav_t = trimesh.creation.extrude_polygon(
-        ring_poly(t.major_r + t.clearance, 12), 3 * a)
+        ring_poly(t.major_r + B.CLEAR_RADIAL, 12), 3 * a)
     cav_t.apply_translation([0, 0, -a])
     cav_c = k.onto_x(cav_c, (x0, a, 0)); cav_c.apply_transform(CY)
     cav_t = k.onto_x(cav_t, (x0, a, 0)); cav_t.apply_transform(CY)
@@ -285,7 +285,7 @@ def build(thread=12.0, design="burr", entry=None):
                      "the right sixth of a turn only once every sixty "
                      "degrees. The thread now stands out of the far face."},
             {"parts": ["bar0"], "from": list(L[0] * BIG),
-             "to": list(L[0] * park), "screw": True, "spin": 1,
+             "to": list(L[0] * park), "screw": True,
              "engage": eng, "line": 0,
              "title": "Turn the red bar on — but stop half a turn short",
              "text": "The bolt is keyed in the blue bar and cannot rotate, so "
@@ -302,7 +302,7 @@ def build(thread=12.0, design="burr", entry=None):
                      "loose in the hand. The head seats flush in its "
                      "hexagonal counterbore."},
             {"parts": ["bar2", "bolt1"], "from": list(-L[1] * BIG),
-             "to": [0, 0, 0], "screw": True, "spin": -1,
+             "to": [0, 0, 0], "screw": True,
              "engage": eng, "line": 1,
              "title": "Turn the green bar into the blue one",
              "text": "Bar and bolt turn together, keyed to each other, and "
@@ -311,13 +311,13 @@ def build(thread=12.0, design="burr", entry=None):
                      "over the whole 28 mm, where with the red bar home it "
                      "jams after three."},
             {"parts": ["bar0"], "from": list(L[0] * park), "to": [0, 0, 0],
-             "screw": True, "spin": 1, "engage": park, "line": 0,
+             "screw": True, "engage": park, "line": 0,
              "title": "Swing the red bar down the last half turn",
              "text": "Now that the green bar is in, the red bar has room to "
                      "finish. Two millimetres, half a turn, and the three "
                      "bars are square."},
             {"parts": ["bolt2"], "from": list(-L[2] * BIG), "to": [0, 0, 0],
-             "screw": True, "spin": -1, "engage": eng, "line": 2,
+             "screw": True, "engage": eng, "line": 2,
              "title": "The green bolt closes the ring, by hand",
              "text": "By now no bar can turn at all, so no bar can be the "
                      "wrench. This one counterbore is round rather than "
