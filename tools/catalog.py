@@ -294,7 +294,12 @@ PARTS = [
        "the last thread in a ring cannot be closed by turning a bar, "
        "because by then nothing is free to turn. So the puzzle is to find "
        "which one of three identical faces has the bolt that moves, and "
-       "the answer is invisible until you try it. Sizing comes from the "
+       "only one of them is live. That one head stands a single thread lead "
+       "proud of its face so fingers can reach it \u2014 flush, its hex "
+       "leaves three tenths of a millimetre inside the counterbore and "
+       "nothing could grip it, and a separate key would be a part that is "
+       "not the puzzle. The other two never need touching, because the bar "
+       "they thread into is what turns them. Sizing comes from the "
        "counterbore alone now that nothing has to slide, which brings the "
        "cube down from 68 mm to 58. Prints with every threaded bore "
        "vertical, since a bore of this cosine family never presents more "
@@ -302,7 +307,7 @@ PARTS = [
        "the plain bores lie on their sides where droop costs nothing. "
        "PETG, not PLA \u2014 the seed cube\u2019s bolt snapped in silk PLA "
        "under hand torque, and these are longer and take real tension.",
-       version="0.4.0",
+       version="0.5.0",
        pages=[dict(label="Watch it go together",
                    href="knot.html?design=bolted")],
        gen=["gen_bolted.py"], params=[

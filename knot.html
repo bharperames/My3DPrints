@@ -61,6 +61,18 @@
   td { padding:3px 0; border-bottom:1px solid var(--line); }
   td:last-child { text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
   .key { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+  .modebar { display:flex; gap:6px; margin:10px 0; flex-wrap:wrap; }
+  .modebtn { width:88px; padding:0; border:2px solid var(--line);
+    border-radius:7px; background:var(--surface-2); cursor:pointer;
+    overflow:hidden; display:block; text-align:left; }
+  .modebtn .thumb { display:block; height:60px; width:100%;
+    background:var(--surface-2) center/cover no-repeat;
+    border-bottom:1px solid var(--line); }
+  .modebtn span { display:block; font-size:10.5px; padding:3px 4px;
+    color:var(--ink-soft); line-height:1.2; }
+  .modebtn:hover { border-color:var(--accent); }
+  .modebtn.on { border-color:var(--accent); }
+  .modebtn.on span { color:var(--ink); font-weight:600; }
   .verdict { font-size:12.5px; padding:8px 10px; border-radius:6px; margin-top:8px; display:none; }
   .verdict.ok { display:block; background:color-mix(in srgb,var(--good) 15%,transparent); color:var(--good); }
   .verdict.bad { display:block; background:color-mix(in srgb,var(--risk) 15%,transparent); color:var(--risk); }
@@ -90,18 +102,7 @@
     <div class="bar">
       <button id="shake">Pull-apart test — does it hold?</button>
     </div>
-    <div class="bar">
-      <label style="font-size:12px;color:var(--ink-soft)">view
-        <select id="mode">
-          <option value="shaded">Shaded</option>
-          <option value="edges" selected>Shaded + edges</option>
-          <option value="hlr">Edges only</option>
-          <option value="wire">Wireframe</option>
-          <option value="xray">X-ray</option>
-        </select></label>
-      <label style="font-size:12px;color:var(--ink-soft)">show
-        <select id="iso"><option value="-1">whole assembly</option></select></label>
-    </div>
+    <div id="modes" class="modebar"></div>
     <div id="verdict" class="verdict"></div>
     <table id="facts"></table>
     <div class="note">
@@ -146,7 +147,7 @@ gltf.scene.traverse(o => { if (o.isMesh) PART[o.name.replace(/[^a-z0-9]/gi,'')] 
 
 /* ---------- scene ---------- */
 const view = document.getElementById('view');
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
 renderer.setPixelRatio(devicePixelRatio);
 view.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
@@ -221,6 +222,16 @@ for (const key of Object.keys(D.colliders)){
   }
   body.position.set(c.x, c.y, c.z);
   body.linearDamping = 0.25; body.angularDamping = 0.85;
+  // A bolt's shank lies inside its own bar's threaded bore, so their
+  // colliders overlap by three cubic centimetres by design — that pair is
+  // held together by a THREAD, which no convex solid can express, and it
+  // must never be resolved as a contact or the solver flings them apart.
+  // One filter group per threaded pair, masked against itself.
+  const pair = (D.threads || []).findIndex(t2 => t2.includes(key));
+  if (pair >= 0){
+    body.collisionFilterGroup = 1 << pair;
+    body.collisionFilterMask = ~(1 << pair);
+  }
   const rec = {key, grp, body, home:c.clone()};
   units.push(rec); byKey[key] = rec;
 }
@@ -304,7 +315,7 @@ function poseFor(i){
 function apply(off, upto){
   units.forEach((u, i) => {
     u.grp.visible = (upto === undefined) || (firstStep[i] <= upto);
-    if (u.grp.visible) applyView();
+
     u.body.position.set(u.home.x+off[i].x, u.home.y+off[i].y, u.home.z+off[i].z);
     u.body.velocity.setZero(); u.body.angularVelocity.setZero();
     u.body.quaternion.set(0,0,0,1);
@@ -360,7 +371,12 @@ function setPlayLabel(){
     : (auto ? '\u23F8 Pause' : '\u25B6 Play assembly');
 }
 playBtn.onclick = () => {
-  if (auto && !paused){ paused = true; setPlayLabel(); return; }
+  if (auto && !paused){
+    paused = true;
+    for (const u of units){ u.body.velocity.setZero();
+                            u.body.angularVelocity.setZero(); }
+    setPlayLabel(); return;
+  }
   if (paused){ paused = false; setPlayLabel(); return; }
   goto(0); auto = true; paused = false; setPlayLabel(); startStep();
 };
@@ -404,6 +420,10 @@ let last = performance.now();
 function tick(now){
   requestAnimationFrame(tick);
   let acc = Math.min((now-last)/1000, 0.05); last = now;
+  // Pause freezes the WORLD, not just the driver. Stopping only the driver
+  // left the body coasting on the velocity it already had, so it always
+  // sailed on to the end of its step and pause looked like it did nothing.
+  if (paused) acc = 0;
   while (acc > DT){
     if (running && !running.done && !paused){
       const {u, movers, dir, total, start} = running;
@@ -424,12 +444,15 @@ function tick(now){
         if (auto && cur < STEPS.length-1){ cur++; startStep(); }
         else if (auto){ auto = false; setPlayLabel(); }
       } else {
-        for (const m of movers)
-          m.body.velocity.set(dir.x*SPEED, dir.y*SPEED, dir.z*SPEED);
-        if (running.lead){
-          // one lead of travel is one full turn; a threaded bolt that is
-          // only pushed will simply jam on the first crest
-          const w = 2*Math.PI*SPEED/running.lead;
+        // Two phases. The bar is carried up to the protruding thread at
+        // approach speed and does not turn at all; only over the last
+        // `engage` millimetres, the length the thread actually bites, does
+        // it turn — at a hand's pace, with travel coupled to the lead.
+        const threading = running.lead && (total - gone) <= running.engage;
+        const v = threading ? Math.abs(running.lead)*TURNS_PER_SEC : SPEED;
+        for (const m of movers) m.body.velocity.set(dir.x*v, dir.y*v, dir.z*v);
+        if (threading){
+          const w = 2*Math.PI*v/running.lead;
           for (const m of movers) m.body.angularVelocity.set(dir.x*w, dir.y*w, dir.z*w);
         } else for (const m of movers) m.body.angularVelocity.setZero();
         running.stall = (gone - (running.lastGone ?? -1) < 1e-4) ? running.stall+DT : 0;
@@ -438,7 +461,8 @@ function tick(now){
           hud.textContent = `step ${cur+1} — JAMMED at ${gone.toFixed(2)} of ${total.toFixed(2)} mm`;
           u.body.velocity.setZero(); running.done = true;
         } else {
-          hud.textContent = `step ${cur+1} — ${gone.toFixed(2)} / ${total.toFixed(2)} mm`;
+          hud.textContent = `step ${cur+1} — ${gone.toFixed(2)} / ${total.toFixed(2)} mm`
+            + (threading ? `  \u00b7  turning ${TURNS_PER_SEC.toFixed(1)} rev/s` : '');
         }
       }
     }
@@ -528,19 +552,29 @@ const allMeshes = [], allEdges = [];
 for (const u of units) u.grp.traverse(o => {
   if (o.isMesh) allMeshes.push(o); else if (o.isLineSegments) allEdges.push(o);
 });
-const isoSel = document.getElementById('iso');
-for (const m of allMeshes){
-  const o = document.createElement('option');
-  o.value = m.name; o.textContent = m.name; isoSel.appendChild(o);
+/* A mode picker showing what each mode looks like, rendered from this very
+   scene rather than drawn as an icon — so it cannot go stale when the part
+   changes. The part-isolating filter that used to sit here is gone: it
+   fought the step playback, and picking a part that had not entered the
+   assembly yet simply showed nothing. X-ray already answers what is inside. */
+const MODES = [
+  ['shaded', 'Shaded'], ['edges', 'Shaded + edges'], ['hlr', 'Edges only'],
+  ['wire', 'Wireframe'], ['xray', 'X-ray'],
+];
+let mode = 'edges';
+const modebar = document.getElementById('modes');
+for (const [id, label] of MODES){
+  const b = document.createElement('button');
+  b.className = 'modebtn' + (id === mode ? ' on' : '');
+  b.dataset.mode = id;
+  b.innerHTML = '<div class="thumb"></div><span>' + label + '</span>';
+  b.onclick = () => { mode = id; applyView();
+    for (const o of modebar.children) o.classList.toggle('on', o.dataset.mode === id); };
+  modebar.appendChild(b);
 }
 function applyView(){
-  const mode = document.getElementById('mode').value;
-  const iso = isoSel.value;
   for (const m of allMeshes){
-    const on = (iso === '-1') || m.name === iso;
-    // in edges-only the mesh stays in the scene (its edge child hangs off
-    // it) but renders nothing
-    m.visible = on;
+    m.visible = true;
     m.material.visible = (mode !== 'hlr');
     m.material.wireframe = (mode === 'wire');
     m.material.transparent = (mode === 'xray');
@@ -548,15 +582,32 @@ function applyView(){
     m.material.depthWrite = (mode !== 'xray');
     m.material.needsUpdate = true;
   }
-  for (const e of allEdges){
-    const base = e.name.replace(':edges','');
-    const on = (iso === '-1') || base === iso;
-    e.visible = on && (mode === 'edges' || mode === 'hlr' || mode === 'xray');
-  }
+  for (const e of allEdges)
+    e.visible = (mode === 'edges' || mode === 'hlr' || mode === 'xray');
 }
-document.getElementById('mode').onchange = applyView;
-isoSel.onchange = applyView;
 applyView();
+
+function makeThumbs(){
+  // OrbitControls only points the camera when it updates, and that first
+  // happens inside the render loop — capture before it and every thumbnail
+  // is a picture of empty space.
+  controls.update();
+  const keep = mode, W = 168, H = 116;
+  const vis = units.map(u => u.grp.visible);
+  units.forEach(u => u.grp.visible = true);
+  renderer.setSize(W, H, false);
+  camera.aspect = W/H; camera.updateProjectionMatrix();
+  for (const [id] of MODES){
+    mode = id; applyView();
+    renderer.render(scene, camera);
+    const url = renderer.domElement.toDataURL('image/png');
+    modebar.querySelector(`[data-mode="${id}"] .thumb`)
+      .style.backgroundImage = `url(${url})`;
+  }
+  mode = keep; applyView();
+  units.forEach((u,i) => u.grp.visible = vis[i]);
+  resize();
+}
 
 window.__knot = {
   set iters(n){ world.solver.iterations = n; },
@@ -574,8 +625,17 @@ window.__knot = {
     speed: units.map(u=>+u.body.velocity.length().toFixed(3)),
     pos: units.map(u=>[+u.body.position.x.toFixed(2),+u.body.position.y.toFixed(2),+u.body.position.z.toFixed(2)])}; },
   get verdict(){ return document.getElementById('verdict').textContent; },
-                  get pos(){ return units.map(u => [u.body.position.x, u.body.position.y, u.body.position.z]); } };
-resize(); goto(0); setPlayLabel(); requestAnimationFrame(tick);
+                  get spin(){ const u = running && running.movers && running.movers[0];
+    return u ? u.body.angularVelocity.length()/(2*Math.PI) : 0; },
+  get pos(){ return units.map(u => [u.body.position.x, u.body.position.y, u.body.position.z]); } };
+resize(); goto(0); setPlayLabel();
+// thumbnails from the assembled object, then back to step one
+apply(units.map(() => new THREE.Vector3()));
+units.forEach(u => u.grp.visible = true);
+renderer.render(scene, camera);
+makeThumbs();
+goto(0);
+requestAnimationFrame(tick);
 </script>
 </body>
 </html>

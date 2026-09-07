@@ -172,18 +172,20 @@ def bolted_collider(t, a, i, keyed=True, gap=None, part="bar"):
     import gen_bolted as B
     gap = B.FACE_GAP if gap is None else gap
     w = a / 2.0
-    x0 = B.datum(t, a, gap)
+    proud = B.proud_of(t) if (part == 'bolt' and i == 2) else 0.0
+    x0 = B.datum(t, a, gap, proud)
     turn_i = np.linalg.matrix_power(k.CYCLE, i)
     CY = k.CYCLE @ k.CYCLE
 
     if part == "bolt":
         # head, the neck across the gap, and the threaded length that lies
         # inside its own bar
+        hh = B.KEY_DEPTH + proud
         segs = [(trimesh.creation.extrude_polygon(t.hexagon(t.hex_cr),
-                                                  t.head_h), 0.0),
+                                                  hh), 0.0),
                 (trimesh.creation.extrude_polygon(
                     ring_poly(t.major_r, 12),
-                    (w + gap) - (x0 + t.head_h)), t.head_h),
+                    max(0.05, (w + gap) - (x0 + hh))), hh),
                 (trimesh.creation.extrude_polygon(
                     ring_poly(t.major_r, 12),
                     (a + w) - (w + gap)), (w + gap) - x0)]
@@ -198,11 +200,11 @@ def bolted_collider(t, a, i, keyed=True, gap=None, part="bar"):
     box = B.bar_solid(a, w, gap)
     box = trimesh.creation.box(box.extents)
     box.apply_translation(B.bar_solid(a, w, gap).bounds.mean(axis=0))
-    floor = x0 + B.pocket_depth(t) - B.AXIAL_SLACK
+    floor = (-a / 2.0) + B.pocket_depth(t)
     cav_c = trimesh.creation.extrude_polygon(
         t.hexagon(B.pocket_cr(t)) if keyed else ring_poly(B.pocket_cr(t), 16),
         B.pocket_depth(t) + 2.0)
-    cav_c.apply_translation([0, 0, -B.AXIAL_SLACK - 2.0])
+    cav_c.apply_translation([0, 0, -2.0])
     cav_t = trimesh.creation.extrude_polygon(
         ring_poly(t.major_r + t.clearance, 12), 3 * a)
     cav_t.apply_translation([0, 0, -a])
@@ -275,7 +277,7 @@ def build(thread=12.0, design="burr", entry=None):
                      "the right sixth of a turn once every sixty degrees. "
                      "The thread now stands out of the far face."},
             {"parts": ["bar0"], "from": list(L[0] * far), "to": [0, 0, 0],
-             "screw": True, "spin": -1,
+             "screw": True, "spin": -1, "engage": a,
              "title": "Turn the SECOND bar onto it",
              "text": "Not the bolt \u2014 the bolt is keyed in the first "
                      "bar's counterbore and cannot rotate at all. So the "
@@ -287,7 +289,7 @@ def build(thread=12.0, design="burr", entry=None):
              "text": "Same again, and while that bar is still free to be "
                      "handled: drop the bolt through it so its head seats."},
             {"parts": ["bar2", "bolt1"], "from": list(-L[1] * far),
-             "to": [0, 0, 0], "screw": True, "spin": +1,
+             "to": [0, 0, 0], "screw": True, "spin": +1, "engage": a,
              "title": "Turn that bar onto the assembly",
              "text": "This time the bar and the bolt keyed inside it turn "
                      "together, as one, and thread into the second bar. The "
@@ -295,7 +297,7 @@ def build(thread=12.0, design="burr", entry=None):
                      "already pinned by the first bolt \u2014 so the free "
                      "bar has to be the one that moves."},
             {"parts": ["bolt2"], "from": list(-L[2] * far), "to": [0, 0, 0],
-             "screw": True, "spin": +1,
+             "screw": True, "spin": +1, "engage": a,
              "title": "The last bolt closes the ring",
              "text": "By now no bar can turn at all, so no bar can be the "
                      "wrench. This one counterbore is round instead of "

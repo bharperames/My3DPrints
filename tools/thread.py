@@ -207,7 +207,11 @@ class Thread:
                          (0.5, tip), (0.5, h - 1.0)])
         rod = rod.intersection(trimesh.creation.revolve(prof, sections=192),
                                engine="manifold")
-        return trimesh.boolean.union([rod, self.head()], engine="manifold")
+        # head(height=h), not head(): the override applies to the rod's
+        # start too, so building the head at the family's default height
+        # leaves it floating short of its own shank — one bolt, two bodies.
+        return trimesh.boolean.union([rod, self.head(height=h)],
+                                     engine="manifold")
 
     def nut(self, height=None):
         h = NUT_H * self.major_r if height is None else height

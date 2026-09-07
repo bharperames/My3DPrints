@@ -73,9 +73,24 @@ FACE_GAP = 0.20
 AXIAL_SLACK = 0.15
 CLOCK_SLACK = 0.40     # a hex head meets its keyway at one of six angles
 BEARING = 2.0          # annulus of counterbore floor the head bears on
-KEY_DEPTH = 5.0        # head height, and so hex engagement
-
-
+KEY_DEPTH = 5.0        # hex engagement inside the counterbore
+# Only the LAST bolt has to be gripped. The first two are driven by turning
+# the bar they thread into — the block is the wrench — so their heads never
+# need to be touched and sit flush. The last one has no free bar left to
+# turn it, and flush in a 19.7 mm counterbore its 16.6 mm hex leaves three
+# tenths of a millimetre at the corners: no finger reaches it and no socket
+# driver could be printed thin enough to go over it. So that head, and only
+# that head, stands proud enough to take fingers.
+#
+# The cost is honest and worth stating: the proud head shows which bolt
+# turns. Three identical faces would have hidden it, but it would have
+# meant three heads standing out of a cube for the sake of one.
+# And it must be a WHOLE NUMBER OF LEADS. The head grows outward from the
+# bolt's own datum, so raising it by any other amount shifts the thread's
+# phase against a bore that is phased to the bar -- 4.5 mm on a 4 mm lead is
+# an eighth of a turn out, and the bolt fouls its own thread over the whole
+# engagement. One lead of grip is enough to pinch a 16.6 mm hex.
+PROUD_LEADS = 1
 def thread_for(major_d):
     r = major_d / 2.0
     clr = Thread(major_r=r).clearance
@@ -84,12 +99,18 @@ def thread_for(major_d):
                   head_h=KEY_DEPTH, head_cham=0.8)
 
 
+def proud_of(t):
+    """Grip on the driven bolt, in whole leads so the thread stays in phase."""
+    return PROUD_LEADS * t.lead
+
+
 def pocket_cr(t):
     return t.hex_cr + POCKET_SLOP / 2.0 / np.cos(np.radians(30.0))
 
 
 def pocket_depth(t):
-    return t.head_h + 2 * AXIAL_SLACK + CLOCK_SLACK
+    """Only the keyed length goes in; the rest of the head stays outside."""
+    return KEY_DEPTH + AXIAL_SLACK + CLOCK_SLACK
 
 
 def min_spacing(t, gap=FACE_GAP):
@@ -111,7 +132,7 @@ def bar_solid(a, w, gap=FACE_GAP):
     return k._break_edges(m, 2.0)
 
 
-def datum(t, a, gap=FACE_GAP):
+def datum(t, a, gap=FACE_GAP, proud=0.0):
     """Head bottom on line L0 -- one origin for the bore and for the bolt.
 
     Everything is laid out in this single coordinate and carried to the
@@ -119,7 +140,8 @@ def datum(t, a, gap=FACE_GAP):
     and the hexagon cannot come out clocked differently from the head that
     fills it.
     """
-    return -a / 2.0 + AXIAL_SLACK
+    # the OUTER END of the head: flush with the bar's face, or `proud` of it
+    return -a / 2.0 - proud
 
 
 def bar(t, a, keyed=True, gap=FACE_GAP):
@@ -150,8 +172,15 @@ def bar(t, a, keyed=True, gap=FACE_GAP):
     thru.apply_translation([0, 0, a / 2.0 - x0 - a / 2.0])
     prof = (t.hexagon(pocket_cr(t)) if keyed
             else Point(0, 0).buffer(pocket_cr(t), resolution=64))
-    cb = trimesh.creation.extrude_polygon(prof, pocket_depth(t))
-    cb.apply_translation([0, 0, -AXIAL_SLACK])
+    # The counterbore starts at the bar's OUTER FACE and goes inward. The
+    # bolt's datum is the outer end of a head that now stands proud, so the
+    # face is PROUD along the line from it — measure the pocket from the
+    # face, not from the datum, or it is cut mostly into open air.
+    # Measured from the bar's OUTER FACE, which is where the bar's own datum
+    # sits — not from any bolt's proud head. Only one bolt stands proud, and
+    # the counterbore that receives it is the same depth as all the others.
+    cb = trimesh.creation.extrude_polygon(prof, pocket_depth(t) + 2.0)
+    cb.apply_translation([0, 0, -2.0])
     for g in (thru, cb):
         h = k.onto_x(g, (x0, a, 0))
         h.apply_transform(k.CYCLE @ k.CYCLE)
@@ -160,26 +189,31 @@ def bar(t, a, keyed=True, gap=FACE_GAP):
                         engine="manifold")
 
 
-def bolt(t, a, gap=FACE_GAP):
-    """Head at one bar's outer face, tip flush with the next bar's far face.
+def bolt(t, a, gap=FACE_GAP, proud=0.0):
+    """Tip flush with the far bar's outer face; head flush, or standing
+    `proud` of its counterbore when it is the one that has to be gripped.
 
-    Length is derived: it has to reach right through the bar it is captured
-    in and all the way across the one it threads into, so that the thread
-    has that bar's whole length to bite and nothing protrudes at either end.
+    Shank length comes out the same either way -- the head grows outward,
+    not inward -- so both bolts thread over exactly the same length.
     """
     w = a / 2.0
-    x0 = datum(t, a, gap)
-    return k.onto_x(t.bolt(shank_len=(a + w) - x0 - t.head_h), (x0, a, 0))
+    x0 = datum(t, a, gap, proud)
+    hh = KEY_DEPTH + proud
+    return k.onto_x(t.bolt(shank_len=(a + w) - x0 - hh, head_h=hh),
+                    (x0, a, 0))
 
 
 def assemble(t, a, entry="free", gap=FACE_GAP):
     b_key = bar(t, a, keyed=(entry == "none"), gap=gap)
     b_std = bar(t, a, keyed=True, gap=gap)
-    k0 = bolt(t, a, gap)
+    # bolt 2's head lives in bar 0's counterbore, the round one, so bolt 2
+    # is the one that must be turned by hand and the only one standing proud
+    flush = bolt(t, a, gap, proud=0.0)
+    grip = bolt(t, a, gap, proud=proud_of(t) if entry != "none" else 0.0)
     parts, m = {}, np.eye(4)
     for i in range(3):
         for name, src in ((f"bar{i}", b_key if i == 0 else b_std),
-                          (f"bolt{i}", k0)):
+                          (f"bolt{i}", grip if i == 2 else flush)):
             g = src.copy()
             g.apply_transform(m)
             parts[name] = g
@@ -207,7 +241,8 @@ def layout(t, a, entry="free", gap=FACE_GAP):
         out[f"knot_bar{'_key' if i == 0 and entry != 'none' else ''}{i}"] = tidy(g)
     row = a + 10.0 + t.hex_cr + 6.0
     for i in range(3):
-        g = bolt(t, a, gap)
+        g = bolt(t, a, gap,
+                 proud=proud_of(t) if (i == 2 and entry != "none") else 0.0)
         g.apply_transform(up)
         g.apply_translation([-g.bounds[0][0] + (i - 1) * pitch - g.extents[0] / 2,
                              row - g.bounds[0][1] - g.extents[1] / 2,
@@ -230,7 +265,10 @@ def main():
            "spacing_mm": a, "min_spacing_mm": round(need, 2), "cube_mm": 2 * a,
            "head_af_mm": round(t.hex_af, 2), "head_h_mm": t.head_h,
            "counterbore_mm": round(pocket_depth(t), 2),
-           "wall_mm": round(a / 2.0 - pocket_cr(t), 2)}
+           "wall_mm": round(a / 2.0 - pocket_cr(t), 2),
+           "head_proud_mm": proud_of(t), "key_depth_mm": KEY_DEPTH,
+           "distinct_parts": 4,
+           "overall_mm": round(2 * a + proud_of(t), 1)}
     if a < need:
         why = (f"spacing {a} below the derived minimum {need:.2f} — the "
                f"counterbore would leave under {WALL_MIN} mm of wall")
