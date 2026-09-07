@@ -264,49 +264,56 @@ def build(thread=12.0, design="burr", entry=None):
         far = 2.6 * a
         d["steps"] = [
             {"parts": ["bar1"], "from": [0, 0, 0], "to": [0, 0, 0],
-             "title": "One bar",
-             "text": "Three of these, identical but for one counterbore. A "
-                     "threaded bore runs down its own length; across it, a "
-                     "clearance bore with a counterbore at the outer face."},
+             "title": "Start with the blue bar",
+             "text": "Three bars, identical but for one counterbore. A "
+                     "threaded bore runs down the length of each; across it, "
+                     "a clearance bore with a counterbore at the outer face. "
+                     "The colours here are only so the steps can name them."},
             {"parts": ["bolt0"], "from": list(-L[0] * far), "to": [0, 0, 0],
-             "title": "Drop a bolt in — no turning",
-             "text": "Tip first, straight through the bar's clearance bore "
-                     "until the head seats in the counterbore. Pure "
-                     "translation: a hex head cannot be screwed into its own "
-                     "keyway, because it arrives turning and only presents "
-                     "the right sixth of a turn once every sixty degrees. "
-                     "The thread now stands out of the far face."},
+             "title": "Drop the red bolt into the blue bar",
+             "text": "Tip first, straight through the blue bar's clearance "
+                     "bore until the head seats in its counterbore. Pure "
+                     "translation, no turning: a hex head cannot be screwed "
+                     "into its own keyway, because it arrives turning and "
+                     "presents the right sixth of a turn only once every "
+                     "sixty degrees. The thread now stands out of the blue "
+                     "bar's far face."},
             {"parts": ["bar0"], "from": list(L[0] * far), "to": [0, 0, 0],
              "screw": True, "spin": -1, "engage": a,
-             "title": "Turn the SECOND bar onto it",
-             "text": "Not the bolt \u2014 the bolt is keyed in the first "
-                     "bar's counterbore and cannot rotate at all. So the "
-                     "receiving bar is what turns, and winds itself down the "
-                     "protruding thread until the two faces meet. The block "
-                     "is the wrench."},
-            {"parts": ["bolt1"], "from": list(-L[1] * far), "to": [0, 0, 0],
-             "title": "Third bar takes the next bolt",
-             "text": "Same again, and while that bar is still free to be "
-                     "handled: drop the bolt through it so its head seats."},
+             "line": 0, "title": "Turn the RED bar onto the red bolt",
+             "text": "Not the bolt — it is keyed in the blue bar's hexagonal "
+                     "counterbore and cannot rotate at all. So the red bar "
+                     "is what turns, winding itself down the protruding "
+                     "thread until the two faces meet. The block is the "
+                     "wrench. It is carried up to the thread without "
+                     "turning, and turns only over the last 29 mm, where "
+                     "the thread actually bites."},
+            {"parts": ["bolt1"], "from": list(-L[1] * (far + 45.0)),
+             "to": list(-L[1] * far), "show": ["bar2"],
+             "title": "Drop the blue bolt into the green bar",
+             "text": "The green bar is still loose and still in the hand, "
+                     "off to one side, so this is done away from the "
+                     "assembly: the blue bolt drops through it and its head "
+                     "seats in the green bar's counterbore."},
             {"parts": ["bar2", "bolt1"], "from": list(-L[1] * far),
              "to": [0, 0, 0], "screw": True, "spin": +1, "engage": a,
-             "title": "Turn that bar onto the assembly",
-             "text": "This time the bar and the bolt keyed inside it turn "
-                     "together, as one, and thread into the second bar. The "
-                     "second bar cannot be turned any more \u2014 it is "
-                     "already pinned by the first bolt \u2014 so the free "
-                     "bar has to be the one that moves."},
+             "line": 1, "title": "Turn the green bar into the blue one",
+             "text": "The green bar and the blue bolt keyed inside it turn "
+                     "together, as one, and thread into the blue bar. The "
+                     "blue bar cannot be turned any more — the red bolt "
+                     "already pins it — so the green bar has to be what "
+                     "moves."},
             {"parts": ["bolt2"], "from": list(-L[2] * far), "to": [0, 0, 0],
              "screw": True, "spin": +1, "engage": a,
-             "title": "The last bolt closes the ring",
-             "text": "By now no bar can turn at all, so no bar can be the "
-                     "wrench. This one counterbore is round instead of "
-                     "hexagonal, so the bolt it holds is free to spin and "
-                     "can be driven directly \u2014 the only turnable thing "
-                     "left, and the only way the ring can be closed. It is "
-                     "also the way out: undoing the puzzle means finding "
-                     "which one of three identical faces has the bolt that "
-                     "turns."}]
+             "line": 2, "title": "The green bolt closes the ring",
+             "text": "It passes through the RED bar and threads into the "
+                     "green one. By now no bar can turn at all, so no bar "
+                     "can be the wrench — and the red bar's counterbore is "
+                     "the round one, so the bolt sitting in it is free to "
+                     "spin and can be driven directly. Its head stands one "
+                     "thread lead proud so fingers can reach it. That is "
+                     "the only turnable thing left, the only way the ring "
+                     "can be closed, and the way back out again."}]
         return d, parts
     t = k.thread_for(thread)
     a = float(np.ceil(k.min_spacing(t, k.release(t))))

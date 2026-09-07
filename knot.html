@@ -43,7 +43,14 @@
     margin-bottom:8px; background:var(--surface-2); transition:background .2s,border-color .2s; }
   .step.on { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 10%,var(--surface)); }
   .step.done { opacity:.55; }
-  .step b { display:block; font-size:13px; margin-bottom:3px; }
+  .step b { display:inline; font-size:13px; }
+  .step details > summary { cursor:pointer; list-style:none;
+    padding:1px 0; user-select:none; }
+  .step details > summary::-webkit-details-marker { display:none; }
+  .step details > summary::after { content:' \\25B8'; color:var(--ink-soft);
+    font-size:10px; }
+  .step details[open] > summary::after { content:' \\25BE'; }
+  .step p { margin:6px 0 0; }
   .step p { margin:0; font-size:12.5px; color:var(--ink-soft); }
   .step .n { display:inline-block; width:18px; height:18px; border-radius:50%;
     background:var(--accent); color:var(--accent-ink); font-size:11px; font-weight:700;
@@ -250,7 +257,8 @@ const stepsEl = document.getElementById('steps');
 STEPS.forEach((s, i) => {
   const d = document.createElement('div');
   d.className = 'step'; d.id = 'step'+i;
-  d.innerHTML = `<b><span class="n">${i+1}</span>${s.title}</b><p>${s.text}</p>`;
+  d.innerHTML = `<details><summary><b><span class="n">${i+1}</span>`
+    + `${s.title}</b></summary><p>${s.text}</p></details>`;
   stepsEl.appendChild(d);
 });
 function mark(i, phase){
@@ -261,9 +269,13 @@ function mark(i, phase){
 }
 const idx = n => units.findIndex(u => u.key === n);
 const stepParts = st => (st.parts || [st.unit]).filter(Boolean);
+// Parts a step needs ON SCREEN without moving them — the bar a bolt is
+// being dropped into has to be visible, or the bolt appears to seat itself
+// in mid-air next to whatever else happens to be there.
+const stepShow = st => stepParts(st).concat(st.show || []);
 // the step a unit first appears in: before that it is not on the bench yet
 const firstStep = units.map(u =>
-  Math.max(0, STEPS.findIndex(st => stepParts(st).includes(u.key))));
+  Math.max(0, STEPS.findIndex(st => stepShow(st).includes(u.key))));
 document.getElementById('title').textContent =
   DESIGN === 'bolted' ? 'The Knot — bolted' : 'The Knot — burr';
 document.getElementById('sub').textContent = DESIGN === 'bolted'
@@ -352,9 +364,17 @@ function startStep(){
     m.body.type = CANNON.Body.DYNAMIC; m.body.mass = 1;
     m.body.updateMassProperties(); m.body.collisionResponse = true;
   }
-  running = {u, movers, dir:delta.clone().normalize(), total:delta.length(),
+  const ax = (D.axes && st.line !== undefined) ? D.axes[st.line] : null;
+  running = {u, movers, to:to.clone(),
+             axis: new THREE.Vector3(...(ax ? ax.origin : [0,0,0])),
+             dir:delta.clone().normalize(), total:delta.length(),
              start:u.body.position.clone(), stall:0, done:false,
-             lead: st.screw ? D.lead * (st.spin || 1) : 0};
+             lead: st.screw ? D.lead * (st.spin || 1) : 0,
+             // How much of the travel is actually threading. Left off, the
+             // comparison below runs against `undefined`, which is false for
+             // every value, so a screw step never enters its turning phase
+             // and the bar slides straight through the thread.
+             engage: st.engage || delta.length()};
 }
 function setGround(on){
   if (on && !ground){
@@ -415,7 +435,11 @@ document.getElementById('shake').onclick = () => {
 
 /* ---------- loop ---------- */
 let PULL_F = 4000, PULL_T = 40000, PULL_S = 8, VCAP = 0.25;
-const DT = 1/300, SPEED = 26;      // mm/s — small steps for 0.25 mm fits
+const DT = 1/300, SPEED = 26;
+// A hand turns a bolt about once a second. Coupling rotation to the lead at
+// the approach speed spins the bar six and a half times a second, which
+// reads as a drill rather than a pair of hands.
+const TURNS_PER_SEC = 1.1;      // mm/s — small steps for 0.25 mm fits
 let last = performance.now();
 function tick(now){
   requestAnimationFrame(tick);
@@ -434,10 +458,16 @@ function tick(now){
         // snap every mover exactly home: a driven body always overshoots by
         // a fraction of a step, and six of those leave the object visibly
         // out of true by the last step
+        // Snap to home PLUS this step's target offset. Snapping to home
+        // alone is right only for steps that end at the assembly; a step
+        // that stages a part off to one side — a bolt dropped into a bar
+        // still held in the hand — teleports it into the assembly instead.
         for (const m of movers){
           m.body.velocity.setZero(); m.body.angularVelocity.setZero();
           m.body.quaternion.set(0,0,0,1);
-          m.body.position.set(m.home.x, m.home.y, m.home.z);
+          m.body.position.set(m.home.x + running.to.x,
+                              m.home.y + running.to.y,
+                              m.home.z + running.to.z);
           m.body.type = CANNON.Body.STATIC; m.body.updateMassProperties();
         }
         hud.textContent = `step ${cur+1} — seated, ${gone.toFixed(2)} of ${total.toFixed(2)} mm`;
@@ -448,12 +478,27 @@ function tick(now){
         // approach speed and does not turn at all; only over the last
         // `engage` millimetres, the length the thread actually bites, does
         // it turn — at a hand's pace, with travel coupled to the lead.
-        const threading = running.lead && (total - gone) <= running.engage;
+        const threading = !!running.lead && (total - gone) <= running.engage;
         const v = threading ? Math.abs(running.lead)*TURNS_PER_SEC : SPEED;
         for (const m of movers) m.body.velocity.set(dir.x*v, dir.y*v, dir.z*v);
         if (threading){
+          // Turn about the BOLT'S AXIS, not the body's own centre. cannon
+          // spins a body about its centre of mass, and a bar's centre is
+          // nowhere near the line it threads on — so it orbits, and the
+          // bolt appears to cut diagonally through it. Adding the
+          // omega x r term to the linear velocity puts the rotation back
+          // on the axis where the thread is.
           const w = 2*Math.PI*v/running.lead;
-          for (const m of movers) m.body.angularVelocity.set(dir.x*w, dir.y*w, dir.z*w);
+          const W = new THREE.Vector3(dir.x*w, dir.y*w, dir.z*w);
+          for (const m of movers){
+            m.body.angularVelocity.set(W.x, W.y, W.z);
+            const r = new THREE.Vector3(m.body.position.x, m.body.position.y,
+                                        m.body.position.z).sub(running.axis);
+            r.sub(dir.clone().multiplyScalar(r.dot(dir)));   // perpendicular
+            const orb = new THREE.Vector3().crossVectors(W, r);
+            m.body.velocity.set(dir.x*v + orb.x, dir.y*v + orb.y,
+                                dir.z*v + orb.z);
+          }
         } else for (const m of movers) m.body.angularVelocity.setZero();
         running.stall = (gone - (running.lastGone ?? -1) < 1e-4) ? running.stall+DT : 0;
         running.lastGone = gone;
@@ -625,7 +670,13 @@ window.__knot = {
     speed: units.map(u=>+u.body.velocity.length().toFixed(3)),
     pos: units.map(u=>[+u.body.position.x.toFixed(2),+u.body.position.y.toFixed(2),+u.body.position.z.toFixed(2)])}; },
   get verdict(){ return document.getElementById('verdict').textContent; },
-                  get spin(){ const u = running && running.movers && running.movers[0];
+                  get raw(){ const r=running; if(!r) return null;
+    const u=r.movers[0];
+    const p=u.body.position.vsub(new CANNON.Vec3(r.start.x,r.start.y,r.start.z));
+    const gone=p.x*r.dir.x+p.y*r.dir.y+p.z*r.dir.z;
+    return {gone, total:r.total, engage:r.engage, lead:r.lead,
+            rev:u.body.angularVelocity.length()/(2*Math.PI)}; },
+  get spin(){ const u = running && running.movers && running.movers[0];
     return u ? u.body.angularVelocity.length()/(2*Math.PI) : 0; },
   get pos(){ return units.map(u => [u.body.position.x, u.body.position.y, u.body.position.z]); } };
 resize(); goto(0); setPlayLabel();

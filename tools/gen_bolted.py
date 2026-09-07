@@ -144,7 +144,7 @@ def datum(t, a, gap=FACE_GAP, proud=0.0):
     return -a / 2.0 - proud
 
 
-def bar(t, a, keyed=True, gap=FACE_GAP):
+def bar(t, a, keyed=True, gap=FACE_GAP, threaded=True):
     """One bar: a threaded bore on its own line, and on the previous line a
     clearance bore right through with a counterbore at the outer face.
 
@@ -159,8 +159,19 @@ def bar(t, a, keyed=True, gap=FACE_GAP):
 
     # its OWN line L0: the thread, over this bar's x extent [w+gap, a+w]
     near, far = (w + gap) - x0, (a + w) - x0
-    own = t.cutter(far - near + 2 * RO * t.lead, z0=near - RO * t.lead,
-                   runout=[(near, RO * t.lead), (far, RO * t.lead)])
+    if threaded:
+        own = t.cutter(far - near + 2 * RO * t.lead, z0=near - RO * t.lead,
+                       runout=[(near, RO * t.lead), (far, RO * t.lead)])
+    else:
+        # A plain slip bore. The bolt through it is not screwed in at all --
+        # it is pushed, and held by the two head captures at its ends. It
+        # exists because a bar cannot always be TURNED into place: swung
+        # about its own line, a 58 mm bar sweeps a 45 mm radius and fouls
+        # whatever is already built. A joint that closes by pure translation
+        # does not care what the bar sweeps.
+        own = trimesh.creation.cylinder(radius=t.major_r + t.clearance,
+                                        height=far - near + 4.0, sections=192)
+        own.apply_translation([0, 0, (near + far) / 2.0])
     cuts = [k.onto_x(own, (x0, a, 0)),
             k.onto_x(t.mouth_chamfer(near, False), (x0, a, 0)),
             k.onto_x(t.mouth_chamfer(far, True), (x0, a, 0))]
@@ -203,17 +214,33 @@ def bolt(t, a, gap=FACE_GAP, proud=0.0):
                     (x0, a, 0))
 
 
-def assemble(t, a, entry="free", gap=FACE_GAP):
-    b_key = bar(t, a, keyed=(entry == "none"), gap=gap)
-    b_std = bar(t, a, keyed=True, gap=gap)
+def assemble(t, a, entry="free", gap=FACE_GAP, slip=None, rounds=(0,)):
+    """`rounds` names the bars whose counterbore is ROUND rather than hex, so
+    the bolt sitting in it can be turned directly.
+
+    Which matters more than it sounds. A joint closes by turning either the
+    bar or the bolt, and a bar is 58 mm long: swung about its own line it
+    sweeps a 45 mm radius and fouls everything already built. Measured over
+    all six orders, exactly ONE joint can ever be closed by turning a bar --
+    the first. Every joint after it has to be closed by turning the BOLT,
+    whose sweep radius is 9.6 mm, and a bolt only turns if its counterbore
+    is round.
+    """
+    hexed = bar(t, a, keyed=True, gap=gap)
+    round_ = bar(t, a, keyed=False, gap=gap)
+    if entry == "none":
+        rounds = ()
     # bolt 2's head lives in bar 0's counterbore, the round one, so bolt 2
     # is the one that must be turned by hand and the only one standing proud
+    # bolt i is keyed by bar i+1's counterbore, so bolt i is turnable when
+    # bar i+1 is round -- and a turnable bolt has to be grippable
     flush = bolt(t, a, gap, proud=0.0)
-    grip = bolt(t, a, gap, proud=proud_of(t) if entry != "none" else 0.0)
+    grip = bolt(t, a, gap, proud=proud_of(t))
     parts, m = {}, np.eye(4)
     for i in range(3):
-        for name, src in ((f"bar{i}", b_key if i == 0 else b_std),
-                          (f"bolt{i}", grip if i == 2 else flush)):
+        for name, src in ((f"bar{i}", round_ if i in rounds else hexed),
+                          (f"bolt{i}", grip if ((i + 1) % 3) in rounds
+                           else flush)):
             g = src.copy()
             g.apply_transform(m)
             parts[name] = g
