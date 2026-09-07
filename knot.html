@@ -359,7 +359,13 @@ function apply(off, upto){
 
     u.body.position.set(u.home.x+off[i].x, u.home.y+off[i].y, u.home.z+off[i].z);
     u.body.velocity.setZero(); u.body.angularVelocity.setZero();
-    const q = screwQuat(u.key, off[i]);
+    // Only a part that is actually IN the assembly carries a screw
+    // rotation. One still waiting off-stage is staged tens of millimetres
+    // out along its line, and applying the rule there spun it to whatever
+    // angle that distance happened to work out to — a part lying on the
+    // bench, visibly cocked over for no reason.
+    const placed = (upto === undefined) || (firstStep[i] < upto);
+    const q = placed ? screwQuat(u.key, off[i]) : null;
     if (q) u.body.quaternion.set(q.x, q.y, q.z, q.w);
     else u.body.quaternion.set(0,0,0,1);
     u.body.type = CANNON.Body.STATIC; u.body.updateMassProperties();
