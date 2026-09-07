@@ -50,8 +50,7 @@
   .step details > summary::after { content:' \25B8'; color:var(--ink-soft);
     font-size:10px; }
   .step details[open] > summary::after { content:' \25BE'; }
-  .step p { margin:6px 0 0; }
-  .step p { margin:0; font-size:12.5px; color:var(--ink-soft); }
+  .step p { margin:6px 0 0; font-size:12.5px; color:var(--ink-soft); }
   .step .n { display:inline-block; width:18px; height:18px; border-radius:50%;
     background:var(--accent); color:var(--accent-ink); font-size:11px; font-weight:700;
     text-align:center; line-height:18px; margin-right:6px; }
@@ -332,10 +331,14 @@ function poseFor(i){
   // parts not yet introduced wait out along their own approach
   const seen = new Set();
   for (let s = 0; s <= i; s++) for (const p of stepParts(STEPS[s])) seen.add(p);
+  // The FIRST future step that mentions a part is where it waits. A part
+  // that appears in several later steps — the red bar is turned on, then
+  // swung home — kept being overwritten by the last of them, so it stood
+  // by at its parked offset instead of off-stage.
   for (let s = i+1; s < STEPS.length; s++)
     for (const p of stepParts(STEPS[s])){
       const u = idx(p);
-      if (u >= 0 && !seen.has(p)) off[u].set(...STEPS[s].from);
+      if (u >= 0 && !seen.has(p)){ off[u].set(...STEPS[s].from); seen.add(p); }
     }
   return off;
 }
@@ -366,8 +369,19 @@ function apply(off, upto){
     // bench, visibly cocked over for no reason.
     const placed = (upto === undefined) || (firstStep[i] < upto);
     const q = placed ? screwQuat(u.key, off[i]) : null;
-    if (q) u.body.quaternion.set(q.x, q.y, q.z, q.w);
-    else u.body.quaternion.set(0,0,0,1);
+    if (q){
+      u.body.quaternion.set(q.x, q.y, q.z, q.w);
+      // and the body's CENTRE has to orbit the bolt's line, not stay put.
+      // Setting the quaternion alone turns the bar about its own centroid,
+      // which for a bar whose centre is 20 mm off the thread line leaves it
+      // tilted and in the wrong place — the parked bar hanging at an angle.
+      const li = lineOf[u.key];
+      const o = new THREE.Vector3(...D.axes[li].origin);
+      const p = new THREE.Vector3(u.home.x + off[i].x, u.home.y + off[i].y,
+                                  u.home.z + off[i].z);
+      p.sub(o).applyQuaternion(q).add(o);
+      u.body.position.set(p.x, p.y, p.z);
+    } else u.body.quaternion.set(0,0,0,1);
     u.body.type = CANNON.Body.STATIC; u.body.updateMassProperties();
     u.body.collisionResponse = u.grp.visible;
   });
@@ -766,6 +780,7 @@ window.__knot = {
                     document.getElementById('shake').click(); },
   get step(){ return cur; }, get running(){ return running && {done:running.done, gone:running.lastGone}; },
                   get shaking(){ return shaking && {t:shaking.t, worst:shaking.worst, pen:shaking.pen}; },
+  get keys(){ return units.map(u=>u.key); },
   get state(){ return units.map(u => ({
       p:[u.body.position.x,u.body.position.y,u.body.position.z],
       q:[u.body.quaternion.x,u.body.quaternion.y,u.body.quaternion.z,u.body.quaternion.w],

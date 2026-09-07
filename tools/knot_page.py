@@ -269,7 +269,14 @@ def build(thread=12.0, design="burr", entry=None):
         # Engagement in WHOLE LEADS, so a screw step ends on a whole number
         # of turns and the part lands square instead of a quarter turn off.
         eng = np.floor(a / t.lead) * t.lead
-        park = 0.5 * t.lead                     # half a turn short of home
+        # Three quarters of a turn out, not a half. The angle is not free
+        # -- it is the axial offset times 2*pi/lead -- so the park pose is
+        # chosen by choosing how far out to stop. A half turn (2 mm) flips
+        # the red bar over its own bolt and it stands up along its own
+        # length, square to the blue bar. Three quarters (3 mm) lays it
+        # PARALLEL to the blue bar, pointing the same way, which is the
+        # pose the last step swings down out of.
+        park = 0.75 * t.lead
         d["steps"] = [
             {"parts": ["bar1"], "from": [0, 0, 0], "to": [0, 0, 0],
              "title": "Start with the blue bar",
@@ -287,14 +294,15 @@ def build(thread=12.0, design="burr", entry=None):
             {"parts": ["bar0"], "from": list(L[0] * BIG),
              "to": list(L[0] * park), "screw": True,
              "engage": eng, "line": 0,
-             "title": "Turn the red bar on — but stop half a turn short",
+             "title": "Turn the red bar on — but stop a quarter turn short",
              "text": "The bolt is keyed in the blue bar and cannot rotate, so "
-                     "the red bar is the wrench. It is deliberately left two "
-                     "millimetres proud: a bar swung about its own line "
-                     "sweeps a 45 mm radius, and at home the red bar's body "
-                     "sits exactly where the green bar needs to sweep. "
-                     "Parked between a quarter and three quarters of a turn "
-                     "short, it clears."},
+                     "the red bar is the wrench. It is deliberately left "
+                     "three millimetres proud, which on a four millimetre "
+                     "lead is three quarters of a turn: that lays the red "
+                     "bar alongside the blue one, pointing the same way. A "
+                     "bar swung about its own line sweeps a 45 mm radius, "
+                     "and at home the red bar's body sits exactly where the "
+                     "green bar needs to sweep. Parked, it clears."},
             {"parts": ["bolt1"], "from": list(-L[1] * (BIG + 45.0)),
              "to": list(-L[1] * BIG), "show": ["bar2"],
              "title": "Drop the blue bolt into the green bar",
@@ -312,10 +320,11 @@ def build(thread=12.0, design="burr", entry=None):
                      "jams after three."},
             {"parts": ["bar0"], "from": list(L[0] * park), "to": [0, 0, 0],
              "screw": True, "engage": park, "line": 0,
-             "title": "Swing the red bar down the last half turn",
+             "title": "Swing the red bar down the last quarter turn",
              "text": "Now that the green bar is in, the red bar has room to "
-                     "finish. Two millimetres, half a turn, and the three "
-                     "bars are square."},
+                     "finish. Three millimetres, a quarter turn, and it "
+                     "swings down off the blue bar's flank into place. The "
+                     "three bars are square."},
             {"parts": ["bolt2"], "from": list(-L[2] * BIG), "to": [0, 0, 0],
              "screw": True, "engage": eng, "line": 2,
              "title": "The green bolt closes the ring, by hand",
