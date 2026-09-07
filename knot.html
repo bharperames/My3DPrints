@@ -132,7 +132,9 @@ import * as CANNON from 'cannon-es';
 const COL = ['--u0','--u1','--u2'].map(v =>
   getComputedStyle(document.documentElement).getPropertyValue(v).trim());
 const hud = document.getElementById('hud');
-const DESIGN = new URLSearchParams(location.search).get('design') || 'burr';
+// the bolted design is the one that works, so it is what the page shows;
+// ?design=burr still reaches the version kept as the negative control
+const DESIGN = new URLSearchParams(location.search).get('design') || 'bolted';
 const TAG = DESIGN === 'burr' ? '' : '_' + DESIGN;
 const D = await (await fetch(`models/knot${TAG}_assembly.json`)).json();
 // The parts at full resolution — 438,770 triangles, the generated mesh
@@ -166,33 +168,29 @@ function resize(){
 addEventListener('resize', resize);
 
 /* ---------- geometry ---------- */
+/* One physics body per PART, not per unit. Assembly moves a bolt after its
+   bars are already laid together, so they cannot be the same body — merged,
+   a step that says "insert the first bolt" drags a bar in with it and the
+   simulation thrashes into a heap. What re-ties them is the thread, which
+   no convex decomposition can express, so it becomes a constraint below. */
 const units = [];
-for (let i = 0; i < 3; i++){
-  // centre every representation on one point so a rotation is about the
-  // body's own centre and the mesh follows the collider exactly
-  const hulls = D.colliders['unit'+i];
+const byKey = {};
+for (const key of Object.keys(D.colliders)){
+  const i = +key.replace(/[^0-9]/g, '');
+  const hulls = D.colliders[key];
   let sx=0, sy=0, sz=0, n=0;
   for (const h of hulls) for (let j=0;j<h.v.length;j+=3){ sx+=h.v[j]; sy+=h.v[j+1]; sz+=h.v[j+2]; n++; }
   const c = new THREE.Vector3(sx/n, sy/n, sz/n);
 
   const grp = new THREE.Group();
-  // Flat shading, not smooth. The GLB carries no normals and
-  // computeVertexNormals averages across every shared vertex, which rounds
-  // over each hard edge: the hexagon of a counterbore turns into a dimple
-  // and the part reads as muddy. Nothing is decimated -- this is all
-  // 529,612 triangles of it -- the edges were being shaded away.
-  const mat = new THREE.MeshStandardMaterial({color:new THREE.Color(COL[i]),
+  const mat = new THREE.MeshStandardMaterial({color:new THREE.Color(COL[i%3]),
     roughness:.55, metalness:.05, flatShading:true});
   const lineMat = new THREE.LineBasicMaterial({
-    color:new THREE.Color(COL[i]).multiplyScalar(0.35)});
-  const names = D.parts.filter(n => n.endsWith(String(i)));
-  for (const part of names){
+    color:new THREE.Color(COL[i%3]).multiplyScalar(0.35)});
+  for (const part of (D.members[key] || [key])){
     const src = PART[part];
     if (!src){ console.error('missing part ' + part); continue; }
     const g = src.geometry.clone();
-    // trimesh writes no normals into the GLB, and MeshStandardMaterial with
-    // no normal attribute shades every face black — the part reads as a
-    // silhouette with no detail at all.
     if (!g.getAttribute('normal')) g.computeVertexNormals();
     const mesh = new THREE.Mesh(g, mat);
     src.updateWorldMatrix(true, false);
@@ -200,35 +198,22 @@ for (let i = 0; i < 3; i++){
     mesh.position.sub(c);
     mesh.name = part;
     grp.add(mesh);
-    // real edges at a 25 degree crease, so a bore reads as a bore
     const eg = new THREE.LineSegments(
       new THREE.EdgesGeometry(mesh.geometry, 25), lineMat);
-    eg.applyMatrix4(mesh.matrix);
     eg.name = part + ':edges';
-    grp.add(eg);
+    mesh.add(eg);
   }
   grp.position.copy(c);
   scene.add(grp);
 
   const body = new CANNON.Body({mass:1, material:new CANNON.Material('u')});
   for (const h of hulls){
-    // Each piece is centred on ITSELF and added at an offset. cannon checks
-    // a face normal by dotting it with one of the face's own vertices,
-    // which only tells you anything if the solid straddles the origin — an
-    // off-centre hull makes it warn that every normal points inward. It is
-    // also the only way the inertia tensor comes out right.
-    let cx=0, cy=0, cz=0, n=h.v.length/3;
+    let cx=0, cy=0, cz=0, m=h.v.length/3;
     for (let j=0;j<h.v.length;j+=3){ cx+=h.v[j]; cy+=h.v[j+1]; cz+=h.v[j+2]; }
-    cx/=n; cy/=n; cz/=n;
+    cx/=m; cy/=m; cz/=m;
     const verts = [];
     for (let j=0;j<h.v.length;j+=3)
       verts.push(new CANNON.Vec3(h.v[j]-cx, h.v[j+1]-cy, h.v[j+2]-cz));
-    // Winding is passed through unchanged. cannon's computeNormal takes
-    // (vc-vb) x (vb-va), which is the NEGATIVE of the usual right-hand
-    // normal, and then negates it -- so it wants exactly what trimesh
-    // gives: counter-clockwise seen from outside. Reversing it, as the
-    // console warning seems to ask, inverts every solid and the assembly
-    // blows apart on the first contact.
     const faces = [];
     for (let j=0;j<h.f.length;j+=3) faces.push([h.f[j], h.f[j+1], h.f[j+2]]);
     body.addShape(new CANNON.ConvexPolyhedron({vertices:verts, faces}),
@@ -236,7 +221,8 @@ for (let i = 0; i < 3; i++){
   }
   body.position.set(c.x, c.y, c.z);
   body.linearDamping = 0.25; body.angularDamping = 0.85;
-  units.push({grp, body, home:c.clone()});
+  const rec = {key, grp, body, home:c.clone()};
+  units.push(rec); byKey[key] = rec;
 }
 
 const world = new CANNON.World({gravity:new CANNON.Vec3(0,0,0)});
@@ -262,10 +248,11 @@ function mark(i, phase){
     el.className = 'step' + (j===i ? ' on' : (j<i ? ' done' : ''));
   });
 }
-const idx = n => +n.replace(/[^0-9]/g, '');   // "unit2", "bar2", "bolt2" -> 2
+const idx = n => units.findIndex(u => u.key === n);
+const stepParts = st => (st.parts || [st.unit]).filter(Boolean);
 // the step a unit first appears in: before that it is not on the bench yet
-const firstStep = units.map((_, u) =>
-  STEPS.findIndex(st => idx(st.unit) === u));
+const firstStep = units.map(u =>
+  Math.max(0, STEPS.findIndex(st => stepParts(st).includes(u.key))));
 document.getElementById('title').textContent =
   DESIGN === 'bolted' ? 'The Knot — bolted' : 'The Knot — burr';
 document.getElementById('sub').textContent = DESIGN === 'bolted'
@@ -299,15 +286,19 @@ facts.innerHTML = [
 /* place every unit for the START of step i */
 function poseFor(i){
   const off = units.map(() => new THREE.Vector3());
-  for (let s = 0; s <= i; s++){
-    const st = STEPS[s], u = idx(st.unit);
-    off[u].set(...(s === i ? st.from : st.to));
-  }
-  // units not yet introduced sit far off along their own approach
-  for (let s = i+1; s < STEPS.length; s++){
-    const st = STEPS[s], u = idx(st.unit);
-    if (!STEPS.slice(0, i+1).some(x => idx(x.unit) === u)) off[u].set(...st.from);
-  }
+  for (let s = 0; s <= i; s++)
+    for (const p of stepParts(STEPS[s])){
+      const u = idx(p); if (u < 0) continue;
+      off[u].set(...(s === i ? STEPS[s].from : STEPS[s].to));
+    }
+  // parts not yet introduced wait out along their own approach
+  const seen = new Set();
+  for (let s = 0; s <= i; s++) for (const p of stepParts(STEPS[s])) seen.add(p);
+  for (let s = i+1; s < STEPS.length; s++)
+    for (const p of stepParts(STEPS[s])){
+      const u = idx(p);
+      if (u >= 0 && !seen.has(p)) off[u].set(...STEPS[s].from);
+    }
   return off;
 }
 function apply(off, upto){
@@ -322,17 +313,20 @@ function apply(off, upto){
   });
 }
 
-let cur = 0, running = null, shaking = false, auto = false;
+let cur = 0, running = null, shaking = false, auto = false, paused = false;
 function goto(i){
   cur = Math.max(0, Math.min(STEPS.length-1, i));
-  running = null; shaking = false; auto = false; setGround(false);
+  running = null; shaking = false; auto = false; paused = false;
+  setGround(false);
+  if (typeof setPlayLabel === 'function') setPlayLabel();
   apply(poseFor(cur), cur); mark(cur);
   hud.textContent = `step ${cur+1}/${STEPS.length} — ready`;
   document.getElementById('verdict').className = 'verdict';
 }
 function startStep(){
   const st = STEPS[cur];
-  const u = units[idx(st.unit)];
+  const movers = stepParts(st).map(p => units[idx(p)]).filter(Boolean);
+  const u = movers[0];
   const from = new THREE.Vector3(...st.from), to = new THREE.Vector3(...st.to);
   const delta = to.clone().sub(from);
   apply(poseFor(cur), cur); mark(cur);
@@ -343,11 +337,13 @@ function startStep(){
     if (auto && cur < STEPS.length-1){ cur++; startStep(); }
     return;
   }
-  u.body.type = CANNON.Body.DYNAMIC; u.body.mass = 1; u.body.updateMassProperties();
-  u.body.collisionResponse = true;
-  running = {u, dir:delta.clone().normalize(), total:delta.length(),
+  for (const m of movers){
+    m.body.type = CANNON.Body.DYNAMIC; m.body.mass = 1;
+    m.body.updateMassProperties(); m.body.collisionResponse = true;
+  }
+  running = {u, movers, dir:delta.clone().normalize(), total:delta.length(),
              start:u.body.position.clone(), stall:0, done:false,
-             lead: st.screw ? D.lead : 0};
+             lead: st.screw ? D.lead * (st.spin || 1) : 0};
 }
 function setGround(on){
   if (on && !ground){
@@ -358,8 +354,18 @@ function setGround(on){
   } else if (!on && ground){ world.removeBody(ground); ground = null; }
 }
 
-document.getElementById('play').onclick = () => { goto(0); auto = true; startStep(); };
+const playBtn = document.getElementById('play');
+function setPlayLabel(){
+  playBtn.textContent = paused ? '\u25B6 Resume'
+    : (auto ? '\u23F8 Pause' : '\u25B6 Play assembly');
+}
+playBtn.onclick = () => {
+  if (auto && !paused){ paused = true; setPlayLabel(); return; }
+  if (paused){ paused = false; setPlayLabel(); return; }
+  goto(0); auto = true; paused = false; setPlayLabel(); startStep();
+};
 document.getElementById('fwd').onclick  = () => {
+  if (paused){ paused = false; setPlayLabel(); }
   if (running && !running.done) return;          // let the current one finish
   auto = false;
   // Advance whenever this step has nothing left to do — which includes a
@@ -399,25 +405,33 @@ function tick(now){
   requestAnimationFrame(tick);
   let acc = Math.min((now-last)/1000, 0.05); last = now;
   while (acc > DT){
-    if (running && !running.done){
-      const {u, dir, total, start} = running;
+    if (running && !running.done && !paused){
+      const {u, movers, dir, total, start} = running;
       const p = u.body.position.vsub(new CANNON.Vec3(start.x,start.y,start.z));
       const gone = p.x*dir.x + p.y*dir.y + p.z*dir.z;
       if (gone >= total - 0.02){
         running.done = true;
-        u.body.velocity.setZero(); u.body.angularVelocity.setZero();
-        u.body.position.set(start.x+dir.x*total, start.y+dir.y*total, start.z+dir.z*total);
-        u.body.type = CANNON.Body.STATIC; u.body.updateMassProperties();
+        // snap every mover exactly home: a driven body always overshoots by
+        // a fraction of a step, and six of those leave the object visibly
+        // out of true by the last step
+        for (const m of movers){
+          m.body.velocity.setZero(); m.body.angularVelocity.setZero();
+          m.body.quaternion.set(0,0,0,1);
+          m.body.position.set(m.home.x, m.home.y, m.home.z);
+          m.body.type = CANNON.Body.STATIC; m.body.updateMassProperties();
+        }
         hud.textContent = `step ${cur+1} — seated, ${gone.toFixed(2)} of ${total.toFixed(2)} mm`;
         if (auto && cur < STEPS.length-1){ cur++; startStep(); }
+        else if (auto){ auto = false; setPlayLabel(); }
       } else {
-        u.body.velocity.set(dir.x*SPEED, dir.y*SPEED, dir.z*SPEED);
+        for (const m of movers)
+          m.body.velocity.set(dir.x*SPEED, dir.y*SPEED, dir.z*SPEED);
         if (running.lead){
           // one lead of travel is one full turn; a threaded bolt that is
           // only pushed will simply jam on the first crest
           const w = 2*Math.PI*SPEED/running.lead;
-          u.body.angularVelocity.set(dir.x*w, dir.y*w, dir.z*w);
-        } else u.body.angularVelocity.setZero();
+          for (const m of movers) m.body.angularVelocity.set(dir.x*w, dir.y*w, dir.z*w);
+        } else for (const m of movers) m.body.angularVelocity.setZero();
         running.stall = (gone - (running.lastGone ?? -1) < 1e-4) ? running.stall+DT : 0;
         running.lastGone = gone;
         if (running.stall > 0.45){
@@ -468,8 +482,13 @@ function tick(now){
       // reads 66 mm of "drift" while the parts have not moved a
       // half-millimetre relative to each other. What matters is the pose of
       // each unit in its neighbour's own frame.
+      // Only the parts that are meant to hold each other. With six bodies
+      // a bolt's own pose inside its bar is not the question — the bars
+      // keeping register is.
       let worst = 0;
-      for (let i=0;i<3;i++) for (let j=0;j<3;j++){
+      const hold = (D.hold || units.map(u => u.key))
+        .map(kk => units.findIndex(u => u.key === kk)).filter(x => x >= 0);
+      for (const i of hold) for (const j of hold){
         if (i === j) continue;
         const w = units[j].body.position.vsub(units[i].body.position);
         const local = units[i].body.quaternion.inverse().vmult(w);
@@ -519,7 +538,10 @@ function applyView(){
   const iso = isoSel.value;
   for (const m of allMeshes){
     const on = (iso === '-1') || m.name === iso;
-    m.visible = on && mode !== 'hlr';
+    // in edges-only the mesh stays in the scene (its edge child hangs off
+    // it) but renders nothing
+    m.visible = on;
+    m.material.visible = (mode !== 'hlr');
     m.material.wireframe = (mode === 'wire');
     m.material.transparent = (mode === 'xray');
     m.material.opacity = (mode === 'xray') ? 0.28 : 1;
@@ -553,7 +575,7 @@ window.__knot = {
     pos: units.map(u=>[+u.body.position.x.toFixed(2),+u.body.position.y.toFixed(2),+u.body.position.z.toFixed(2)])}; },
   get verdict(){ return document.getElementById('verdict').textContent; },
                   get pos(){ return units.map(u => [u.body.position.x, u.body.position.y, u.body.position.z]); } };
-resize(); goto(0); requestAnimationFrame(tick);
+resize(); goto(0); setPlayLabel(); requestAnimationFrame(tick);
 </script>
 </body>
 </html>

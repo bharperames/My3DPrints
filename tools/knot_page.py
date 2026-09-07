@@ -152,27 +152,53 @@ def ring_poly(r, n=12):
     return Polygon(np.column_stack([R * np.cos(ang), R * np.sin(ang)]))
 
 
-def bolted_collider(t, a, i, keyed=True, gap=None):
-    """One clamped unit: the bar, hollowed for the bolt that passes through
-    it, plus the head and shank of its own bolt where they stand outside.
+def bolted_collider(t, a, i, keyed=True, gap=None, part="bar"):
+    """Convex pieces for ONE part -- a bar or a bolt, not the two merged.
 
-    The bar carries two cavities on one line -- a through bore and a wider
-    counterbore at the outer face -- and a stepped hole is not convex. So
-    the bar is cut at the counterbore floor and each slab is decomposed
-    against its own convex cavity, which is exact on both sides of the step.
+    They have to be separate bodies, because assembly moves them
+    separately: a bolt goes in after its bars are already laid together.
+    Merged, a step that says "insert the first bolt" drags a whole bar in
+    with it and the object never reaches its own assembled pose.
+
+    What re-ties them is the thread, which no convex decomposition can
+    represent -- so the pull test locks each bolt to the bar it is threaded
+    into with a constraint instead, which is what a thread does.
+
+    The bar carries two cavities on one line, a through bore and a wider
+    counterbore at the outer face, and a stepped hole is not convex. So the
+    bar is cut at the counterbore floor and each slab decomposed against
+    its own convex cavity, which is exact on both sides of the step.
     """
     import gen_bolted as B
     gap = B.FACE_GAP if gap is None else gap
     w = a / 2.0
     x0 = B.datum(t, a, gap)
-    box = B.bar_solid(a, w, gap).bounding_box_oriented.copy()
-    box = trimesh.creation.box(B.bar_solid(a, w, gap).extents)
-    box.apply_translation(B.bar_solid(a, w, gap).bounds.mean(axis=0))
+    turn_i = np.linalg.matrix_power(k.CYCLE, i)
+    CY = k.CYCLE @ k.CYCLE
 
-    floor = x0 + B.pocket_depth(t) - B.AXIAL_SLACK      # counterbore floor
-    # exactly the real counterbore depth, over-run OUTWARD only: run it 2 mm
-    # deeper instead and the collider loses material the bar really has,
-    # right where the head bears
+    if part == "bolt":
+        # head, the neck across the gap, and the threaded length that lies
+        # inside its own bar
+        segs = [(trimesh.creation.extrude_polygon(t.hexagon(t.hex_cr),
+                                                  t.head_h), 0.0),
+                (trimesh.creation.extrude_polygon(
+                    ring_poly(t.major_r, 12),
+                    (w + gap) - (x0 + t.head_h)), t.head_h),
+                (trimesh.creation.extrude_polygon(
+                    ring_poly(t.major_r, 12),
+                    (a + w) - (w + gap)), (w + gap) - x0)]
+        out = []
+        for g, z in segs:
+            g.apply_translation([0, 0, z])
+            h = k.onto_x(g, (x0, a, 0)).convex_hull
+            h.apply_transform(turn_i)
+            out.append(h)
+        return out
+
+    box = B.bar_solid(a, w, gap)
+    box = trimesh.creation.box(box.extents)
+    box.apply_translation(B.bar_solid(a, w, gap).bounds.mean(axis=0))
+    floor = x0 + B.pocket_depth(t) - B.AXIAL_SLACK
     cav_c = trimesh.creation.extrude_polygon(
         t.hexagon(B.pocket_cr(t)) if keyed else ring_poly(B.pocket_cr(t), 16),
         B.pocket_depth(t) + 2.0)
@@ -180,40 +206,17 @@ def bolted_collider(t, a, i, keyed=True, gap=None):
     cav_t = trimesh.creation.extrude_polygon(
         ring_poly(t.major_r + t.clearance, 12), 3 * a)
     cav_t.apply_translation([0, 0, -a])
-    turn = CY = k.CYCLE @ k.CYCLE
     cav_c = k.onto_x(cav_c, (x0, a, 0)); cav_c.apply_transform(CY)
     cav_t = k.onto_x(cav_t, (x0, a, 0)); cav_t.apply_transform(CY)
-    # the step plane, in world coords, normal along the previous line
     d = np.array(k.lines(a)[2][0], float)
     o = np.array(k.lines(a)[2][1], float) + d * floor
-
     pieces = []
-    # The counterbore is the OUTER end of the hole and the through bore is
-    # the rest, so the counterbore takes the slab on the outer side of the
-    # step. Swapped, each cavity is cut out of the slab it does not live in
-    # and the bore stays full of material -- three cubic centimetres of
-    # collider sitting exactly where the next unit's shank has to pass.
+    # the counterbore owns the OUTER slab, the through bore the rest
     for cav, keep in ((cav_c, -1), (cav_t, +1)):
         slab = box.slice_plane(o, d * keep, cap=True)
         if slab is None or not len(slab.vertices):
             continue
         pieces += convex_pieces(slab, cav)
-    # this unit's own bolt, outside its bar: head and the shank beyond it
-    blt = B.bolt(t, a, gap)
-    face = np.array(k.lines(a)[0][1], float)
-    out = blt.slice_plane([w + gap, a, 0], [-1, 0, 0], cap=True)
-    if out is not None and len(out.vertices):
-        # at x0, the same datum the bolt itself is built on. Offsetting the
-        # collider head by one AXIAL_SLACK left the bottom 0.15 mm of every
-        # head outside its own collider -- 35 mm3, exactly where the head
-        # bears on the counterbore floor and takes the whole pull.
-        head = trimesh.creation.extrude_polygon(t.hexagon(t.hex_cr), t.head_h)
-        pieces.append(k.onto_x(head, (x0, a, 0)).convex_hull)
-        neck = trimesh.creation.extrude_polygon(
-            ring_poly(t.major_r, 12), (w + gap) - (x0 + t.head_h))
-        neck.apply_translation([0, 0, t.head_h])
-        pieces.append(k.onto_x(neck, (x0, a, 0)).convex_hull)
-    turn_i = np.linalg.matrix_power(k.CYCLE, i)
     out = []
     for p in pieces:
         h = p.convex_hull
@@ -238,54 +241,68 @@ def build(thread=12.0, design="burr", entry=None):
                       for dd, oo in k.lines(a)],
              "parts": sorted(parts), "colliders": {}}
         for i in range(3):
-            d["colliders"][f"unit{i}"] = [
-                mesh_json(p) for p in
-                bolted_collider(t, a, i, keyed=(entry == "none" or i != 0))]
-        # The order the object has to be built in, and it is forced. Bars go
-        # together first, because a bolt can only be tightened while
-        # something is still free to turn; the last bolt closes the ring and
-        # after that nothing turns at all.
+            d["colliders"][f"bar{i}"] = [
+                mesh_json(p) for p in bolted_collider(
+                    t, a, i, keyed=(entry == "none" or i != 0), part="bar")]
+            d["colliders"][f"bolt{i}"] = [
+                mesh_json(p) for p in bolted_collider(t, a, i, part="bolt")]
+        # a thread is not a convex solid, so it is a constraint instead:
+        # bolt i is threaded into bar i and cannot leave it
+        d["threads"] = [[f"bolt{i}", f"bar{i}"] for i in range(3)]
+        d["members"] = {f"bar{i}": [f"bar{i}"] for i in range(3)}
+        d["members"].update({f"bolt{i}": [f"bolt{i}"] for i in range(3)})
+        d["hold"] = [f"bar{i}" for i in range(3)]
+        # The order the object has to be built in, and every step of it is
+        # forced by one law the seed cube paid for twice: a head sunk in a
+        # hex counterbore CANNOT TURN, so the bolt is never what you turn.
+        # You drop the bolt into the block that keys it, and then you turn
+        # the block it threads into -- or the block carrying it. The block
+        # is the wrench.
         L = [np.asarray(x[0], float) for x in k.lines(a)]
-        far = 2.4 * a
+        far = 2.6 * a
         d["steps"] = [
-            {"unit": "bar0", "from": [0, 0, 0], "to": [0, 0, 0],
+            {"parts": ["bar1"], "from": [0, 0, 0], "to": [0, 0, 0],
              "title": "One bar",
-             "text": "Three of these, identical but for one counterbore. "
-                     "Each has a threaded bore down its own length and, "
-                     "across it, a clearance bore with a counterbore at the "
-                     "outer face."},
-            {"unit": "bar1", "from": list(-L[0] * far), "to": [0, 0, 0],
-             "title": "Second bar, face to face",
-             "text": "Nothing holds them together yet. They only meet on one "
-                     "plane, so the second bar slides straight up to the "
-                     "first."},
-            {"unit": "bolt0", "from": list(-L[0] * far), "to": [0, 0, 0],
-             "screw": True,
-             "title": "First bolt — right through",
-             "text": "Through the second bar's clearance bore and into the "
-                     "first bar's thread. This is the joint the burr never "
-                     "had: the bolt does not stop in a socket, it passes "
-                     "through one bar and bites the next, so a pull loads a "
-                     "thread instead of sliding a head out of a hole."},
-            {"unit": "bar2", "from": list(-L[1] * far), "to": [0, 0, 0],
-             "title": "Third bar",
-             "text": "Laid against the second. Still free — nothing is "
-                     "clamped to it yet."},
-            {"unit": "bolt1", "from": list(-L[1] * far), "to": [0, 0, 0],
-             "screw": True,
-             "title": "Second bolt",
-             "text": "Turned by holding the third bar, which is keyed to the "
-                     "head by its hexagonal counterbore. That is the trick "
-                     "the seed cube taught: the block IS the wrench."},
-            {"unit": "bolt2", "from": list(-L[2] * far), "to": [0, 0, 0],
-             "screw": True,
-             "title": "Last bolt — the ring closes",
-             "text": "By now no bar can turn, so this one cannot be driven "
-                     "by a bar. Its counterbore is round rather than "
-                     "hexagonal, so the bolt itself turns freely and can be "
-                     "driven directly. Once home, every bar is clamped to "
-                     "the next and nothing moves: measured, 0.7 mm of play "
-                     "under two newtons of pull. Undoing it means finding "
+             "text": "Three of these, identical but for one counterbore. A "
+                     "threaded bore runs down its own length; across it, a "
+                     "clearance bore with a counterbore at the outer face."},
+            {"parts": ["bolt0"], "from": list(-L[0] * far), "to": [0, 0, 0],
+             "title": "Drop a bolt in — no turning",
+             "text": "Tip first, straight through the bar's clearance bore "
+                     "until the head seats in the counterbore. Pure "
+                     "translation: a hex head cannot be screwed into its own "
+                     "keyway, because it arrives turning and only presents "
+                     "the right sixth of a turn once every sixty degrees. "
+                     "The thread now stands out of the far face."},
+            {"parts": ["bar0"], "from": list(L[0] * far), "to": [0, 0, 0],
+             "screw": True, "spin": -1,
+             "title": "Turn the SECOND bar onto it",
+             "text": "Not the bolt \u2014 the bolt is keyed in the first "
+                     "bar's counterbore and cannot rotate at all. So the "
+                     "receiving bar is what turns, and winds itself down the "
+                     "protruding thread until the two faces meet. The block "
+                     "is the wrench."},
+            {"parts": ["bolt1"], "from": list(-L[1] * far), "to": [0, 0, 0],
+             "title": "Third bar takes the next bolt",
+             "text": "Same again, and while that bar is still free to be "
+                     "handled: drop the bolt through it so its head seats."},
+            {"parts": ["bar2", "bolt1"], "from": list(-L[1] * far),
+             "to": [0, 0, 0], "screw": True, "spin": +1,
+             "title": "Turn that bar onto the assembly",
+             "text": "This time the bar and the bolt keyed inside it turn "
+                     "together, as one, and thread into the second bar. The "
+                     "second bar cannot be turned any more \u2014 it is "
+                     "already pinned by the first bolt \u2014 so the free "
+                     "bar has to be the one that moves."},
+            {"parts": ["bolt2"], "from": list(-L[2] * far), "to": [0, 0, 0],
+             "screw": True, "spin": +1,
+             "title": "The last bolt closes the ring",
+             "text": "By now no bar can turn at all, so no bar can be the "
+                     "wrench. This one counterbore is round instead of "
+                     "hexagonal, so the bolt it holds is free to spin and "
+                     "can be driven directly \u2014 the only turnable thing "
+                     "left, and the only way the ring can be closed. It is "
+                     "also the way out: undoing the puzzle means finding "
                      "which one of three identical faces has the bolt that "
                      "turns."}]
         return d, parts
@@ -304,10 +321,41 @@ def build(thread=12.0, design="burr", entry=None):
     for i in range(3):
         d["colliders"][f"unit{i}"] = [mesh_json(p)
                                       for p in unit_collider(t, a, i, slot)]
+    # a burr unit is a block and the bolt threaded through it, moving as one
+    d["members"] = {f"unit{i}": [f"block{i}", f"bolt{i}"] for i in range(3)}
+    d["threads"] = []
+    d["hold"] = [f"unit{i}" for i in range(3)]
+    # The burr's sequence, from an all-directions sweep of the real meshes:
+    # every body pushed along 406 directions including the six exact axes,
+    # at a twentieth of a millimetre. Assembled, exactly one moves.
+    sl = slot + 0.20
+    d["steps"] = [
+        {"unit": "unit2", "from": [0, 0, 0], "to": [0, 0, 0],
+         "title": "Start with one unit",
+         "text": "A unit is a bar with its own bolt threaded through it, "
+                 "head standing proud. There are three."},
+        {"unit": "unit1", "from": [0, 44, 0], "to": [0, 0, 0],
+         "title": "Second unit",
+         "text": "Its head drops into the first unit's blind socket. "
+                 "Nothing is clamped: the socket stops the head turning and "
+                 "moving sideways, and does nothing against a pull."},
+        {"unit": "unit0", "from": [sl, 0, -44], "to": [sl, 0, 0],
+         "title": "Third unit, offset by the slot",
+         "text": "It arrives held 5.9 mm off its final place, so its own "
+                 "socket can drop over the second unit's head."},
+        {"unit": "unit0", "from": [sl, 0, 0], "to": [0, 0, 0],
+         "title": "Slide it home",
+         "text": "5.9 mm, and the ring closes. This slide is the only "
+                 "motion the finished object has \u2014 and it points the "
+                 "same way you would pull, which is why half a newton takes "
+                 "the whole thing apart."}]
+    return d, parts
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--design", choices=("burr", "bolted"), default="burr")
+    ap.add_argument("--design", choices=("burr", "bolted"), default="bolted")
     ap.add_argument("--entry")
     ap.add_argument("--thread", type=float, default=12.0)
     A = ap.parse_args()
