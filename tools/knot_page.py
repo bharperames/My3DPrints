@@ -38,8 +38,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gen_knot as k                                       # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT_JSON = os.path.join(ROOT, "models", "knot_assembly.json")
-OUT_GLB = os.path.join(ROOT, "models", "glb", "knot_assembly.glb")
+def out_paths(design):
+    tag = "" if design == "burr" else "_" + design
+    return (os.path.join(ROOT, "models", f"knot{tag}_assembly.json"),
+            os.path.join(ROOT, "models", "glb", f"knot{tag}_assembly.glb"))
 
 
 def _dedupe_planes(hull, tol=1e-4):
@@ -136,13 +138,119 @@ def mesh_json(m):
             "f": [int(x) for x in m.faces.ravel()]}
 
 
-def build(thread=12.0):
+def ring_poly(r, n=12):
+    """A polygon that CONTAINS the circle of radius r.
+
+    For a HOLE that is the loose direction: the modelled bore is a couple of
+    tenths wider than the real one at the polygon corners, so a shank has
+    more room in the simulation than in the print. For a "does it hold"
+    test that is the safe way to be wrong.
+    """
+    from shapely.geometry import Polygon
+    ang = np.radians(np.arange(n) * (360.0 / n) + 180.0 / n)
+    R = r / np.cos(np.pi / n)
+    return Polygon(np.column_stack([R * np.cos(ang), R * np.sin(ang)]))
+
+
+def bolted_collider(t, a, i, keyed=True, gap=None):
+    """One clamped unit: the bar, hollowed for the bolt that passes through
+    it, plus the head and shank of its own bolt where they stand outside.
+
+    The bar carries two cavities on one line -- a through bore and a wider
+    counterbore at the outer face -- and a stepped hole is not convex. So
+    the bar is cut at the counterbore floor and each slab is decomposed
+    against its own convex cavity, which is exact on both sides of the step.
+    """
+    import gen_bolted as B
+    gap = B.FACE_GAP if gap is None else gap
+    w = a / 2.0
+    x0 = B.datum(t, a, gap)
+    box = B.bar_solid(a, w, gap).bounding_box_oriented.copy()
+    box = trimesh.creation.box(B.bar_solid(a, w, gap).extents)
+    box.apply_translation(B.bar_solid(a, w, gap).bounds.mean(axis=0))
+
+    floor = x0 + B.pocket_depth(t) - B.AXIAL_SLACK      # counterbore floor
+    # exactly the real counterbore depth, over-run OUTWARD only: run it 2 mm
+    # deeper instead and the collider loses material the bar really has,
+    # right where the head bears
+    cav_c = trimesh.creation.extrude_polygon(
+        t.hexagon(B.pocket_cr(t)) if keyed else ring_poly(B.pocket_cr(t), 16),
+        B.pocket_depth(t) + 2.0)
+    cav_c.apply_translation([0, 0, -B.AXIAL_SLACK - 2.0])
+    cav_t = trimesh.creation.extrude_polygon(
+        ring_poly(t.major_r + t.clearance, 12), 3 * a)
+    cav_t.apply_translation([0, 0, -a])
+    turn = CY = k.CYCLE @ k.CYCLE
+    cav_c = k.onto_x(cav_c, (x0, a, 0)); cav_c.apply_transform(CY)
+    cav_t = k.onto_x(cav_t, (x0, a, 0)); cav_t.apply_transform(CY)
+    # the step plane, in world coords, normal along the previous line
+    d = np.array(k.lines(a)[2][0], float)
+    o = np.array(k.lines(a)[2][1], float) + d * floor
+
+    pieces = []
+    # The counterbore is the OUTER end of the hole and the through bore is
+    # the rest, so the counterbore takes the slab on the outer side of the
+    # step. Swapped, each cavity is cut out of the slab it does not live in
+    # and the bore stays full of material -- three cubic centimetres of
+    # collider sitting exactly where the next unit's shank has to pass.
+    for cav, keep in ((cav_c, -1), (cav_t, +1)):
+        slab = box.slice_plane(o, d * keep, cap=True)
+        if slab is None or not len(slab.vertices):
+            continue
+        pieces += convex_pieces(slab, cav)
+    # this unit's own bolt, outside its bar: head and the shank beyond it
+    blt = B.bolt(t, a, gap)
+    face = np.array(k.lines(a)[0][1], float)
+    out = blt.slice_plane([w + gap, a, 0], [-1, 0, 0], cap=True)
+    if out is not None and len(out.vertices):
+        # at x0, the same datum the bolt itself is built on. Offsetting the
+        # collider head by one AXIAL_SLACK left the bottom 0.15 mm of every
+        # head outside its own collider -- 35 mm3, exactly where the head
+        # bears on the counterbore floor and takes the whole pull.
+        head = trimesh.creation.extrude_polygon(t.hexagon(t.hex_cr), t.head_h)
+        pieces.append(k.onto_x(head, (x0, a, 0)).convex_hull)
+        neck = trimesh.creation.extrude_polygon(
+            ring_poly(t.major_r, 12), (w + gap) - (x0 + t.head_h))
+        neck.apply_translation([0, 0, t.head_h])
+        pieces.append(k.onto_x(neck, (x0, a, 0)).convex_hull)
+    turn_i = np.linalg.matrix_power(k.CYCLE, i)
+    out = []
+    for p in pieces:
+        h = p.convex_hull
+        h.apply_transform(turn_i)
+        out.append(h)
+    return out
+
+
+def build(thread=12.0, design="burr", entry=None):
+    if design == "bolted":
+        import gen_bolted as B
+        t = B.thread_for(thread)
+        a = float(np.ceil(B.min_spacing(t)))
+        entry = entry or "free"
+        parts = B.assemble(t, a, entry=entry)
+        d = {"design": design, "entry": entry, "thread_mm": thread, "a": a,
+             "cube_mm": 2 * a, "slot_mm": 0.0, "head_h": t.head_h,
+             "pocket_depth": B.pocket_depth(t), "head_af": t.hex_af,
+             "pocket_af": 2 * B.pocket_cr(t) * float(np.cos(np.radians(30.0))),
+             "lead": t.lead,
+             "axes": [{"dir": list(map(float, dd)), "origin": list(map(float, oo))}
+                      for dd, oo in k.lines(a)],
+             "parts": sorted(parts), "colliders": {}}
+        for i in range(3):
+            d["colliders"][f"unit{i}"] = [
+                mesh_json(p) for p in
+                bolted_collider(t, a, i, keyed=(entry == "none" or i != 0))]
+        d["steps"] = [{"unit": f"unit{i}", "from": [0, 0, 0], "to": [0, 0, 0],
+                       "title": f"unit {i}", "text": "clamped"} for i in range(3)]
+        return d, parts
     t = k.thread_for(thread)
     a = float(np.ceil(k.min_spacing(t, k.release(t))))
     slot = k.release(t)
     parts = k.assemble(t, a, entry="slot")
-    d = {"thread_mm": thread, "a": a, "cube_mm": 2 * a, "slot_mm": slot,
-         "head_h": t.head_h, "pocket_depth": k.pocket_depth(t),
+    d = {"design": design, "thread_mm": thread, "a": a, "cube_mm": 2 * a,
+         "slot_mm": slot, "head_h": t.head_h,
+         "pocket_depth": k.pocket_depth(t),
          "head_af": t.hex_af, "pocket_af": 2 * k.pocket_cr(t)
          * float(np.cos(np.radians(30.0))), "lead": t.lead,
          "axes": [{"dir": list(map(float, dd)), "origin": list(map(float, oo))}
@@ -151,62 +259,27 @@ def build(thread=12.0):
     for i in range(3):
         d["colliders"][f"unit{i}"] = [mesh_json(p)
                                       for p in unit_collider(t, a, i, slot)]
-    # The sequence, from an all-directions sweep of the real meshes rather
-    # than from the axis-restricted search: every body pushed along 306
-    # directions including the six exact axes, at a twentieth of a
-    # millimetre, and the one that moves is the one that moves. Assembled,
-    # exactly one does. Assembly is that read backwards.
-    s = slot + 0.20
-    d["steps"] = [
-        {"unit": "unit2", "from": [0, 0, 0], "to": [0, 0, 0],
-         "title": "Start with one unit",
-         "text": "A unit is a bar with its own bolt threaded right through "
-                 "it, eight turns, head standing 5 mm proud. Nothing in an "
-                 "assembly that takes seconds separates those two, so treat "
-                 "each as one rigid piece. There are three, and they are "
-                 "identical but for one pocket."},
-        {"unit": "unit1", "from": [0, 44, 0], "to": [0, 0, 0],
-         "title": "Second unit, along its own bolt's axis",
-         "text": "Its head goes into the first unit's pocket. Nothing is "
-                 "clamped: the head simply sits in a blind hex socket, "
-                 "which stops it turning and stops it moving sideways, and "
-                 "does nothing at all against a pull."},
-        {"unit": "unit0", "from": [s, 0, -44], "to": [s, 0, 0],
-         "title": "Third unit, offset by the slot",
-         "text": "It comes in held 5.9 mm off its final place, because its "
-                 "own pocket has to drop over the second unit's head while "
-                 "its bolt head still clears the first unit's pocket. This "
-                 "is the step that cannot be done in the other order."},
-        {"unit": "unit0", "from": [s, 0, 0], "to": [0, 0, 0],
-         "title": "Slide it home — the lock",
-         "text": "5.9 mm along its own axis, and the ring closes. Every "
-                 "pocket now holds a head sideways, and every unit is "
-                 "pinned by the next. This slide is the only motion the "
-                 "finished object has, and finding it is the puzzle. Off "
-                 "the axis by three degrees it jams at 2.4 mm."}]
-    return d
-
-
 if __name__ == "__main__":
-    t = k.thread_for(12.0)
-    a = float(np.ceil(k.min_spacing(t, k.release(t))))
-    parts = k.assemble(t, a, entry="slot")
-    d = build()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--design", choices=("burr", "bolted"), default="burr")
+    ap.add_argument("--entry")
+    ap.add_argument("--thread", type=float, default=12.0)
+    A = ap.parse_args()
+    OUT_JSON, OUT_GLB = out_paths(A.design)
+    d, parts = build(A.thread, A.design, A.entry)
     for path in (OUT_JSON, OUT_GLB):
         os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(OUT_JSON, "w") as f:
         json.dump(d, f, separators=(",", ":"))
-    # Full resolution, at the assembled poses. The page is meant to answer
-    # "what IS this shape", so the shape it shows is the generated one.
     sc = trimesh.Scene()
     for n, m in sorted(parts.items()):
         sc.add_geometry(m, geom_name=n, node_name=n)
     sc.export(OUT_GLB)
     tris = sum(len(m.faces) for m in parts.values())
     hulls = sum(len(v) for v in d["colliders"].values())
-    print(json.dumps({"ok": True, "json_kb": round(os.path.getsize(OUT_JSON) / 1024),
+    print(json.dumps({"ok": True, "design": A.design,
+                      "json_kb": round(os.path.getsize(OUT_JSON) / 1024),
                       "glb_kb": round(os.path.getsize(OUT_GLB) / 1024),
                       "render_tris": tris, "convex_hulls": hulls,
-                      "a": d["a"], "cube_mm": d["cube_mm"],
-                      "slot_mm": round(d["slot_mm"], 2),
-                      "steps": len(d["steps"])}))
+                      "a": d["a"], "cube_mm": d["cube_mm"]}))
