@@ -346,21 +346,38 @@ function poseFor(i){
 // sits from home along that line. Recomputing it here means a parked part
 // keeps its part-turn when the next step starts — resetting every
 // quaternion to identity silently undid the park each time.
-const lineOf = {};
+const lineOf = {}, engageOf = {};
 for (const st of STEPS) if (st.screw && st.line !== undefined)
-  for (const p of stepParts(st)) lineOf[p] = st.line;
-function screwQuat(key, offVec){
+  for (const p of stepParts(st)){
+    lineOf[p] = st.line;
+    // The longest engagement any step gives this part. Past that it is not
+    // on the thread at all and so is not turning; clamping there makes the
+    // rule continuous, and because engagement is a whole number of leads
+    // the clamped angle is exactly zero — no snap when the thread bites.
+    engageOf[p] = Math.max(engageOf[p] ?? 0, st.engage ?? Infinity);
+  }
+// ONE rule for where a part on a thread sits — used by the setup pass, by
+// the per-frame driver and by the snap at the end of a step. While those
+// were three separate expressions the driver advanced from a position the
+// setup pass had ALREADY orbited and orbited it again. A bolt whose own
+// axis is the line does not move under a second orbit, so it looked
+// perfect; the bar 15 mm off that line was thrown sideways off its bolt.
+function poseOnLine(key, offVec, home){
+  const p = home.clone().add(offVec);
   const li = lineOf[key];
-  if (li === undefined || !D.axes) return null;
+  if (li === undefined || !D.axes) return {p, q:new THREE.Quaternion()};
   const ax = new THREE.Vector3(...D.axes[li].dir).normalize();
-  const ang = 2*Math.PI*offVec.dot(ax)/D.lead;
-  return new THREE.Quaternion().setFromAxisAngle(ax, ang);
+  const o = new THREE.Vector3(...D.axes[li].origin);
+  const e = engageOf[key];
+  const off = Math.max(-e, Math.min(e, offVec.dot(ax)));
+  const q = new THREE.Quaternion().setFromAxisAngle(ax, 2*Math.PI*off/D.lead);
+  p.sub(o).applyQuaternion(q).add(o);
+  return {p, q};
 }
 function apply(off, upto){
   units.forEach((u, i) => {
     u.grp.visible = (upto === undefined) || (firstStep[i] <= upto);
 
-    u.body.position.set(u.home.x+off[i].x, u.home.y+off[i].y, u.home.z+off[i].z);
     u.body.velocity.setZero(); u.body.angularVelocity.setZero();
     // Only a part that is actually IN the assembly carries a screw
     // rotation. One still waiting off-stage is staged tens of millimetres
@@ -368,20 +385,11 @@ function apply(off, upto){
     // angle that distance happened to work out to — a part lying on the
     // bench, visibly cocked over for no reason.
     const placed = (upto === undefined) || (firstStep[i] < upto);
-    const q = placed ? screwQuat(u.key, off[i]) : null;
-    if (q){
-      u.body.quaternion.set(q.x, q.y, q.z, q.w);
-      // and the body's CENTRE has to orbit the bolt's line, not stay put.
-      // Setting the quaternion alone turns the bar about its own centroid,
-      // which for a bar whose centre is 20 mm off the thread line leaves it
-      // tilted and in the wrong place — the parked bar hanging at an angle.
-      const li = lineOf[u.key];
-      const o = new THREE.Vector3(...D.axes[li].origin);
-      const p = new THREE.Vector3(u.home.x + off[i].x, u.home.y + off[i].y,
-                                  u.home.z + off[i].z);
-      p.sub(o).applyQuaternion(q).add(o);
-      u.body.position.set(p.x, p.y, p.z);
-    } else u.body.quaternion.set(0,0,0,1);
+    const {p, q} = placed ? poseOnLine(u.key, off[i], u.home)
+                          : {p: u.home.clone().add(off[i]),
+                             q: new THREE.Quaternion()};
+    u.body.position.set(p.x, p.y, p.z);
+    u.body.quaternion.set(q.x, q.y, q.z, q.w);
     u.body.type = CANNON.Body.STATIC; u.body.updateMassProperties();
     u.body.collisionResponse = u.grp.visible;
   });
@@ -407,7 +415,7 @@ function startStep(){
   if (delta.length() < 1e-6){
     // a step with no motion: "here is the part you start from"
     hud.textContent = `step ${cur+1}/${STEPS.length} — placed`;
-    running = null;
+    running = null; setPlayLabel();
     if (auto && cur < STEPS.length-1){ cur++; startStep(); }
     return;
   }
@@ -424,6 +432,7 @@ function startStep(){
              axis: new THREE.Vector3(...(ax ? ax.origin : [0,0,0])),
              axisDir: new THREE.Vector3(...(ax ? ax.dir : [1,0,0])).normalize(),
              dir:delta.clone().normalize(), total:delta.length(),
+             from:from.clone(), s:0,
              start:u.body.position.clone(), stall:0, done:false,
              // Right-handed, by construction of the thread family:
              // advancing one lead along the line turns one full turn about
@@ -435,6 +444,7 @@ function startStep(){
              // every value, so a screw step never enters its turning phase
              // and the bar slides straight through the thread.
              engage: st.engage || delta.length()};
+  setPlayLabel();
 }
 function setGround(on){
   if (on && !ground){
@@ -446,27 +456,42 @@ function setGround(on){
 }
 
 const playBtn = document.getElementById('play');
+// Pause is live whenever ANYTHING is moving, not only during a run
+// started by this button. Gating it on `auto` meant that a step started
+// with Step > left the button on its other branch, so pressing it threw
+// the assembly back to step one — the same button pausing sometimes and
+// resetting other times, depending on how the current step had been
+// started.
+function inFlight(){ return auto || (running !== null && !running.done); }
+function atEnd(){ return cur >= STEPS.length-1
+                  && (running === null || running.done); }
 function setPlayLabel(){
   playBtn.textContent = paused ? '\u25B6 Resume'
-    : (auto ? '\u23F8 Pause' : '\u25B6 Play assembly');
+    : inFlight() ? '\u23F8 Pause'
+    : atEnd() ? '\u25B6 Play again'
+    : cur === 0 ? '\u25B6 Play assembly' : '\u25B6 Play on';
 }
 playBtn.onclick = () => {
-  if (auto && !paused){
+  if (paused){ paused = false; auto = true; setPlayLabel(); return; }
+  if (inFlight()){
     paused = true;
     for (const u of units){ u.body.velocity.setZero();
                             u.body.angularVelocity.setZero(); }
     setPlayLabel(); return;
   }
-  if (paused){ paused = false; setPlayLabel(); return; }
-  goto(0); auto = true; paused = false; setPlayLabel(); startStep();
+  // Nothing in flight. Carry on from where the viewer has got to; only
+  // start over when there is nowhere left to go. Restarting unconditionally
+  // threw away every step they had walked through by hand.
+  if (atEnd()) goto(0);
+  auto = true; paused = false; setPlayLabel(); startStep();
 };
 document.getElementById('fwd').onclick  = () => {
-  if (paused){ paused = false; setPlayLabel(); }
+  if (paused){ paused = false; }
   // A step in flight is skipped to its end rather than ignored. Refusing
   // the click made the button look broken for the two or three seconds a
   // step takes, which is most of the time anyone is pressing it.
   if (running && !running.done){
-    running.skip = true;
+    running.skip = true; setPlayLabel();
     return;
   }
   auto = false;
@@ -517,8 +542,15 @@ function tick(now){
   while (acc > DT){
     if (running && !running.done && !paused){
       const {u, movers, dir, total, start} = running;
-      const p = u.body.position.vsub(new CANNON.Vec3(start.x,start.y,start.z));
-      const gone = p.x*dir.x + p.y*dir.y + p.z*dir.z;
+      // A screw step is placed, not solved, so its progress is the driver's
+      // own integral. Reading it back off the body measured the orbit as
+      // well as the travel.
+      let gone;
+      if (running.lead) gone = running.s;
+      else {
+        const p = u.body.position.vsub(new CANNON.Vec3(start.x,start.y,start.z));
+        gone = p.x*dir.x + p.y*dir.y + p.z*dir.z;
+      }
       // Ease the last stretch instead of running at full speed into the
       // stop. Driving flat out and then snapping produced a visible jump on
       // the last frame; over the final two millimetres the speed tapers.
@@ -539,28 +571,15 @@ function tick(now){
         // would undo exactly the thing the step is for.
         for (const m of movers){
           m.body.velocity.setZero(); m.body.angularVelocity.setZero();
-          const base = new THREE.Vector3(m.home.x + running.to.x,
-                                         m.home.y + running.to.y,
-                                         m.home.z + running.to.z);
-          if (running.lead){
-            const off = base.clone().sub(m.home).dot(running.axisDir);
-            const endAng = 2*Math.PI*off/running.lead;
-            const endQ = new THREE.Quaternion()
-              .setFromAxisAngle(running.axisDir, endAng);
-            const p0 = base.clone();
-            p0.sub(running.axis).applyQuaternion(endQ).add(running.axis);
-            m.body.position.set(p0.x, p0.y, p0.z);
-            m.body.quaternion.set(endQ.x, endQ.y, endQ.z, endQ.w);
-          } else {
-            m.body.position.set(base.x, base.y, base.z);
-            m.body.quaternion.set(0,0,0,1);
-          }
+          const e = poseOnLine(m.key, running.to, m.home);
+          m.body.position.set(e.p.x, e.p.y, e.p.z);
+          m.body.quaternion.set(e.q.x, e.q.y, e.q.z, e.q.w);
           m.body.type = CANNON.Body.STATIC; m.body.updateMassProperties();
         }
         hud.textContent = `step ${cur+1} — seated, ${gone.toFixed(2)} of ${total.toFixed(2)} mm`;
         const skipped = running.skip;
         if ((auto || skipped) && cur < STEPS.length-1){ cur++; startStep(); }
-        else if (auto){ auto = false; setPlayLabel(); }
+        else { auto = false; setPlayLabel(); }
       } else {
         // Two phases. The bar is carried up to the protruding thread at
         // approach speed and does not turn at all; only over the last
@@ -569,33 +588,29 @@ function tick(now){
         const threading = !!running.lead && (total - gone) <= running.engage;
         const v = (threading ? Math.abs(running.lead)*TURNS_PER_SEC : SPEED)
                   * (running.ease === undefined ? 1 : running.ease);
-        for (const m of movers) m.body.velocity.set(dir.x*v, dir.y*v, dir.z*v);
-        if (threading){
+        if (running.lead){
           // Placed on the helix directly, not driven through the solver.
           // The thread is not simulated at all, so physics can add nothing
           // to a screw step — it can only drift. Driving it with velocity
           // spins a body about its CENTRE OF MASS, which for a bar is
           // nowhere near the line it threads on, so it spirals away instead
           // of turning on the bolt. This is exact and cannot wander.
-          // The angle is a function of WHERE THE PART IS relative to home,
-          // not of how far it has come in this step. Measuring it from the
-          // step's start made a whole number of leads of travel land at
-          // zero rotation — which is right for a step that ends at home and
-          // wrong for one that ends deliberately part-turned, so the parked
-          // bar arrived square and the park never appeared at all.
+          // The pose is a function of WHERE THE PART IS — its offset from
+          // home — and of nothing else: not of the step's start, and not of
+          // where the body happens to have got to. Every part in the step
+          // takes the same offset, so a bolt and the bar it is keyed into
+          // stay rigid through the turn whatever their distance from the
+          // line.
+          running.s = Math.min(total, gone + v*DT);
+          const offVec = running.from.clone().addScaledVector(dir, running.s);
           for (const m of movers){
-            const p = m.startPos.clone().addScaledVector(dir, gone);
-            const off = p.clone().sub(m.home).dot(running.axisDir);
-            const ang = 2*Math.PI*off/running.lead;
-            const q = new THREE.Quaternion().setFromAxisAngle(running.axisDir, ang);
-            const base = p.clone();
-            base.sub(running.axis).applyQuaternion(q).add(running.axis);
-            m.body.position.set(base.x, base.y, base.z);
-            m.body.quaternion.set(q.x, q.y, q.z, q.w);
-            m.body.velocity.set(dir.x*v, dir.y*v, dir.z*v);
-            m.body.angularVelocity.setZero();
+            const e = poseOnLine(m.key, offVec, m.home);
+            m.body.position.set(e.p.x, e.p.y, e.p.z);
+            m.body.quaternion.set(e.q.x, e.q.y, e.q.z, e.q.w);
+            m.body.velocity.setZero(); m.body.angularVelocity.setZero();
           }
         } else for (const m of movers){
+          m.body.velocity.set(dir.x*v, dir.y*v, dir.z*v);
           m.body.angularVelocity.setZero();
           m.body.quaternion.set(0,0,0,1);
         }

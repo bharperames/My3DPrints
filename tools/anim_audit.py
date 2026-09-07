@@ -24,15 +24,27 @@ def line_of(part):
             return st.get("line")
     return None
 
+ENGAGE = {}
+for _st in STEPS:
+    if _st.get("screw") and _st.get("line") is not None:
+        for _p in parts_of(_st):
+            ENGAGE[_p] = max(ENGAGE.get(_p, 0.0), float(_st.get("engage", 1e9)))
+
 def pose(part, off):
     """Same rule the page uses: translate by `off`, then rotate about the
-    part's own threaded line by 2*pi*(off along that line)/lead."""
+    part's own threaded line by 2*pi*(off along that line)/lead -- with the
+    offset clamped to the engagement, because past that the part is off the
+    end of the thread and is being carried, not turned. Engagement is a
+    whole number of leads, so the clamped angle is zero and the rule stays
+    continuous where the thread bites."""
     M = np.eye(4); M[:3, 3] = off
     li = line_of(part)
     if li is None:
         return M
     d, o = AX[li]
-    ang = 2 * np.pi * float(np.dot(off, d)) / D["lead"]
+    e = ENGAGE[part]
+    ax = float(np.clip(np.dot(off, d), -e, e))
+    ang = 2 * np.pi * ax / D["lead"]
     R = trimesh.transformations.rotation_matrix(ang, d, o)
     return R @ M
 
