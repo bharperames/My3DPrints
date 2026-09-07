@@ -47,9 +47,9 @@
   .step details > summary { cursor:pointer; list-style:none;
     padding:1px 0; user-select:none; }
   .step details > summary::-webkit-details-marker { display:none; }
-  .step details > summary::after { content:' \\25B8'; color:var(--ink-soft);
+  .step details > summary::after { content:' \25B8'; color:var(--ink-soft);
     font-size:10px; }
-  .step details[open] > summary::after { content:' \\25BE'; }
+  .step details[open] > summary::after { content:' \25BE'; }
   .step p { margin:6px 0 0; }
   .step p { margin:0; font-size:12.5px; color:var(--ink-soft); }
   .step .n { display:inline-block; width:18px; height:18px; border-radius:50%;
@@ -68,7 +68,21 @@
   td { padding:3px 0; border-bottom:1px solid var(--line); }
   td:last-child { text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
   .key { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
-  .modebar { display:flex; gap:6px; margin:10px 0; flex-wrap:wrap; }
+  .modebar { position:relative; margin:10px 0; }
+  .modepop { position:absolute; z-index:20; top:100%; left:0; margin-top:6px;
+    display:none; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px;
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:9px; box-shadow:0 8px 24px rgba(0,0,0,.18); }
+  .modepop.open { display:grid; }
+  .modecur { display:flex; align-items:center; gap:8px; width:100%;
+    padding:5px 8px; border:1px solid var(--line); border-radius:7px;
+    background:var(--surface); cursor:pointer; text-align:left; }
+  .modecur .thumb { width:52px; height:36px; flex:0 0 52px;
+    border-radius:4px; border:1px solid var(--line);
+    background:var(--surface-2) center/cover no-repeat; }
+  .modecur b { font-size:12.5px; font-weight:600; }
+  .modecur i { font-style:normal; margin-left:auto; color:var(--ink-soft);
+    font-size:10px; }
   .modebtn { width:88px; padding:0; border:2px solid var(--line);
     border-radius:7px; background:var(--surface-2); cursor:pointer;
     overflow:hidden; display:block; text-align:left; }
@@ -287,8 +301,9 @@ document.getElementById('mechnote').innerHTML = DESIGN === 'bolted'
     + 'counterbore holds its head and threads into the next one, so a pull '
     + 'loads a thread. The burr version put each head in a blind socket '
     + 'instead, which resists sideways and nothing at all against a pull, '
-    + 'and it came apart at fifty grams. Same weave, 0.71 mm of relative '
-    + 'play under two newtons.'
+    + 'and it came apart at fifty grams. Same weave: swept along every '
+    + 'direction, in every combination of two bars moving at once, the most '
+    + 'any part shifts relative to another is three tenths of a millimetre.'
   : 'Nothing here is clamped. A head sits in a blind hex socket; it cannot '
     + 'turn and cannot move sideways, and it does nothing whatever against '
     + 'a pull. Three of those in a ring is a burr, and it comes apart under '
@@ -302,7 +317,7 @@ facts.innerHTML = [
   ['counterbore across flats', D.pocket_af.toFixed(2)+' mm'],
   ['head height / counterbore', D.head_h.toFixed(1)+' / '+D.pocket_depth.toFixed(2)+' mm'],
   DESIGN === 'bolted'
-    ? ['relative play under 2 N pull', '0.71 mm']
+    ? ['relative motion, all pairs', '0.30 mm']
     : ['the slide', D.slot_mm.toFixed(2)+' mm'],
 ].map(([a,b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
 
@@ -361,8 +376,12 @@ function startStep(){
     return;
   }
   for (const m of movers){
-    m.body.type = CANNON.Body.DYNAMIC; m.body.mass = 1;
+    m.body.type = st.screw ? CANNON.Body.KINEMATIC : CANNON.Body.DYNAMIC;
+    m.body.mass = st.screw ? 0 : 1;
     m.body.updateMassProperties(); m.body.collisionResponse = true;
+    m.startPos = new THREE.Vector3(m.body.position.x, m.body.position.y,
+                                   m.body.position.z);
+    m.startQ = m.body.quaternion.clone();
   }
   const ax = (D.axes && st.line !== undefined) ? D.axes[st.line] : null;
   running = {u, movers, to:to.clone(),
@@ -402,7 +421,13 @@ playBtn.onclick = () => {
 };
 document.getElementById('fwd').onclick  = () => {
   if (paused){ paused = false; setPlayLabel(); }
-  if (running && !running.done) return;          // let the current one finish
+  // A step in flight is skipped to its end rather than ignored. Refusing
+  // the click made the button look broken for the two or three seconds a
+  // step takes, which is most of the time anyone is pressing it.
+  if (running && !running.done){
+    running.skip = true;
+    return;
+  }
   auto = false;
   // Advance whenever this step has nothing left to do — which includes a
   // step with no motion in it. Only advancing on a FINISHED moving step
@@ -453,7 +478,12 @@ function tick(now){
       const {u, movers, dir, total, start} = running;
       const p = u.body.position.vsub(new CANNON.Vec3(start.x,start.y,start.z));
       const gone = p.x*dir.x + p.y*dir.y + p.z*dir.z;
-      if (gone >= total - 0.02){
+      // Ease the last stretch instead of running at full speed into the
+      // stop. Driving flat out and then snapping produced a visible jump on
+      // the last frame; over the final two millimetres the speed tapers.
+      const near = Math.max(0, Math.min(1, (total - gone) / 2.0));
+      running.ease = 0.12 + 0.88 * near;
+      if (running.skip || gone >= total - 0.02){
         running.done = true;
         // snap every mover exactly home: a driven body always overshoots by
         // a fraction of a step, and six of those leave the object visibly
@@ -462,16 +492,32 @@ function tick(now){
         // alone is right only for steps that end at the assembly; a step
         // that stages a part off to one side — a bolt dropped into a bar
         // still held in the hand — teleports it into the assembly instead.
+        // Land on the helix, not on identity. A step may end deliberately
+        // part-turned — the red bar is parked half a turn short so the
+        // green bar can sweep past it — and snapping its rotation to square
+        // would undo exactly the thing the step is for.
+        const endAng = running.lead
+          ? 2*Math.PI*(total - (total - running.engage))/running.lead : 0;
+        const endQ = new THREE.Quaternion().setFromAxisAngle(dir, endAng);
         for (const m of movers){
           m.body.velocity.setZero(); m.body.angularVelocity.setZero();
-          m.body.quaternion.set(0,0,0,1);
-          m.body.position.set(m.home.x + running.to.x,
-                              m.home.y + running.to.y,
-                              m.home.z + running.to.z);
+          const base = new THREE.Vector3(m.home.x + running.to.x,
+                                         m.home.y + running.to.y,
+                                         m.home.z + running.to.z);
+          if (running.lead){
+            const p0 = m.startPos.clone().addScaledVector(dir, total);
+            p0.sub(running.axis).applyQuaternion(endQ).add(running.axis);
+            m.body.position.set(p0.x, p0.y, p0.z);
+            m.body.quaternion.set(endQ.x, endQ.y, endQ.z, endQ.w);
+          } else {
+            m.body.position.set(base.x, base.y, base.z);
+            m.body.quaternion.set(0,0,0,1);
+          }
           m.body.type = CANNON.Body.STATIC; m.body.updateMassProperties();
         }
         hud.textContent = `step ${cur+1} — seated, ${gone.toFixed(2)} of ${total.toFixed(2)} mm`;
-        if (auto && cur < STEPS.length-1){ cur++; startStep(); }
+        const skipped = running.skip;
+        if ((auto || skipped) && cur < STEPS.length-1){ cur++; startStep(); }
         else if (auto){ auto = false; setPlayLabel(); }
       } else {
         // Two phases. The bar is carried up to the protruding thread at
@@ -479,27 +525,30 @@ function tick(now){
         // `engage` millimetres, the length the thread actually bites, does
         // it turn — at a hand's pace, with travel coupled to the lead.
         const threading = !!running.lead && (total - gone) <= running.engage;
-        const v = threading ? Math.abs(running.lead)*TURNS_PER_SEC : SPEED;
+        const v = (threading ? Math.abs(running.lead)*TURNS_PER_SEC : SPEED)
+                  * (running.ease === undefined ? 1 : running.ease);
         for (const m of movers) m.body.velocity.set(dir.x*v, dir.y*v, dir.z*v);
         if (threading){
-          // Turn about the BOLT'S AXIS, not the body's own centre. cannon
-          // spins a body about its centre of mass, and a bar's centre is
-          // nowhere near the line it threads on — so it orbits, and the
-          // bolt appears to cut diagonally through it. Adding the
-          // omega x r term to the linear velocity puts the rotation back
-          // on the axis where the thread is.
-          const w = 2*Math.PI*v/running.lead;
-          const W = new THREE.Vector3(dir.x*w, dir.y*w, dir.z*w);
+          // Placed on the helix directly, not driven through the solver.
+          // The thread is not simulated at all, so physics can add nothing
+          // to a screw step — it can only drift. Driving it with velocity
+          // spins a body about its CENTRE OF MASS, which for a bar is
+          // nowhere near the line it threads on, so it spirals away instead
+          // of turning on the bolt. This is exact and cannot wander.
+          const ang = 2*Math.PI*(gone - (total - running.engage))/running.lead;
+          const q = new THREE.Quaternion().setFromAxisAngle(dir, ang);
           for (const m of movers){
-            m.body.angularVelocity.set(W.x, W.y, W.z);
-            const r = new THREE.Vector3(m.body.position.x, m.body.position.y,
-                                        m.body.position.z).sub(running.axis);
-            r.sub(dir.clone().multiplyScalar(r.dot(dir)));   // perpendicular
-            const orb = new THREE.Vector3().crossVectors(W, r);
-            m.body.velocity.set(dir.x*v + orb.x, dir.y*v + orb.y,
-                                dir.z*v + orb.z);
+            const base = m.startPos.clone().addScaledVector(dir, gone);
+            base.sub(running.axis).applyQuaternion(q).add(running.axis);
+            m.body.position.set(base.x, base.y, base.z);
+            m.body.quaternion.set(q.x, q.y, q.z, q.w);
+            m.body.velocity.set(dir.x*v, dir.y*v, dir.z*v);
+            m.body.angularVelocity.setZero();
           }
-        } else for (const m of movers) m.body.angularVelocity.setZero();
+        } else for (const m of movers){
+          m.body.angularVelocity.setZero();
+          m.body.quaternion.set(0,0,0,1);
+        }
         running.stall = (gone - (running.lastGone ?? -1) < 1e-4) ? running.stall+DT : 0;
         running.lastGone = gone;
         if (running.stall > 0.45){
@@ -608,14 +657,34 @@ const MODES = [
 ];
 let mode = 'edges';
 const modebar = document.getElementById('modes');
+// One button showing the mode you are in; the alternatives are a popup, so
+// the panel is not five thumbnails tall before you have chosen anything.
+const modeCur = document.createElement('button');
+modeCur.className = 'modecur';
+modeCur.innerHTML = '<span class="thumb"></span><b></b><i>change \u25BE</i>';
+const modePop = document.createElement('div');
+modePop.className = 'modepop';
+modebar.append(modeCur, modePop);
+modeCur.onclick = () => modePop.classList.toggle('open');
+addEventListener('click', e => {
+  if (!modebar.contains(e.target)) modePop.classList.remove('open');
+});
+function setCurrent(){
+  const [, label] = MODES.find(m => m[0] === mode);
+  modeCur.querySelector('b').textContent = label;
+  const t = modePop.querySelector(`[data-mode="${mode}"] .thumb`);
+  if (t) modeCur.querySelector('.thumb').style.backgroundImage =
+    t.style.backgroundImage;
+  for (const o of modePop.children) o.classList.toggle('on', o.dataset.mode === mode);
+}
 for (const [id, label] of MODES){
   const b = document.createElement('button');
   b.className = 'modebtn' + (id === mode ? ' on' : '');
   b.dataset.mode = id;
   b.innerHTML = '<div class="thumb"></div><span>' + label + '</span>';
-  b.onclick = () => { mode = id; applyView();
-    for (const o of modebar.children) o.classList.toggle('on', o.dataset.mode === id); };
-  modebar.appendChild(b);
+  b.onclick = () => { mode = id; applyView(); setCurrent();
+                      modePop.classList.remove('open'); };
+  modePop.appendChild(b);
 }
 function applyView(){
   for (const m of allMeshes){
@@ -646,10 +715,10 @@ function makeThumbs(){
     mode = id; applyView();
     renderer.render(scene, camera);
     const url = renderer.domElement.toDataURL('image/png');
-    modebar.querySelector(`[data-mode="${id}"] .thumb`)
+    modePop.querySelector(`[data-mode="${id}"] .thumb`)
       .style.backgroundImage = `url(${url})`;
   }
-  mode = keep; applyView();
+  mode = keep; applyView(); setCurrent();
   units.forEach((u,i) => u.grp.visible = vis[i]);
   resize();
 }
@@ -670,7 +739,17 @@ window.__knot = {
     speed: units.map(u=>+u.body.velocity.length().toFixed(3)),
     pos: units.map(u=>[+u.body.position.x.toFixed(2),+u.body.position.y.toFixed(2),+u.body.position.z.toFixed(2)])}; },
   get verdict(){ return document.getElementById('verdict').textContent; },
-                  get raw(){ const r=running; if(!r) return null;
+                  get axisdev(){ const r=running; if(!r||!r.lead) return null;
+    const u=r.movers[0];
+    // how far the body's centre has strayed off the line it should turn on
+    const p=new THREE.Vector3(u.body.position.x,u.body.position.y,u.body.position.z)
+      .sub(r.axis);
+    const along=r.dir.clone().multiplyScalar(p.dot(r.dir));
+    const perp=p.clone().sub(along);
+    const h=u.home.clone().sub(r.axis);
+    const hperp=h.clone().sub(r.dir.clone().multiplyScalar(h.dot(r.dir)));
+    return Math.abs(perp.length()-hperp.length()); },
+  get raw(){ const r=running; if(!r) return null;
     const u=r.movers[0];
     const p=u.body.position.vsub(new CANNON.Vec3(r.start.x,r.start.y,r.start.z));
     const gone=p.x*r.dir.x+p.y*r.dir.y+p.z*r.dir.z;

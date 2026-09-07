@@ -214,9 +214,19 @@ def bolt(t, a, gap=FACE_GAP, proud=0.0):
                     (x0, a, 0))
 
 
-def assemble(t, a, entry="free", gap=FACE_GAP, slip=None, rounds=(0,)):
+def assemble(t, a, entry="free", gap=FACE_GAP, slip=None,
+             rounds=(0,)):
     """`rounds` names the bars whose counterbore is ROUND rather than hex, so
     the bolt sitting in it can be turned directly.
+
+    One is enough, because of PARKING. A bar swung about its own line
+    sweeps a 45 mm radius, so at home the first bar sits exactly where the
+    second needs to sweep -- but left a half turn short of home it clears,
+    and it can be turned the last half turn once the second bar is in.
+    Measured: parked between a quarter and three quarters of a turn short,
+    the second bar sweeps free over its whole engagement, where at home it
+    jams after three millimetres. So the finished object keeps exactly one
+    release, and one head standing proud.
 
     Which matters more than it sounds. A joint closes by turning either the
     bar or the bolt, and a bar is 58 mm long: swung about its own line it
@@ -294,14 +304,15 @@ def main():
            "counterbore_mm": round(pocket_depth(t), 2),
            "wall_mm": round(a / 2.0 - pocket_cr(t), 2),
            "head_proud_mm": proud_of(t), "key_depth_mm": KEY_DEPTH,
-           "distinct_parts": 4,
+           "round_counterbores": 1, "distinct_parts": 4,
            "overall_mm": round(2 * a + proud_of(t), 1)}
     if a < need:
         why = (f"spacing {a} below the derived minimum {need:.2f} — the "
                f"counterbore would leave under {WALL_MIN} mm of wall")
         print(json.dumps({"ok": False, **rep, "error": why}))
         return 1
-    parts = assemble(t, a, entry=A.entry, gap=FACE_GAP)
+    parts = assemble(t, a, entry=A.entry, gap=FACE_GAP,
+                     rounds=() if A.entry == "none" else (0,))
     rep["watertight"] = all(m.is_watertight for m in parts.values())
     import itertools
     worst = max(float(parts[x].intersection(parts[y], engine="manifold").volume)
