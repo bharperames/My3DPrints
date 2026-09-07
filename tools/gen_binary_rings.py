@@ -37,6 +37,19 @@ The seat is drawn 1.75 wide against a rim measured at about 1.5, because
 extra width costs only bit 5's margin (which has 1.3 mm to spare) while
 too little costs the whole read.
 
+Confirmed on the toy 2026-09-06, by a plate printed to bracket it. Two
+discs carried code 16 with nothing else changed but the width of this seat:
+at 1.25 the disc was silent, at 2.25 it spoke, and at the shipped 1.75 it
+spoke. So the rim is between 1.25 and 1.75 wide, the seat is what gates the
+read, and 1.75 clears it. Every other disc on that plate read correctly,
+which also puts SLACK 0.30 and the midpoint grid out of doubt: five single
+bits named five different animals, 24 said whale, 14 said koala.
+
+Code 31 wants a firmer press than the rest. That is the sum of five plunger
+springs rather than a bit standing short, and it is worth being clear about
+the direction: a taller RELIEF would make 31 harder, not easier. Nothing to
+adjust.
+
 The bits are numbered from the middle out, the way the toys are talked
 about: bit 1 is the centre disc and bit 5 the outermost ring. In the code
 they are worth 1, 2, 4, 8 and 16, so an odd code is one with its centre
@@ -289,7 +302,8 @@ RELIEF = 3.97            # ring floor to top of a bit ring: RIM - 7.78
 # 0.10 -> 0.30 on 2026-09-05: at 0.10 the second print went on and worked
 # but was reported still "a tiny bit tight". This is the third value the
 # number has had and each move came from a part in a hand, which is the
-# only instrument that has ever been right about this fit.
+# only instrument that has ever been right about this fit. Field-proven
+# 2026-09-06 across ten discs in PLA: seats and reads, no bind.
 SLACK = 0.30
 FLOOR = 2.00             # solid backing below the ring floor -- ours to pick
 NUM_SIZE, NUM_DEEP = 11.0, 0.6      # cap height and cut depth of the numeral
