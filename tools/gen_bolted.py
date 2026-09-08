@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """The Knot, bolted: three bars each clamped to the next by a through bolt.
 
+Printed in PETG on 2026-09-07 and confirmed working in the hand. What is
+below is therefore description rather than intent -- the through-bolt weave,
+the two clearances (0.30 on thread, 0.50 in a plain bore) and the parked
+first bar are all in a part that exists.
+
 WHAT THE BURR GOT WRONG
 
 `gen_knot.py` holds three bars together by sinking each bolt's head in the

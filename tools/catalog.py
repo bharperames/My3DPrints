@@ -307,6 +307,9 @@ PARTS = [
        "the plain bores lie on their sides where droop costs nothing. "
        "PETG, not PLA \u2014 the seed cube\u2019s bolt snapped in silk PLA "
        "under hand torque, and these are longer and take real tension.",
+       proven="Printed in PETG and it works — it goes together and it "
+              "holds. The burr version of the same weave, on the card above, "
+              "does not.",
        version="0.5.0",
        pages=[dict(label="Watch it go together",
                    href="knot.html?design=bolted")],
