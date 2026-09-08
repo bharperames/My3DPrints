@@ -65,6 +65,15 @@ h1 .tld{color:var(--accent)}
 .dia figcaption{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
 .dia figcaption strong{color:var(--ink)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px;align-items:start}
+/* a shelf heading spans the grid, so the cards under it read as a group */
+.shelfhead{grid-column:1/-1;margin:16px 0 -4px;padding-top:14px;
+  border-top:1px solid var(--line)}
+.shelfhead:first-child{border-top:0;margin-top:0;padding-top:0}
+.shelfhead h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--accent);margin:0}
+.shelfhead h2 .n{color:var(--muted);font-weight:400;letter-spacing:0;
+  text-transform:none;font-size:12px;margin-left:6px}
+.shelfhead p{font-size:12.5px;color:var(--muted);margin:3px 0 0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .photo{position:relative;background:var(--photo-bg);aspect-ratio:3/2}
@@ -159,6 +168,10 @@ h1 .tld{color:var(--accent)}
   vertical-align:3px;margin-left:6px;letter-spacing:.05em}
 .designer{color:var(--muted);font-size:13px;margin-top:2px}
 .principle{font-size:14.5px}
+/* the budget above picks whole sentences; this is the hard guarantee, so a
+   blurb with no sentence breaks in it cannot set a card's height either */
+.principle.lede{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+  overflow:hidden}
 .pdetails{margin:6px 0 2px;border-top:1px solid var(--line);padding-top:6px}
 .pdetails>summary{cursor:pointer;font-size:12px;color:var(--muted);
   list-style:none;user-select:none;padding:2px 0}
@@ -704,12 +717,24 @@ function placeCoin(v, box){
 function frameModel(v, obj, keep){
   const box = new THREE.Box3().setFromObject(obj);
   box.min.x -= (COIN_R*2 + 10); box.min.y = Math.min(box.min.y, 0);
-  const size = box.getSize(new THREE.Vector3()).length();
-  const r = size / 2;
   const c = box.getCenter(new THREE.Vector3());
+  const half = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+  // Fit what the frame has to hold, not the sphere the box sits inside. A
+  // disc 39 across and 14 thick has a 57 mm diagonal, so fitting the sphere
+  // reserved 57 mm of HEIGHT for 14 mm of part and the panel came out
+  // mostly background. The view turns about Y, so the horizontal extent has
+  // to be the worst case over that turn -- but the vertical one never
+  // changes as it spins, and vertical is where the room was going.
+  const rH = Math.hypot(half.x, half.z);
+  const rV = half.y;
+  const r = Math.max(rH, rV);
+  // and the aspect the camera was built with is 4:3 while the panel is 3:2,
+  // so the first frame was fitted to a shape the picture does not have
+  const rect = v.el.getBoundingClientRect();
+  if (rect.height > 0) v.camera.aspect = rect.width / rect.height;
   const fovV = v.camera.fov * Math.PI / 180;
   const fovH = 2 * Math.atan(Math.tan(fovV / 2) * v.camera.aspect);
-  let dist = 1.08 * r / Math.sin(Math.min(fovV, fovH) / 2);
+  let dist = 1.06 * Math.max(rH / Math.tan(fovH / 2), rV / Math.tan(fovV / 2)) + rH;
   let dir = new THREE.Vector3(1, 0.6, 1).normalize();
   const off = v.camera.position.clone().sub(v.controls.target);
   if (keep && v.framedR > 0 && off.lengthSq() > 1e-9){
@@ -1460,11 +1485,21 @@ renderer.setAnimationLoop(animate);
     setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3500);
   }
   /* The first two sentences of a blurb, which is the part in a nutshell. */
+  // A budget in CHARACTERS, not in sentences. Two sentences of one blurb
+  // run to 40 characters and of another to 380, and since the rest of the
+  // card is nearly fixed that difference WAS the card height: measured
+  // across the front page, cards ran 625 to 1001 px for no reason a reader
+  // could see. Whole sentences still, just as many as fit the budget.
   function lede(txt, n){
     const parts = String(txt).match(/[^.!?]+[.!?]+/g);
-    if (!parts) return txt;
-    const head = parts.slice(0, n || 2).join('').trim();
-    return head.length < 40 ? parts.slice(0, 3).join('').trim() : head;
+    if (!parts) return String(txt);
+    const cap = n || 140;
+    let out = '';
+    for (const s of parts){
+      if (out && (out + s).trim().length > cap) break;
+      out += s;
+    }
+    return (out || parts[0]).trim();
   }
   function detailsBlock(p){
     const rest = p.blurb ? String(p.blurb).slice(lede(p.blurb).length).trim() : '';
@@ -1504,7 +1539,7 @@ renderer.setAnimationLoop(animate);
         '</h3>' +
       (p.version && p.version !== '\u2014'
         ? '<div class="verline">' + badge(p.version, p.changed, p.built, p) + '</div>' : '') +
-      (p.blurb ? '<p class="principle">' + esc(lede(p.blurb)) + '</p>' : '') +
+      (p.blurb ? '<p class="principle lede">' + esc(lede(p.blurb)) + '</p>' : '') +
       detailsBlock(p) +
       '<p class="specline" data-dim="' + esc(p.id) + '">' + spec(p) + '</p>' +
       '</div>';
@@ -1556,7 +1591,7 @@ renderer.setAnimationLoop(animate);
       '<p class="eyebrow">kit \u00b7 ' + mem.length + ' parts, one set of sizes</p>' +
       '<h3>' + esc(k.name) + '</h3>' +
       '<div class="verline">' + badge(k.version, k.changed, k.built) + '</div>' +
-      (k.blurb ? '<p class="principle">' + esc(k.blurb) + '</p>' : '') +
+      (k.blurb ? '<p class="principle lede">' + esc(lede(k.blurb)) + '</p>' : '') +
       '</div>';
     const body = el.querySelector('.body');
     if (k.shared && k.shared.length){
@@ -1644,20 +1679,49 @@ renderer.setAnimationLoop(animate);
   const onPlate = e => e.kit
     ? e.kit.members.some(m => (qty.get(m.part) || 0) > 0)
     : (qty.get(e.part.id) || 0) > 0;
+  // Which shelf a card sits on, and in which order the shelves come. Both
+  // are the catalog's to say: the page used to show whatever order the
+  // list and the library scan happened to produce, which put four hourglass
+  // plates ahead of every design that had actually been printed.
+  const SHELVES = cat.shelves || [];
+  const shelfOf = e => (e.kit ? e.kit.shelf : e.part.shelf) || 'library';
+  const shelfRank = id => {
+    const i = SHELVES.findIndex(s => s.id === id);
+    return i < 0 ? 99 : i;
+  };
 
   function render(){
     const grid = $('cat-grid');
     const all = chosen();
-    // what is on the plate sorts to the front of whatever the filter left,
+    // shelf first; within a shelf, what is on the plate sorts to the front,
     // so a long catalog never buries the thing being adjusted
-    all.sort((a, b) => (onPlate(b) ? 1 : 0) - (onPlate(a) ? 1 : 0));
+    all.sort((a, b) => shelfRank(shelfOf(a)) - shelfRank(shelfOf(b)) ||
+                       (onPlate(b) ? 1 : 0) - (onPlate(a) ? 1 : 0));
+    const total = {};
+    for (const e of all) total[shelfOf(e)] = (total[shelfOf(e)] || 0) + 1;
     const show = all.slice(0, limit);
     unmountViews(grid);
     grid.innerHTML = '';
     if (!show.length){
       grid.innerHTML = '<p class="emptycat">Nothing matches that.</p>';
     } else {
-      show.forEach(e => grid.append(e.kit ? makeKitCard(e.kit) : makeCard(e.part)));
+      let shelf = null;
+      show.forEach(e => {
+        const id = shelfOf(e);
+        if (id !== shelf){
+          shelf = id;
+          const s = SHELVES.find(x => x.id === id);
+          if (s){
+            const h = document.createElement('div');
+            h.className = 'shelfhead';
+            h.innerHTML = '<h2>' + esc(s.label) + '<span class="n">' +
+              total[id] + (total[id] === 1 ? ' design' : ' designs') +
+              '</span></h2><p>' + esc(s.note) + '</p>';
+            grid.append(h);
+          }
+        }
+        grid.append(e.kit ? makeKitCard(e.kit) : makeCard(e.part));
+      });
     }
     $('cat-count').textContent = show.length + ' of ' + all.length +
       (all.length === 1 ? ' design' : ' designs');

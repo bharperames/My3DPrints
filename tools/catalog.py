@@ -85,6 +85,22 @@ KITS = [
          ]),
 ]
 
+# The shelves a card can sit on, in the order they are shown. The names are
+# what the headings say; the order is the whole point -- work that has been
+# printed comes before work that has not, and files that were downloaded come
+# last however many of them there are.
+SHELVES = [
+    dict(id="proven", label="Printed and proven",
+         note="These have been through the printer and came out right."),
+    dict(id="designed", label="Designed here",
+         note="Built from source in this repo. Not yet printed."),
+    dict(id="reference", label="Kept for reference",
+         note="Here to be read, not printed \u2014 each one is the negative "
+              "control for a design on a shelf above."),
+    dict(id="library", label="Library",
+         note="Files found on disk, indexed and measured. Printable as-is."),
+]
+
 # --- parts: each resolves to one 3MF on disk -----------------------------
 PARTS = [
     _p("wrench", "Nut Wrench", "Montessori", "generated",
@@ -261,6 +277,7 @@ PARTS = [
        "vertical and the pockets on their sides. PETG, not PLA \u2014 the "
        "seed cube\u2019s bolt snapped in silk PLA under hand torque.",
        version="0.3.1",
+       shelf="reference",
        proven="Not printed, and not to be: it does not hold. A directed "
               "pull of half a newton \u2014 fifty grams, less than the "
               "weight of a part \u2014 takes it apart, because a head "
@@ -395,6 +412,13 @@ PARTS = [
        # ones are superseded rather than merely older -- codes 16-31 built
        # under 5.x filled the rim's seat and the toy stayed silent.
        version="6.0.0",
+       proven="Ten discs in PLA Black, and the toy agreed. Code 16 built at "
+              "three rim-seat widths: silent at 1.25, speaking at 2.25 and at "
+              "the shipped 1.75, which brackets the reader\u2019s rim and "
+              "pins the seat as the thing that gates a read. Five single bits "
+              "named five different animals, 24 said whale, 14 said koala. "
+              "Code 31 wants a firmer press \u2014 that is five plunger "
+              "springs summed, not a bit standing short.",
        gen=["gen_binary_rings.py"], params=[
            dict(key="codes", label="codes", type="text", val="10",
                 placeholder="7  \u00b7  0-31  \u00b7  1,2,4,8,16",
@@ -917,6 +941,16 @@ def catalog(with_library=True):
         p["first_seen"] = e.get("first_seen", "")
         p["version_source"] = ("declared" if p["kind"] != "library"
                                else "observed")
+    # WHICH SHELF a card belongs on, and therefore where it appears. The
+    # order used to be whatever the list here happened to be plus whatever
+    # order the library scan returned, which put four hourglass plates ahead
+    # of every design that has actually been printed. Derived, so a new part
+    # lands somewhere sensible without being told; `shelf=` on an entry
+    # overrides it.
+    for p in parts:
+        p["shelf"] = p.get("shelf") or (
+            "library" if p["kind"] == "library"
+            else "proven" if p.get("proven") else "designed")
     by = {p["id"]: p for p in parts}
     kits = []
     for k in list(KITS) + sets(parts):
@@ -925,7 +959,14 @@ def catalog(with_library=True):
         builts = [p["built"] for p in mem if p["built"]]
         # a kit is only as built as its least-built member
         kit = dict(k, changed=max(dates) if dates else "",
-                   built=min(builts) if len(builts) == len(mem) else "")
+                   built=min(builts) if len(builts) == len(mem) else "",
+                   # a kit sits with the work, on the strength of any member
+                   # that has been printed
+                   shelf=k.get("shelf") or
+                         ("proven" if any(m.get("proven") for m in mem)
+                          else "designed" if any(m["kind"] != "library"
+                                                 for m in mem)
+                          else "library"))
         pv = prev.get("kit_" + k["id"])
         if pv:
             # the card is for the set, so its preview shows the whole set
@@ -940,7 +981,7 @@ def catalog(with_library=True):
             fams.append(p["family"])
     return {"printers": PRINTERS, "printer": DEFAULT_PRINTER,
             "kits": kits, "parts": parts, "families": fams,
-            "version_faults": faults}
+            "shelves": SHELVES, "version_faults": faults}
 
 
 if __name__ == "__main__":
