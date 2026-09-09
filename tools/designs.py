@@ -85,7 +85,7 @@ add("fab_200", "FABRIC+MAT+(200mm+x+200mm)+-+BAMBULAB.3mf", "fabric_200",
     "Fabric Mat \u2014 200 mm", "4,094 links, 199 \u00d7 191 \u00d7 6 mm, "
     "and 13 h 27 m of them at 131 g. Print the 63 mm test first.",
     ("pass", "Clean"), mate="Fabric Mat \u2014 63 mm test", pair="fab_test")
-add("dragon_skin", "Dragon+Skin+225+pz.3mf", "dragon_skin",
+add("dragon_skin", "Dragon+Skin+225+pz+P2S.3mf", "dragon_skin",
     "Dragon Skin", "SKFactory \u00b7 profile by a MakerWorld uploader", "PLA",
     "Dragon Skin \u2014 225 scales", "225 interlocking scales in a 175 mm "
     "sheet, 170 separate closed bodies, no support. The uploader\u2019s "
@@ -94,7 +94,39 @@ add("dragon_skin", "Dragon+Skin+225+pz.3mf", "dragon_skin",
     "Hilbert-curve bottom surface. It is not only prettier \u2014 their own "
     "slice recorded 90.6 g against the 99.2 g a flat 0.2 mm gives here. "
     "Original by @SKFactory on Printables, shared under a licence that allows "
-    "it with attribution.", ("pass", "Clean \u00b7 no defects"))
+    "it with attribution. Retargeted to the P2S here, and the profile came "
+    "across whole: sliced on this machine the gcode runs 73 layers at twenty "
+    "different thicknesses, 0.08 to 0.27 mm.",
+    ("pass", "Clean \u00b7 no defects"))
+
+CM = "Arnau Salvad\u00f3 Boronat \u00b7 remix of ftobler"
+CMB = ("Print-in-place chainmail by a different hand from the fabric mats, "
+       "and a coarser weave: links 15.9 mm across on a 10.5 mm pitch against "
+       "the fabric mat\u2019s 5\u20137 mm. Every body closed, no "
+       "non-manifold edge and no open edge in any of the four files \u2014 "
+       "cleaner geometry than the mats. The designer sliced these at 0.30 mm "
+       "draft on an MK3S with a 5 mm brim; they take 0.20 mm on the P2S with "
+       "no warning and no support. CC BY-ND: print it, sell it, but do not "
+       "publish a modified version. ")
+add("cm_5", "chainmail_5x5.stl", "chainmail_5x5", "Chainmail Fidget", CM, "PLA",
+    "Chainmail \u2014 5 \u00d7 5", CMB + "25 links, 58 mm square, 4.5 mm "
+    "thick. 22 min and 5.9 g \u2014 the one to try the weave on.",
+    ("pass", "Clean"))
+add("cm_10", "chainmail_10x10.3mf", "chainmail_10x10", "Chainmail Fidget", CM, "PLA",
+    "Chainmail \u2014 10 \u00d7 10", CMB + "100 links, 110 mm square, 4 mm "
+    "thick. 1 h 26 m and 22 g. The only one of the four carrying the "
+    "designer\u2019s own slicer project.", ("pass", "Clean"))
+add("cm_15", "chainmail_15x15.stl", "chainmail_15x15", "Chainmail Fidget", CM, "PLA",
+    "Chainmail \u2014 16 \u00d7 16, heavy link", CMB + "Named 15\u00d715 but "
+    "measured 16\u00d716 = 256 links, and it is not the same link as the "
+    "others: 18.4 mm across on an 11.7 mm pitch, 6 mm thick rather than 4. "
+    "193 mm square, 5 h 13 m and 100 g \u2014 the heaviest of the set.",
+    ("pass", "Clean"))
+add("cm_20", "chainmail_20x20.stl", "chainmail_20x20", "Chainmail Fidget", CM, "PLA",
+    "Chainmail \u2014 18 \u00d7 18", CMB + "Named 20\u00d720 but measured "
+    "18\u00d718 = 324 links, on the standard 15.9 mm link. 194 mm square, "
+    "4 h 39 m and 71 g \u2014 the biggest sheet, and lighter than the "
+    "16\u00d716 because its links are thinner.", ("pass", "Clean"))
 
 HG = "Idea2Item · Printables"
 add("cone_pair_s", "cone-hourglass-pair-small.3mf", "cone_pair_small", "Hourglass · Cone", HG, "PLA",
