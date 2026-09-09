@@ -52,6 +52,50 @@ add("staryu", "Staryu_Starmie_Spin_Spin.3mf", "staryu_starmie", "Staryu & Starmi
     "Staryu & Starmie — original", "Two spinners on one bearing recipe, friction tuned by the diff_disc washer stack. Star heads carry 152 k duplicate faces — slicers discard them.", ("warn", "Dup-face defect"), reveals="staryu_dup", reveal_label="duplicate download")
 add("staryu_dup", "Staryu_Starmie_Spin_Spin (1).3mf", "staryu_starmie", "Staryu & Starmie", "pythong · remix", "PLA",
     "Staryu & Starmie — copy (1)", "Byte-identical duplicate download of the original (same MD5). Safe to delete; kept here for completeness.", ("warn", "Duplicate file"), hide=True)
+# --- chainmail and scale sheets, downloaded 2026-09-09 -------------------
+# Two unrelated designs that arrive looking alike. Both are sheets of many
+# small closed bodies printed touching, so both slice with no support and
+# both stand or fall on first-layer squish rather than on any setting a
+# profile carries.
+FAB = "Bambu Lab \u00b7 MakerWorld"
+add("fab_test", "TEST-OBJECT+(63mm+x+63mm)+-+BAMBULAB.3mf", "fabric_test",
+    "Fabric Chainmail", FAB, "PLA",
+    "Fabric Mat \u2014 63 mm test", "The rehearsal, and the piece to print "
+    "first. 415 links against the 200 mm mat\u2019s 4,094, and 92 of its 93 "
+    "distinct link shapes are shapes the big mat also uses \u2014 so it is a "
+    "cut-out of the same tiling at a tenth of the cost, sliced on the same "
+    "settings. 1 h 23 m and 13.8 g here, against 13 h 27 m and 131 g. What it "
+    "tests is whether the links come out free on this printer, which is a "
+    "question about first-layer squish and flow, not about a profile.",
+    ("pass", "Clean \u00b7 415 links"))
+add("fab_103", "FABRIC+MAT+(103mm+x+103mm)+-+BAMBULAB.3mf", "fabric_103",
+    "Fabric Chainmail", FAB, "PLA",
+    "Fabric Mat \u2014 103 mm", "1,050 links, 103 \u00d7 95 \u00d7 6 mm. "
+    "Smallest of the four full mats.", ("pass", "Clean"))
+add("fab_119", "FABRIC+MAT+(119mm+x+119mm)+-+BAMBULAB.3mf", "fabric_119",
+    "Fabric Chainmail", FAB, "PLA",
+    "Fabric Mat \u2014 119 mm", "1,422 links, 119 \u00d7 111 \u00d7 6 mm.",
+    ("pass", "Clean"))
+add("fab_151", "FABRIC+MAT+(151mm+x+151mm)+-+BAMBULAB.3mf", "fabric_151",
+    "Fabric Chainmail", FAB, "PLA",
+    "Fabric Mat \u2014 151 mm", "2,292 links, 151 \u00d7 143 \u00d7 6 mm.",
+    ("pass", "Clean"))
+add("fab_200", "FABRIC+MAT+(200mm+x+200mm)+-+BAMBULAB.3mf", "fabric_200",
+    "Fabric Chainmail", FAB, "PLA",
+    "Fabric Mat \u2014 200 mm", "4,094 links, 199 \u00d7 191 \u00d7 6 mm, "
+    "and 13 h 27 m of them at 131 g. Print the 63 mm test first.",
+    ("pass", "Clean"), mate="Fabric Mat \u2014 63 mm test", pair="fab_test")
+add("dragon_skin", "Dragon+Skin+225+pz.3mf", "dragon_skin",
+    "Dragon Skin", "SKFactory \u00b7 profile by a MakerWorld uploader", "PLA",
+    "Dragon Skin \u2014 225 scales", "225 interlocking scales in a 175 mm "
+    "sheet, 170 separate closed bodies, no support. The uploader\u2019s "
+    "contribution is the profile and it is in the file: a variable layer "
+    "height from 0.08 to 0.28 mm over the 9.8 mm height, Arachne walls and a "
+    "Hilbert-curve bottom surface. It is not only prettier \u2014 their own "
+    "slice recorded 90.6 g against the 99.2 g a flat 0.2 mm gives here. "
+    "Original by @SKFactory on Printables, shared under a licence that allows "
+    "it with attribution.", ("pass", "Clean \u00b7 no defects"))
+
 HG = "Idea2Item · Printables"
 add("cone_pair_s", "cone-hourglass-pair-small.3mf", "cone_pair_small", "Hourglass · Cone", HG, "PLA",
     "Cone Pair Plate — 90 mm", "Solid + eased spiral (0.05–0.15 mm entry lead-in) on one plate. Known failure: the solid’s wall thins to 1–2 mm where the slots taper at the rim, on a 35–39° flare — cracks in PETG as the top closes (spiral is innocent). Print PLA, 100% infill + ≥4 walls on the solid, 100% fan up top, brim. Full measurements in the print notes.", ("pass", "Built · both parts"))

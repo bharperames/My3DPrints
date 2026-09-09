@@ -657,16 +657,27 @@ def scan(dirs=None):
     return library(dirs or [DOWNLOADS], include_imported=False)
 
 
-def import_from(dirs=None):
+def import_from(dirs=None, paths=None):
     """Take what a scan found into the catalog, and write that down.
 
     The shop used to walk ~/Downloads on every read, which made anything
     that landed there a design — including the plates it had just exported.
     Importing is a thing the user does now, not a thing that happens to
     them.
+
+    `paths` imports exactly those files instead of everything a scan finds.
+    A download of one model arrives beside a year of other downloads, and
+    taking the whole folder to get four files puts a hundred and forty
+    cards on a shelf to gain six.
     """
     have = set(imported())
-    found = {p["path"] for p in scan(dirs)}
+    if paths is not None:
+        found = {os.path.abspath(os.path.expanduser(p)) for p in paths}
+        missing = [p for p in found if not os.path.isfile(p)]
+        if missing:
+            raise FileNotFoundError(missing[0])
+    else:
+        found = {p["path"] for p in scan(dirs)}
     keep = sorted(have | found)
     os.makedirs(os.path.dirname(IMPORTED), exist_ok=True)
     with open(IMPORTED, "w") as f:
