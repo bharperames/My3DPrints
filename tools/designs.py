@@ -97,7 +97,18 @@ add("dragon_skin", "Dragon+Skin+225+pz+P2S.3mf", "dragon_skin",
     "it with attribution. Retargeted to the P2S here, and the profile came "
     "across whole: sliced on this machine the gcode runs 73 layers at twenty "
     "different thicknesses, 0.08 to 0.27 mm.",
-    ("pass", "Clean \u00b7 no defects"))
+    ("warn", "Printed \u00b7 border tore"),
+    proven="Printed in PLA Silk and it came off badly, and the reason is in "
+           "the mesh rather than in the settings. The scales are a 15\u00d715 "
+           "grid: the inner 13\u00d713 = 169 float free, and the outer ring of "
+           "56 is FUSED INTO A BORDER FRAME as one solid body \u2014 62,012 "
+           "faces against 1,078 for a free scale. That 10 mm Hilbert-filled "
+           "band round the edge is the model\u2019s own hem, not brim: slice "
+           "it here with brim off entirely and the band is still there. Peel "
+           "it and you are pulling on the edge scales themselves, which is "
+           "how a corner comes away. Each free scale stands 9.8 mm tall on "
+           "43 mm\u00b2 of bed. Print it in plain PLA or PETG, not silk, and "
+           "leave the border on."))
 
 CM = "Arnau Salvad\u00f3 Boronat \u00b7 remix of ftobler"
 CMB = ("Print-in-place chainmail by a different hand from the fabric mats, "
