@@ -349,10 +349,15 @@ PARTS = [
        "the ridge it clears, and the finished skull\u2019s thinnest wall is "
        "0.40 mm, exactly what the untouched skull already had. The feet keep "
        "their talons on purpose: they are what the model stands on. The arm "
-       "claws keep theirs because swapping them buys little. Parts: bone, "
-       "head (as drawn), eyes (the skull with eyes), trough (the eyeless "
-       "skull with the gum channel), body.",
-       version="1.0.0",
+       "claws keep theirs because swapping them buys little. Parts: "
+       "\u2018testjaw\u2019 is the gum arcs on their own \u2014 twenty "
+       "minutes to find out whether a root sits right before an hour goes "
+       "into a skull; \u2018trough\u2019 is the eyeless skull with the "
+       "channel; \u2018body\u2019 has the lower jaw troughed to match, with "
+       "its claws left on; \u2018bodyorig\u2019 and \u2018head\u2019 are "
+       "as the designer drew them; \u2018eyes\u2019 is the skull with eyes; "
+       "\u2018bone\u2019 is the loose bone.",
+       version="1.1.0",
        proven=None,
        gen=["gen_trex.py"], params=[
            dict(key="parts", label="parts", type="text", val="trough,body",

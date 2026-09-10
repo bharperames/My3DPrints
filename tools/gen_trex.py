@@ -72,7 +72,9 @@ PARTS = {
     "head":    ("head",  False, "the eyeless skull as the designer drew it"),
     "eyes":    ("eyes",  False, "the skull with eyes"),
     "trough":  ("head",  True,  "the eyeless skull with a gum trough for real teeth"),
-    "body":    ("body",  False, "the body, claws and jaw untouched"),
+    "body":    ("body",  True,  "the body, its lower jaw troughed, claws left on"),
+    "bodyorig":("body",  False, "the body exactly as the designer drew it"),
+    "testjaw": ("head",  True,  "the gum arc alone, for trying teeth and epoxy"),
 }
 
 TOOTH_PAINT = "8"
@@ -90,22 +92,71 @@ def load(member):
     return trimesh.Trimesh(V, F, process=False), P
 
 
-def keep_real(mesh, floor=1.0):
-    """Drop the boolean's zero-volume debris, keep every real part.
+def tidy(mesh):
+    """Weld and drop degenerate faces before judging what is a real part.
+
+    A boolean leaves zero-area slivers, and they are not visible to a split
+    until the vertices are welded -- filtering first and exporting after put
+    thirty-seven two-triangle shells into the STL that were not there when
+    the filter ran.
+    """
+    m = mesh.copy()
+    m.merge_vertices()
+    m.update_faces(m.nondegenerate_faces())
+    m.update_faces(m.unique_faces())
+    m.remove_unreferenced_vertices()
+    return m
+
+
+def keep_real(mesh, floor=1.0, min_faces=32):
+    """Drop the boolean's debris, keep every real part.
 
     The body is twenty-five separate pieces by design, so taking the largest
-    component would throw the animal away and leave the rib cage.
+    component would throw the animal away and leave the rib cage. Judge on
+    ABSOLUTE volume and on face count: a boolean leaves shells whose winding
+    is inside out, and those measure a negative volume that a `> floor` test
+    silently keeps while dropping a real part. Normals are fixed first so
+    the survivors all read positive.
     """
-    parts = [p for p in mesh.split(only_watertight=False) if p.volume > floor]
+    parts = []
+    for p in tidy(mesh).split(only_watertight=False):
+        if len(p.faces) < min_faces or abs(p.volume) <= floor:
+            continue
+        trimesh.repair.fix_normals(p)
+        parts.append(p)
     return trimesh.util.concatenate(parts) if parts else mesh
 
 
-def trough(mesh, paint, width=WIDTH, depth=DEPTH):
-    from channel import tooth_frames, channel
+def painted_regions(mesh, paint):
     idx = np.where(paint == TOOTH_PAINT)[0]
     lab = trimesh.graph.connected_component_labels(
         trimesh.graph.face_adjacency(mesh.faces[idx]), node_count=len(idx))
-    regions = [idx[lab == r] for r in range(lab.max() + 1)]
+    return [idx[lab == r] for r in range(lab.max() + 1)]
+
+
+def jaw_regions(mesh, paint):
+    """The lower jaw's teeth, out of everything the designer painted.
+
+    The body carries paint on far more than teeth -- vertebra caps, the
+    scapula, the claws -- so the teeth have to be picked out. A tooth row is
+    the tell: the jaw is the one loose piece carrying twelve small painted
+    patches, where every other piece carries one big one or, on the legs and
+    arms, three and one. Chosen by that rather than by a body index, which
+    is an ordering and not a fact about the animal.
+    """
+    regions = painted_regions(mesh, paint)
+    lab = trimesh.graph.connected_component_labels(
+        mesh.face_adjacency, node_count=len(mesh.faces))
+    by = {}
+    for r in regions:
+        by.setdefault(lab[r[0]], []).append(r)
+    piece = max(by, key=lambda b: len(by[b]))
+    return by[piece]
+
+
+def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None):
+    from channel import tooth_frames, channel
+    regions = painted_regions(mesh, paint) if regions is None else regions
     # a tooth is a cone, so its own convex hull is the tooth
     cuts = [mesh.submesh([r], append=True).convex_hull for r in regions]
     cuts += channel(mesh, tooth_frames(mesh, regions),
@@ -114,13 +165,49 @@ def trough(mesh, paint, width=WIDTH, depth=DEPTH):
     return keep_real(trimesh.boolean.difference([mesh, u], engine="manifold")), len(regions)
 
 
+def test_jaw(mesh, paint, width=WIDTH, depth=DEPTH, wall=1.5):
+    """The gum arc on its own: the channel plus just enough bone to hold it.
+
+    Printing the whole skull to find out whether a tooth root sits in the
+    trough is an hour for an answer a few minutes can give. This keeps the
+    bone inside a box swept along the same path -- the channel plus `wall`
+    either side and underneath -- and throws the rest of the skull away, so
+    what comes out is the real curve, the real width and the real depth.
+    """
+    from channel import tooth_frames, channel, order_along_jaw, resample, recentre
+    cut, n = trough(mesh, paint, width, depth)
+    idx = np.where(paint == TOOTH_PAINT)[0]
+    lab = trimesh.graph.connected_component_labels(
+        trimesh.graph.face_adjacency(mesh.faces[idx]), node_count=len(idx))
+    fr = tooth_frames(mesh, [idx[lab == r] for r in range(lab.max() + 1)])
+    keep = channel(mesh, fr, width=width + 2 * wall, depth=depth + wall,
+                   over=wall, centre=True)
+    box = trimesh.boolean.union(keep, engine="manifold")
+    got = trimesh.boolean.intersection([cut, box], engine="manifold")
+    # The skull's tooth rows are not joined by a continuous bar of bone --
+    # left and right are separate arcs and the openings break them further
+    # -- so this comes out in pieces however generously the box is drawn.
+    # Keep the arcs worth printing and drop the chips the cut shears off.
+    pieces = sorted((p for p in tidy(got).split(only_watertight=False)
+                     if len(p.faces) >= 32), key=lambda p: -abs(p.volume))
+    if not pieces: return got, n
+    big = [p for p in pieces if abs(p.volume) >= 0.15 * abs(pieces[0].volume)]
+    for p in big: trimesh.repair.fix_normals(p)
+    return trimesh.util.concatenate(big), n
+
+
 def build(names, width=WIDTH, depth=DEPTH):
     out, rep = [], {}
     for name in names:
         member, cut, _ = PARTS[name]
         m, paint = load(OBJ[member])
         n = 0
-        if cut:
+        if name == "testjaw":
+            m, n = test_jaw(m, paint, width, depth)
+        elif name == "body":
+            m, n = trough(m, paint, width, depth,
+                          regions=jaw_regions(m, paint))
+        elif cut:
             m, n = trough(m, paint, width, depth)
         out.append((name, m))
         rep[name] = dict(faces=len(m.faces), volume=round(float(m.volume), 1),
