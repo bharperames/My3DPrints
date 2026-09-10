@@ -39,6 +39,22 @@ def order_along_jaw(frames):
         order.append(nxt); left.discard(nxt)
     return order
 
+def extend(C, N, run=7.0):
+    """Run the path out past the first and last tooth.
+
+    Stopping at the end tooth leaves the last box cutting a square notch,
+    and the bone between that notch and the edge of the jaw survives as a
+    rectangular tab -- which is what a channel that ends in mid-bone looks
+    like. Carrying the path straight on past both ends until it is clear of
+    the jaw lets the cut run out through the end instead of stopping in it.
+    """
+    d0 = C[0] - C[1]; d0 /= max(np.linalg.norm(d0), 1e-9)
+    d1 = C[-1] - C[-2]; d1 /= max(np.linalg.norm(d1), 1e-9)
+    C = np.vstack([C[0] + d0 * run, C, C[-1] + d1 * run])
+    N = np.vstack([N[0], N, N[-1]])
+    return C, N
+
+
 def resample(C, N, per_mm=1.5):
     """Dense samples along the gum line, with the axis carried along.
 
@@ -56,6 +72,51 @@ def resample(C, N, per_mm=1.5):
     Ni /= np.linalg.norm(Ni, axis=1)[:, None]
     return Ci, Ni
 
+def labial(mesh, C, N, depth, outer_wall=1.2):
+    """Set the channel by the OUTER wall and let the inside give.
+
+    Centring on the middle of the ridge spends the width evenly and leaves
+    paper-thin sheets wherever the bone pinches -- on the cheek side, which
+    is the side you look at. Brett's point settles it: the inside edge of
+    the jaw is not visible, so it is the side that can be spent. The channel
+    is placed so its outer face sits exactly `outer_wall` inside the cheek,
+    and whatever it does on the palate side it does out of sight.
+    """
+    out, axes = C.copy(), np.zeros_like(C)
+    mid = mesh.centroid
+    for k in range(len(C)):
+        t = C[min(k + 1, len(C) - 1)] - C[max(k - 1, 0)]
+        if np.linalg.norm(t) < 1e-9: continue
+        t = t / np.linalg.norm(t)
+        a = np.cross(N[k], t)
+        if np.linalg.norm(a) < 1e-9: continue
+        a = a / np.linalg.norm(a)
+        # outward is away from the middle of the skull
+        if np.dot(a, C[k] - mid) < 0: a = -a
+        p = C[k] - N[k] * depth * 0.5
+        h, _, tri = mesh.ray.intersects_location([p], [a])
+        if not len(h): continue
+        j = int(np.argmin(np.linalg.norm(h - p, axis=1)))
+        d_out = float(np.linalg.norm(h[j] - p))
+        # Step back along `a` by enough to leave `outer_wall` measured
+        # PERPENDICULAR to the surface. Where the labial face is oblique to
+        # the lateral axis -- which it is towards the ends of the jaw, the
+        # face turning away -- a 1.2 mm step sideways leaves a fraction of
+        # that in real wall. Measured, it came out at 0.2 mm: sheets one
+        # voxel thick, in mirror pairs at the far left and right, which is
+        # exactly the ragged flap Brett kept finding.
+        nrm = mesh.face_normals[int(tri[j])]
+        slant = max(abs(float(np.dot(nrm, a))), 0.35)
+        out[k] = C[k] + a * (d_out - outer_wall / slant)
+        axes[k] = a
+    bad = np.linalg.norm(axes, axis=1) < 1e-9
+    if bad.any():
+        good = np.where(~bad)[0]
+        for k in np.where(bad)[0]:
+            axes[k] = axes[good[np.argmin(abs(good - k))]]
+    return out, axes
+
+
 def recentre(mesh, C, N, depth):
     """Slide each sample sideways onto the middle of the bone ridge.
 
@@ -65,7 +126,7 @@ def recentre(mesh, C, N, depth):
     through the palate -- at 3.5 mm it was through for 81% of its length.
     Centred on the bone instead, the same 3.5 mm clears.
     """
-    out = C.copy()
+    out, avail = C.copy(), np.full(len(C), np.inf)
     for k in range(len(C)):
         t = C[min(k + 1, len(C) - 1)] - C[max(k - 1, 0)]
         if np.linalg.norm(t) < 1e-9: continue
@@ -80,7 +141,12 @@ def recentre(mesh, C, N, depth):
             d.append(np.min(np.linalg.norm(h - p, axis=1)) if len(h) else np.nan)
         if not np.any(np.isnan(d)):
             out[k] = C[k] + a * (d[0] - d[1]) / 2.0
-    return out
+            avail[k] = d[0] + d[1]
+    if np.isfinite(avail).any():
+        avail[~np.isfinite(avail)] = np.nanmedian(avail[np.isfinite(avail)])
+    else:
+        avail[:] = 0.0
+    return out, avail
 
 
 def smooth(C, N, passes=6, win=9):
@@ -105,14 +171,30 @@ def smooth(C, N, passes=6, win=9):
         N /= np.linalg.norm(N, axis=1)[:, None]
     return C, N
 
-def channel(mesh, frames, width=3.5, depth=3.0, over=1.0, centre=True):
-    """A trough of `width` and `depth` threaded through the tooth bases."""
+def channel(mesh, frames, width=3.5, depth=3.0, over=1.0, centre=True,
+            wall=0.8, min_width=1.6, reach=9.0):
+    """A LEDGE along the gum line: labial wall kept, everything inboard cut.
+
+    A trough has two walls and the inner one is the trouble -- it is where
+    the bone pinches, and every paper-thin flap and tab came from trying to
+    hold it. Brett's answer is to stop holding it. The lip you see is the
+    labial side; the lingual side is inside the mouth and no one looks at
+    it. So the cut keeps a wall of `wall + 0.4` on the labial face and takes
+    everything behind it for `reach`, leaving a shelf the teeth are set on
+    and glued.
+
+    With no inner wall there is nothing thin left to leave behind, which is
+    the whole class of defect gone rather than patched.
+    """
     order = order_along_jaw(frames)
-    C, N = resample(np.array([frames[i]["c"] for i in order]),
-                    np.array([frames[i]["n"] for i in order]))
+    C, N = extend(np.array([frames[i]["c"] for i in order]),
+                  np.array([frames[i]["n"] for i in order]))
+    C, N = resample(C, N)
+    A = None
     if centre:
-        C = recentre(mesh, C, N, depth)
+        C, A = labial(mesh, C, N, depth, outer_wall=wall + 0.4)
         C, N = smooth(C, N)
+        A /= np.linalg.norm(A, axis=1)[:, None]
     segs = []
     # Overlapping boxes, one per sample, not a chain of prisms end to end.
     # A prism from sample k to k+1 carries its own across-vector, and where
@@ -127,15 +209,17 @@ def channel(mesh, frames, width=3.5, depth=3.0, over=1.0, centre=True):
         t = C[min(k + 1, len(C) - 1)] - C[max(k - 1, 0)]
         if np.linalg.norm(t) < 1e-9: continue
         t = t / np.linalg.norm(t)
-        a = np.cross(N[k], t)
+        a = A[k] if A is not None else np.cross(N[k], t)
         if np.linalg.norm(a) < 1e-9: continue
         a = a / np.linalg.norm(a)
         n = np.cross(t, a); n = n / np.linalg.norm(n)
         if np.dot(n, N[k]) < 0: n = -n
-        box = trimesh.creation.box([width, 2.2 * step, depth + over])
+        box = trimesh.creation.box([reach, 2.2 * step, depth + over])
         M = np.eye(4)
         M[:3, 0], M[:3, 1], M[:3, 2] = a, t, n
-        M[:3, 3] = C[k] + n * (over - depth) / 2.0
+        # C is the inner face of the labial wall; the cut runs from there
+        # inboard, so the box centre sits half a reach further in
+        M[:3, 3] = C[k] - a * reach / 2.0 + n * (over - depth) / 2.0
         box.apply_transform(M)
         segs.append(box)
     return segs

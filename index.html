@@ -88,6 +88,9 @@ h1 .tld{color:var(--accent)}
   font:600 14px/1 "IBM Plex Sans",sans-serif;cursor:pointer;display:none}
 .photo:hover .expand{display:block}
 .expand:hover{color:var(--accent-ink);border-color:var(--accent)}
+.platewrap{position:relative}
+.platewrap:hover .expand{display:block}
+.lb-plate{width:100%;height:100%;display:block;border-radius:0}
 #lightbox{position:fixed;inset:0;z-index:3;display:none}
 #lightbox.open{display:block}
 .lb-backdrop{position:absolute;inset:0;background:rgba(10,13,14,.94)}
@@ -914,9 +917,66 @@ function closeLightbox(){
   lbSuspended.forEach(x => x.suspend = false); lbSuspended = [];
   document.body.style.overflow = '';
 }
-lbRoot.querySelector('.lb-close').onclick = closeLightbox;
-lbRoot.querySelector('.lb-backdrop').onclick = closeLightbox;
-addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+// ---- the plate opens large too ----
+// The plate is its own scene and renderer, not one of the card views, so
+// the lightbox cannot load it as a model the way it loads a part. Moving
+// the live canvas into the overlay and back costs nothing and keeps ONE
+// plate: the same orbit, the same order on it, no second copy to fall out
+// of step with the first. Its render loop sizes itself from the canvas
+// rect every frame, so it fills the overlay without being told to.
+const plateCv = document.getElementById('shop-3d');
+let plateBack = null;
+function openPlateLarge(){
+  if (!plateCv || plateBack) return;
+  plateBack = {parent: plateCv.parentElement, next: plateCv.nextSibling};
+  lbRoot.classList.add('open');
+  lbRoot.querySelector('.lb-title').textContent = 'Plate';
+  lbRoot.querySelector('.lb-hint').textContent =
+    'drag to orbit \u00b7 scroll to zoom \u00b7 esc to close';
+  const gb = lbRoot.querySelector('.lb-chrome button:not(.lb-close)');
+  if (gb) gb.style.display = 'none';        // the graph belongs to a part
+  plateCv.classList.add('lb-plate');
+  lbEl.appendChild(plateCv);
+  document.body.style.overflow = 'hidden';
+}
+function closePlateLarge(){
+  if (!plateBack) return;
+  plateCv.classList.remove('lb-plate');
+  plateBack.parent.insertBefore(plateCv, plateBack.next);
+  plateBack = null;
+  const gb = lbRoot.querySelector('.lb-chrome button:not(.lb-close)');
+  if (gb) gb.style.display = '';
+  lbRoot.classList.remove('open');
+  document.body.style.overflow = '';
+}
+const closeLarge = () => { closePlateLarge(); closeLightbox(); };
+lbRoot.querySelector('.lb-close').onclick = closeLarge;
+lbRoot.querySelector('.lb-backdrop').onclick = closeLarge;
+addEventListener('keydown', e => { if (e.key === 'Escape') closeLarge(); });
+if (plateCv){
+  // same affordance the part previews use: a corner button on hover, and a
+  // click anywhere that did not travel (a press that travels is an orbit)
+  const wrap = document.createElement('div');
+  wrap.className = 'platewrap';
+  plateCv.parentElement.insertBefore(wrap, plateCv);
+  wrap.appendChild(plateCv);
+  const b = document.createElement('button');
+  b.className = 'expand'; b.textContent = '\u2922';
+  b.title = 'open the plate large';
+  b.onclick = ev => { ev.stopPropagation(); openPlateLarge(); };
+  wrap.appendChild(b);
+  plateCv.title = 'click to open large \u00b7 drag to orbit';
+  let press = null;
+  plateCv.addEventListener('pointerdown', ev => {
+    press = {x: ev.clientX, y: ev.clientY, t: Date.now()}; });
+  plateCv.addEventListener('pointerup', ev => {
+    const p0 = press; press = null;
+    if (plateBack || !p0) return;
+    if (Math.hypot(ev.clientX - p0.x, ev.clientY - p0.y) > 4) return;
+    if (Date.now() - p0.t > 400) return;
+    openPlateLarge();
+  });
+}
 views.push(lbV);
 
 // mounted after the lightbox exists: every viewport gets an expand button,

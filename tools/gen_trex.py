@@ -154,6 +154,72 @@ def jaw_regions(mesh, paint):
     return by[piece]
 
 
+def deburr(mesh, wall=0.35, keep=0.15, pitch=0.2, passes=3):
+    """Take off the paper-thin flaps a cut leaves, and nothing else.
+
+    Where the channel passes close to the outside of the bone it can leave a
+    sheet a couple of tenths thick: too thin to print as anything but a
+    ragged fin, and the thing Brett kept seeing. Narrowing the channel does
+    not fix it -- a pair of rays at mid-depth reports the ridge a healthy
+    6 mm wide at every station while the sheets form above and below where
+    the surface falls away.
+
+    So the sliver is removed rather than preserved: the channel breaks out
+    to the surface there, which is honest, instead of leaving a flap. Found
+    by morphological opening, which is exactly the question being asked --
+    what material survives no erosion by `wall`. The threshold is set from
+    the designer's own skull: his largest such lump is 0.13 mm3, so only
+    lumps bigger than that are ours to answer for.
+    """
+    from scipy import ndimage
+    # One pass does not converge: taking a sliver off exposes the slightly
+    # thicker material behind it, which is itself under the limit. Three
+    # passes is enough here -- it stops on its own when nothing is left over
+    # the threshold.
+    for _ in range(passes - 1):
+        out = _deburr_once(mesh, wall, keep, pitch)
+        if out is mesh: return mesh
+        mesh = out
+    return _deburr_once(mesh, wall, keep, pitch)
+
+
+def _deburr_once(mesh, wall, keep, pitch):
+    from scipy import ndimage
+    vox = mesh.voxelized(pitch=pitch).fill()
+    G = vox.matrix
+    d = ndimage.distance_transform_edt(G) * pitch
+    core = d > wall
+    if not core.any(): return mesh
+    opened = (ndimage.distance_transform_edt(~core) * pitch) <= wall
+    thin = G & ~opened
+    lab, n = ndimage.label(thin)
+    if n == 0: return mesh
+    sz = np.array(ndimage.sum(thin, lab, range(1, n + 1))) * pitch ** 3
+    big = np.where(sz > keep)[0] + 1
+    if not len(big): return mesh
+    # one convex hull per sliver -- a sheet is nearly flat, so its hull is
+    # the sheet, and this needs no meshing library the venv does not have
+    cuts = []
+    for c in big:
+        pts = vox.indices_to_points(np.argwhere(lab == c))
+        if len(pts) < 8: continue
+        lo, hi = pts.min(axis=0) - pitch, pts.max(axis=0) + pitch
+        box = np.array([[x, y, z] for x in (lo[0], hi[0])
+                        for y in (lo[1], hi[1]) for z in (lo[2], hi[2])])
+        try:
+            cuts.append(trimesh.Trimesh(np.vstack([pts, box])).convex_hull)
+        except Exception:
+            continue
+    if not cuts: return mesh
+    try:
+        out = trimesh.boolean.difference(
+            [mesh, trimesh.boolean.union(cuts, engine="manifold")],
+            engine="manifold")
+    except Exception:
+        return mesh
+    return out if out.volume > 0.9 * mesh.volume else mesh
+
+
 def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None):
     from channel import tooth_frames, channel
     regions = painted_regions(mesh, paint) if regions is None else regions
@@ -163,7 +229,7 @@ def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None):
                     width=width, depth=depth, over=1.0, centre=True)
     u = trimesh.boolean.union(cuts, engine="manifold")
     was = len(mesh.split(only_watertight=False))
-    got = trimesh.boolean.difference([mesh, u], engine="manifold")
+    got = deburr(trimesh.boolean.difference([mesh, u], engine="manifold"))
     return keep_real(got, single=(was == 1)), len(regions)
 
 

@@ -336,23 +336,22 @@ PARTS = [
        out="knot-bolted-T{thread:g}.3mf"),
     _p("trex_teeth", "Skeleton T-Rex \u2014 real teeth", "Flexi Factory",
        "parametric",
-       "Flexi Factory\u2019s skeleton T-Rex with its printed teeth replaced by "
-       "a trough you can set real shark teeth into and bed in black epoxy. "
-       "Pick the pieces you want and they arrive on one plate, in a single "
-       "colour. Which triangles were teeth is not a guess: the designer "
-       "painted them and the paint ships in the 3MF, one attribute per "
-       "triangle, so every tooth comes off complete down to the ring where "
-       "it meets the jaw. The trough is centred on the bone rather than on "
-       "the teeth, because the teeth sit 0.88 mm outboard of the middle of a "
-       "ridge only 6.13 mm wide \u2014 centred on the teeth, a 3.5 mm trough "
-       "breaks through the palate for four fifths of its length; centred on "
-       "the ridge it clears, and the finished skull\u2019s thinnest wall is "
-       "0.40 mm, exactly what the untouched skull already had. The feet keep "
-       "their talons on purpose: they are what the model stands on. The arm "
-       "claws keep theirs because swapping them buys little. The test jaw is "
-       "the gum arcs on their own \u2014 eleven minutes and a gram to find "
-       "out whether a root sits right, before three hours go into the pair.",
-       version="1.4.0",
+       "Flexi Factory\u2019s skeleton T-Rex with its printed teeth replaced "
+       "by a ledge you can set real shark teeth on and bed in black epoxy. "
+       "The lip you see from outside is left exactly as the designer drew "
+       "it; the cut goes in behind it, so a tooth root presses against the "
+       "labial wall and reads as inset in the jaw. Which triangles were "
+       "teeth is not a guess: the designer painted them and the paint ships "
+       "in the 3MF, one attribute per triangle, so every tooth comes off "
+       "complete down to the ring where it meets the jaw. Nothing is held "
+       "on the lingual side \u2014 that is inside the mouth and no one "
+       "looks at it, and trying to hold it was what left paper-thin flaps. "
+       "The feet keep their talons on purpose: they are what the model "
+       "stands on. The arm claws keep theirs because swapping them buys "
+       "little. The test jaw is the gum arcs on their own \u2014 minutes "
+       "and a gram to find out whether a root sits right, before three "
+       "hours go into the pair.",
+       version="2.0.0",
        proven=None,
        gen=["gen_trex.py"], params=[
            dict(key="parts", label="parts", type="checks", val="skull,body",
