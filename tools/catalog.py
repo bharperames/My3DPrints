@@ -363,7 +363,7 @@ PARTS = [
                          hint="printed teeth off, channel along the gum"),
                     dict(value="body", label="body, for real teeth",
                          hint="lower jaw the same, claws left on"),
-                    dict(value="skullorig", label="skull, as drawn",
+                    dict(value="skullorig", label="skull, with cartoon teeth",
                          hint="the designer\u2019s eyeless skull, teeth on"),
                     dict(value="eyes", label="skull with eyes",
                          hint="the designer\u2019s other skull"),
