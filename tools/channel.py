@@ -82,12 +82,37 @@ def recentre(mesh, C, N, depth):
             out[k] = C[k] + a * (d[0] - d[1]) / 2.0
     return out
 
+
+def smooth(C, N, passes=6, win=9):
+    """Take the jitter out of the path before anything is swept along it.
+
+    `recentre` measures each sample on its own with a pair of rays, and the
+    bone it measures against is bumpy, so the offsets it returns jump from
+    one sample to the next. Sweeping a box per sample along a jittering path
+    leaves each box a little to one side of its neighbours, and the thin
+    wedges of bone that survive between them show up as a comb of teeth
+    along the rim of the channel. The path is a gum line: it is smooth, and
+    the measurement is what is noisy.
+    """
+    C, N = C.copy(), N.copy()
+    k = np.ones(win) / win
+    for _ in range(passes):
+        for arr in (C, N):
+            pad = np.vstack([np.repeat(arr[:1], win // 2, axis=0), arr,
+                             np.repeat(arr[-1:], win // 2, axis=0)])
+            for c in range(3):
+                arr[:, c] = np.convolve(pad[:, c], k, mode="valid")
+        N /= np.linalg.norm(N, axis=1)[:, None]
+    return C, N
+
 def channel(mesh, frames, width=3.5, depth=3.0, over=1.0, centre=True):
     """A trough of `width` and `depth` threaded through the tooth bases."""
     order = order_along_jaw(frames)
     C, N = resample(np.array([frames[i]["c"] for i in order]),
                     np.array([frames[i]["n"] for i in order]))
-    if centre: C = recentre(mesh, C, N, depth)
+    if centre:
+        C = recentre(mesh, C, N, depth)
+        C, N = smooth(C, N)
     segs = []
     # Overlapping boxes, one per sample, not a chain of prisms end to end.
     # A prism from sample k to k+1 carries its own across-vector, and where

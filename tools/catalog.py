@@ -352,7 +352,7 @@ PARTS = [
        "claws keep theirs because swapping them buys little. The test jaw is "
        "the gum arcs on their own \u2014 eleven minutes and a gram to find "
        "out whether a root sits right, before three hours go into the pair.",
-       version="1.3.0",
+       version="1.4.0",
        proven=None,
        gen=["gen_trex.py"], params=[
            dict(key="parts", label="parts", type="checks", val="skull,body",

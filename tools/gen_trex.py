@@ -108,7 +108,7 @@ def tidy(mesh):
     return m
 
 
-def keep_real(mesh, floor=1.0, min_faces=32):
+def keep_real(mesh, floor=1.0, min_faces=32, single=False):
     """Drop the boolean's debris, keep every real part.
 
     The body is twenty-five separate pieces by design, so taking the largest
@@ -162,7 +162,9 @@ def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None):
     cuts += channel(mesh, tooth_frames(mesh, regions),
                     width=width, depth=depth, over=1.0, centre=True)
     u = trimesh.boolean.union(cuts, engine="manifold")
-    return keep_real(trimesh.boolean.difference([mesh, u], engine="manifold")), len(regions)
+    was = len(mesh.split(only_watertight=False))
+    got = trimesh.boolean.difference([mesh, u], engine="manifold")
+    return keep_real(got, single=(was == 1)), len(regions)
 
 
 def test_jaw(mesh, paint, width=WIDTH, depth=DEPTH, wall=1.5):
