@@ -334,6 +334,35 @@ PARTS = [
            dict(key="thread", label="thread \u00d8", unit="mm", min=10,
                 max=20, step=1, val=12)],
        out="knot-bolted-T{thread:g}.3mf"),
+    _p("trex_teeth", "Skeleton T-Rex \u2014 real teeth", "Flexi Factory",
+       "parametric",
+       "Flexi Factory\u2019s skeleton T-Rex with its printed teeth replaced by "
+       "a trough you can set real shark teeth into and bed in black epoxy. "
+       "Pick the pieces you want and they arrive on one plate, in a single "
+       "colour. Which triangles were teeth is not a guess: the designer "
+       "painted them and the paint ships in the 3MF, one attribute per "
+       "triangle, so every tooth comes off complete down to the ring where "
+       "it meets the jaw. The trough is centred on the bone rather than on "
+       "the teeth, because the teeth sit 0.88 mm outboard of the middle of a "
+       "ridge only 6.13 mm wide \u2014 centred on the teeth, a 3.5 mm trough "
+       "breaks through the palate for four fifths of its length; centred on "
+       "the ridge it clears, and the finished skull\u2019s thinnest wall is "
+       "0.40 mm, exactly what the untouched skull already had. The feet keep "
+       "their talons on purpose: they are what the model stands on. The arm "
+       "claws keep theirs because swapping them buys little. Parts: bone, "
+       "head (as drawn), eyes (the skull with eyes), trough (the eyeless "
+       "skull with the gum channel), body.",
+       version="1.0.0",
+       proven=None,
+       gen=["gen_trex.py"], params=[
+           dict(key="parts", label="parts", type="text", val="trough,body",
+                placeholder="trough,body  \u00b7  bone  \u00b7  eyes",
+                hint="bone, head, eyes, trough, body \u2014 any combination"),
+           dict(key="width", label="trough width", unit="mm", min=2.0,
+                max=4.0, step=0.5, val=3.5),
+           dict(key="depth", label="trough depth", unit="mm", min=2.0,
+                max=4.0, step=0.5, val=3.0)],
+       out="trex-{parts}.3mf"),
     _p("binary_rings", "Coded Ring Insert", "Designed here", "parametric",
        "A coded disc for a rubber toy that reads concentric rings as bits. "
        "The reader has five plungers, each at its own radius so the code "
