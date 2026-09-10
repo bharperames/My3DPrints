@@ -349,20 +349,29 @@ PARTS = [
        "the ridge it clears, and the finished skull\u2019s thinnest wall is "
        "0.40 mm, exactly what the untouched skull already had. The feet keep "
        "their talons on purpose: they are what the model stands on. The arm "
-       "claws keep theirs because swapping them buys little. Parts: "
-       "\u2018testjaw\u2019 is the gum arcs on their own \u2014 twenty "
-       "minutes to find out whether a root sits right before an hour goes "
-       "into a skull; \u2018trough\u2019 is the eyeless skull with the "
-       "channel; \u2018body\u2019 has the lower jaw troughed to match, with "
-       "its claws left on; \u2018bodyorig\u2019 and \u2018head\u2019 are "
-       "as the designer drew them; \u2018eyes\u2019 is the skull with eyes; "
-       "\u2018bone\u2019 is the loose bone.",
-       version="1.1.0",
+       "claws keep theirs because swapping them buys little. The test jaw is "
+       "the gum arcs on their own \u2014 eleven minutes and a gram to find "
+       "out whether a root sits right, before three hours go into the pair.",
+       version="1.3.0",
        proven=None,
        gen=["gen_trex.py"], params=[
-           dict(key="parts", label="parts", type="text", val="trough,body",
-                placeholder="trough,body  \u00b7  bone  \u00b7  eyes",
-                hint="bone, head, eyes, trough, body \u2014 any combination"),
+           dict(key="parts", label="parts", type="checks", val="skull,body",
+                choices=[
+                    dict(value="testjaw", label="test jaw",
+                         hint="the gum arcs alone \u2014 11 min, 1 g"),
+                    dict(value="skull", label="skull, for real teeth",
+                         hint="printed teeth off, channel along the gum"),
+                    dict(value="body", label="body, for real teeth",
+                         hint="lower jaw the same, claws left on"),
+                    dict(value="skullorig", label="skull, as drawn",
+                         hint="the designer\u2019s eyeless skull, teeth on"),
+                    dict(value="eyes", label="skull with eyes",
+                         hint="the designer\u2019s other skull"),
+                    dict(value="bodyorig", label="body, as drawn",
+                         hint="untouched, teeth and claws on"),
+                    dict(value="bone", label="bone",
+                         hint="the loose bone in the set")],
+                hint="pick any combination \u2014 they arrive on one plate"),
            dict(key="width", label="trough width", unit="mm", min=2.0,
                 max=4.0, step=0.5, val=3.5),
            dict(key="depth", label="trough depth", unit="mm", min=2.0,

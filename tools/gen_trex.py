@@ -68,13 +68,13 @@ OBJ = {
 }
 
 PARTS = {
-    "bone":    ("bone",  False, "the loose bone that comes with the set"),
-    "head":    ("head",  False, "the eyeless skull as the designer drew it"),
-    "eyes":    ("eyes",  False, "the skull with eyes"),
-    "trough":  ("head",  True,  "the eyeless skull with a gum trough for real teeth"),
-    "body":    ("body",  True,  "the body, its lower jaw troughed, claws left on"),
-    "bodyorig":("body",  False, "the body exactly as the designer drew it"),
-    "testjaw": ("head",  True,  "the gum arc alone, for trying teeth and epoxy"),
+    "testjaw":   ("head", "test", "the gum arcs alone, for trying teeth and epoxy"),
+    "skull":     ("head", "cut",  "the eyeless skull, ready for real teeth"),
+    "body":      ("body", "jaw",  "the body, its lower jaw ready for real teeth"),
+    "skullorig": ("head", None,   "the eyeless skull as the designer drew it"),
+    "eyes":      ("eyes", None,   "the skull with eyes"),
+    "bodyorig":  ("body", None,   "the body exactly as the designer drew it"),
+    "bone":      ("bone", None,   "the loose bone that comes with the set"),
 }
 
 TOOTH_PAINT = "8"
@@ -199,15 +199,15 @@ def test_jaw(mesh, paint, width=WIDTH, depth=DEPTH, wall=1.5):
 def build(names, width=WIDTH, depth=DEPTH):
     out, rep = [], {}
     for name in names:
-        member, cut, _ = PARTS[name]
+        member, how, _ = PARTS[name]
         m, paint = load(OBJ[member])
         n = 0
-        if name == "testjaw":
+        if how == "test":
             m, n = test_jaw(m, paint, width, depth)
-        elif name == "body":
+        elif how == "jaw":
             m, n = trough(m, paint, width, depth,
                           regions=jaw_regions(m, paint))
-        elif cut:
+        elif how == "cut":
             m, n = trough(m, paint, width, depth)
         out.append((name, m))
         rep[name] = dict(faces=len(m.faces), volume=round(float(m.volume), 1),
@@ -230,7 +230,7 @@ def layout(items, gap=4.0):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--parts", default="trough,body",
+    ap.add_argument("--parts", default="skull,body",
                     help="comma-separated: " + ", ".join(PARTS))
     ap.add_argument("--width", type=float, default=WIDTH,
                     help="gum trough width (mm)")

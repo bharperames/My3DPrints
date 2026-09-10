@@ -89,20 +89,28 @@ def channel(mesh, frames, width=3.5, depth=3.0, over=1.0, centre=True):
                     np.array([frames[i]["n"] for i in order]))
     if centre: C = recentre(mesh, C, N, depth)
     segs = []
-    for k in range(len(C) - 1):
-        t = C[k + 1] - C[k]
+    # Overlapping boxes, one per sample, not a chain of prisms end to end.
+    # A prism from sample k to k+1 carries its own across-vector, and where
+    # the gum line curves that vector twists between neighbours: the union
+    # then has notches along it, and thin fins of bone survive between one
+    # prism and the next. Seen on the skull it reads as a serrated trough;
+    # seen on the test jaw, where the same sweep defines the whole part, it
+    # is unusable. Boxes twice the sample spacing overlap their neighbours
+    # by half, so the union is a clean tube whatever the path does.
+    step = np.median(np.linalg.norm(np.diff(C, axis=0), axis=1))
+    for k in range(len(C)):
+        t = C[min(k + 1, len(C) - 1)] - C[max(k - 1, 0)]
         if np.linalg.norm(t) < 1e-9: continue
         t = t / np.linalg.norm(t)
-        pts = []
-        for j in (k, k + 1):
-            a = np.cross(N[j], t)
-            if np.linalg.norm(a) < 1e-9: break
-            a = a / np.linalg.norm(a)
-            top = C[j] + N[j] * over
-            bot = C[j] - N[j] * depth
-            for sgn in (-1, 1):
-                pts.append(top + a * (width / 2) * sgn)
-                pts.append(bot + a * (width / 2) * sgn)
-        if len(pts) < 8: continue
-        segs.append(trimesh.Trimesh(np.array(pts)).convex_hull)
+        a = np.cross(N[k], t)
+        if np.linalg.norm(a) < 1e-9: continue
+        a = a / np.linalg.norm(a)
+        n = np.cross(t, a); n = n / np.linalg.norm(n)
+        if np.dot(n, N[k]) < 0: n = -n
+        box = trimesh.creation.box([width, 2.2 * step, depth + over])
+        M = np.eye(4)
+        M[:3, 0], M[:3, 1], M[:3, 2] = a, t, n
+        M[:3, 3] = C[k] + n * (over - depth) / 2.0
+        box.apply_transform(M)
+        segs.append(box)
     return segs

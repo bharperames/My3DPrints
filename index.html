@@ -168,6 +168,14 @@ h1 .tld{color:var(--accent)}
   vertical-align:3px;margin-left:6px;letter-spacing:.05em}
 .designer{color:var(--muted);font-size:13px;margin-top:2px}
 .principle{font-size:14.5px}
+.checks{display:block;margin:6px 0}
+.checks .clab{font:600 12px/1.4 ui-monospace,monospace;color:var(--muted);
+  display:block;margin-bottom:5px}
+.partchips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font:12px/1 ui-monospace,monospace;padding:6px 10px;border-radius:99px;
+  border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--accent-ink)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#06231c;font-weight:700}
 /* the budget above picks whole sentences; this is the hard guarantee, so a
    blurb with no sentence breaks in it cannot set a card's height either */
 .principle.lede{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
@@ -1316,7 +1324,45 @@ renderer.setAnimationLoop(animate);
   // "0-31" or "1,2,4,8,16" — a spec, which a slider cannot express and
   // cannot be dragged to without passing through every value between.
   function dial(p, get, set){
+    if (p.type === 'checks') return checks(p, get, set);
     return p.type === 'text' ? textbox(p, get, set) : slider(p, get, set);
+  }
+  // A fixed set of parts is not a sentence to type. Free text let a list be
+  // built that read "trough,body, trough" -- a duplicate and a stray space,
+  // both of which the generator would have had to guess about. Chips can
+  // only produce a set, and they emit it in the order the catalog declares
+  // rather than the order they were clicked, so the same choice always
+  // names the same file and the cache can find it.
+  function checks(p, get, set){
+    const wrap = document.createElement('div'); wrap.className = 'checks';
+    wrap.append(Object.assign(document.createElement('span'),
+      {className: 'clab', textContent: p.label}));
+    const chosen = new Set(String(get() || '').split(',')
+      .map(x => x.trim()).filter(Boolean));
+    const row = document.createElement('div'); row.className = 'partchips';
+    const emit = () => set((p.choices || []).map(c => c.value)
+      .filter(v => chosen.has(v)).join(','));
+    (p.choices || []).forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (chosen.has(c.value) ? ' on' : '');
+      b.textContent = c.label || c.value;
+      if (c.hint) b.title = c.hint;
+      b.onclick = () => {
+        if (chosen.has(c.value)){
+          // something has to be on the plate, or there is nothing to build
+          if (chosen.size === 1) return;
+          chosen.delete(c.value);
+        } else chosen.add(c.value);
+        b.classList.toggle('on');
+        emit(); schedule();
+      };
+      row.append(b);
+    });
+    wrap.append(row);
+    if (p.hint) wrap.append(Object.assign(document.createElement('i'),
+      {className: 'hint', textContent: p.hint}));
+    return wrap;
   }
   function textbox(p, get, set){
     const l = document.createElement('label'); l.className = 'text';
