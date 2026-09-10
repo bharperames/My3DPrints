@@ -108,7 +108,7 @@ add("dragon_skin", "Dragon+Skin+225+pz+P2S.3mf", "dragon_skin",
            "it and you are pulling on the edge scales themselves, which is "
            "how a corner comes away. Each free scale stands 9.8 mm tall on "
            "43 mm\u00b2 of bed. Print it in plain PLA or PETG, not silk, and "
-           "leave the border on."))
+           "leave the border on.")
 
 CM = "Arnau Salvad\u00f3 Boronat \u00b7 remix of ftobler"
 CMB = ("Print-in-place chainmail by a different hand from the fabric mats, "
