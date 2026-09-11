@@ -91,6 +91,8 @@ h1 .tld{color:var(--accent)}
 .platewrap{position:relative}
 .platewrap:hover .expand{display:block}
 .lb-plate{width:100%;height:100%;display:block;border-radius:0}
+.platemodes{margin:6px 0 2px}
+.platemodes .chip{font-size:11px;padding:4px 8px}
 #lightbox{position:fixed;inset:0;z-index:3;display:none}
 #lightbox.open{display:block}
 .lb-backdrop{position:absolute;inset:0;background:rgba(10,13,14,.94)}
@@ -2035,6 +2037,61 @@ renderer.setAnimationLoop(animate);
   }
   // An empty plate is still a plate: show the bed from the first frame
   // rather than a black rectangle that reads as a broken viewport.
+  // The plate gets the same ways of looking at a part the cards have. Edges
+  // are built the first time a mode needs them and cached on the mesh: an
+  // EdgesGeometry over a whole plate of parts is not something to compute
+  // for a viewer that may never leave shaded. They hang as CHILDREN of
+  // their mesh, so they inherit its transform instead of needing one.
+  const PLATE_MODES = [['shaded','shaded'], ['edges','+ edges'],
+                       ['hlr','edges only'], ['wire','wireframe'],
+                       ['xray','x-ray']];
+  let plateMode = 'shaded';
+  function plateEdges(o){
+    if (!o.userData.edgeLines){
+      const l = new THREE.LineSegments(
+        new THREE.EdgesGeometry(o.geometry, 25),
+        new THREE.LineBasicMaterial({color: 0x2b2018}));
+      o.userData.edgeLines = l; o.add(l);
+    }
+    return o.userData.edgeLines;
+  }
+  function applyPlateMode(){
+    if (!model) return;
+    const wantEdges = ['edges', 'hlr', 'xray'].includes(plateMode);
+    model.traverse(o => {
+      if (!o.isMesh) return;
+      const m = o.material;
+      m.visible = plateMode !== 'hlr';
+      m.wireframe = plateMode === 'wire';
+      m.transparent = plateMode === 'xray';
+      m.opacity = plateMode === 'xray' ? 0.30 : 1;
+      m.depthWrite = plateMode !== 'xray';
+      m.needsUpdate = true;
+      o.castShadow = plateMode === 'shaded' || plateMode === 'edges';
+      if (wantEdges) plateEdges(o).visible = true;
+      else if (o.userData.edgeLines) o.userData.edgeLines.visible = false;
+    });
+  }
+  {
+    const bar = document.createElement('div');
+    bar.className = 'partchips platemodes';
+    PLATE_MODES.forEach(([id, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (id === plateMode ? ' on' : '');
+      b.textContent = label;
+      b.onclick = () => {
+        plateMode = id;
+        bar.querySelectorAll('.chip').forEach(x =>
+          x.classList.toggle('on', x === b));
+        applyPlateMode();
+      };
+      bar.append(b);
+    });
+    const wrap = cv.closest('.platewrap') || cv.parentElement;
+    wrap.parentElement.insertBefore(bar, wrap.nextSibling);
+  }
+
   function showEmptyBed(){
     if (beds) S3.remove(beds);
     if (model){ S3.remove(model); model = null; }
@@ -2056,8 +2113,27 @@ renderer.setAnimationLoop(animate);
         o.material = new THREE.MeshStandardMaterial({color: 0xE9A063,
           metalness: 0.05, roughness: 0.55}); }});
       S3.add(model);
+      applyPlateMode();
       frameBeds();
     });
+  }
+  // Nothing limits the dolly -- what stopped the zoom was the near plane.
+  // frameBeds sets near from the framing distance, so once you push in past
+  // that the part is clipped away and it reads as a zoom limit. Track the
+  // planes to where the camera actually is instead, and it goes in as far
+  // as you like.
+  CT.minDistance = 0.5;
+  CT.maxDistance = 20000;
+  // a handle for the headless checks, the way the assembly page has one
+  window.__plateCam = () => ({
+    dist: +C3.position.distanceTo(CT.target).toFixed(2),
+    near: +C3.near.toFixed(3), far: +C3.far.toFixed(0), mode: plateMode});
+  function clip(){
+    const dist = Math.max(1, C3.position.distanceTo(CT.target));
+    const near = Math.max(0.05, dist / 4000), far = Math.max(dist * 40, 4000);
+    if (Math.abs(C3.near - near) > near * 0.25 || C3.far !== far){
+      C3.near = near; C3.far = far; C3.updateProjectionMatrix();
+    }
   }
   (function loop(){
     requestAnimationFrame(loop);
@@ -2067,6 +2143,7 @@ renderer.setAnimationLoop(animate);
       R3.setSize(r.width, r.height, false);
       C3.aspect = r.width / r.height; C3.updateProjectionMatrix();
     }
+    clip();
     CT.update(); R3.render(S3, C3);
   })();
 
