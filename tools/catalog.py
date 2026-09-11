@@ -352,7 +352,12 @@ PARTS = [
        "and a gram to find out whether a root sits right, before three "
        "hours go into the pair.",
        version="2.0.0",
-       proven=None,
+       proven="Printed in PLA Black and came out perfect \u2014 skull and "
+              "body both, with the ledge. Plain PLA, not silk: silk has now "
+              "failed twice here on thin sections, and the labial wall left "
+              "in front of the ledge is one. The ledge itself needs no "
+              "support and no brim, and slices marginally lighter and faster "
+              "than the skull the designer shipped.",
        gen=["gen_trex.py"], params=[
            dict(key="parts", label="parts", type="checks", val="skull,body",
                 choices=[
