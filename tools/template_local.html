@@ -173,6 +173,11 @@ h1 .tld{color:var(--accent)}
   vertical-align:3px;margin-left:6px;letter-spacing:.05em}
 .designer{color:var(--muted);font-size:13px;margin-top:2px}
 .principle{font-size:14.5px}
+.deliv{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:99px;
+  font:600 10.5px/1.5 "IBM Plex Mono",monospace;letter-spacing:.02em;
+  border:1px solid var(--line);color:var(--muted)}
+.deliv.dials{border-color:var(--accent);color:var(--accent)}
+.deliv.build{border-color:var(--warn);color:var(--warn)}
 .checks{display:block;margin:6px 0}
 .checks .clab{font:600 12px/1.4 ui-monospace,monospace;color:var(--muted);
   display:block;margin-bottom:5px}
@@ -1620,6 +1625,21 @@ renderer.setAnimationLoop(animate);
       + printed + adv + '</details>';
   }
 
+  // Say what ordering this card does. The three kinds behave differently
+  // and nothing on the card admitted it.
+  const DELIVERY = {
+    file:  ['ready', 'a file on disk, as its author saved it'],
+    ready: ['ready', 'built from source here; the file is already made'],
+    build: ['builds when ordered', 'the generator runs when you add it'],
+    dials: ['made to your settings', 'the generator runs on the dials above'],
+  };
+  function delivery(p){
+    const d = DELIVERY[p.delivery];
+    if (!d) return '';
+    return '<span class="deliv ' + esc(p.delivery) + '" title="' + esc(d[1]) +
+           '">' + esc(d[0]) + '</span>';
+  }
+
   function photo(entries, pill){
     return '<div class="photo"><div class="view"></div>' +
       (pill ? '<span class="pill ' + esc(pill[0]) + '">' + esc(pill[1]) +
@@ -1645,8 +1665,10 @@ renderer.setAnimationLoop(animate);
       '<h3>' + esc(p.name) +
         (p.material ? ' <span class="mat">' + esc(p.material) + '</span>' : '') +
         '</h3>' +
-      (p.version && p.version !== '\u2014'
-        ? '<div class="verline">' + badge(p.version, p.changed, p.built, p) + '</div>' : '') +
+      '<div class="verline">' +
+        (p.version && p.version !== '\u2014'
+          ? badge(p.version, p.changed, p.built, p) : '') +
+        delivery(p) + '</div>' +
       (p.blurb ? '<p class="principle lede">' + esc(lede(p.blurb)) + '</p>' : '') +
       detailsBlock(p) +
       '<p class="specline" data-dim="' + esc(p.id) + '">' + spec(p) + '</p>' +
@@ -1698,7 +1720,8 @@ renderer.setAnimationLoop(animate);
       '<div class="body">' +
       '<p class="eyebrow">kit \u00b7 ' + mem.length + ' parts, one set of sizes</p>' +
       '<h3>' + esc(k.name) + '</h3>' +
-      '<div class="verline">' + badge(k.version, k.changed, k.built) + '</div>' +
+      '<div class="verline">' + badge(k.version, k.changed, k.built) +
+        delivery(k) + '</div>' +
       (k.blurb ? '<p class="principle lede">' + esc(lede(k.blurb)) + '</p>' : '') +
       '</div>';
     const body = el.querySelector('.body');

@@ -999,6 +999,24 @@ def catalog(with_library=True):
         p["first_seen"] = e.get("first_seen", "")
         p["version_source"] = ("declared" if p["kind"] != "library"
                                else "observed")
+    # WHAT ORDERING IT ACTUALLY DOES. The three kinds behave differently
+    # and the card never said so: a library file is handed over as its
+    # author saved it, a design with no dials is one canonical file that
+    # sits on disk between orders, and a design with dials is generated to
+    # whatever the dials say. Only the last of those should be running a
+    # generator while you wait, so the card is explicit about which it is.
+    kit_driven = {m["part"] for k in KITS if k.get("shared")
+                  for m in k["members"]}
+    for p in parts:
+        if p["kind"] == "library":
+            p["delivery"] = "file"
+        elif p.get("params") or p["id"] in kit_driven:
+            p["delivery"] = "dials"
+        else:
+            f = out_path(p, defaults(p))
+            p["delivery"] = ("ready" if os.path.exists(f) and not stale(p, f)
+                             else "build")
+
     # WHICH SHELF a card belongs on, and therefore where it appears. The
     # order used to be whatever the list here happened to be plus whatever
     # order the library scan returned, which put four hourglass plates ahead
@@ -1020,6 +1038,12 @@ def catalog(with_library=True):
                    built=min(builts) if len(builts) == len(mem) else "",
                    # a kit sits with the work, on the strength of any member
                    # that has been printed
+                   # a kit is dial-driven if it shares any, otherwise it is
+                   # as ready as its least-ready member
+                   delivery=("dials" if k.get("shared")
+                             else "file" if all(m["kind"] == "library" for m in mem)
+                             else ("build" if any(m.get("delivery") == "build"
+                                                  for m in mem) else "ready")),
                    shelf=k.get("shelf") or
                          ("proven" if any(m.get("proven") for m in mem)
                           else "designed" if any(m["kind"] != "library"
