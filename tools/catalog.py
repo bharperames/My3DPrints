@@ -38,6 +38,20 @@ PRINTERS = {
 DEFAULT_PRINTER = "P2S"
 
 
+def _zoo_animals():
+    """What each code says, where the toy has actually said it.
+
+    Empty for the rest on purpose: the mapping is not published anywhere
+    and was worked out here by printing a disk and listening.
+    """
+    import importlib
+    try:
+        g = importlib.import_module("gen_binary_rings")
+        return {str(k): v for k, v in getattr(g, "ANIMALS", {}).items()}
+    except Exception:                                       # noqa: BLE001
+        return {}
+
+
 def _p(pid, name, family, kind, blurb, version="0.1.0", **kw):
     """A catalog entry. `version` is declared, not derived: only an author
     knows whether a change is a new design, a reshape, or a fix. The date
@@ -381,7 +395,7 @@ PARTS = [
            dict(key="depth", label="trough depth", unit="mm", min=2.0,
                 max=4.0, step=0.5, val=3.0)],
        out="trex-{parts}.3mf"),
-    _p("binary_rings", "Coded Ring Insert", "Designed here", "parametric",
+    _p("binary_rings", "Zoo Talker Code Disks", "Designed here", "parametric",
        "A set of coded disks for use with the Zoo Talkers Animal Sounds "
        "Zoo, which reads concentric rings as bits. "
        "The reader has five plungers, each at its own radius so the code "
@@ -461,7 +475,7 @@ PARTS = [
        # from 5.x and a disk from 6.x are not the same design, and the old
        # ones are superseded rather than merely older -- codes 16-31 built
        # under 5.x filled the rim's seat and the toy stayed silent.
-       version="6.0.0",
+       version="6.0.1",
        proven="Ten disks in PLA Black, and the toy agreed. Code 16 built at "
               "three rim-seat widths: silent at 1.25, speaking at 2.25 and at "
               "the shipped 1.75, which brackets the reader\u2019s rim and "
@@ -470,9 +484,9 @@ PARTS = [
               "Code 31 wants a firmer press \u2014 that is five plunger "
               "springs summed, not a bit standing short.",
        gen=["gen_binary_rings.py"], params=[
-           dict(key="codes", label="codes", type="text", val="10",
-                placeholder="7  \u00b7  1-31  \u00b7  1,2,4,8,16",
-                hint="one code, a range, or a list \u2014 1 to 31")],
+           dict(key="codes", label="codes", type="codes", val="10",
+                lo=1, hi=31, animals=_zoo_animals(),
+                hint="tap the codes you want \u2014 31 in the set")],
        # Brimless, flat-bottomed and vertical-walled, so 2 mm between them
        # is ample -- and it is what puts all thirty-two ø39 disks on one
        # plate instead of two. The generator lays its own set out on the

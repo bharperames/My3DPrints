@@ -88,9 +88,22 @@ h1 .tld{color:var(--accent)}
   font:600 14px/1 "IBM Plex Sans",sans-serif;cursor:pointer;display:none}
 .photo:hover .expand{display:block}
 .expand:hover{color:var(--accent-ink);border-color:var(--accent)}
+.addplate{font:600 12px/1 "IBM Plex Sans",sans-serif;padding:8px 12px;
+  border-radius:7px;border:1px solid var(--line);background:var(--panel);
+  color:var(--muted);cursor:pointer}
+.addplate:hover{border-color:var(--accent);color:var(--accent-ink)}
+.addplate.on{background:var(--accent);border-color:var(--accent);
+  color:#06231c}
 .platewrap{position:relative}
 .platewrap:hover .expand{display:block}
 .lb-plate{width:100%;height:100%;display:block;border-radius:0}
+.codehead{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.codehead .clab{margin:0;flex:1}
+.codegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:4px}
+.codegrid .chip{padding:5px 0;text-align:center;font-size:11px}
+.chip.known{border-color:var(--muted)}
+.chip.known::after{content:"\00b7";margin-left:3px;color:var(--accent)}
+.chip.bulk{font-size:10.5px;padding:4px 9px}
 .platemodes{margin:6px 0 2px}
 .platemodes .chip{font-size:11px;padding:4px 8px}
 #lightbox{position:fixed;inset:0;z-index:3;display:none}
@@ -1361,6 +1374,11 @@ renderer.setAnimationLoop(animate);
   const $ = id => document.getElementById(id);
   if (!$('cat-grid')) return;
   const qty = new Map(), shared = new Map(), own = new Map();
+  // What the dials said when a part went on the plate. The order used to
+  // read them at BUILD time, so setting a quantity at codes 10 and then
+  // moving the dials to 1-31 quietly put the whole set on the plate. What
+  // you added is what you get.
+  const picked = new Map();
   let cat = null, plates = [], byId = {};
 
   const num = v => (Math.round(v*100)/100).toString();
@@ -1373,7 +1391,8 @@ renderer.setAnimationLoop(animate);
     return o;
   }
   const order = () => [...qty].filter(([,n]) => n > 0).map(([id,n]) =>
-    ({part: id, qty: n, params: paramVals(byId[id])}));
+    ({part: id, qty: n,
+      params: picked.get(id) || paramVals(byId[id])}));
 
   const badge = (v, d, built, p) => {
     const stale = d && v !== '\u2014' && (!built || built < d);
@@ -1391,18 +1410,27 @@ renderer.setAnimationLoop(animate);
       + (rev ? ' \u00b7 r' + rev : '')
       + (stale ? ' \u27f3' : '') + '</span>';
   };
-  function stepper(id){
-    const d = document.createElement('div'); d.className = 'step';
-    d.innerHTML = '<button data-d="-1" aria-label="one fewer">&minus;</button>' +
-      '<input type="number" min="0" max="99" value="' + (qty.get(id)||0) +
-      '" aria-label="quantity">' + '<button data-d="1" aria-label="one more">+</button>';
-    const inp = d.querySelector('input');
-    const set = n => { n = Math.max(0, Math.min(99, n|0)); qty.set(id, n);
-      inp.value = n; renderBom(); markCards(); schedule(); };
-    d.querySelectorAll('button').forEach(b => b.onclick = () =>
-      set((qty.get(id)||0) + Number(b.dataset.d)));
-    inp.onchange = () => set(Number(inp.value));
-    return d;
+  // Two ways to want a thing, and they are the whole mental model: print
+  // this one now, or put it in the basket and build a plate of several.
+  // A count was neither -- on a card whose dials already choose a set,
+  // "3" means three copies of that set, which nobody has ever wanted.
+  function plateButton(p){
+    const b = document.createElement('button');
+    b.className = 'addplate';
+    const paint = () => {
+      const on = (qty.get(p.id) || 0) > 0;
+      b.classList.toggle('on', on);
+      b.textContent = on ? 'On the plate \u2713' : 'Add to plate';
+      b.title = on ? 'click to take it off the plate'
+                   : 'collect it, then Build plates when you have everything';
+    };
+    b.onclick = () => {
+      if ((qty.get(p.id) || 0) > 0){ qty.set(p.id, 0); picked.delete(p.id); }
+      else { qty.set(p.id, 1); picked.set(p.id, paramVals(p)); }
+      paint(); renderBom(); markCards(); schedule();
+    };
+    paint();
+    return b;
   }
   function slider(p, get, set){
     const l = document.createElement('label');
@@ -1428,6 +1456,7 @@ renderer.setAnimationLoop(animate);
   // "0-31" or "1,2,4,8,16" — a spec, which a slider cannot express and
   // cannot be dragged to without passing through every value between.
   function dial(p, get, set){
+    if (p.type === 'codes') return codePicker(p, get, set);
     if (p.type === 'checks') return checks(p, get, set);
     return p.type === 'text' ? textbox(p, get, set) : slider(p, get, set);
   }
@@ -1437,6 +1466,89 @@ renderer.setAnimationLoop(animate);
   // only produce a set, and they emit it in the order the catalog declares
   // rather than the order they were clicked, so the same choice always
   // names the same file and the cache can find it.
+  // A numbered set, picked rather than typed. "1-31" is easy to type and
+  // easy to get wrong, and it does not show which codes the toy has been
+  // heard to say. Tapping is also how you build the odd handful -- the five
+  // single bits, say -- without composing a list in your head.
+  function parseCodes(spec, lo, hi){
+    const out = new Set();
+    String(spec || '').split(',').forEach(part => {
+      const m = part.trim().match(/^(\d+)\s*-\s*(\d+)$/);
+      if (m){ for (let i = +m[1]; i <= +m[2]; i++) out.add(i); }
+      else if (part.trim() !== '') out.add(+part.trim());
+    });
+    return [...out].filter(n => n >= lo && n <= hi).sort((a, b) => a - b);
+  }
+  // Emit runs as ranges: the filename is keyed on this string, so "1-31"
+  // and a list of thirty-one numbers would be two names for one plate.
+  function packCodes(list){
+    const v = [...list].sort((a, b) => a - b), out = [];
+    for (let i = 0; i < v.length; ){
+      let j = i;
+      while (j + 1 < v.length && v[j + 1] === v[j] + 1) j++;
+      out.push(j - i >= 2 ? `${v[i]}-${v[j]}` : v.slice(i, j + 1).join(','));
+      i = j + 1;
+    }
+    return out.join(',');
+  }
+  function codePicker(p, get, set){
+    const lo = p.lo ?? 1, hi = p.hi ?? 31;
+    const animals = p.animals || {};
+    const chosen = new Set(parseCodes(get(), lo, hi));
+    const wrap = document.createElement('div'); wrap.className = 'checks';
+    const head = document.createElement('div'); head.className = 'codehead';
+    const lab = document.createElement('span');
+    lab.className = 'clab';
+    // `quiet` on the first call: this runs while the card is being built,
+    // and `schedule` is a `let` further down the file -- touching it here
+    // throws on the temporal dead zone and takes the whole grid with it.
+    // Nothing needs rebuilding for the state the card opened in anyway.
+    const emit = (quiet) => {
+      if (!chosen.size) chosen.add(lo);          // a plate needs something
+      set(packCodes(chosen));
+      lab.textContent = `${p.label} \u2014 ${chosen.size} of ${hi - lo + 1}`;
+      wrap.querySelectorAll('.chip[data-code]').forEach(b =>
+        b.classList.toggle('on', chosen.has(+b.dataset.code)));
+      if (!quiet) schedule();
+    };
+    const bulk = (fn, name) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip bulk'; b.textContent = name;
+      b.onclick = () => { fn(); emit(); };
+      return b;
+    };
+    head.append(lab,
+      bulk(() => { for (let i = lo; i <= hi; i++) chosen.add(i); }, 'all'),
+      bulk(() => { chosen.clear(); }, 'none'));
+    const grid = document.createElement('div'); grid.className = 'codegrid';
+    for (let i = lo; i <= hi; i++){
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.dataset.code = i;
+      b.textContent = i;
+      b.title = animals[i] ? `${i} \u2014 ${animals[i]}`
+                           : `${i} \u2014 not yet heard`;
+      if (animals[i]) b.classList.add('known');
+      b.onclick = () => { chosen.has(i) ? chosen.delete(i) : chosen.add(i);
+                          emit(); };
+      grid.append(b);
+    }
+    wrap.append(head, grid);
+    const named = Object.keys(animals).length;
+    if (named){
+      const note = document.createElement('i');
+      note.className = 'hint';
+      note.textContent = `${named} of ${hi - lo + 1} codes have been heard: `
+        + Object.entries(animals).map(([k, v]) => `${k} ${v}`).join(', ')
+        + '. The rest are unknown \u2014 the mapping is not published.';
+      wrap.append(note);
+    } else if (p.hint){
+      wrap.append(Object.assign(document.createElement('i'),
+        {className: 'hint', textContent: p.hint}));
+    }
+    emit(true);
+    return wrap;
+  }
+
   function checks(p, get, set){
     const wrap = document.createElement('div'); wrap.className = 'checks';
     wrap.append(Object.assign(document.createElement('span'),
@@ -1724,7 +1836,9 @@ renderer.setAnimationLoop(animate);
     }
     const foot = document.createElement('div'); foot.className = 'cardfoot';
     const open = document.createElement('button');
-    open.className = 'print'; open.textContent = 'Open in Bambu Studio';
+    open.className = 'print'; open.textContent = 'Print now';
+    open.title = 'build it at these settings and open it in Bambu Studio, '
+               + 'skipping the plate';
     open.onclick = () => openPart(p, open);
     foot.append(open);
     for (const u of (p.pages || [])){
@@ -1732,7 +1846,7 @@ renderer.setAnimationLoop(animate);
       a.className = 'pagelink'; a.href = u.href; a.textContent = u.label + ' \u2192';
       foot.append(a);
     }
-    foot.append(stepper(p.id));
+    foot.append(plateButton(p));
     body.append(foot);
     // A print note is the point of the whole shop: what happened on the
     // printer. It used to bind only to the hand-written cards, so the parts
@@ -1783,7 +1897,7 @@ renderer.setAnimationLoop(animate);
         '</span>' +
         '<span class="dim" data-dim="' + esc(p.id) + '">' +
         esc(p.dims || p.blurb || '') + '</span>';
-      row.append(left, stepper(p.id));
+      row.append(left, plateButton(p));
       body.append(row);
       // a kit member is a row, not a card, so what it proved on the printer
       // had nowhere to appear

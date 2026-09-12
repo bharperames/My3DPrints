@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """Coded inserts for a toy that reads concentric rings as bits.
 
+Reference: the playset is the Fisher-Price Little People Zoo Talkers Animal
+Sounds Zoo, W1710, (c) 2011 Mattel. Its instruction sheet is at
+https://service.mattel.com/instruction_sheets/W1710a-0920.pdf -- assembly
+only, and worth knowing what it does NOT contain: no animal list, no codes,
+nothing about the reader. All it says of the mechanism is "Fit an animal
+figure onto the button on the base. Each animal makes different sounds!"
+The code-to-animal mapping is published nowhere; it is being worked out here
+one disk at a time.
+
 The toy is rubber. Its coded end is a swept square wave: a lip at the
 outside, shorter concentric bits inside it, and the floor between them. A
 band standing at bit height is a 1; floor showing through is a 0.
@@ -255,6 +264,27 @@ RIM_RELIEF = 1.00
 LAST_BIT_IN = 1.50       # the outermost plunger, measured in from the field
                          # edge. Brett's, off the reader in his hand.
 
+
+# WHICH ANIMAL EACH CODE SAYS
+#
+# Not published anywhere. The toy's animal roster is (Fisher-Price Little
+# People Zoo Talkers, 2011): lion, polar bear, gorilla, tiger, white tiger,
+# elephant, dolphin, whale, ostrich, penguin, alligator, rhinoceros, seal,
+# bear, hippo, orangutan, flamingo, giraffe, lion cub, koala, camel, turtle.
+# The mapping from code to animal is not in any of that -- it was worked out
+# here, one disk at a time, by printing a code and listening.
+#
+# So this holds only what the toy has actually said, and stays empty for the
+# rest. Filling it in with plausible guesses would make a card that lies
+# confidently, which is worse than one that admits it does not know.
+# TO FILL IN: print a disk, put it on the peg, write down what it says.
+# Brett has the toy and is working through them. Add the line here and the
+# card picks it up -- the code chip gets a dot and the name in its tooltip.
+# Leave a code out rather than guess at it.
+ANIMALS = {
+    14: "koala",     # printed 2026-09-06, said koala
+    24: "whale",     # printed 2026-09-06, said whale
+}
 
 PLUNGER_R = (0.55, 3.85, 6.25, 8.15, 10.90)
 # Two photographs read months apart, averaged: reader-base.jpg gave 0.7 /
@@ -778,13 +808,13 @@ def emit(m, rep, out):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--codes", help="which codes to make: one (7), a range "
-                                    "(0-31), a list (1,2,4,8,16), or a "
+                                    "(1-31), a list (1,2,4,8,16), or a "
                                     "mixture. Several arrive on one bed")
     ap.add_argument("--code", type=int, help=f"one code, 0-{2 ** BANDS - 1}")
     ap.add_argument("--all", action="store_true",
                     help="every code, one file each")
     ap.add_argument("--plate", action="store_true",
-                    help="every code on one bed (the same as --codes 0-31)")
+                    help="every code on one bed (the same as --codes 1-31)")
     ap.add_argument("--floor", type=float, default=FLOOR,
                     help="solid backing below the ring floor (mm)")
     ap.add_argument("--relief", type=float, default=RELIEF,
