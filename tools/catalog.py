@@ -382,10 +382,11 @@ PARTS = [
                 max=4.0, step=0.5, val=3.0)],
        out="trex-{parts}.3mf"),
     _p("binary_rings", "Coded Ring Insert", "Designed here", "parametric",
-       "A coded disc for a rubber toy that reads concentric rings as bits. "
+       "A set of coded disks for use with the Zoo Talkers Animal Sounds "
+       "Zoo, which reads concentric rings as bits. "
        "The reader has five plungers, each at its own radius so the code "
        "reads at any rotation, and one of them sits on the axis \u2014 so "
-       "the coding is five positions inside \u00d827.88: a \u00d84.75 disc "
+       "the coding is five positions inside \u00d827.88: a \u00d84.75 disk "
        "at the centre and four rings around it. That is 2^5 = 32 codes, the "
        "number of animals. Bit 1 is the centre and bit 5 the outermost "
        "ring, worth 1, 2, 4, 8 and 16, so an odd code stands its centre up "
@@ -393,14 +394,14 @@ PARTS = [
        "them carries no code: it "
        "is what presses the switch that starts a read, which the toy takes "
        "at any rotation. Outside the lip a flat land 2.85 wide takes the "
-       "disc to \u00d839 \u2014 the face the toy meets, and the stop that "
+       "disk to \u00d839 \u2014 the face the toy meets, and the stop that "
        "keeps the plug from going in further than the switch travels. On a "
-       "real accessory that flat is the body the coded disc is set into; "
+       "real accessory that flat is the body the coded disk is set into; "
        "printed on its own it has to carry its own. Every other dimension "
        "is measured off the toy and fixed here, because the plug only works "
        "in that one socket. Ask for one code or any set of them \u2014 7, "
        "or 0-31, or 1,2,4,8,16 \u2014 and a set arrives on one plate, each "
-       "disc with its own number engraved underneath so they stay told "
+       "disk with its own number engraved underneath so they stay told "
        "apart in a drawer. Every surface is a vertical extrusion off a flat "
        "base \u2014 the land is a step down from the lip, not a brim over "
        "air \u2014 so it prints face-down with no supports. Printed, it "
@@ -428,7 +429,7 @@ PARTS = [
        #        and every code comes out the shape it came out before.
        # 4.0.0: the lip is the switch, and the flat land around it is what
        #        the toy's face meets. Ø33.3 -> Ø39 and 6.9 -> 11.8 g: every
-       #        code is a different object than it was, and the discs
+       #        code is a different object than it was, and the disks
        #        printed before this are the plug without its outer face.
        # 4.1.0: relief 3.35 -> 3.77. The nub and the bit rings read 7.78
        #        below the rim together, and the nub reads 3.74 off the bore
@@ -436,13 +437,13 @@ PARTS = [
        # 5.0.0: the centre is a bit, not a permanent nub. The reader has
        #        five plungers, one of them on the axis, and the animals
        #        vary there -- tiger stands a boss, seal sinks a pocket. So
-       #        the field is a disc and four rings, not a nub and five
+       #        the field is a disk and four rings, not a nub and five
        #        rings, and every code number addresses new geometry.
        # 5.1.0: the first print talked. It needed pressing, so the rim goes
        #        to the largest reading (11.75, not the mean 11.55) and the
        #        relief follows it to 3.97 through the same 7.78 drop -- both
        #        inside what the readings bracket. And it bound going on, so
-       #        the cavity is built 0.10 wider across: the disc is a hollow
+       #        the cavity is built 0.10 wider across: the disk is a hollow
        #        cylinder that goes over the reader, and the wall where bit 5
        #        ends is the only surface that touches it. The outside of the
        #        lip plays no part and did not move.
@@ -454,12 +455,12 @@ PARTS = [
        # 6.0.0, not 5.3.0: every band boundary moved. The bands were
        # regridded onto the reader's five plunger radii (midpoints between
        # them, so no boundary lands on a switch) and the outermost 1.75 mm
-       # became a seat for the reader's raised rim rather than code. A disc
-       # from 5.x and a disc from 6.x are not the same design, and the old
+       # became a seat for the reader's raised rim rather than code. A disk
+       # from 5.x and a disk from 6.x are not the same design, and the old
        # ones are superseded rather than merely older -- codes 16-31 built
        # under 5.x filled the rim's seat and the toy stayed silent.
        version="6.0.0",
-       proven="Ten discs in PLA Black, and the toy agreed. Code 16 built at "
+       proven="Ten disks in PLA Black, and the toy agreed. Code 16 built at "
               "three rim-seat widths: silent at 1.25, speaking at 2.25 and at "
               "the shipped 1.75, which brackets the reader\u2019s rim and "
               "pins the seat as the thing that gates a read. Five single bits "
@@ -471,7 +472,7 @@ PARTS = [
                 placeholder="7  \u00b7  0-31  \u00b7  1,2,4,8,16",
                 hint="one code, a range, or a list \u2014 0 to 31")],
        # Brimless, flat-bottomed and vertical-walled, so 2 mm between them
-       # is ample -- and it is what puts all thirty-two ø39 discs on one
+       # is ample -- and it is what puts all thirty-two ø39 disks on one
        # plate instead of two. The generator lays its own set out on the
        # same 2 mm, so the file and the packed order agree.
        gap=2.0,
