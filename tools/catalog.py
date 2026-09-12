@@ -856,8 +856,11 @@ def enrich(part, prev):
         # the stamp rides in the URL: a rebuilt preview is a new address, so
         # the browser cannot keep showing the geometry it cached earlier
         tag = _tag(pv.get("stamp"))
-        out.update(preview=pv["glb"] + (f"?v={tag}" if tag else ""),
-                   dims3=pv["dims"], bodies=pv["bodies"],
+        # The measurements always come from here; a GLB only exists for the
+        # composites now, since a part is read from its own 3MF or STL.
+        if pv.get("glb"):
+            out["preview"] = pv["glb"] + (f"?v={tag}" if tag else "")
+        out.update(dims3=pv["dims"], bodies=pv["bodies"],
                    tris=pv["tris_full"])
         if pv.get("printability"):
             out["printability"] = pv["printability"]
@@ -1005,6 +1008,15 @@ def catalog(with_library=True):
     # sits on disk between orders, and a design with dials is generated to
     # whatever the dials say. Only the last of those should be running a
     # generator while you wait, so the card is explicit about which it is.
+    # Where the REAL geometry is, so the page can read it instead of a GLB
+    # built beside it. A library file may sit outside the repo, so this is a
+    # route rather than a path.
+    for p in parts:
+        src = (p.get("path") if p["kind"] == "library"
+               else out_path(p, defaults(p)))
+        p["src"] = "/src?id=" + p["id"]
+        p["ext"] = os.path.splitext(src or "")[1].lower().lstrip(".") or "3mf"
+
     kit_driven = {m["part"] for k in KITS if k.get("shared")
                   for m in k["members"]}
     for p in parts:

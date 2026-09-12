@@ -114,6 +114,8 @@ class TestWhatIsDownloadedCanBeIdentified(unittest.TestCase):
 class TestPreviewsCannotGoStaleInTheBrowser(unittest.TestCase):
     def test_every_preview_url_is_versioned(self):
         for p in catalog.catalog()["parts"]:
+            if not p.get("preview"):
+                continue          # a part is read from its own file now
             self.assertIn("?v=", p["preview"], p["id"])
 
     def test_the_tag_changes_when_the_source_does(self):

@@ -13,7 +13,7 @@ import subprocess
 import sys
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs, unquote
+from urllib.parse import urlparse, parse_qs, unquote, quote
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
@@ -261,6 +261,45 @@ class Handler(SimpleHTTPRequestHandler):
             return self.do_POST()
         if url.path == "/notes":
             return self._json(200, load_notes())
+        if url.path == "/src":
+            # The real geometry, by part id. The page used to render a GLB
+            # built beside every 3MF -- three hundred and fifty megabytes of
+            # it, the same size as the sources it was made from, and a cache
+            # that had to be kept in step with them. There is no need: the
+            # browser can read the 3MF and the STL. This exists because a
+            # library file may live outside the repo (imported out of
+            # ~/Downloads) and so cannot be reached by a static path.
+            q = parse_qs(url.query)
+            pid = unquote(q.get("id", [""])[0])
+            try:
+                params = json.loads(unquote(q.get("params", ["{}"])[0]) or "{}")
+            except ValueError:
+                params = {}
+            cat, _ = _shop_modules()
+            try:
+                part = cat.find(pid)
+            except KeyError:
+                return self._json(404, {"ok": False, "error": "unknown part"})
+            try:
+                src = (part["path"] if part["kind"] == "library"
+                       else cat.ensure(part, params or cat.defaults(part))[0])
+            except Exception as e:                          # noqa: BLE001
+                return self._json(400, {"ok": False, "error": str(e)})
+            if not os.path.isfile(src):
+                return self._json(404, {"ok": False, "error": "no file"})
+            ext = os.path.splitext(src)[1].lower()
+            kind = {".3mf": "model/3mf", ".stl": "model/stl",
+                    ".glb": "model/gltf-binary"}.get(ext, "application/octet-stream")
+            data = open(src, "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", kind)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("X-Source-Name", os.path.basename(src))
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
         if url.path == "/preview":
             # A dial that moves the geometry has to move the picture too.
             # The card's own GLB is built once from the defaults, so before
@@ -284,27 +323,34 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(400, {"ok": False, "error": str(e)})
             import previews
             slug = "live-" + os.path.splitext(os.path.basename(src))[0]
-            dest = os.path.join(MODELS, "glb", "prev", slug + ".glb")
             with _preview_lock(slug):
                 rep = _PREVIEW_CACHE.get(slug)
-                if (rep is None or not os.path.exists(dest)
-                        or os.path.getmtime(dest) < os.path.getmtime(src)):
+                if rep is None or rep.get("src_mtime") != os.path.getmtime(src):
                     try:
                         # tile=False: this file's own arrangement is the
                         # answer. A set of coded discs is laid out on the
                         # bed by the generator, and re-tiling it here would
                         # show a plate this app invented — 190 x 269 for a
                         # set that is 220 square and fits.
+                        # write=False: the page reads the 3MF this just
+                        # built, so a GLB beside it would be a second copy
+                        # of the same geometry made for nobody. Eighty
+                        # megabytes of those had accumulated, one per dial
+                        # position anyone had ever tried.
                         rep = previews.build_one(slug, src, tile=False,
-                                                 probe=False)
+                                                 probe=False, write=False)
+                        rep["src_mtime"] = os.path.getmtime(src)
                     except Exception as e:                  # noqa: BLE001
                         return self._json(500, {"ok": False,
                                                 "error": str(e)})
                     _PREVIEW_CACHE[slug] = rep
             return self._json(200, {
-                "ok": True, "glb": rep["glb"], "dims": rep["dims"],
-                "tris": rep["tris"], "bodies": rep["bodies"],
-                "stamp": int(os.path.getmtime(dest))})
+                "ok": True, "dims": rep["dims"], "tris": rep["tris"],
+                "bodies": rep["bodies"],
+                "src": "/src?id=" + pid + "&params=" +
+                       quote(json.dumps(params or cat.defaults(part))),
+                "ext": os.path.splitext(src)[1].lower().lstrip("."),
+                "stamp": int(os.path.getmtime(src))})
         if url.path != "/open":
             return super().do_GET()
         q = parse_qs(url.query)

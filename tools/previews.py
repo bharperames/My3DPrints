@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""One preview per catalog entry, so every card shows the actual part.
+"""Measure every catalog entry, and build a GLB only for the composites.
 
 The catalog carries two kinds of entry that used to look nothing alike in
 the page: the handful built by the generators, which had hand-authored
 cards with live 3D, and the couple of hundred files found on disk, which
-were a name and a family in a list. This builds the same asset for both --
-a small, decimated, colored GLB -- so one card template can render either.
+were a name and a family in a list. One card template renders either, and
+that is still the point.
 
-Previews are cached on the source's size and mtime: rebuilding is cheap
-when nothing changed, and a file that is edited on disk gets a new preview
-without anyone having to remember to ask for one.
+It used to get there by writing a GLB beside every source. That is gone:
+the browser reads 3MF and STL directly, so a copy of a part is dead weight
+-- three hundred and fifty megabytes of it, the same size as the files it
+was made from, and a cache that fell out of step whenever a generator
+changed. What is still worth building is a COMPOSITE: a kit's card shows
+every member at once and no single file on disk is that picture.
+
+So this measures everything (extents, bodies, triangles, printability --
+the numbers a card quotes) and exports only for kits. Entries are cached on
+the source's size and mtime, so a file edited on disk is re-measured
+without anyone having to remember to ask.
 
 Usage: previews.py [--only ID ...] [--budget FACES] [--force] [--jobs N]
 """
@@ -75,7 +83,18 @@ def _tile(meshes):
         row = max(row, d)
 
 
-def build_one(pid, path, budget=BUDGET, tile=True, probe=True):
+def build_one(pid, path, budget=BUDGET, tile=True, probe=True, write=True):
+    """Measure a part, and write a GLB only if one is actually needed.
+
+    A GLB used to be written beside every source -- three hundred and fifty
+    megabytes of it across the shelf, the same size as the files it was made
+    from, and a cache that fell out of step whenever a generator changed.
+    The browser reads 3MF and STL directly now, so the copy is dead weight
+    for anything with a single source file. What is still worth writing is a
+    COMPOSITE: a kit's card shows all its members together and there is no
+    one file on disk that is that. `write=False` measures and returns
+    without exporting.
+    """
     srcs = [path] if isinstance(path, str) else list(path)
     meshes = []
     for one in srcs:
@@ -133,21 +152,23 @@ def build_one(pid, path, budget=BUDGET, tile=True, probe=True):
     ctr = (lo + hi) / 2
     for g in sc.geometry.values():
         g.apply_translation([-ctr[0], -ctr[1], -lo[2]])
-    os.makedirs(OUT, exist_ok=True)
     dest = os.path.join(OUT, pid + ".glb")
-    sc.export(dest)
+    if write:
+        os.makedirs(OUT, exist_ok=True)
+        sc.export(dest)
     ext = sc.bounds[1] - sc.bounds[0]
+    kb = round(os.path.getsize(dest) / 1024) if write else 0
+    glb = f"models/glb/prev/{pid}.glb" if write else None
     # The printability probe below costs about a sixth of a second a body,
     # which was seven eighths of the wait on a set of thirty-two discs --
     # and a preview being redrawn while someone types is not being read
     # for printing advice. probe=False is for that caller.
     if not probe:
-        return dict(id=pid, glb=f"models/glb/prev/{pid}.glb",
+        return dict(id=pid, glb=glb,
                     bodies=len(meshes), printability={"advice": []},
                     tris=kept, tris_full=full, dims=src_ext,
                     tiled_dims=[round(float(v), 1) for v in ext],
-                    biggest_body=biggest,
-                    kb=round(os.path.getsize(dest) / 1024))
+                    biggest_body=biggest, kb=kb)
     # What the printer will make of it. A generated part is gated by its
     # generator; a downloaded one arrives however its author saved it, and
     # the first sign the orientation is wrong is spaghetti.
@@ -189,12 +210,12 @@ def build_one(pid, path, budget=BUDGET, tile=True, probe=True):
     except Exception as e:                       # noqa: BLE001
         printability = {"advice": [], "error": str(e)[:80]}
 
-    out = dict(id=pid, glb=f"models/glb/prev/{pid}.glb", bodies=len(meshes),
+    out = dict(id=pid, glb=glb, bodies=len(meshes),
                printability=printability,
                tris=kept, tris_full=full,
                dims=src_ext, tiled_dims=[round(float(v), 1) for v in ext],
                biggest_body=biggest,
-               kb=round(os.path.getsize(dest) / 1024))
+               kb=kb)
     if budget and kept > budget:
         # The decimator stops well short on some meshes and there is no one
         # cause: a lattice cannot lose a handle without becoming a different
@@ -324,7 +345,11 @@ def main():
             kept += 1
             continue
         try:
-            e = build_one(pid, path, a.budget)
+            # Only a composite needs a file of its own. A part has a real
+            # 3MF or STL the browser can read; a kit's card shows every
+            # member together and nothing on disk is that.
+            e = build_one(pid, path, a.budget,
+                          write=pid.startswith("kit_"))
         except Exception as ex:                      # noqa: BLE001
             print(f"  ! {pid}: {ex}", file=sys.stderr)
             continue

@@ -1,9 +1,15 @@
 """The catalog is one list, and every entry in it can be shown and printed.
 
 The page renders a card per entry with no branch on where the entry came
-from, so these tests guard the fields that makes that possible: a preview
-for everything, curation folded in where a human wrote some, and enough
-default dials on a parametric part that it can actually be built.
+from, so these tests guard the fields that makes that possible: geometry
+the page can load for everything, curation folded in where a human wrote
+some, and enough default dials on a parametric part that it can actually be
+built.
+
+"Geometry the page can load" used to mean a GLB built beside every source.
+It does not any more: the browser reads 3MF and STL directly, so a part
+points at its own file and only a COMPOSITE -- a kit card, which shows every
+member at once and matches no single file on disk -- still gets one built.
 """
 import json
 import os
@@ -18,6 +24,26 @@ import previews  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _built_preview(pid, src, **kw):
+    """Build a preview into a scratch directory and hand back the scene.
+
+    Parts are no longer shipped a GLB -- the page reads the 3MF itself --
+    but the builder still lays parts out for the composites, and that
+    behaviour is what these tests are about. So build one on the spot
+    rather than reaching for an artifact that is deliberately not there.
+    """
+    import tempfile
+    import trimesh
+    old = previews.OUT
+    with tempfile.TemporaryDirectory() as tmp:
+        previews.OUT = tmp
+        try:
+            previews.build_one(pid, src, write=True, **kw)
+            return trimesh.load(os.path.join(tmp, pid + ".glb"), force="scene")
+        finally:
+            previews.OUT = old
+
+
 class TestOneList(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -29,22 +55,35 @@ class TestOneList(unittest.TestCase):
             for k in ("id", "name", "family", "kind"):
                 self.assertTrue(p.get(k), f"{p.get('id')} has no {k}")
 
-    def test_every_entry_has_a_preview(self):
-        missing = [p["id"] for p in self.parts if not p.get("preview")]
-        self.assertEqual(missing, [], f"no preview for {missing}")
+    def test_every_entry_has_geometry_the_page_can_load(self):
+        missing = [p["id"] for p in self.parts
+                   if not (p.get("src") or p.get("preview"))]
+        self.assertEqual(missing, [], f"nothing to render for {missing}")
 
-    def test_preview_files_are_on_disk(self):
+    def test_a_part_points_at_its_own_file(self):
         for p in self.parts[:40]:
-            f = p["preview"].split("?")[0]
-            self.assertTrue(os.path.exists(os.path.join(ROOT, f)), f)
+            self.assertTrue(p["src"].startswith("/src?id="), p["src"])
+            self.assertIn(p["ext"], ("3mf", "stl", "glb", "obj"), p["id"])
 
-    def test_a_preview_url_carries_a_version_tag(self):
-        # a rebuilt preview must be a new address, or the browser keeps
-        # showing the geometry it cached before the fix
-        tagged = [p for p in self.parts if "?v=" in p.get("preview", "")]
-        self.assertGreater(len(tagged), len(self.parts) * 0.9)
-        for p in tagged[:5]:
-            self.assertRegex(p["preview"], r"\?v=[0-9a-f]{8}$")
+    def test_the_source_route_hands_back_that_file(self):
+        # the field is a promise the server has to keep, and for a library
+        # part the file may sit outside the repo entirely
+        for p in self.parts[:6]:
+            src = (p.get("path") if p["kind"] == "library"
+                   else catalog.out_path(p, catalog.defaults(p)))
+            self.assertTrue(src and os.path.isfile(src),
+                            f"{p['id']} has no file at {src}")
+
+    def test_only_composites_still_carry_a_built_preview(self):
+        # a GLB is worth writing only where nothing on disk is the picture
+        withglb = [p["id"] for p in self.parts if p.get("preview")]
+        self.assertEqual(withglb, [], f"parts should read their own file: {withglb}")
+        kits = [k for k in self.cat["kits"] if k.get("preview")]
+        self.assertTrue(kits, "a kit card shows all its members and needs one")
+        for k in kits[:5]:
+            f = k["preview"].split("?")[0]
+            self.assertTrue(os.path.exists(os.path.join(ROOT, f)), f)
+            self.assertRegex(k["preview"], r"\?v=[0-9a-f]{8}$")
 
     def test_a_curated_file_keeps_its_designer_and_title(self):
         ball = next(p for p in self.parts if p["name"] == "Mini Fidget Ball")
@@ -58,7 +97,7 @@ class TestOneList(unittest.TestCase):
                  if p["kind"] == "library" and not p.get("designer")]
         self.assertTrue(plain, "expected some files nobody has written up")
         for p in plain[:5]:
-            self.assertTrue(p.get("preview") and p.get("dims"))
+            self.assertTrue(p.get("src") and p.get("dims"))
 
     def test_a_design_kept_in_two_places_is_one_entry(self):
         # models/ and Downloads can hold the same design at different save
@@ -213,8 +252,7 @@ class TestPreviewIndex(unittest.TestCase):
         meshes = previews._load(path)
         self.assertGreater(len(meshes), 1)
         self.assertTrue(previews._overlapping(meshes))
-        sc = trimesh.load(os.path.join(ROOT, "models", "glb", "prev",
-                                       "dice_orb.glb"), force="scene")
+        sc = _built_preview("probe_dice_orb", path)
         bounds = [g.bounds for g in sc.geometry.values()]
         self.assertTrue(any(
             (a[0] < b[1]).all() and (b[0] < a[1]).all()
@@ -501,7 +539,11 @@ class TestPreviewsDoNotPileParts(unittest.TestCase):
         # lie about what the object is
         import trimesh
         path, _ = catalog.ensure(catalog.find("dice_orb"))
-        ms = self._world(os.path.join(ROOT, "models/glb/prev/dice_orb.glb"))
+        sc = _built_preview("probe_dice_orb2", path)
+        ms = []
+        for node in sc.graph.nodes_geometry:
+            tf, gk = sc.graph[node]
+            g = sc.geometry[gk].copy(); g.apply_transform(tf); ms.append(g)
         self.assertEqual(len(ms), 2)
         a, b = sorted(ms, key=lambda m: m.volume)
         self.assertTrue((a.bounds[0] >= b.bounds[0] - 1).all()

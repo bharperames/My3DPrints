@@ -595,12 +595,16 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
 {"imports":{"three":"./vendor/three.module.js",
 "three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
 "three/addons/loaders/GLTFLoader.js":"./vendor/loaders/GLTFLoader.js",
+"three/addons/loaders/3MFLoader.js":"./vendor/loaders/3MFLoader.js",
+"three/addons/loaders/STLLoader.js":"./vendor/loaders/STLLoader.js",
 "three/addons/utils/BufferGeometryUtils.js":"./vendor/utils/BufferGeometryUtils.js"}}
 </script>
 <script type="module">
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {ThreeMFLoader} from 'three/addons/loaders/3MFLoader.js';
+import {STLLoader} from 'three/addons/loaders/STLLoader.js';
 import {toCreasedNormals} from 'three/addons/utils/BufferGeometryUtils.js';
 
 // trimesh writes GLB without normals. Computing them the usual way averages
@@ -619,6 +623,35 @@ const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setScissorTest(true);
 const loader = new GLTFLoader();
+const mf3Loader = new ThreeMFLoader();
+const stlLoader = new STLLoader();
+// The colours a GLB carried were baked in when it was built. Real geometry
+// arrives uncoloured, so the bodies are tinted here instead -- same palette,
+// same job: telling one part of an assembly from the next.
+const BODY_COLOURS = [0xE9A063, 0x5AB2A8, 0x8192D6, 0xD6B058, 0xC98BB0,
+                      0x86B77E, 0xD98A6B, 0x7FB3C9];
+function tint(obj){
+  let i = 0;
+  obj.traverse(o => { if (o.isMesh){
+    o.material = new THREE.MeshStandardMaterial({
+      color: BODY_COLOURS[i++ % BODY_COLOURS.length],
+      metalness: 0.05, roughness: 0.62, side: THREE.DoubleSide});
+    o.castShadow = true; }});
+  return obj;
+}
+// Read the part itself rather than a copy of it. A 3MF is a zip of XML and
+// an STL is a wall of triangles; both load fine in the browser, and doing
+// so retires three hundred and fifty megabytes of derived GLB that had to
+// be rebuilt whenever its source moved.
+function loadReal(url, ext){
+  const kind = (ext || '').toLowerCase();
+  if (kind === 'glb' || kind === 'gltf')
+    return new Promise((ok, no) => loader.load(url, g => ok(g.scene), undefined, no));
+  if (kind === 'stl')
+    return new Promise((ok, no) => stlLoader.load(url,
+      g => ok(new THREE.Mesh(g, new THREE.MeshStandardMaterial())), undefined, no));
+  return new Promise((ok, no) => mf3Loader.load(url, ok, undefined, no));
+}
 const views = [];   // {el, scene, camera, controls, entries, idx, loaded:{} , visible}
 
 function makeScene(){
@@ -769,7 +802,7 @@ function frameModel(v, obj, keep){
 function setModel(v, i, keep){
   const entry = v.entries[i];
   v.idx = i;
-  const key = entry.glb || entry.slug;
+  const key = entry.src || entry.glb || entry.slug;
   const dimtag = v.el.parentElement.querySelector('.dimtag');
   if (dimtag) dimtag.textContent = entry.dims && entry.tris
     ? `${entry.dims[0]}×${entry.dims[1]}×${entry.dims[2]} mm · ${entry.tris.toLocaleString()} tris`
@@ -784,20 +817,24 @@ function setModel(v, i, keep){
   const status = document.createElement('div');
   status.className = 'status'; status.textContent = 'loading…';
   v.el.appendChild(status);
-  loader.load(entry.glb || ('models/glb/' + entry.slug + '.glb'), gltf => {
+  const got = entry.src
+    ? loadReal(entry.src, entry.ext).then(o => tint(fixNormals(o)))
+    : new Promise((ok, no) => loader.load(
+        entry.glb || ('models/glb/' + entry.slug + '.glb'),
+        g => ok(fixNormals(g.scene)), undefined, no))
+        .then(o => { o.traverse(x => { if (x.isMesh){
+          x.material.metalness = 0.05; x.material.roughness = 0.62;
+          x.material.side = THREE.DoubleSide; }}); return o; });
+  got.then(obj => {
     status.remove();
-    const obj = fixNormals(gltf.scene);
     obj.rotation.x = -Math.PI/2;   // z-up sources
-    obj.traverse(o => { if (o.isMesh){
-      o.material.metalness = 0.05; o.material.roughness = 0.62;
-      o.material.side = THREE.DoubleSide; }});
     v.loaded[key] = obj;
     if (v.idx === i){
       if (v.current) v.scene.remove(v.current);
       v.current = obj; v.scene.add(obj); frameModel(v, obj, keep);
       placeCoin(v, new THREE.Box3().setFromObject(obj));
     }
-  }, undefined, () => { status.textContent = 'load failed — serve over http'; });
+  }).catch(() => { status.textContent = 'load failed — serve over http'; });
 }
 
 // Every 3D viewport on the page is mounted through here, whether it was in
@@ -1503,7 +1540,8 @@ renderer.setAnimationLoop(animate);
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.ok) throw new Error(j.error || 'server refused');
       stop();
-      const entry = {glb: j.glb + '?v=' + j.stamp, label: part.name,
+      const entry = {src: j.src + '&v=' + j.stamp, ext: j.ext,
+                     label: part.name,
                      dims: j.dims, tris: j.tris, bodies: j.bodies};
       seen[want] = entry;
       // A slower build that started earlier must not overwrite a newer one
@@ -1704,8 +1742,8 @@ renderer.setAnimationLoop(animate);
     n.className = 'notes'; n.dataset.cid = p.card || p.id; body.append(n);
     const mb = metaBox(p);
     if (mb) body.insertAdjacentHTML('beforeend', mb);
-    if (p.preview) mountView(el.querySelector('.view'),
-      [{glb: p.preview, label: p.name, dims: p.dims3, tris: p.tris}]);
+    if (p.src || p.preview) mountView(el.querySelector('.view'),
+      [{src: p.src, ext: p.ext, label: p.name, dims: p.dims3, tris: p.tris}]);
     return el;
   }
 
@@ -1770,8 +1808,9 @@ renderer.setAnimationLoop(animate);
       const m = k.members.find(x => x.part === p.id);
       return (m && m.label) || p.name;
     };
-    mem.filter(p => p.preview).forEach(p => entries.push(
-      {glb: p.preview, label: labelOf(p), chip: labelOf(p),
+    mem.filter(p => p.src || p.preview).forEach(p => entries.push(
+      {src: p.src, ext: p.ext, glb: p.preview,
+       label: labelOf(p), chip: labelOf(p),
        dims: p.dims3, tris: p.tris}));
     if (entries.length) mountView(el.querySelector('.view'), entries);
     return el;
