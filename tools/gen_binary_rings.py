@@ -91,8 +91,10 @@ placed 1.38 down from the lip's own top rather than up from the floor, so
 that disagreement moves the whole outer face together and never the step
 the switch actually sees.
 
-Five positions is 2^5 = 32 codes, which is the number of animals. A code
-reads outward from the middle:
+Five positions is 2^5 = 32 combinations, but the one with nothing standing
+gives the reader no bit to find: the toy needs both side switches down AND
+at least one bit up, so an empty disk is silent by its own rule. There is no
+code 0 disk. The set is 1 to 31. A code reads outward from the middle:
 
     code 10 = bits 2 and 4 = space, ring, space, ring, space
     code 14 = bits 2, 3, 4 = space, then one plateau three rings wide
@@ -105,8 +107,8 @@ pocket in the middle and floor showing outside it.
 Counted off the reader (assets/zootalkers/reader-base.jpg) the plungers come
 to five, at radii of roughly 0.7, 4.0, 6.3, 8.1 and 10.9 on a Oe28 bore.
 Those radii are crude -- they are scaled off a photograph -- but the count
-is not, and five positions with the centre among them is 32 codes for 32
-animals.
+is not, and five positions with the centre among them give the 31 speaking
+codes.
 
 WHAT THE MEASUREMENTS PIN, AND WHAT THEY DO NOT
 
@@ -202,8 +204,8 @@ The way past guessing is one caliper reading: the reader's pad across its
 outside. The cavity wants that plus a slip fit, and the drawn Oe27.88 came
 off an animal's coded end rather than off the reader itself.
 
-The underside carries the code as an Arabic numeral, 0 to 31, because
-thirty-two of these are otherwise indistinguishable in a drawer. It is
+The underside carries the code as an Arabic numeral, 1 to 31, because
+thirty-one of these are otherwise indistinguishable in a drawer. It is
 engraved rather than raised: the underside is the bed face, and numerals
 standing proud of it would be the only thing touching the plate, so the
 first layer would be the digits and the part would rock on them.
@@ -213,11 +215,11 @@ The numeral is mirrored in the model so that it reads the right way round
 when the part is turned over and looked at.
 
 --codes takes a set the way a print dialog takes page numbers: "7", or
-"0-31", or "1,2,4,8,16". One code is one disc; several are laid out on one
+"1-31", or "1,2,4,8,16". One code is one disk; several are laid out on one
 bed in reading order and written as a single 3MF.
 
 Usage: gen_binary_rings.py --codes 7 [--out FILE.3mf]
-       gen_binary_rings.py --codes 0-31 --out SET.3mf
+       gen_binary_rings.py --codes 1-31 --out SET.3mf
        gen_binary_rings.py --all --outdir DIR
 """
 import argparse
@@ -319,7 +321,7 @@ def parse_codes(spec, limit=2 ** BANDS, include_zero=False):
 
         7               one
         1,2,4,8,16      a list
-        0-31            a range
+        1-31            a range
         0-3,10,20-22    both
 
     Returned in reading order with each code once. What was typed sets

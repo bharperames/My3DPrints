@@ -387,8 +387,10 @@ PARTS = [
        "The reader has five plungers, each at its own radius so the code "
        "reads at any rotation, and one of them sits on the axis \u2014 so "
        "the coding is five positions inside \u00d827.88: a \u00d84.75 disk "
-       "at the centre and four rings around it. That is 2^5 = 32 codes, the "
-       "number of animals. Bit 1 is the centre and bit 5 the outermost "
+       "at the centre and four rings around it. That is 2^5 = 32 "
+       "combinations, but the one with nothing standing gives the reader no "
+       "bit to find and stays silent \u2014 so the set is 31 disks, 1 to 31. "
+       "Bit 1 is the centre and bit 5 the outermost "
        "ring, worth 1, 2, 4, 8 and 16, so an odd code stands its centre up "
        "and an even one sinks a pocket there. The \u00d833.3 lip outside "
        "them carries no code: it "
@@ -400,7 +402,7 @@ PARTS = [
        "printed on its own it has to carry its own. Every other dimension "
        "is measured off the toy and fixed here, because the plug only works "
        "in that one socket. Ask for one code or any set of them \u2014 7, "
-       "or 0-31, or 1,2,4,8,16 \u2014 and a set arrives on one plate, each "
+       "or 1-31, or 1,2,4,8,16 \u2014 and a set arrives on one plate, each "
        "disk with its own number engraved underneath so they stay told "
        "apart in a drawer. Every surface is a vertical extrusion off a flat "
        "base \u2014 the land is a step down from the lip, not a brim over "
@@ -469,8 +471,8 @@ PARTS = [
               "springs summed, not a bit standing short.",
        gen=["gen_binary_rings.py"], params=[
            dict(key="codes", label="codes", type="text", val="10",
-                placeholder="7  \u00b7  0-31  \u00b7  1,2,4,8,16",
-                hint="one code, a range, or a list \u2014 0 to 31")],
+                placeholder="7  \u00b7  1-31  \u00b7  1,2,4,8,16",
+                hint="one code, a range, or a list \u2014 1 to 31")],
        # Brimless, flat-bottomed and vertical-walled, so 2 mm between them
        # is ample -- and it is what puts all thirty-two ø39 disks on one
        # plate instead of two. The generator lays its own set out on the
