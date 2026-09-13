@@ -110,10 +110,10 @@
   .verdict.bad { display:block; background:color-mix(in srgb,var(--risk) 15%,transparent); color:var(--risk); }
 </style>
 <script type="importmap">
-{"imports":{"three":"./vendor/three.module.js",
-"three/addons/controls/OrbitControls.js":"./vendor/controls/OrbitControls.js",
-"three/addons/loaders/GLTFLoader.js":"./vendor/loaders/GLTFLoader.js",
-"cannon-es":"./vendor/cannon-es.js"}}
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
+"three/addons/loaders/GLTFLoader.js":"../vendor/loaders/GLTFLoader.js",
+"cannon-es":"../vendor/cannon-es.js"}}
 </script>
 </head>
 <body>
@@ -168,11 +168,11 @@ const hud = document.getElementById('hud');
 // ?design=burr still reaches the version kept as the negative control
 const DESIGN = new URLSearchParams(location.search).get('design') || 'bolted';
 const TAG = DESIGN === 'burr' ? '' : '_' + DESIGN;
-const D = await (await fetch(`models/knot${TAG}_assembly.json`)).json();
+const D = await (await fetch(`../models/knot${TAG}_assembly.json`)).json();
 // The parts at full resolution — 438,770 triangles, the generated mesh
 // itself. They were decimated to 12k a side once, for no reason anyone
 // had measured; a decimated thread is a different thread.
-const gltf = await new GLTFLoader().loadAsync(`models/glb/knot${TAG}_assembly.glb`);
+const gltf = await new GLTFLoader().loadAsync(`../models/glb/knot${TAG}_assembly.glb`);
 const PART = {};
 gltf.scene.traverse(o => { if (o.isMesh) PART[o.name.replace(/[^a-z0-9]/gi,'')] = o; });
 
@@ -871,6 +871,14 @@ makeThumbs();
 goto(0);
 document.querySelector('aside').classList.add('ready');
 requestAnimationFrame(tick);
+
+// Arriving on this page IS the request to watch it go together, so play
+// without waiting on a click. Half a second first so the starting pose
+// registers before anything moves, and stand down if the viewer has already
+// reached for a control in that time. Not against a reduced-motion setting.
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches){
+  setTimeout(() => { if (cur === 0 && !inFlight() && !paused) playBtn.click(); }, 500);
+}
 </script>
 </body>
 </html>

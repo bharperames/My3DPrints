@@ -249,63 +249,7 @@ PARTS = [
            dict(key="split", label="seam height", min=0.35, max=0.65,
                 step=0.01, val=0.5, derived="block")],
        out="puzzle-seed-S{side:g}-T{thread:g}-P{pocket:g}-X{split:g}.3mf"),
-    _p("knot", "The Knot", "Designed here", "parametric",
-       "Three bolts woven so that none of them can turn. Each head is sunk "
-       "in a pocket in the next block around, each thread engages the block "
-       "before, and the three blocks close into a solid cube with three "
-       "bolt tips flush in three faces and the other three blank. Nothing "
-       "protrudes and nothing visible moves. The weave is three skew axes "
-       "cyclic under a third of a turn about the cube\u2019s diagonal, "
-       "which makes every pair the same distance apart \u2014 so the whole "
-       "object is one block and one bolt, each printed three times. Fully "
-       "symmetric it is not a puzzle but a solid: every body has two bores "
-       "at right angles, and sliding along either drags the other sideways "
-       "across a shank, so nothing can translate at all, and what cannot "
-       "come apart cannot go together either. The way in has to be built, "
-       "and it is one thing: one block\u2019s pocket is elongated along "
-       "that block\u2019s own axis by exactly the depth of a head. The "
-       "block and the bolt threaded through it are a single unit \u2014 the "
-       "thread holds them together and the block\u2019s face caps the "
-       "head \u2014 and that unit, and only that unit, slides five "
-       "millimetres out of the cube, carrying its head clear of the next "
-       "block\u2019s pocket. That block is then free to turn, and the "
-       "cycle unzips from there. The head is as tall as the key and no "
-       "taller, because the slide has to clear the whole head, and the "
-       "slide sizes the block and the block sizes the cube. And the head "
-       "is sized to what it does rather than to the toddler set\u2019s "
-       "proportion: it is never gripped, so it is as wide as it needs to "
-       "be to key and to bear on the pocket floor, and no wider. Those two "
-       "choices are the difference between the 98 mm cube this design "
-       "first came out at and the 68 mm one it is. Measured is the word. "
-       "The depth of the puzzle is not argued from the drawing; a search "
-       "sweeps every body along every axis under slide and both screw "
-       "handednesses, from every configuration it can reach, and reports "
-       "the number of legal first moves (one), the length of the shortest "
-       "solution, and whether that solution needs a move in the wrong "
-       "direction. The same search was first shown to read the "
-       "seed cube as two moves and a deliberately welded cube as zero, "
-       "because an instrument that has not been made to read zero is not "
-       "evidence. The thread is the seed cube\u2019s family at 12 mm: the "
-       "Montessori cosine, support-free at any scale printed along its "
-       "axis, which is why the blocks stand with their threaded bores "
-       "vertical and the pockets on their sides. PETG, not PLA \u2014 the "
-       "seed cube\u2019s bolt snapped in silk PLA under hand torque.",
-       version="0.3.1",
-       shelf="reference",
-       proven="Not printed, and not to be: it does not hold. A directed "
-              "pull of half a newton \u2014 fifty grams, less than the "
-              "weight of a part \u2014 takes it apart, because a head "
-              "resting in a blind socket resists sideways and resists "
-              "nothing at all in tension, and because its release sequence "
-              "points the same way you pull, so handling it performs its "
-              "own solution. Kept as the negative control the bolted "
-              "version is measured against.",
-       pages=[dict(label="Watch it", href="knot.html")],
-       gen=["gen_knot.py"], params=[
-           dict(key="thread", label="thread \u00d8", unit="mm", min=10,
-                max=20, step=1, val=12)],
-       out="knot-T{thread:g}.3mf"),
-    _p("knot_bolted", "The Knot (bolted)", "Designed here", "parametric",
+    _p("knot_bolted", "The Knot", "Designed here", "parametric",
        "Three bars, three bolts, and every bolt in tension. Each one passes "
        "right THROUGH the bar whose counterbore holds its head and threads "
        "into the next bar along, so the three are clamped in a ring and a "
@@ -339,11 +283,19 @@ PARTS = [
        "PETG, not PLA \u2014 the seed cube\u2019s bolt snapped in silk PLA "
        "under hand torque, and these are longer and take real tension.",
        proven="Printed in PETG and it works — it goes together and it "
-              "holds. The burr version of the same weave, on the card above, "
-              "does not.",
+              "holds. The burr version of the same weave, which rested "
+              "each head in a blind socket instead, came apart under half "
+              "a newton; the bolts are what fixed that.",
        version="0.5.0",
        pages=[dict(label="Watch it go together",
-                   href="knot.html?design=bolted")],
+                   href="docs/knot.html?design=bolted")],
+       # An X-ray of the assembled weave, captured from the viewer on the
+       # assembly page. It shows in one still what the card's own turntable
+       # cannot: three bolts in tension, each head buried in the bar it
+       # passes through, and every thread engaged inside another bar.
+       stills=[dict(src="assets/knot/xray.png", label="X-ray",
+                    alt="X-ray view of the assembled knot: three bars in a "
+                        "pinwheel with three hex bolts threaded through them")],
        gen=["gen_bolted.py"], params=[
            dict(key="thread", label="thread \u00d8", unit="mm", min=10,
                 max=20, step=1, val=12)],
@@ -475,18 +427,25 @@ PARTS = [
        # from 5.x and a disk from 6.x are not the same design, and the old
        # ones are superseded rather than merely older -- codes 16-31 built
        # under 5.x filled the rim's seat and the toy stayed silent.
-       version="6.0.1",
-       proven="Ten disks in PLA Black, and the toy agreed. Code 16 built at "
-              "three rim-seat widths: silent at 1.25, speaking at 2.25 and at "
-              "the shipped 1.75, which brackets the reader\u2019s rim and "
-              "pins the seat as the thing that gates a read. Five single bits "
-              "named five different animals, 24 said whale, 14 said koala. "
-              "Code 31 wants a firmer press \u2014 that is five plunger "
-              "springs summed, not a bit standing short.",
+       # 6.0.2: thirty of the thirty-one codes now carry the animal they
+       #        say, read off a video of the whole set. The disk itself is
+       #        unchanged -- this is what the card knows, not what it
+       #        builds. Two names read earlier off a ten-disk plate were
+       #        wrong and are corrected: 14 is kangaroo, 24 is zebra.
+       version="6.0.2",
+       proven="Thirty-one disks printed and heard. Ten in PLA Black first, "
+              "and the toy agreed: code 16 built at three rim-seat widths, "
+              "silent at 1.25 and speaking at 2.25 and at the shipped 1.75, "
+              "which brackets the reader\u2019s rim and pins the seat as the "
+              "thing that gates a read. Code 31 wants a firmer press \u2014 "
+              "that is five plunger springs summed, not a bit standing "
+              "short. Every code but 6 has since named its animal.",
        gen=["gen_binary_rings.py"], params=[
            dict(key="codes", label="codes", type="codes", val="10",
                 lo=1, hi=31, animals=_zoo_animals(),
-                hint="tap the codes you want \u2014 31 in the set")],
+                hint="tap the codes you want \u2014 31 in the set",
+                howto="docs/zoo-codes.html",
+                howto_text="How the mapping was read")],
        # Brimless, flat-bottomed and vertical-walled, so 2 mm between them
        # is ample -- and it is what puts all thirty-two ø39 disks on one
        # plate instead of two. The generator lays its own set out on the

@@ -52,7 +52,9 @@ at 1.25 the disc was silent, at 2.25 it spoke, and at the shipped 1.75 it
 spoke. So the rim is between 1.25 and 1.75 wide, the seat is what gates the
 read, and 1.75 clears it. Every other disc on that plate read correctly,
 which also puts SLACK 0.30 and the midpoint grid out of doubt: five single
-bits named five different animals, 24 said whale, 14 said koala.
+bits named five different animals. (Two names written down that day, 14 =
+koala and 24 = whale, were both misheard -- see ANIMALS. The bracket and
+the grid do not rest on them, only on the discs reading differently.)
 
 Code 31 wants a firmer press than the rest. That is the sum of five plunger
 springs rather than a bit standing short, and it is worth being clear about
@@ -267,23 +269,39 @@ LAST_BIT_IN = 1.50       # the outermost plunger, measured in from the field
 
 # WHICH ANIMAL EACH CODE SAYS
 #
-# Not published anywhere. The toy's animal roster is (Fisher-Price Little
-# People Zoo Talkers, 2011): lion, polar bear, gorilla, tiger, white tiger,
-# elephant, dolphin, whale, ostrich, penguin, alligator, rhinoceros, seal,
-# bear, hippo, orangutan, flamingo, giraffe, lion cub, koala, camel, turtle.
-# The mapping from code to animal is not in any of that -- it was worked out
-# here, one disk at a time, by printing a code and listening.
+# Not published anywhere. The toy's animal roster is findable (Fisher-Price
+# Little People Zoo Talkers, 2011) but the mapping from code to animal is
+# not in any of it, so it was read off the toy.
 #
-# So this holds only what the toy has actually said, and stays empty for the
-# rest. Filling it in with plausible guesses would make a card that lies
-# confidently, which is worse than one that admits it does not know.
-# TO FILL IN: print a disk, put it on the peg, write down what it says.
-# Brett has the toy and is working through them. Add the line here and the
-# card picks it up -- the code chip gets a dot and the name in its tooltip.
-# Leave a code out rather than guess at it.
+# Read 2026-09-12 from a video of the whole set: thirty disks laid out in a
+# 6x5 grid on the floor and picked up one at a time in reading order, each
+# one put on the peg. Every frame was registered to the opening frame and
+# each grid position watched until it emptied, which gives the pick order;
+# the audio gives thirty animal names in the same order. Thirty disks and
+# thirty names is what makes the pairing forced rather than guessed -- the
+# five gaps where nothing was heard were re-listened to and held nothing.
+# Brett confirmed the names against the toy.
+#
+# Supersedes two entries read on 2026-09-06 off a ten-disk plate, 14 =
+# koala and 24 = whale. Both were wrong. Whale is 11 and koala is 30.
+#
+# Code 6 was not in the lineup filmed and has never been heard. Leave it
+# out rather than guess at it: a card that lies confidently is worse than
+# one that admits it does not know. To fill it in, print the disk, put it
+# on the peg, write down what it says -- the code chip then gets a dot and
+# the name in its tooltip.
 ANIMALS = {
-    14: "koala",     # printed 2026-09-06, said koala
-    24: "whale",     # printed 2026-09-06, said whale
+    1: "giraffe",      2: "polar bear",   3: "elephant",
+    4: "lion cub",     5: "penguin",                        # 6: never heard
+    7: "leopard",      8: "lion",         9: "tiger",
+    10: "bear",       11: "whale",       12: "dolphin",
+    13: "camel",      14: "kangaroo",    15: "flamingo",
+    16: "rhinoceros", 17: "alligator",   18: "seal",
+    19: "toucan",     20: "gorilla",     21: "hippo",
+    22: "chimpanzee", 23: "orangutan",   24: "zebra",
+    25: "panda bear", 26: "arctic wolf", 27: "peacock",
+    28: "sea turtle", 29: "monkey",      30: "koala",
+    31: "bison",
 }
 
 PLUNGER_R = (0.55, 3.85, 6.25, 8.15, 10.90)
@@ -292,8 +310,13 @@ PLUNGER_R = (0.55, 3.85, 6.25, 8.15, 10.90)
 # They agree within 0.35 except on p5, and there the older reading wins on
 # evidence that is not a photograph at all: under the old grid the bit 4
 # band ran out to r 10.8125, so if p5 were at 10.56 then a bit-4 disc would
-# have driven p4 and p5 together and said "whale". No disc ever said whale.
-# So p5 is outside 10.8125, and 10.90 it is.
+# have driven p4 and p5 together and answered as code 24. None did -- the
+# five single-bit discs named five different animals, and none of them
+# named 24's. So p5 is outside 10.8125, and 10.90 it is.
+# This was first written as "no disc ever said whale", on the belief that
+# 24 was whale. It is not, and 8 is not lion by luck either: see ANIMALS.
+# The argument never needed the names, only that a bit-4 disc answered as
+# 8 and not as 24.
 RIM_INNER = 12.19        # where the boss's raised rim begins. The band
                          # outside this is not clearance -- see RIM SEAT.
 
