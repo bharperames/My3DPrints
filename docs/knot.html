@@ -165,7 +165,8 @@ const COL = ['--u0','--u1','--u2'].map(v =>
   getComputedStyle(document.documentElement).getPropertyValue(v).trim());
 const hud = document.getElementById('hud');
 // the bolted design is the one that works, so it is what the page shows;
-// ?design=burr still reaches the version kept as the negative control
+// Bolted is the design; the burr version was dropped from the shop as a
+// second product that does not hold. ?design=burr still reaches it.
 const DESIGN = new URLSearchParams(location.search).get('design') || 'bolted';
 const TAG = DESIGN === 'burr' ? '' : '_' + DESIGN;
 const D = await (await fetch(`../models/knot${TAG}_assembly.json`)).json();

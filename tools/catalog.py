@@ -287,8 +287,7 @@ PARTS = [
               "each head in a blind socket instead, came apart under half "
               "a newton; the bolts are what fixed that.",
        version="0.5.0",
-       pages=[dict(label="Watch it go together",
-                   href="docs/knot.html?design=bolted")],
+       pages=[dict(label="Watch it go together", href="docs/knot.html")],
        # An X-ray of the assembled weave, captured from the viewer on the
        # assembly page. It shows in one still what the card's own turntable
        # cannot: three bolts in tension, each head buried in the bar it
