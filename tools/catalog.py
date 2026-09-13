@@ -316,13 +316,21 @@ PARTS = [
        "little. The test jaw is the gum arcs on their own \u2014 minutes "
        "and a gram to find out whether a root sits right, before three "
        "hours go into the pair.",
-       version="2.0.0",
-       proven="Printed in PLA Black and came out perfect \u2014 skull and "
-              "body both, with the ledge. Plain PLA, not silk: silk has now "
-              "failed twice here on thin sections, and the labial wall left "
-              "in front of the ledge is one. The ledge itself needs no "
-              "support and no brim, and slices marginally lighter and faster "
-              "than the skull the designer shipped.",
+       # 3.0.0, not 2.1.0: the ledge is cut on different planes and to a
+       # different depth at every station along the gum line, so a skull
+       # from 2.x and a skull from 3.x are not the same part. The 2.x skull
+       # perforated its own lip -- see the write-up on the card.
+       version="3.0.0",
+       proven="Printed in PLA Black \u2014 plain PLA, not silk: silk has now "
+              "failed twice here on thin sections, and the labial wall in "
+              "front of the ledge is one. The ledge needs no support and no "
+              "brim. That print also showed the fault 3.0.0 fixes: the lip "
+              "was open to daylight at four places along the tooth row, "
+              "measured at 15.8% of probes. Rebuilt, the tooth-bearing arch "
+              "is unbroken and the shelf follows the bone down to 4.9 mm "
+              "where the maxilla can carry it, against a flat 3.0 before.",
+       pages=[dict(label="Compare the two shelf depths",
+                   href="docs/trex-shelf.html")],
        gen=["gen_trex.py"], params=[
            dict(key="parts", label="parts", type="checks", val="skull,body",
                 choices=[

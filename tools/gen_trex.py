@@ -79,6 +79,11 @@ PARTS = {
 
 TOOTH_PAINT = "8"
 WIDTH, DEPTH = 3.5, 3.0
+# How deep the shelf is allowed to get where the bone can carry it. At 3.0
+# it is the flat depth the first skull printed with, made safe; above that
+# the shelf follows the maxilla down where the maxilla is deep, which is
+# where the putty and the tooth roots want the room.
+DEPTH_MAX = 6.0
 
 
 def load(member):
@@ -220,13 +225,15 @@ def _deburr_once(mesh, wall, keep, pitch):
     return out if out.volume > 0.9 * mesh.volume else mesh
 
 
-def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None):
+def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None,
+           depth_max=DEPTH_MAX):
     from channel import tooth_frames, channel
     regions = painted_regions(mesh, paint) if regions is None else regions
     # a tooth is a cone, so its own convex hull is the tooth
     cuts = [mesh.submesh([r], append=True).convex_hull for r in regions]
     cuts += channel(mesh, tooth_frames(mesh, regions),
-                    width=width, depth=depth, over=1.0, centre=True)
+                    width=width, depth=depth, over=1.0, centre=True,
+                    depth_max=depth_max)
     u = trimesh.boolean.union(cuts, engine="manifold")
     was = len(mesh.split(only_watertight=False))
     got = deburr(trimesh.boolean.difference([mesh, u], engine="manifold"))
@@ -264,7 +271,7 @@ def test_jaw(mesh, paint, width=WIDTH, depth=DEPTH, wall=1.5):
     return trimesh.util.concatenate(big), n
 
 
-def build(names, width=WIDTH, depth=DEPTH):
+def build(names, width=WIDTH, depth=DEPTH, depth_max=DEPTH_MAX):
     out, rep = [], {}
     for name in names:
         member, how, _ = PARTS[name]
@@ -274,9 +281,10 @@ def build(names, width=WIDTH, depth=DEPTH):
             m, n = test_jaw(m, paint, width, depth)
         elif how == "jaw":
             m, n = trough(m, paint, width, depth,
-                          regions=jaw_regions(m, paint))
+                          regions=jaw_regions(m, paint),
+                          depth_max=depth_max)
         elif how == "cut":
-            m, n = trough(m, paint, width, depth)
+            m, n = trough(m, paint, width, depth, depth_max=depth_max)
         out.append((name, m))
         rep[name] = dict(faces=len(m.faces), volume=round(float(m.volume), 1),
                          teeth_removed=n)
@@ -304,6 +312,8 @@ def main():
                     help="gum trough width (mm)")
     ap.add_argument("--depth", type=float, default=DEPTH,
                     help="gum trough depth (mm)")
+    ap.add_argument("--depth-max", type=float, default=DEPTH_MAX,
+                    help="deepest the shelf may go where the bone allows (mm)")
     ap.add_argument("--out")
     a = ap.parse_args()
     names = [p.strip() for p in a.parts.split(",") if p.strip()]
@@ -312,7 +322,7 @@ def main():
         print(json.dumps({"ok": False, "error": f"unknown part(s): {bad}. "
                                                 f"choose from {list(PARTS)}"}))
         return 1
-    items, rep = build(names, a.width, a.depth)
+    items, rep = build(names, a.width, a.depth, a.depth_max)
     sc = layout(items)
     out = a.out or os.path.join(os.path.dirname(HERE), "models", "custom",
                                 "trex-" + "-".join(names) + ".3mf")

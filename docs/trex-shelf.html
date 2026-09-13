@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gum shelf — side by side</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦖</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--bg:#0F1316;--surface:#161C20;--surface-2:#1B2226;--line:#283238;
+  --ink:#E6ECEF;--muted:#93A3AB;--faint:#6E7F88;--accent:#5BD6B0;--warm:#E0A268;}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:400 14px/1.5 "IBM Plex Mono",ui-monospace,monospace;display:flex;flex-direction:column}
+header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;
+  align-items:baseline;gap:16px;flex-wrap:wrap}
+h1{margin:0;font:700 19px "Chakra Petch",sans-serif;letter-spacing:.01em}
+.sub{color:var(--faint);font-size:12.5px}
+a.back{margin-left:auto;color:var(--accent);text-decoration:none;font-size:12.5px}
+a.back:hover{text-decoration:underline}
+#bar{padding:10px 20px;border-bottom:1px solid var(--line);display:flex;
+  gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font:500 12px "IBM Plex Mono",monospace;padding:5px 11px;border-radius:99px;
+  background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--ink)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#062A22;font-weight:600}
+.spacer{flex:1}
+#view{flex:1;position:relative;min-height:340px}
+canvas{display:block;width:100%;height:100%}
+.tag{position:absolute;top:12px;font:600 13px "Chakra Petch",sans-serif;
+  background:rgba(15,19,22,.82);border:1px solid var(--line);border-radius:6px;
+  padding:6px 11px;pointer-events:none}
+.tag i{display:block;font:400 11px "IBM Plex Mono",monospace;color:var(--faint);
+  font-style:normal;margin-top:3px}
+#tagL{left:12px;border-left:3px solid var(--warm)}
+#tagR{left:calc(50% + 12px);border-left:3px solid var(--accent)}
+#tagR.hide{display:none}
+#hint{position:absolute;bottom:10px;left:12px;color:var(--faint);font-size:11.5px}
+#err{position:absolute;inset:0;display:none;place-items:center;text-align:center;
+  padding:30px;color:var(--muted)}
+#err.on{display:grid}
+</style>
+</head>
+<body>
+<header>
+  <h1>Gum shelf — side by side</h1>
+  <span class="sub">the same skull, two ledge depths · orbit moves both together</span>
+  <a class="back" href="../index.html">← My Print Shop</a>
+</header>
+<div id="bar">
+  <span class="sub" style="margin-right:4px">view</span>
+  <span id="modes"></span>
+  <span class="sub" style="margin:0 4px 0 10px">look from</span>
+  <span id="views"></span>
+  <span class="spacer"></span>
+  <button class="chip" id="overlay">overlay both</button>
+  <button class="chip" id="spin">spin</button>
+</div>
+<div id="view">
+  <canvas id="gl"></canvas>
+  <div class="tag" id="tagL">shelf ≤ 3 mm<i>conservative · 8744.6 mm³</i></div>
+  <div class="tag" id="tagR">shelf ≤ 6 mm<i>follows the bone · 8616.4 mm³</i></div>
+  <div id="hint">drag to orbit · scroll to zoom · both panes share one camera</div>
+  <div id="err"></div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
+"three/addons/loaders/3MFLoader.js":"../vendor/loaders/3MFLoader.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {ThreeMFLoader} from 'three/addons/loaders/3MFLoader.js';
+
+const cv = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas: cv, antialias: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setScissorTest(true);          // one context, two viewports -- never two canvases
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(getComputedStyle(document.documentElement)
+  .getPropertyValue('--surface-2').trim());
+scene.add(new THREE.HemisphereLight(0xffffff, 0x40484f, 2.0));
+const key = new THREE.DirectionalLight(0xffffff, 2.0);
+key.position.set(1, 1.4, 0.8); scene.add(key);
+
+const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
+const controls = new OrbitControls(camera, cv);
+controls.enableDamping = true;
+
+const VARIANTS = [
+  {key: 'a', file: '../models/custom/trex-skull-shelf3.3mf', colour: 0xE0A268},
+  {key: 'b', file: '../models/custom/trex-skull-shelf6.3mf', colour: 0x5BD6B0},
+];
+const groups = {};
+let overlay = false, spin = false, mode = 'edges';
+// The subject of this page is a shelf on the underside of the maxilla, so
+// the default view looks up at it. A view of the top of the skull is a
+// picture of the thing nobody is inspecting.
+const VIEWS = {
+  'gum line':  {dir: [0.55, -0.78, 0.30], aim: 0.62, zoom: 0.78},
+  'palate':    {dir: [0.05, -1.00, 0.10], aim: 0.70, zoom: 0.80},
+  'profile':   {dir: [1.00, -0.10, 0.05], aim: 0.55, zoom: 1.00},
+  'three-quarter': {dir: [0.85, -0.35, 0.75], aim: 0.50, zoom: 1.05},
+};
+let view = 'gum line';
+
+function edgesOf(m){
+  // built once, on the first mode that needs them, and cached on the mesh --
+  // EdgesGeometry over a whole skull is not work to do for a viewer who may
+  // never leave shaded. A child, so it inherits the transform for free.
+  if (!m.userData.edges){
+    const l = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25),
+      new THREE.LineBasicMaterial({color: 0x0B0E10}));
+    m.userData.edges = l; m.add(l);
+  }
+  return m.userData.edges;
+}
+function applyMode(){
+  for (const g of Object.values(groups)) g.traverse(o => {
+    if (!o.isMesh) return;
+    const mat = o.material;
+    mat.visible     = mode !== 'hlr';
+    mat.wireframe   = mode === 'wire';
+    mat.transparent = mode === 'xray' || overlay;
+    mat.opacity     = mode === 'xray' ? 0.28 : (overlay ? 0.55 : 1);
+    mat.depthWrite  = !(mode === 'xray' || overlay);
+    mat.needsUpdate = true;
+    if (['edges','hlr','xray'].includes(mode)) edgesOf(o).visible = true;
+    else if (o.userData.edges) o.userData.edges.visible = false;
+  });
+}
+const MODES = [['shaded','shaded'],['edges','+ edges'],['hlr','edges only'],
+               ['wire','wireframe'],['xray','x-ray']];
+const bar = document.getElementById('modes');
+MODES.forEach(([id, label]) => {
+  const b = document.createElement('button');
+  b.className = 'chip' + (id === mode ? ' on' : '');
+  b.textContent = label;
+  b.onclick = () => { mode = id;
+    bar.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b));
+    applyMode(); };
+  bar.append(b);
+});
+const vbar = document.getElementById('views');
+Object.keys(VIEWS).forEach(name => {
+  const b = document.createElement('button');
+  b.className = 'chip' + (name === view ? ' on' : '');
+  b.textContent = name;
+  b.onclick = () => { view = name;
+    vbar.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b));
+    frame(); };
+  vbar.append(b);
+});
+document.getElementById('overlay').onclick = e => {
+  overlay = !overlay; e.target.classList.toggle('on', overlay);
+  document.getElementById('tagR').classList.toggle('hide', overlay);
+  const L = document.getElementById('tagL');
+  L.innerHTML = overlay
+    ? '<span style="color:#E0A268">\u25a0</span> shelf \u2264 3 mm &nbsp; ' +
+      '<span style="color:#5BD6B0">\u25a0</span> shelf \u2264 6 mm' +
+      '<i>tan showing through = bone the deeper cut took away</i>'
+    : 'shelf \u2264 3 mm<i>conservative \u00b7 8744.6 mm\u00b3</i>';
+  L.style.borderLeftColor = overlay ? '#5BD6B0' : '#E0A268';
+  applyMode(); frame();
+};
+document.getElementById('spin').onclick = e => {
+  spin = !spin; e.target.classList.toggle('on', spin);
+};
+
+const loader = new ThreeMFLoader();
+Promise.all(VARIANTS.map(v => new Promise((ok, no) => loader.load(v.file, ok, undefined, no))
+  .then(obj => {
+    obj.rotation.x = -Math.PI / 2;                 // trimesh writes Z up
+    obj.traverse(o => { if (o.isMesh){
+      if (!o.geometry.getAttribute('normal')) o.geometry.computeVertexNormals();
+      o.material = new THREE.MeshStandardMaterial({color: v.colour,
+        flatShading: true, roughness: 0.62, metalness: 0.04});
+    }});
+    groups[v.key] = obj; scene.add(obj);
+  })))
+  .then(() => { applyMode(); frame(); })
+  .catch(e => {
+    const el = document.getElementById('err'); el.classList.add('on');
+    el.innerHTML = '<div><b>Could not load the models.</b><br><br>' +
+      'They are generated locally into <code>models/custom/</code>, which is ' +
+      'gitignored, and they derive from a paid source model.<br>Rebuild with:<br><br>' +
+      '<code>tools/gen_trex.py --parts skull --depth-max 3 --out models/custom/trex-skull-shelf3.3mf</code>' +
+      '<br><code>tools/gen_trex.py --parts skull --depth-max 6 --out models/custom/trex-skull-shelf6.3mf</code>' +
+      '<br><br><small>' + e + '</small></div>';
+  });
+
+function frame(){
+  const box = new THREE.Box3();
+  for (const g of Object.values(groups)) box.expandByObject(g);
+  if (box.isEmpty()) return;
+  const c = box.getCenter(new THREE.Vector3());
+  const sz = box.getSize(new THREE.Vector3());
+  const r = sz.length() / 2;
+  const v = VIEWS[view];
+  // aim below centre: the tooth row is in the lower part of the box
+  const t = c.clone(); t.y = box.min.y + sz.y * (1 - v.aim);
+  const dist = v.zoom * 1.15 * r / Math.sin(camera.fov * Math.PI / 360);
+  camera.position.copy(t).add(new THREE.Vector3(...v.dir).normalize().multiplyScalar(dist));
+  controls.target.copy(t); controls.update();
+}
+// What people report as a maximum zoom is the near plane, not the dolly:
+// fix near once from the framing distance and pushing in clips the part away.
+function clip(){
+  const d = Math.max(1, camera.position.distanceTo(controls.target));
+  const near = Math.max(0.05, d / 4000), far = Math.max(d * 40, 4000);
+  if (Math.abs(camera.near - near) > near * 0.25 || camera.far !== far){
+    camera.near = near; camera.far = far; camera.updateProjectionMatrix();
+  }
+}
+function draw(){
+  requestAnimationFrame(draw);
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * renderer.getPixelRatio()) ||
+      cv.height !== Math.round(h * renderer.getPixelRatio())) renderer.setSize(w, h, false);
+  if (spin){ controls.autoRotate = true; controls.autoRotateSpeed = 1.2; }
+  else controls.autoRotate = false;
+  controls.update(); clip();
+  const dpr = renderer.getPixelRatio();
+  const panes = overlay
+    ? [[0, w, ['a','b']]]
+    : [[0, w / 2, ['a']], [w / 2, w / 2, ['b']]];
+  for (const [x, pw, keys] of panes){
+    for (const [k, g] of Object.entries(groups)) g.visible = keys.includes(k);
+    renderer.setViewport(x * dpr, 0, pw * dpr, h * dpr);
+    renderer.setScissor(x * dpr, 0, pw * dpr, h * dpr);
+    camera.aspect = pw / h; camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+  }
+}
+draw();
+</script>
+</body>
+</html>
