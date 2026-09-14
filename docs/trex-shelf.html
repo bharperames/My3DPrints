@@ -27,7 +27,15 @@ a.back:hover{text-decoration:underline}
   background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer}
 .chip:hover{border-color:var(--accent);color:var(--ink)}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#062A22;font-weight:600}
+.tool{font-size:15px;line-height:1;padding:6px 10px}
+#tags.off{opacity:.35;pointer-events:none}
 .spacer{flex:1}
+#mbar{padding:10px 20px;border-bottom:1px solid var(--line);display:flex;
+  gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface)}
+#mbar input[type=range]{vertical-align:middle;width:110px}
+#mbar #note{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--line);
+  color:var(--ink);border-radius:6px;padding:6px 10px;
+  font:400 12.5px "IBM Plex Mono",monospace}
 #view{flex:1;position:relative;min-height:340px}
 canvas{display:block;width:100%;height:100%}
 .tag{position:absolute;top:12px;font:600 13px "Chakra Petch",sans-serif;
@@ -47,7 +55,7 @@ canvas{display:block;width:100%;height:100%}
 <body>
 <header>
   <h1>Gum shelf — side by side</h1>
-  <span class="sub">the same skull, two ledge depths · orbit moves both together</span>
+  <span class="sub">the current build, two viewpoints · mark up the right pane</span>
   <a class="back" href="../index.html">← My Print Shop</a>
 </header>
 <div id="bar">
@@ -56,14 +64,25 @@ canvas{display:block;width:100%;height:100%}
   <span class="sub" style="margin:0 4px 0 10px">look from</span>
   <span id="views"></span>
   <span class="spacer"></span>
+  <button class="chip" id="mark">markup</button>
   <button class="chip" id="overlay">overlay both</button>
   <button class="chip" id="spin">spin</button>
 </div>
+<div id="mbar" hidden>
+  <span id="tools"></span>
+  <span class="sub" id="toolhint">rotate &mdash; drag to orbit</span>
+  <span id="tags"></span>
+  <label class="sub">brush <input id="brush" type="range" min="0.4" max="6" step="0.2" value="1.6"></label>
+  <input id="note" placeholder="what should change, and why">
+  <button class="chip" id="undo">clear</button>
+  <button class="chip" id="capture">capture &rarr; repo</button>
+  <span class="sub" id="mstat"></span>
+</div>
 <div id="view">
   <canvas id="gl"></canvas>
-  <div class="tag" id="tagL">shelf ≤ 3 mm<i>conservative · 8744.6 mm³</i></div>
-  <div class="tag" id="tagR">shelf ≤ 6 mm<i>follows the bone · 8616.4 mm³</i></div>
-  <div id="hint">drag to orbit · scroll to zoom · both panes share one camera</div>
+  <div class="tag" id="tagL">current build<i>reference angle</i></div>
+  <div class="tag" id="tagR">current build<i>markup pane</i></div>
+  <div id="hint">drag to orbit · click to set the pivot · scroll to zoom · both panes share one camera</div>
   <div id="err"></div>
 </div>
 
@@ -92,9 +111,15 @@ const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
 const controls = new OrbitControls(camera, cv);
 controls.enableDamping = true;
 
+// LEFT is what Brett actually printed; RIGHT is the current build. Both
+// panes used to hold abandoned experiments, which made the page lie about
+// what was being worked on.
+// Both panes hold the CURRENT build. Two independent viewpoints of the same
+// model is what is useful while the model is still moving -- and it is what
+// the markup wants: mark on one, keep the other as the reference angle.
 const VARIANTS = [
-  {key: 'a', file: '../models/custom/trex-skull-shelf3.3mf', colour: 0xE0A268},
-  {key: 'b', file: '../models/custom/trex-skull-shelf6.3mf', colour: 0x5BD6B0},
+  {key: 'a', file: '../models/custom/trex-skull-drill.3mf', colour: 0xE0A268},
+  {key: 'b', file: '../models/custom/trex-skull-drill.3mf', colour: 0x5BD6B0},
 ];
 const groups = {};
 let overlay = false, spin = false, mode = 'edges';
@@ -102,20 +127,22 @@ let overlay = false, spin = false, mode = 'edges';
 // the default view looks up at it. A view of the top of the skull is a
 // picture of the thing nobody is inspecting.
 const VIEWS = {
-  'gum line':  {dir: [0.55, -0.78, 0.30], aim: 0.62, zoom: 0.78},
-  'palate':    {dir: [0.05, -1.00, 0.10], aim: 0.70, zoom: 0.80},
-  'profile':   {dir: [1.00, -0.10, 0.05], aim: 0.55, zoom: 1.00},
-  'three-quarter': {dir: [0.85, -0.35, 0.75], aim: 0.50, zoom: 1.05},
+  'gum line':  {dir: [0.55, -0.78, 0.30], zoom: 0.95},
+  'palate':    {dir: [0.05, -1.00, 0.10], zoom: 0.95},
+  'profile':   {dir: [1.00, -0.10, 0.05], zoom: 1.00},
+  'three-quarter': {dir: [0.85, -0.35, 0.75], zoom: 1.00},
 };
 let view = 'gum line';
 
+const EDGE_ON_SURFACE = 0x11181C;   // over a lit surface: read as creases
+const EDGE_AS_DRAWING  = 0x8CF0C8;   // the line drawing itself: must glow
 function edgesOf(m){
   // built once, on the first mode that needs them, and cached on the mesh --
   // EdgesGeometry over a whole skull is not work to do for a viewer who may
   // never leave shaded. A child, so it inherits the transform for free.
   if (!m.userData.edges){
     const l = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25),
-      new THREE.LineBasicMaterial({color: 0x0B0E10}));
+      new THREE.LineBasicMaterial({color: EDGE_ON_SURFACE}));
     m.userData.edges = l; m.add(l);
   }
   return m.userData.edges;
@@ -130,8 +157,11 @@ function applyMode(){
     mat.opacity     = mode === 'xray' ? 0.28 : (overlay ? 0.55 : 1);
     mat.depthWrite  = !(mode === 'xray' || overlay);
     mat.needsUpdate = true;
-    if (['edges','hlr','xray'].includes(mode)) edgesOf(o).visible = true;
-    else if (o.userData.edges) o.userData.edges.visible = false;
+    if (['edges','hlr','xray'].includes(mode)){
+      const e = edgesOf(o); e.visible = true;
+      e.material.color.setHex(mode === 'edges' ? EDGE_ON_SURFACE : EDGE_AS_DRAWING);
+      e.material.needsUpdate = true;
+    } else if (o.userData.edges) o.userData.edges.visible = false;
   });
 }
 const MODES = [['shaded','shaded'],['edges','+ edges'],['hlr','edges only'],
@@ -161,10 +191,10 @@ document.getElementById('overlay').onclick = e => {
   document.getElementById('tagR').classList.toggle('hide', overlay);
   const L = document.getElementById('tagL');
   L.innerHTML = overlay
-    ? '<span style="color:#E0A268">\u25a0</span> shelf \u2264 3 mm &nbsp; ' +
-      '<span style="color:#5BD6B0">\u25a0</span> shelf \u2264 6 mm' +
+    ? '<span style="color:#E0A268">\u25a0</span> as printed &nbsp; ' +
+      '<span style="color:#5BD6B0">\u25a0</span> current build' +
       '<i>tan showing through = bone the deeper cut took away</i>'
-    : 'shelf \u2264 3 mm<i>conservative \u00b7 8744.6 mm\u00b3</i>';
+    : 'current build<i>reference angle</i>';
   L.style.borderLeftColor = overlay ? '#5BD6B0' : '#E0A268';
   applyMode(); frame();
 };
@@ -199,14 +229,30 @@ function frame(){
   for (const g of Object.values(groups)) box.expandByObject(g);
   if (box.isEmpty()) return;
   const c = box.getCenter(new THREE.Vector3());
-  const sz = box.getSize(new THREE.Vector3());
-  const r = sz.length() / 2;
   const v = VIEWS[view];
-  // aim below centre: the tooth row is in the lower part of the box
-  const t = c.clone(); t.y = box.min.y + sz.y * (1 - v.aim);
-  const dist = v.zoom * 1.15 * r / Math.sin(camera.fov * Math.PI / 360);
-  camera.position.copy(t).add(new THREE.Vector3(...v.dir).normalize().multiplyScalar(dist));
-  controls.target.copy(t); controls.update();
+  const dir = new THREE.Vector3(...v.dir).normalize();
+  // Fit what the camera will actually see: project the eight corners onto
+  // the view basis and size the distance from that, for both the vertical
+  // fov and the pane's own aspect. Sizing off the box diagonal and aiming
+  // at a fraction of its height left the model off-centre in every view.
+  const up0 = Math.abs(dir.y) > 0.95 ? new THREE.Vector3(0, 0, 1)
+                                     : new THREE.Vector3(0, 1, 0);
+  const rt = new THREE.Vector3().crossVectors(up0, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, rt).normalize();
+  let ex = 0, ey = 0;
+  for (const sx of [box.min.x, box.max.x])
+   for (const sy of [box.min.y, box.max.y])
+    for (const sz of [box.min.z, box.max.z]){
+      const q = new THREE.Vector3(sx, sy, sz).sub(c);
+      ex = Math.max(ex, Math.abs(q.dot(rt)));
+      ey = Math.max(ey, Math.abs(q.dot(up)));
+    }
+  const aspect = (overlay ? 1 : 0.5) * cv.clientWidth / cv.clientHeight;
+  const vf = Math.tan(camera.fov * Math.PI / 360);
+  const dist = v.zoom * 1.12 * Math.max(ey / vf, ex / (vf * aspect));
+  camera.position.copy(c).add(dir.multiplyScalar(dist));
+  controls.target.copy(c);            // dead centre, every view
+  controls.update();
 }
 // What people report as a maximum zoom is the near plane, not the dolly:
 // fix near once from the framing distance and pushing in clips the part away.
@@ -217,6 +263,220 @@ function clip(){
     camera.near = near; camera.far = far; camera.updateProjectionMatrix();
   }
 }
+// Orbiting about the middle of the skull is no use when the thing being
+// inspected is two millimetres of shelf. A click puts the pivot on whatever
+// is under the pointer. A drag is not a click, so the threshold matters.
+const ray = new THREE.Raycaster();
+let downAt = null;
+cv.addEventListener('pointerdown', e => downAt = {x: e.clientX, y: e.clientY});
+cv.addEventListener('pointerup', e => {
+  if (!downAt) return;
+  const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
+  downAt = null;
+  if (moved > 4) return;
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  const half = r.width / 2;
+  const paneX = overlay ? 0 : (x < half ? 0 : half);
+  const paneW = overlay ? r.width : half;
+  const keys = overlay ? ['a','b'] : (x < half ? ['a'] : ['b']);
+  // the pick has to use the projection the pane was drawn with
+  camera.aspect = paneW / r.height; camera.updateProjectionMatrix();
+  ray.setFromCamera(new THREE.Vector2(
+    ((x - paneX) / paneW) * 2 - 1, -(y / r.height) * 2 + 1), camera);
+  const targets = [];
+  for (const k of keys) if (groups[k]) groups[k].traverse(o => { if (o.isMesh) targets.push(o); });
+  const hit = ray.intersectObjects(targets, false)[0];
+  if (!hit) return;
+  controls.target.copy(hit.point); controls.update();
+  pivot.position.copy(hit.point); pivot.visible = true;
+  clearTimeout(pivot.userData.t);
+  pivot.userData.t = setTimeout(() => pivot.visible = false, 1400);
+});
+const pivot = new THREE.Mesh(
+  new THREE.SphereGeometry(0.35, 16, 12),
+  new THREE.MeshBasicMaterial({color: 0xFFFFFF, depthTest: false}));
+pivot.visible = false; pivot.renderOrder = 10; scene.add(pivot);
+
+/* ---------- markup: paint triangles, the way the designer did ------------
+   The teeth on this model were found by reading the designer's own
+   per-triangle paint out of the 3MF. So a markup that paints triangles is
+   not a new kind of artifact -- it is the same one, and the generator can
+   read it back. Colour is the message: what to cut, what to keep, what to
+   look at.                                                                */
+const TAGS = [
+  {id: 'cut',  label: 'cut more here', rgb: [0xE5, 0x53, 0x4E]},
+  {id: 'keep', label: 'too thin, keep', rgb: [0x4E, 0x9B, 0xE5]},
+  {id: 'look', label: 'look at this',   rgb: [0xE5, 0xC0, 0x4E]},
+];
+let marking = false, tag = TAGS[0], brush = 1.6;
+let paintMesh = null, paintTag = null, cent = null;
+
+function armPainting(){
+  // one colour attribute per vertex, so a triangle can be coloured on its
+  // own; the geometry has to stop sharing vertices for that to be possible
+  if (paintMesh) return;
+  const g = groups.b; if (!g) return;
+  g.traverse(o => {
+    if (!o.isMesh || paintMesh) return;
+    if (o.geometry.index) o.geometry = o.geometry.toNonIndexed();
+    const n = o.geometry.attributes.position.count;
+    const col = new Float32Array(n * 3);
+    const base = new THREE.Color(0x5BD6B0);
+    for (let i = 0; i < n; i++){ col[i*3] = base.r; col[i*3+1] = base.g; col[i*3+2] = base.b; }
+    o.geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    o.material.vertexColors = true; o.material.needsUpdate = true;
+    paintMesh = o;
+  });
+  if (!paintMesh) return;
+  const pos = paintMesh.geometry.attributes.position.array;
+  const nf = pos.length / 9;
+  cent = new Float32Array(nf * 3);
+  for (let f = 0; f < nf; f++){
+    for (let c = 0; c < 3; c++)
+      cent[f*3+c] = (pos[f*9+c] + pos[f*9+3+c] + pos[f*9+6+c]) / 3;
+  }
+  paintTag = new Int8Array(nf).fill(-1);
+}
+
+function paintAt(pointWorld){
+  if (!paintMesh) return 0;
+  const p = paintMesh.worldToLocal(pointWorld.clone());
+  const col = paintMesh.geometry.attributes.color;
+  const r2 = brush * brush, nf = paintTag.length;
+  const ti = TAGS.indexOf(tag);
+  const c = new THREE.Color(`rgb(${tag.rgb[0]},${tag.rgb[1]},${tag.rgb[2]})`);
+  let n = 0;
+  for (let f = 0; f < nf; f++){
+    const dx = cent[f*3] - p.x, dy = cent[f*3+1] - p.y, dz = cent[f*3+2] - p.z;
+    if (dx*dx + dy*dy + dz*dz > r2) continue;
+    if (paintTag[f] === ti) continue;
+    paintTag[f] = ti; n++;
+    for (let v = 0; v < 3; v++) col.setXYZ(f*3+v, c.r, c.g, c.b);
+  }
+  if (n){ col.needsUpdate = true; stat(); }
+  return n;
+}
+function stat(){
+  if (!paintTag) return;
+  const c = TAGS.map((t, i) => [t.label, paintTag.reduce((a, v) => a + (v === i), 0)])
+                .filter(([, n]) => n);
+  document.getElementById('mstat').textContent =
+    c.length ? c.map(([l, n]) => `${l}: ${n}`).join(' · ') : 'nothing marked yet';
+}
+
+// An explicit tool, the way a paint program does it: the arrow is a real
+// choice, not the absence of one. Markup used to be a single toggle that
+// also stole the left mouse button, so getting back to plain orbiting meant
+// remembering which mode you were in.
+const TOOLS = [
+  {id: 'orbit', glyph: '\u2196', hint: 'rotate \u2014 drag to orbit'},
+  {id: 'paint', glyph: '\u270e', hint: 'paint \u2014 drag to mark, right-drag to orbit'},
+];
+let tool = 'orbit';
+const toolbar = document.getElementById('tools');
+function setTool(id){
+  tool = id;
+  toolbar.querySelectorAll('.chip').forEach(x =>
+    x.classList.toggle('on', x.dataset.tool === id));
+  document.getElementById('toolhint').textContent =
+    TOOLS.find(t => t.id === id).hint;
+  document.getElementById('tags').classList.toggle('off', id !== 'paint');
+  controls.mouseButtons = id === 'paint'
+    ? {LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE}
+    : {LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN};
+  cv.style.cursor = id === 'paint' ? 'crosshair' : 'grab';
+}
+TOOLS.forEach(t => {
+  const b = document.createElement('button');
+  b.className = 'chip tool' + (t.id === tool ? ' on' : '');
+  b.dataset.tool = t.id; b.textContent = t.glyph; b.title = t.hint;
+  b.onclick = () => setTool(t.id);
+  toolbar.append(b);
+});
+
+const tagbar = document.getElementById('tags');
+TAGS.forEach(t => {
+  const b = document.createElement('button');
+  b.className = 'chip' + (t === tag ? ' on' : '');
+  b.textContent = t.label;
+  b.style.borderLeft = `4px solid rgb(${t.rgb.join(',')})`;
+  b.onclick = () => { tag = t;
+    tagbar.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b)); };
+  tagbar.append(b);
+});
+document.getElementById('brush').oninput = e => brush = +e.target.value;
+document.getElementById('mark').onclick = e => {
+  marking = !marking;
+  e.target.classList.toggle('on', marking);
+  document.getElementById('mbar').hidden = !marking;
+  if (marking) armPainting();
+  setTool(marking ? 'paint' : 'orbit');
+  stat();
+};
+document.getElementById('undo').onclick = () => {
+  if (!paintMesh) return;
+  const col = paintMesh.geometry.attributes.color;
+  const base = new THREE.Color(0x5BD6B0);
+  for (let i = 0; i < col.count; i++) col.setXYZ(i, base.r, base.g, base.b);
+  col.needsUpdate = true; paintTag.fill(-1); stat();
+};
+
+function pickOnRight(ev){
+  const r = cv.getBoundingClientRect();
+  const x = ev.clientX - r.left, y = ev.clientY - r.top;
+  const half = r.width / 2;
+  if (!overlay && x < half) return null;              // markup is the right pane
+  const paneX = overlay ? 0 : half, paneW = overlay ? r.width : half;
+  camera.aspect = paneW / r.height; camera.updateProjectionMatrix();
+  ray.setFromCamera(new THREE.Vector2(((x - paneX) / paneW) * 2 - 1,
+                                      -(y / r.height) * 2 + 1), camera);
+  return paintMesh ? ray.intersectObject(paintMesh, false)[0] : null;
+}
+let painting = false;
+cv.addEventListener('pointerdown', e => {
+  if (tool !== 'paint' || e.button !== 0) return;
+  painting = true; const h = pickOnRight(e); if (h) paintAt(h.point);
+});
+addEventListener('pointerup', () => painting = false);
+cv.addEventListener('pointermove', e => {
+  if (!painting || tool !== 'paint') return;
+  const h = pickOnRight(e); if (h) paintAt(h.point);
+});
+
+document.getElementById('capture').onclick = async e => {
+  if (!paintTag || !paintTag.some(v => v >= 0)){
+    document.getElementById('mstat').textContent = 'nothing marked yet'; return;
+  }
+  const pos = paintMesh.geometry.attributes.position.array;
+  const faces = [];
+  for (let f = 0; f < paintTag.length; f++) if (paintTag[f] >= 0) faces.push(f);
+  const lines = [];
+  for (const f of faces){
+    const t = TAGS[paintTag[f]];
+    lines.push({t: t.id, v: Array.from(pos.slice(f*9, f*9+9)).map(x => +x.toFixed(4))});
+  }
+  const body = {
+    source: VARIANTS.find(v => v.key === 'b').file,
+    note: document.getElementById('note').value,
+    view: {pos: camera.position.toArray().map(x => +x.toFixed(2)),
+           target: controls.target.toArray().map(x => +x.toFixed(2)), mode: mode},
+    tags: TAGS.map(t => ({id: t.id, label: t.label, rgb: t.rgb})),
+    faces: lines,
+  };
+  e.target.disabled = true; e.target.textContent = 'capturing…';
+  try {
+    const r = await fetch('/markup', {method: 'POST',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+    const j = await r.json();
+    document.getElementById('mstat').textContent = j.ok
+      ? `saved ${j.file} — ${j.faces} triangles` : ('failed: ' + (j.error || r.status));
+  } catch (err){
+    document.getElementById('mstat').textContent = 'failed: ' + err;
+  }
+  e.target.disabled = false; e.target.textContent = 'capture → repo';
+};
+
 function draw(){
   requestAnimationFrame(draw);
   const w = cv.clientWidth, h = cv.clientHeight;
@@ -225,14 +485,14 @@ function draw(){
   if (spin){ controls.autoRotate = true; controls.autoRotateSpeed = 1.2; }
   else controls.autoRotate = false;
   controls.update(); clip();
-  const dpr = renderer.getPixelRatio();
   const panes = overlay
     ? [[0, w, ['a','b']]]
     : [[0, w / 2, ['a']], [w / 2, w / 2, ['b']]];
   for (const [x, pw, keys] of panes){
     for (const [k, g] of Object.entries(groups)) g.visible = keys.includes(k);
-    renderer.setViewport(x * dpr, 0, pw * dpr, h * dpr);
-    renderer.setScissor(x * dpr, 0, pw * dpr, h * dpr);
+    pivot.scale.setScalar(Math.max(0.4, camera.position.distanceTo(controls.target) / 90));
+    renderer.setViewport(x, 0, pw, h);      // CSS pixels: three applies the
+    renderer.setScissor(x, 0, pw, h);       // pixel ratio itself
     camera.aspect = pw / h; camera.updateProjectionMatrix();
     renderer.render(scene, camera);
   }

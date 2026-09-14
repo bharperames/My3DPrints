@@ -83,7 +83,7 @@ WIDTH, DEPTH = 3.5, 3.0
 # it is the flat depth the first skull printed with, made safe; above that
 # the shelf follows the maxilla down where the maxilla is deep, which is
 # where the putty and the tooth roots want the room.
-DEPTH_MAX = 6.0
+DEPTH_MAX = 3.5
 
 
 def load(member):
@@ -231,13 +231,22 @@ def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None,
     regions = painted_regions(mesh, paint) if regions is None else regions
     # a tooth is a cone, so its own convex hull is the tooth
     cuts = [mesh.submesh([r], append=True).convex_hull for r in regions]
-    cuts += channel(mesh, tooth_frames(mesh, regions),
+    cuts += channel(mesh, tooth_frames(mesh, regions), regions=regions,
                     width=width, depth=depth, over=1.0, centre=True,
                     depth_max=depth_max)
     u = trimesh.boolean.union(cuts, engine="manifold")
     was = len(mesh.split(only_watertight=False))
     got = deburr(trimesh.boolean.difference([mesh, u], engine="manifold"))
-    return keep_real(got, single=(was == 1)), len(regions)
+    got = keep_real(got, single=(was == 1))
+    # A cut cannot make new objects. Where a pocket's inboard sweep severs a
+    # strut at the back of the mouth it frees a piece of the inner palate --
+    # 117 mm3 of it, which would print as a loose lump sitting in the jaw.
+    # If the part went in whole it comes out whole.
+    if was == 1:
+        parts = got.split(only_watertight=False)
+        if len(parts) > 1:
+            got = max(parts, key=lambda p: abs(p.volume))
+    return got, len(regions)
 
 
 def test_jaw(mesh, paint, width=WIDTH, depth=DEPTH, wall=1.5):
@@ -249,14 +258,16 @@ def test_jaw(mesh, paint, width=WIDTH, depth=DEPTH, wall=1.5):
     either side and underneath -- and throws the rest of the skull away, so
     what comes out is the real curve, the real width and the real depth.
     """
-    from channel import tooth_frames, channel, order_along_jaw, resample, recentre
+    from channel import tooth_frames, gum_path, band_boxes
     cut, n = trough(mesh, paint, width, depth)
     idx = np.where(paint == TOOTH_PAINT)[0]
     lab = trimesh.graph.connected_component_labels(
         trimesh.graph.face_adjacency(mesh.faces[idx]), node_count=len(idx))
     fr = tooth_frames(mesh, [idx[lab == r] for r in range(lab.max() + 1)])
-    keep = channel(mesh, fr, width=width + 2 * wall, depth=depth + wall,
-                   over=wall, centre=True)
+    # A region to keep, not a cut: the swept box is fine for this, and the
+    # offset shell would be the wrong tool -- it defines a lip, not a slab.
+    C, N, A, U = gum_path(mesh, fr)
+    keep = band_boxes(C, A, U, width + 2 * wall, depth + wall, wall)
     box = trimesh.boolean.union(keep, engine="manifold")
     got = trimesh.boolean.intersection([cut, box], engine="manifold")
     # The skull's tooth rows are not joined by a continuous bar of bone --

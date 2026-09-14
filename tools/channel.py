@@ -5,10 +5,9 @@ tooth is a `paint_color` region in the 3MF, complete down to the ring where
 it meets the bone. Those rings give a centre, an axis and a width apiece,
 and threading them in order gives the gum line.
 
-One cutter does both jobs. It runs from above the tooth tips down to the
-wanted depth below the bone surface, so subtracting it shears the teeth off
-and digs the channel in the same operation -- no separate flush cut, and
-nothing delicate to fail per tooth.
+The teeth come off with their own convex hulls. The ledge behind them is
+cut by ONE solid, built as an offset from the cheek skin rather than swept
+along the gum line -- see `shell_ledge` for why the swept version had to go.
 """
 import numpy as np, trimesh
 
@@ -25,7 +24,8 @@ def tooth_frames(mesh, regions):
         tip = sub.vertices[np.argmax(np.abs((sub.vertices - c) @ n))]
         if np.dot(tip - c, n) < 0: n = -n
         out.append(dict(c=c, n=n, L=float(np.max((sub.vertices - c) @ n)),
-                        r=float(np.max(np.linalg.norm(ring - c, axis=1)))))
+                        r=float(np.max(np.linalg.norm(ring - c, axis=1))),
+                        ring=ring))
     return out
 
 def order_along_jaw(frames):
@@ -73,7 +73,7 @@ def resample(C, N, per_mm=1.5):
     return Ci, Ni
 
 def _frame(C, N, k):
-    """tangent, outward axis and up axis at sample k."""
+    """tangent and outward axis at sample k."""
     t = C[min(k + 1, len(C) - 1)] - C[max(k - 1, 0)]
     if np.linalg.norm(t) < 1e-9: return None
     t = t / np.linalg.norm(t)
@@ -82,360 +82,11 @@ def _frame(C, N, k):
     return t / np.linalg.norm(t), a / np.linalg.norm(a)
 
 
-def _need(h, rim, target, ramp=1.5):
-    """How much wall to insist on, that far below the gum line.
-
-    One figure for the whole face asks the anatomy for something it does not
-    have. The bone at the gum line IS the alveolar margin -- the rim the
-    tooth came out of -- and it is thin there because that is what a tooth
-    socket is. Demanding the full wall at 0.1 mm below the gum line refused
-    128 of 173 stations and left a shelf in pieces.
-
-    So ramp it: a rim's worth at the top, the full wall by `ramp` below.
-    That is the shape of the bone and it is also the shape of the need --
-    the top edge is a margin, the body of the lip is what has to hold.
-    """
-    return rim + (target - rim) * min(1.0, max(0.0, -h) / ramp)
-
-
-def _face_offsets(depth, step, nh=7, nw=3):
-    """Where to probe the cut's outer face: the part of it that is in bone.
-
-    Above the gum line there is no bone to keep -- that is where the teeth
-    were -- so probing there reports "outside the mesh" and means nothing.
-    Only the part at and below the gum line has a wall to preserve.
-    """
-    h = np.linspace(-depth + 0.1, -0.1, nh)
-    w = np.linspace(-1.1 * step, 1.1 * step, nw)
-    return [(hh, ww) for hh in h for ww in w]
-
-
-def _measure(mesh, pos, frames, depth, step, rim, target, nh, nw):
-    """Wall left at every probe on every station's cut face, in one batch.
-
-    One query per station is 173 round trips into the ray engine and the
-    proximity tree; batching every station's probes into a single call is
-    the difference between ten minutes and one. It also means the solver,
-    the depth trim and the verifier are all reading the same numbers -- the
-    version that sampled 7x3 while the verifier sampled 9x5 solved for the
-    points it was looking at and left the ones it was not.
-    """
-    pts, owner, hh, need = [], [], [], []
-    for k, (t, a, n) in frames.items():
-        for h, w in _face_offsets(depth[k], step, nh, nw):
-            pts.append(pos[k] + n * h + t * w)
-            owner.append(k); hh.append(h); need.append(_need(h, rim, target))
-    if not pts:
-        return (np.zeros((0, 3)), np.array([], int), np.array([]),
-                np.array([]), np.array([]), np.array([]))
-    pts = np.asarray(pts); owner = np.asarray(owner)
-    hh = np.asarray(hh); need = np.asarray(need)
-    dirs = np.asarray([frames[k][1] for k in owner])
-    wall = np.zeros(len(pts)); slant = np.ones(len(pts))
-    loc, ri, tri = mesh.ray.intersects_location(pts, dirs, multiple_hits=False)
-    if len(ri):
-        d = np.linalg.norm(loc - pts[ri], axis=1)
-        sl = np.maximum(np.abs(np.einsum("ij,ij->i",
-                                         mesh.face_normals[tri], dirs[ri])), 0.35)
-        wall[ri] = d * sl; slant[ri] = sl
-    # Inside/outside without a containment query. For a closed mesh, a ray
-    # leaving an interior point meets its first face from behind, so that
-    # face's normal points the same way the ray does; from outside, the
-    # first face is an entry and its normal opposes. `mesh.contains` answers
-    # the same question by casting its own rays, and it was costing more
-    # than every other query in this loop put together.
-    inside = np.zeros(len(pts), bool)
-    if len(ri):
-        inside[ri] = np.einsum("ij,ij->i", mesh.face_normals[tri], dirs[ri]) > 0
-    if (~inside).any():
-        lb, rb, _ = mesh.ray.intersects_location(pts[~inside], -dirs[~inside],
-                                                 multiple_hits=False)
-        over = np.zeros(int((~inside).sum()))
-        if len(rb): over[rb] = np.linalg.norm(lb - pts[~inside][rb], axis=1)
-        # A probe that has left the bone may find the far side of the skull
-        # behind it. The reading only has to say "outboard, move in"; how far
-        # is not information this ray carries, and taken literally it walked
-        # a 115 mm gum line out to 920.
-        wall[~inside] = -np.minimum(over, 2.0)
-    return pts, owner, hh, need, wall, slant
-
-def labial(mesh, C, N, depth, outer_wall=1.2, step=None, only=None,
-           rim=0.5, nh=9, nw=5):
-    """Set the cut plane by the THINNEST point of the wall it leaves.
-
-    Centring on the middle of the ridge spends the width evenly and leaves
-    paper-thin sheets wherever the bone pinches -- on the cheek side, which
-    is the side you look at. Brett's point settles it: the inside edge of
-    the jaw is not visible, so it is the side that can be spent.
-
-    The first version of this measured the wall with ONE ray, at one height,
-    half the depth below the gum line, and corrected for obliquity with a
-    slant factor. That guarantees the wall at exactly one plane. The cut
-    face is `depth` tall, the maxilla's outer face slopes inward going down,
-    and so the wall thins with depth: measured on the printed skull the
-    nominal 1.2 mm came out at a median of 0.32 mm true perpendicular, under
-    0.8 mm at 88% of stations, and NEGATIVE -- open to daylight -- at 21%.
-    Brett photographed the result: the cutting mat showing green through the
-    lip in three places.
-
-    So probe the whole face, not a point of it, and drive the plane by the
-    worst reading on it. `slant` survives only as the conversion from a
-    distance measured along `a` to real wall thickness, which is what it
-    always was; it is no longer asked to stand in for the readings that
-    were never taken.
-
-    Distance is measured by ray along `a`, NOT by nearest-surface: at a
-    station where the maxilla is thin, the nearest surface to a point in the
-    middle of it is the LINGUAL face, and solving against that walks the
-    plane the wrong way and diverges.
-    """
-    out, axes = C.copy(), np.zeros_like(C)
-    mid = mesh.centroid
-    if step is None:
-        step = float(np.median(np.linalg.norm(np.diff(C, axis=0), axis=1)))
-    depth = np.broadcast_to(np.asarray(depth, float), (len(C),)).copy()
-    home = C.copy()
-    frames = {}
-    for k in range(len(C)):
-        if only is not None and not only[k]: continue
-        f = _frame(C, N, k)
-        if f is None: continue
-        t, a = f
-        if np.dot(a, C[k] - mid) < 0: a = -a
-        n = np.cross(t, a); n = n / np.linalg.norm(n)
-        if np.dot(n, N[k]) < 0: n = -n
-        frames[k] = (t, a, n); axes[k] = a
-
-    for _ in range(10):
-        _, owner, _, need, wall, slant = _measure(
-            mesh, out, frames, depth, step, rim, outer_wall, nh, nw)
-        if not len(owner): break
-        moved = False
-        for k in frames:
-            m = owner == k
-            if not m.any(): continue
-            short = need[m] - wall[m]
-            q = int(np.argmax(short))
-            if short[q] < 0.01: continue
-            move = float(np.clip(short[q] / slant[m][q], -1.5, 1.5))
-            off = float(np.dot(out[k] - frames[k][1] * move - home[k], frames[k][1]))
-            out[k] = home[k] + frames[k][1] * float(np.clip(off, -1.0, 8.0))
-            moved = True
-        if not moved: break
-
-    # one last read at the positions actually returned, so the depth trim and
-    # the plane it trims are describing the same geometry
-    _, owner, hh, need, wall, _ = _measure(
-        mesh, out, frames, depth, step, rim, outer_wall, nh, nw)
-    prof = [None] * len(C)
-    for k in frames:
-        m = owner == k
-        if not m.any(): continue
-        h = hh[m]; wv = wall[m]; nd = need[m]
-        hs = np.unique(h)
-        prof[k] = (hs, np.array([(wv[h == u] - nd[h == u]).min() for u in hs]))
-
-    bad = np.linalg.norm(axes, axis=1) < 1e-9
-    if bad.any():
-        good = np.where(~bad)[0]
-        if len(good):
-            for k in np.where(bad)[0]:
-                axes[k] = axes[good[np.argmin(abs(good - k))]]
-    return out, axes, prof
-
-
-def wall_by_height(mesh, C, N, A, D, step, nh=9, nw=5):
-    """The wall each station leaves, probe by probe down its own cut face."""
-    prof = []
-    for k in range(len(C)):
-        f = _frame(C, N, k)
-        if f is None or D[k] <= 0: prof.append(None); continue
-        t, a = f[0], A[k]
-        n = np.cross(t, a); n = n / np.linalg.norm(n)
-        if np.dot(n, N[k]) < 0: n = -n
-        hs = np.linspace(-D[k] + 0.1, -0.1, nh)
-        pts = np.array([C[k] + n * h + t * w for h in hs
-                        for w in np.linspace(-1.1 * step, 1.1 * step, nw)])
-        dirs = np.tile(a, (len(pts), 1))
-        wall = np.zeros(len(pts))
-        loc, ri, tri = mesh.ray.intersects_location(pts, dirs, multiple_hits=False)
-        if len(ri):
-            d = np.linalg.norm(loc - pts[ri], axis=1)
-            sl = np.abs(np.einsum("ij,ij->i", mesh.face_normals[tri], dirs[ri]))
-            wall[ri] = d * np.maximum(sl, 0.35)
-        wall[~mesh.contains(pts)] = -1.0
-        prof.append((hs, wall.reshape(nh, nw).min(axis=1)))
-    return prof
-
-
-def fit_ledge(mesh, C, N, step, target=1.2, lo=1.5, hi=6.0, floor=1.0, rim=0.5):
-    """Solve the cut plane and the cut depth together, because they trade.
-
-    They are not independent. A deeper cut reaches further down the outer
-    face of the maxilla, which slopes inward, so it forces the plane inboard
-    to keep its wall; a shallower one lets the plane sit out and the shelf
-    be wider. Solving them apart -- plane first at a fixed depth, depth
-    afterwards -- still leaves the thin stations open, because no plane
-    position rescues a cut that is simply deeper than the bone.
-
-    So: take the bone available, solve the plane for it, then trim each
-    station back to the deepest probe still carrying `target` of wall, and
-    solve again. A station that cannot hold the wall even at `lo` is not cut
-    at all. Its bone stays solid and the lip runs through unbroken, which is
-    what a gap in the lip line is worth avoiding.
-    """
-    A = np.zeros_like(C)
-    for k in range(len(C)):
-        f = _frame(C, N, k)
-        if f is None: continue
-        a = f[1]
-        if np.dot(a, C[k] - mesh.centroid) < 0: a = -a
-        A[k] = a
-    D = bone_below(mesh, C, N, A, step, floor=floor, lo=lo, hi=hi)
-    # `extend` deliberately runs the path out past the last tooth so the cut
-    # leaves through the end of the jaw instead of stopping in it. Those
-    # stations are in fresh air, and a wall solver asked to find a wall there
-    # will chase one anywhere. Gate them out first.
-    D[~mesh.contains(C)] = 0.0
-    out = C.copy()
-    for _ in range(5):
-        out, A, prof = labial(mesh, out, N, D, outer_wall=target, step=step,
-                              only=D > 0, rim=rim)
-        nz = np.linalg.norm(A, axis=1) > 1e-9
-        A[nz] /= np.linalg.norm(A[nz], axis=1)[:, None]
-        for k, pr in enumerate(prof):
-            if pr is None: continue
-            hs, w = pr
-            # hs runs deepest first. Walk UP from the shallow end and stop at
-            # the first probe that fails: the usable depth is where the wall
-            # holds continuously, not the deepest probe that happens to pass.
-            # A profile that fails at mid depth and passes below it is a
-            # window with bone under it, and taking the lower reading keeps
-            # the window.
-            good = 0.0
-            for h, wv in zip(hs[::-1], w[::-1]):
-                if wv < 0: break         # w is already margin over the need
-                good = -h
-            D[k] = good
-        D[(D > 0) & (D < lo)] = 0.0
-    # ONCE, at the end. Inside the loop the running minimum erodes the depth
-    # again on every pass, and five passes of erosion took a shelf that the
-    # bone could carry to 4.9 mm down to 2.1 -- shallower than the flat cut
-    # it was meant to improve on, while the plane never moved at all because
-    # by then every probe passed.
-    out, D = _regularise(out, C, A, D, cut=D > 0)
-    return out, A, D
-
-
-def _run(x, win, op):
-    pad = np.concatenate([np.repeat(x[:1], win // 2), x, np.repeat(x[-1:], win // 2)])
-    return np.array([op(pad[i:i + win]) for i in range(len(x))])
-
-
-def _regularise(out, home, A, D, cut, win=7):
-    """Smooth the solve without giving back what it bought.
-
-    Solving each station on its own leaves the plane jittering from one to
-    the next, and a jittering plane is exactly the serrated lip `smooth`
-    exists to prevent -- measured, it stretched the path from 115 mm to 173.
-    But averaging the answer undoes it: the mean of two plane positions does
-    not clear the bone between them, which is why the solve cannot simply be
-    followed by a smoothing pass.
-
-    So smooth in the direction that can only be safe. The offset inboard
-    takes a running MAXIMUM before it is averaged, so no station ends up
-    shallower into the bone than its own reading demanded; the depth takes a
-    running MINIMUM, so none ends up deeper than its own reading allowed.
-    Both come out smooth, and neither can spend the wall.
-    """
-    o = np.array([float(np.dot(out[k] - home[k], A[k])) for k in range(len(out))])
-    om = _run(o, win, np.max)
-    o2 = np.maximum(_run(om, win, np.mean), o)
-    dm = np.where(cut, D, np.nan)
-    if np.isfinite(dm).any():
-        filled = np.where(cut, D, np.nanmax(dm))
-        dn = _run(filled, win, np.min)
-        d2 = np.minimum(_run(dn, win, np.mean), D)
-    else:
-        d2 = D
-    return np.array([home[k] + A[k] * o2[k] for k in range(len(out))]), \
-           np.where(cut, np.maximum(d2, 0.0), 0.0)
-
-
-def bone_below(mesh, C, N, A, step, floor=1.0, lo=1.5, hi=6.0):
-    """How deep the shelf can go at each station before it breaks out.
-
-    One depth for the whole arch is wrong in both directions at once. Below
-    the gum line this skull carries a median of 3.7 mm of bone, but 36% of
-    the arch has 8 mm or more and a quarter has 0.7 mm or less. A flat 3.0
-    cuts straight out of the bottom at the thin quarter -- the other half of
-    what Brett photographed -- and throws away most of a deep shelf through
-    the middle of the tooth row, which is exactly where the putty and the
-    tooth roots want the room.
-    """
-    d = np.full(len(C), lo)
-    for k in range(len(C)):
-        f = _frame(C, N, k)
-        if f is None: continue
-        t, a = f[0], A[k]
-        n = np.cross(t, a); n = n / np.linalg.norm(n)
-        if np.dot(n, N[k]) < 0: n = -n
-        runs = []
-        for w in (-1.1 * step, 0.0, 1.1 * step):
-            p = C[k] + t * w + n * 0.2
-            h = mesh.ray.intersects_location([p], [-n])[0]
-            runs.append(np.min(np.linalg.norm(h - p, axis=1)) if len(h) else 0.0)
-        d[k] = min(runs) - floor
-    d = np.clip(d, lo, hi)
-    # The floor of the shelf is a surface someone looks into: let it fall
-    # and rise smoothly rather than step from station to station.
-    win = 9
-    pad = np.concatenate([np.repeat(d[:1], win // 2), d, np.repeat(d[-1:], win // 2)])
-    return np.convolve(pad, np.ones(win) / win, mode="valid")
-
-
-def recentre(mesh, C, N, depth):
-    """Slide each sample sideways onto the middle of the bone ridge.
-
-    The teeth are not centred on the jaw: measured on this skull they sit
-    0.88 mm outboard of the ridge midline. Cutting a trough centred on the
-    teeth therefore spends the width it has on the outer side and breaks
-    through the palate -- at 3.5 mm it was through for 81% of its length.
-    Centred on the bone instead, the same 3.5 mm clears.
-    """
-    out, avail = C.copy(), np.full(len(C), np.inf)
-    for k in range(len(C)):
-        t = C[min(k + 1, len(C) - 1)] - C[max(k - 1, 0)]
-        if np.linalg.norm(t) < 1e-9: continue
-        t = t / np.linalg.norm(t)
-        a = np.cross(N[k], t)
-        if np.linalg.norm(a) < 1e-9: continue
-        a = a / np.linalg.norm(a)
-        p = C[k] - N[k] * depth * 0.5
-        d = []
-        for sgn in (-1, 1):
-            h = mesh.ray.intersects_location([p], [a * sgn])[0]
-            d.append(np.min(np.linalg.norm(h - p, axis=1)) if len(h) else np.nan)
-        if not np.any(np.isnan(d)):
-            out[k] = C[k] + a * (d[0] - d[1]) / 2.0
-            avail[k] = d[0] + d[1]
-    if np.isfinite(avail).any():
-        avail[~np.isfinite(avail)] = np.nanmedian(avail[np.isfinite(avail)])
-    else:
-        avail[:] = 0.0
-    return out, avail
-
-
 def smooth(C, N, passes=6, win=9):
-    """Take the jitter out of the path before anything is swept along it.
+    """Take the jitter out of the path before anything is built on it.
 
-    `recentre` measures each sample on its own with a pair of rays, and the
-    bone it measures against is bumpy, so the offsets it returns jump from
-    one sample to the next. Sweeping a box per sample along a jittering path
-    leaves each box a little to one side of its neighbours, and the thin
-    wedges of bone that survive between them show up as a comb of teeth
-    along the rim of the channel. The path is a gum line: it is smooth, and
-    the measurement is what is noisy.
+    The path is a gum line: it is smooth, and the per-tooth measurement that
+    produced it is what is noisy.
     """
     C, N = C.copy(), N.copy()
     k = np.ones(win) / win
@@ -448,64 +99,181 @@ def smooth(C, N, passes=6, win=9):
         N /= np.linalg.norm(N, axis=1)[:, None]
     return C, N
 
-def channel(mesh, frames, width=3.5, depth=3.0, over=1.0, centre=True,
-            wall=0.8, min_width=1.6, reach=9.0, depth_max=6.0):
-    """A LEDGE along the gum line: labial wall kept, everything inboard cut.
 
-    A trough has two walls and the inner one is the trouble -- it is where
-    the bone pinches, and every paper-thin flap and tab came from trying to
-    hold it. Brett's answer is to stop holding it. The lip you see is the
-    labial side; the lingual side is inside the mouth and no one looks at
-    it. So the cut keeps a wall of `wall + 0.4` on the labial face and takes
-    everything behind it for `reach`, leaving a shelf the teeth are set on
-    and glued.
+def tooth_lip(C, A, frames):
+    """Where the cut belongs: the labial edge of the painted tooth bases.
 
-    With no inner wall there is nothing thin left to leave behind, which is
-    the whole class of defect gone rather than patched.
+    Brett's answer, and it ends the guessing. Every offset rule tried here --
+    constant wall, isotropic erosion, a share of the local thickness -- was an
+    attempt to infer a line the designer had already drawn. Each tooth's paint
+    goes down to the ring where it met the bone, and the OUTER edge of that
+    ring is exactly where the lip's inner face should be, because that is
+    where a tooth stood. Put the cut there and a real tooth sits where the
+    printed one did, with the visible lip in front of it untouched.
+
+    Returns, per station, how far outboard of the gum line the cut may reach.
     """
+    lip = np.full(len(C), np.nan)
+    cs = np.array([f["c"] for f in frames])
+    for f in frames:
+        k = int(np.argmin(np.linalg.norm(C - f["c"], axis=1)))
+        lip[k] = float(np.max((f["ring"] - C[k]) @ A[k]))
+    g = ~np.isnan(lip)
+    if not g.any(): return np.zeros(len(C))
+    # between the teeth there is no ring to read, so run the line through
+    lip = np.interp(np.arange(len(C)), np.where(g)[0], lip[g])
+    win = 15
+    pad = np.concatenate([np.repeat(lip[:1], win // 2), lip,
+                          np.repeat(lip[-1:], win // 2)])
+    return np.convolve(pad, np.ones(win) / win, mode="valid")
+
+
+def gum_path(mesh, frames):
+    """The smoothed gum line, with an outward axis and an up axis per sample."""
     order = order_along_jaw(frames)
     C, N = extend(np.array([frames[i]["c"] for i in order]),
                   np.array([frames[i]["n"] for i in order]))
     C, N = resample(C, N)
-    A = None
-    step = float(np.median(np.linalg.norm(np.diff(C, axis=0), axis=1)))
-    D = np.full(len(C), depth)
-    if centre:
-        # Smooth the path FIRST and solve the plane on the smoothed path.
-        # Solving and then smoothing undoes the solve: the average of two
-        # neighbouring plane positions is not a plane position that clears
-        # the bone between them, and on a convex stretch it lands outboard
-        # of both -- which is a wall the solver believed it had left.
-        C, N = smooth(C, N)
-        C, A, D = fit_ledge(mesh, C, N, step, target=wall + 0.4,
-                            lo=1.5, hi=depth_max)
-    segs = []
-    # Overlapping boxes, one per sample, not a chain of prisms end to end.
-    # A prism from sample k to k+1 carries its own across-vector, and where
-    # the gum line curves that vector twists between neighbours: the union
-    # then has notches along it, and thin fins of bone survive between one
-    # prism and the next. Seen on the skull it reads as a serrated trough;
-    # seen on the test jaw, where the same sweep defines the whole part, it
-    # is unusable. Boxes twice the sample spacing overlap their neighbours
-    # by half, so the union is a clean tube whatever the path does.
-    step = float(np.median(np.linalg.norm(np.diff(C, axis=0), axis=1)))
+    C, N = smooth(C, N)
+    mid = mesh.centroid
+    A = np.zeros_like(C); U = np.zeros_like(C); ok = np.zeros(len(C), bool)
     for k in range(len(C)):
-        t = C[min(k + 1, len(C) - 1)] - C[max(k - 1, 0)]
-        if np.linalg.norm(t) < 1e-9: continue
-        t = t / np.linalg.norm(t)
-        a = A[k] if A is not None else np.cross(N[k], t)
-        if np.linalg.norm(a) < 1e-9: continue
-        a = a / np.linalg.norm(a)
-        n = np.cross(t, a); n = n / np.linalg.norm(n)
-        if np.dot(n, N[k]) < 0: n = -n
-        dk = float(D[k])
-        if dk <= 0: continue        # no wall to be had here: leave it solid
-        box = trimesh.creation.box([reach, 2.2 * step, dk + over])
-        M = np.eye(4)
-        M[:3, 0], M[:3, 1], M[:3, 2] = a, t, n
-        # C is the inner face of the labial wall; the cut runs from there
-        # inboard, so the box centre sits half a reach further in
-        M[:3, 3] = C[k] - a * reach / 2.0 + n * (over - dk) / 2.0
-        box.apply_transform(M)
-        segs.append(box)
-    return segs
+        f = _frame(C, N, k)
+        if f is None: continue
+        t, a = f
+        if np.dot(a, C[k] - mid) < 0: a = -a
+        u = np.cross(t, a); u /= np.linalg.norm(u)
+        if np.dot(u, N[k]) < 0: u = -u
+        A[k], U[k], ok[k] = a, u, True
+    return C[ok], N[ok], A[ok], U[ok]
+
+
+def band_boxes(C, A, U, width, depth, over):
+    """A generous swept volume along the gum line.
+
+    Only for picking a REGION -- the test jaw uses it to decide how much
+    bone to keep around the arc. Nothing precise is cut with it; see
+    `shell_ledge` for the reason.
+    """
+    step = float(np.median(np.linalg.norm(np.diff(C, axis=0), axis=1)))
+    out = []
+    for k in range(len(C)):
+        t = np.cross(A[k], U[k])
+        box = trimesh.creation.box([width, 2.2 * step, depth + over])
+        M = np.eye(4); M[:3, 0], M[:3, 1], M[:3, 2] = A[k], t, U[k]
+        M[:3, 3] = C[k] + U[k] * (over - depth) / 2.0
+        box.apply_transform(M); out.append(box)
+    return out
+
+
+def _sink(mesh, pts, axis, out, wall):
+    """Push a solid in along `axis` until it clears the skin by `wall`."""
+    hit, ri, _ = mesh.ray.intersects_location(
+        pts, np.tile(out, (len(pts), 1)), multiple_hits=False)
+    d = np.full(len(pts), -wall)                  # no hit: already outside
+    if len(ri): d[ri] = np.linalg.norm(hit - pts[ri], axis=1)
+    drop = float(np.max((wall - d) / max(float(np.dot(axis, out)), 0.30)))
+    return pts - axis * max(drop, 0.0)
+
+
+def drill_ledge(mesh, regions, frames, depth=6.0, wall=1.6, reach=7.0,
+                keep=0.9, grow=1.0):
+    """Drill each tooth out, and bridge between neighbours. Exact solids.
+
+    Brett's construction. The designer painted each tooth down to the ring
+    where it met the bone, so the tooth's own hull, swept down its own axis
+    and inboard, is the pocket that tooth came out of -- a real tooth with
+    its root snapped off goes back where the printed one stood.
+
+    Fourteen pockets leave a spike of bone between each pair. An earlier
+    version rounded those off with a morphological closing on a voxel grid,
+    and that is what made the result stop looking like a drilled hole: a
+    0.18 mm blurred iso-surface subtracted from a smooth solid leaves
+    paper-thin shells and speckles wherever the cutter runs tangent to the
+    skin. Brett: "it needs to push the surface, like cutting a hole in a
+    solid ... it clearly has violated the idea that the skull is solid".
+
+    So there are no voxels here. The spikes are taken by BRIDGES: the convex
+    hull spanning each adjacent pair of pockets. Hulls and unions of hulls
+    are exact, the boolean is exact, and what comes out has crisp walls.
+
+    Every solid -- pockets and bridges alike -- is sunk along the tooth axis
+    until it clears the cheek by `wall`. A bridge spans the chord between two
+    teeth and would otherwise cut the lip where the jaw bows out between
+    them, so it has to be sunk on its own account, not on its neighbours'.
+    """
+    order = order_along_jaw(frames)
+    C, N, A, U = gum_path(mesh, frames)
+    from scipy.spatial import cKDTree
+    tree = cKDTree(C)
+
+    def run(origin, d, cap):
+        """How far a sweep may go before it leaves the bone.
+
+        The FIRST crossing, not the last. Taking the farthest hit measured to
+        the far side of the skull, so at the back of the jaw -- where the bone
+        is thin and the ray carries on across the mouth -- the sweep ran
+        straight out through the outer surface.
+        """
+        # Cast from every point on the tooth's base ring, not just its
+        # centre. A pocket is a solid: bounding it by one ray down the middle
+        # leaves its corners free, and where the frame tilts at the back of
+        # the jaw those corners drove up and out through the side wall.
+        origin = np.atleast_2d(origin)
+        hit, ri, _ = mesh.ray.intersects_location(
+            origin, np.tile(d, (len(origin), 1)), multiple_hits=False)
+        if not len(ri): return 0.0
+        per = np.full(len(origin), np.inf)
+        for h, r in zip(hit, ri):
+            per[r] = min(per[r], float(np.linalg.norm(h - origin[r])))
+        per = per[np.isfinite(per)]
+        if not len(per): return 0.0
+        return float(min(cap, max(0.0, float(per.min()) - keep)))
+
+    swept, axes, outs = {}, {}, {}
+    for i, (faces, f) in enumerate(zip(regions, frames)):
+        V = mesh.submesh([faces], append=True).vertices
+        out = A[int(tree.query(f["c"])[1])]
+        n = f["n"]
+        c = f["ring"].mean(axis=0)
+        # Bound BOTH sweeps by the bone that is actually there. A fixed 7 mm
+        # inboard is what ate the palate -- 4937 mm3, more than half the
+        # skull -- and it is the same mistake as reach=9 on the box cutter.
+        probe = c[None, :]
+        inb = run(probe, -out, reach)
+        dwn = run(probe, -n, depth)
+        # Widen the pocket along the jaw so neighbours overlap. Fourteen
+        # separate drills leave a spike of bone standing between each pair;
+        # bridging them with a convex hull spanning two pockets fills the
+        # arch instead (4937 mm3, more than half the skull). Growing each
+        # pocket sideways merges them where they are adjacent and nowhere
+        # else, and it is still one exact hull per tooth.
+        tan = np.cross(n, out)
+        tan = tan / max(np.linalg.norm(tan), 1e-9)
+        W = np.vstack([V + tan * grow, V - tan * grow])
+        pts = np.vstack([W, W - n * dwn, W - out * inb, W - n * dwn - out * inb])
+        # CLIP, do not sink. Sinking the whole pocket until it cleared the
+        # cheek buried the channel: the teeth came away but the gum closed
+        # over as a rounded bulge with no trough for the putty. The pocket
+        # has to stay open at the gum line and simply stop where the lip
+        # begins -- so cut it with a plane, which is exact on a convex hull.
+        hit, ri, _ = mesh.ray.intersects_location([c], [out], multiple_hits=False)
+        far = float(np.linalg.norm(hit[0] - c)) if len(ri) else wall
+        swept[i] = (pts, out, c + out * (far - wall))
+        axes[i], outs[i] = n, out
+
+    solids = []
+    for pts, out, org in swept.values():
+        h = trimesh.convex.convex_hull(pts)
+        h = trimesh.intersections.slice_mesh_plane(
+            h, plane_normal=-out, plane_origin=org, cap=True)
+        if h is not None and len(h.faces) >= 4 and h.volume > 1e-6:
+            solids.append(h)
+    return trimesh.boolean.union(solids, engine="manifold")
+
+
+def channel(mesh, frames, regions=None, width=3.5, depth=3.0, over=0.6,
+            centre=True, wall=1.6, min_width=1.6, reach=4.0, depth_max=3.5):
+    """The solids to subtract for the ledge. One, now, not a hundred and sixty."""
+    return [drill_ledge(mesh, regions, frames, depth=depth_max, wall=wall,
+                        reach=reach)]
