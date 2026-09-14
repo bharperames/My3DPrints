@@ -320,15 +320,20 @@ PARTS = [
        # different depth at every station along the gum line, so a skull
        # from 2.x and a skull from 3.x are not the same part. The 2.x skull
        # perforated its own lip -- see the write-up on the card.
-       version="3.0.0",
-       proven="Printed in PLA Black \u2014 plain PLA, not silk: silk has now "
-              "failed twice here on thin sections, and the labial wall in "
-              "front of the ledge is one. The ledge needs no support and no "
-              "brim. That print also showed the fault 3.0.0 fixes: the lip "
-              "was open to daylight at four places along the tooth row, "
-              "measured at 15.8% of probes. Rebuilt, the tooth-bearing arch "
-              "is unbroken and the shelf follows the bone down to 4.9 mm "
-              "where the maxilla can carry it, against a flat 3.0 before.",
+       # 4.0.0: the ledge is drilled from the painted teeth rather than swept
+       #        along the gum line, so every pocket is the shape of the tooth
+       #        that made it. A 3.x skull and a 4.x skull are not the same
+       #        part anywhere along the arch.
+       version="4.0.0",
+       proven="Printed in PLA Black and the mounting area is right \u2014 "
+              "Brett, on the 4.0.0 print: \u201cthe teeth mounting area "
+              "looks good\u201d. Plain PLA, not silk: silk has failed twice "
+              "here on thin sections and the labial lip is one. No support, "
+              "no brim, no slicer warning, 26 min and 7.2 g. The 2.x skull "
+              "before it was open to daylight at four places along the tooth "
+              "row; this one is unbroken, and a skin test over 40,000 points "
+              "puts side-wall penetration at 0.00%, the same as an uncut "
+              "skull. Teeth to fit the channel are still being sourced.",
        pages=[dict(label="Compare the two shelf depths",
                    href="docs/trex-shelf.html")],
        gen=["gen_trex.py"], params=[
@@ -349,10 +354,15 @@ PARTS = [
                     dict(value="bone", label="bone",
                          hint="the loose bone in the set")],
                 hint="pick any combination \u2014 they arrive on one plate"),
-           dict(key="width", label="trough width", unit="mm", min=2.0,
-                max=4.0, step=0.5, val=3.5),
-           dict(key="depth", label="trough depth", unit="mm", min=2.0,
-                max=4.0, step=0.5, val=3.0)],
+           # One dial, and it is the one that changes the part. `width` and
+           # `depth` were the swept trough's, and the drill has neither --
+           # a pocket is the shape of the tooth that made it. Leaving them
+           # on the card meant two sliders that moved and did nothing.
+           dict(key="depth-max", label="how deep the pockets go", unit="mm",
+                min=2.5, max=6.0, step=0.5, val=3.5,
+                hint="3.5 is the printed one \u2014 past about 4.5 the "
+                     "deepest pockets start coming out through the side of "
+                     "the jaw at the back")],
        out="trex-{parts}.3mf"),
     _p("binary_rings", "Zoo Talker Code Disks", "Designed here", "parametric",
        "A set of coded disks for use with the Zoo Talkers Animal Sounds "
