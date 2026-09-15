@@ -40,6 +40,7 @@ Four kinds of thing, and only two of them matter if you lose the rest.
 | `meta/` | designer photos and metadata unpacked out of the 3MFs | from the shelf |
 | `custom/` | **generated parts** — what a generator built for one set of dial settings, named after them (`chain-N48-L19-D3.25-F0.6.3mf`), plus exported plates | yes, on demand |
 | `glb/prev/`, `previews.json`, `versions.json` | card previews and the indexes the page reads | `make build` |
+| `specimen/` | scanned specimens (glTF, millimetres, y up, base at y = 0) the orbital jig's capture page stands on its pedestal; `docs/orbital-jig.html?file=Name.glb` picks one, BigMeherrin.glb by default | no |
 
 Nine of the fifty parts have a generator and no file until they are ordered:
 wrench, dice orb, double nut, base plate, clasp, jump ring, chain, sphere
@@ -168,7 +169,7 @@ Three layers:
 | `plateshop.py` | MaxRects plate packing (ported from KlipKlopMaker's `js/plate_pack.js`) and the multi-plate 3MF zip |
 | `gen_sphere_stand.py` | sphere stand, ported from the Sphere Stand Generator as one revolved profile |
 | `build_local.py` | renders `index.html` from `template_local.html` with the review material (compatibility, fixes, file ledger); the catalog itself is fetched live from `/shop/catalog` |
-| `gen_chain.py` / `gen_cage.py` / `gen_dice_cage.py` / `gen_spiral.py` / `gen_clasp.py` / `gen_montessori.py` | on-demand generators; refuse to emit until verification passes (gen_spiral simulates the full screw-in path with FCL; gen_clasp checks flexure strain against PLA's elastic budget; gen_montessori casts its thread from the designer's own nut and proves it by screwing the real bolt in) |
+| `gen_chain.py` / `gen_cage.py` / `gen_dice_cage.py` / `gen_spiral.py` / `gen_clasp.py` / `gen_montessori.py` / `gen_orbital_jig.py` | on-demand generators; refuse to emit until verification passes (gen_spiral simulates the full screw-in path with FCL; gen_clasp checks flexure strain against PLA's elastic budget; gen_montessori casts its thread from the designer's own nut and proves it by screwing the real bolt in; gen_orbital_jig sweeps its camera carriage and rotor against every other body and writes the assembled poses into the 3MF, which `docs/orbital-jig.html` reads back to run the capture sequence on the printed geometry itself) |
 | `embed_settings.py` | stamps generated 3MFs as Bambu projects with the P2S presets + outer brim baked in |
 
 **2. Server (`serve.py`)** — stdlib only; static files plus:

@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbital Jig Drive Study</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* The shop's own dark ground and ink. Every text token here clears 7:1
+     on the surface it sits on: ink 14.9:1 on the ground, note 10.6:1,
+     accent 9.0:1 on the panel (5.7 at the shop's own #5FA893, which is
+     why it is lighter here). There is no muted token on purpose. */
+  :root {
+    --bg:#14181A; --panel:#1D2327; --panel-2:#232B2F;
+    --ink:#EAF1EF; --note:#C3CFCB; --line:#313B40; --edge:#4A5A62;
+    --accent:#86CDB7; --accent-ink:#0F1A17;
+    --good:#7CC287; --warn:#E7B75E; --risk:#E08578;
+    --rotor:#4F9A88; --arc:#D9736A; --carriage:#63A6C4; --hw:#B4BCC3; --small:#C99A3C;
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--bg); }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 "IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    padding-block:0 64px; }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); background:var(--panel);
+    display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:20px; font-weight:600; margin:0; letter-spacing:-0.01em; }
+  header .sub { color:var(--note); font-size:15px; }
+  header a { margin-left:auto; color:var(--accent); text-decoration:none; font-size:15px; }
+  header a:hover { text-decoration:underline; }
+  main { max-width:76ch; margin:0 auto; padding:24px 20px 0; }
+  nav.toc { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:6px 18px;
+    padding:14px 18px; border:1px solid var(--line); border-radius:8px; background:var(--panel);
+    font-size:15px; margin:18px 0 8px; }
+  nav.toc a { color:var(--ink); text-decoration:none; }
+  nav.toc a:hover { color:var(--accent); }
+  nav.toc a b { color:var(--accent); font-weight:500; font-family:"IBM Plex Mono",monospace; font-size:13px; margin-right:6px; }
+  h2 { font-size:22px; font-weight:600; margin:44px 0 10px; letter-spacing:-0.01em; text-wrap:balance; }
+  h2 b { color:var(--accent); font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:15px; margin-right:10px; vertical-align:2px; }
+  h3 { font-size:17px; font-weight:600; margin:26px 0 6px; }
+  p { margin:0 0 14px; max-width:70ch; }
+  ul, ol { margin:0 0 14px; padding-left:22px; }
+  li { margin-bottom:6px; }
+  li::marker { color:var(--accent); }
+  strong { font-weight:600; }
+  code, .mono { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:14px; }
+  code { background:var(--panel-2); padding:1px 5px; border-radius:4px; }
+  .lead { font-size:17px; color:var(--ink); }
+  .verdict { border-left:3px solid var(--accent); background:var(--panel); padding:12px 16px;
+    border-radius:0 8px 8px 0; margin:16px 0 20px; }
+  .verdict p:last-child { margin-bottom:0; }
+  .why { border:1px solid var(--line); background:var(--panel); padding:12px 16px; border-radius:8px; margin:14px 0 18px; }
+  .why p:last-child { margin-bottom:0; }
+  .nums { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:14px 0 18px; }
+  .num { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .num b { display:block; font-family:"IBM Plex Mono",monospace; font-size:20px; font-weight:500; font-variant-numeric:tabular-nums; }
+  .num span { font-size:14px; color:var(--note); }
+  .tablewrap { overflow-x:auto; margin:10px 0 18px; }
+  table { border-collapse:collapse; width:100%; font-size:14.5px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-weight:600; color:var(--ink); background:var(--panel); }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:"IBM Plex Mono",monospace; font-size:13.5px; white-space:nowrap; }
+  td.part { font-family:"IBM Plex Mono",monospace; font-size:13.5px; }
+  tr.rec td { background:color-mix(in srgb,var(--accent) 12%,transparent); }
+  .tag { display:inline-block; font-size:13px; font-weight:600; padding:1px 8px; border-radius:99px; border:1px solid var(--edge); color:var(--ink); }
+  .tag.rec { border-color:var(--accent); color:var(--accent); }
+  .tag.no { border-color:var(--risk); color:var(--risk); }
+  figure { margin:18px 0 22px; }
+  figure svg { width:100%; height:auto; display:block; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  figcaption { font-size:14.5px; color:var(--ink); margin-top:8px; max-width:70ch; }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+    overflow-x:auto; font-size:13.5px; line-height:1.5; color:var(--ink); }
+  .phase { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; padding:14px 16px; border:1px solid var(--line);
+    border-radius:8px; background:var(--panel); margin-bottom:10px; align-items:start; }
+  .phase b.k { font-family:"IBM Plex Mono",monospace; font-weight:500; color:var(--accent); font-size:15px; padding-top:2px; }
+  .phase p { margin:0 0 6px; }
+  @media (max-width:640px) { .phase { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Orbital scanning jig — drives, mounts, and the app</h1>
+  <span class="sub">a study with parts, not a wish list</span>
+  <a href="orbital-jig.html">the capture animation →</a>
+</header>
+<main>
+<p class="lead">The jig as printed turns by hand and changes elevation by loosening a thumbscrew. This is the study for the three things that would make it a machine: moving the carriage up and down the arc, turning the rotor, and getting the phone or the α1 to fire at the right moment and hand back the frames as one thing. It also takes the specimen mount seriously, because the tooth is the point and the spec gave it twenty millimetres of platform and no more thought.</p>
+
+<nav class="toc">
+  <a href="#loads"><b>1</b>What the drives have to move</a>
+  <a href="#elev"><b>2</b>Changing elevation</a>
+  <a href="#az"><b>3</b>Turning the rotor</a>
+  <a href="#elec"><b>4</b>Electronics and firmware</a>
+  <a href="#trig"><b>5</b>Firing each camera</a>
+  <a href="#mount"><b>6</b>Holding the tooth</a>
+  <a href="#app"><b>7</b>The app and the asset</a>
+  <a href="#plan"><b>8</b>The order to do it in</a>
+</nav>
+
+<h2 id="loads"><b>1</b>What the drives have to move</h2>
+<p>Every choice below follows from four numbers. The rotor side is the ring, the arc and its leg, the carriage, and whichever camera is on it. With the α1 behind the 90 mm macro that is the heavy case; with the phone it is a third of it.</p>
+<div class="nums">
+  <div class="num"><b>1.8 kg</b><span>rotor side with the α1 and 90 macro (ring 225 g at 30% infill, arc 95, carriage 120, camera 1,339)</span></div>
+  <div class="num"><b>0.10 kg·m²</b><span>its inertia about the rotor axis, the camera at 250 mm doing almost all of it</span></div>
+  <div class="num"><b>15 N</b><span>pull down the arc on the carriage at the 15° ring, 1.6 kg × g × cos 15°</span></div>
+  <div class="num"><b>0.14 N·m</b><span>to turn the rotor 10° in half a second, plus 0.2 N·m to ride the detent pawl</span></div>
+</div>
+<p>Two consequences. The rotor drive is easy: any small stepper through a modest reduction has ten times the torque needed, so the choice is about backlash, slip and holding, not power. The elevation drive is about <em>holding</em>, not moving: whatever carries the carriage must hold 15 N indefinitely with the power off, or the α1 slides to the bottom of the arc the moment you look away.</p>
+
+<h2 id="elev"><b>2</b>Changing elevation</h2>
+<p>The gravity idea, dropping a notch per ring from the top, fails on the geometry before it fails on anything else. The pull down the arc is g·cos θ and the friction holding a loose carriage is µ·g·sin θ. PETG on PETG is about µ = 0.4, so the carriage will not start sliding until θ is below 68°: parked at the 75° ring, it sits. At 35° the pull is nine times the friction, and 1.6 kg arriving at the 15° stop from 20° up the arc is an impact and then a vibration. Gravity can seat a pawl; it cannot be the drive.</p>
+
+<h3>A · Index notches and a one-way pawl <span class="tag rec">manual, do first</span></h3>
+<p>Four notches in the arc's outer flange at 75°, 55°, 35° and 15°, ramped on the uphill side and square on the downhill side. A sprung pawl on the saddle with a thumb lever. Lift the lever, ease the carriage down with the other hand, and the pawl drops onto the next square flank; the thumbscrew clamps for the ring. Working from the top down is right for this: the notch geometry means the carriage can only ever pass a notch going up under the lever and stops going down without it, so a slip costs one ring, not the whole arc.</p>
+<ul>
+  <li>Adds one printed pawl (PETG leaf spring, 1.5 mm, same as the detent pawl) and two M3 inserts to the saddle. The arc's fiducials become notches.</li>
+  <li>Repeatable to the notch: the pawl's flank sets θ to about ±0.2°, better than reading a tick.</li>
+  <li>No holding problem: the notch takes the load, the thumbscrew takes the vibration.</li>
+</ul>
+
+<h3>B · GT2 belt in the outboard channel, motor at the foot <span class="tag rec">motorized</span></h3>
+<p>The arc's I-section has two channels between its flanges. The inboard one carries the saddle's tongue; the outboard one is empty. A 6 mm GT2 belt runs in it the length of the slot, around an idler at each end of the quadrant, and clamps to the outboard shoe. The motor sits on the arc's leg, at the foot, where its 200 g is 60 mm from the rotor axis instead of 170, and where it never has to be lifted. The flanges keep the belt captive; a GT2 belt bends happily around a 155 mm radius.</p>
+<figure>
+<svg viewBox="0 0 720 420" role="img" aria-label="Side view of the quadrant arc with a belt loop in its outboard channel, idlers at each end, the motor at the foot, and the carriage clamped to the belt">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#EAF1EF"/></marker></defs>
+  <g transform="translate(90,380) scale(1,-1)">
+    <!-- arc: r 140..170 about the origin, drawn at 1.4 px/mm -->
+    <path d="M196 0 A196 196 0 0 1 0 196 L0 238 A238 238 0 0 0 238 0 Z" fill="#D9736A" opacity=".9"/>
+    <!-- leg and bar -->
+    <rect x="196" y="-102" width="42" height="103" fill="#D9736A" opacity=".9"/>
+    <rect x="92" y="-102" width="146" height="28" fill="#D9736A" opacity=".9"/>
+    <!-- slot -->
+    <path d="M214.9 15 A215.5 215.5 0 0 1 15 214.9" fill="none" stroke="#14181A" stroke-width="7"/>
+    <!-- belt loop in the channel: two runs -->
+    <path d="M226 10 A226 226 0 0 1 10 226" fill="none" stroke="#EAF1EF" stroke-width="3"/>
+    <path d="M206 10 A206 206 0 0 1 10 206" fill="none" stroke="#EAF1EF" stroke-width="3" stroke-dasharray="6 5"/>
+    <!-- idlers -->
+    <circle cx="216" cy="8" r="11" fill="#B4BCC3"/><circle cx="216" cy="8" r="3" fill="#14181A"/>
+    <circle cx="8" cy="216" r="11" fill="#B4BCC3"/><circle cx="8" cy="216" r="3" fill="#14181A"/>
+    <!-- motor at the foot -->
+    <rect x="200" y="-60" width="36" height="36" fill="#B4BCC3"/>
+    <circle cx="218" cy="-42" r="9" fill="#14181A"/>
+    <!-- carriage at 45 deg -->
+    <g transform="rotate(45)">
+      <rect x="190" y="-22" width="44" height="44" fill="#63A6C4"/>
+      <rect x="200" y="-26" width="8" height="52" fill="#EAF1EF" opacity=".8"/>
+    </g>
+    <!-- pupil and specimen -->
+    <circle cx="0" cy="0" r="4" fill="#EFE7D2"/>
+    <path d="M148 148 L0 0" stroke="#EFE7D2" stroke-width="1" stroke-dasharray="4 4" fill="none"/>
+    <path d="M0 0 L120 0" stroke="#EAF1EF" stroke-width="1.5" marker-end="url(#ah)" fill="none"/>
+  </g>
+  <g font-family="IBM Plex Sans, sans-serif" font-size="14" fill="#EAF1EF">
+    <text x="108" y="52">quadrant arc, r 140–170</text>
+    <text x="330" y="130">carriage, belt clamp on the outboard shoe</text>
+    <text x="30" y="150">belt: return run</text>
+    <text x="30" y="170">(dashed) inside the loop</text>
+    <text x="330" y="370">idler at θ = 0</text>
+    <text x="360" y="410">NEMA 17 on the leg, 16T pulley</text>
+    <text x="120" y="405">specimen</text>
+    <text x="200" y="400">R = 150</text>
+    <text x="30" y="395">idler at θ = 90</text>
+  </g>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="#EAF1EF">
+    <rect x="560" y="24" width="140" height="3" fill="#EAF1EF"/><text x="560" y="44">100 mm</text>
+  </g>
+</svg>
+<figcaption>Belt drive for elevation. The belt lives in the channel the carriage does not use, runs idler to idler along the slot, and the motor's mass sits at the foot of the arc rather than on the carriage.</figcaption>
+</figure>
+<ul>
+  <li>Holding: a 26 N·cm NEMA 17 on a 16-tooth GT2 pulley (5.1 mm pitch radius) holds 51 N, three times the 15 N load, energized. Unpowered it holds nothing, so the notches from option A stay, or the firmware keeps the elevation motor energized at reduced current between rings (TMC2209 hold current at 30% is 8 N·cm, still 16 N).</li>
+  <li>Resolution: 3,200 microsteps per 32 mm of belt is 0.01 mm, or 0.004° at r = 155. Meaningless precision; what matters is repeatability, and a belt repeats to a tooth.</li>
+  <li>Belt length: the slot spans 4° to 86°, 222 mm of arc at r = 155, so the loop is about 480 mm plus the idlers. One metre of open belt covers it with a splice clamp printed into the shoe.</li>
+  <li>Cost to the print: two idler posts on the arc (M4 axles, the same 608-style top-hat sleeves or GT2 idlers with their own bearings), a motor mount on the leg, a belt clamp on the shoe. The arc still fits its plate.</li>
+</ul>
+
+<h3>C · Curved rack on the flange, pinion on the saddle</h3>
+<p>Module-1 teeth printed along the arc's outer face, a pinion on a knob or a stepper on the saddle. It is the most obviously "geared" answer and the worst of the three: the motor rides the carriage, adding its whole mass at r = 170 to every turn of the rotor and to the belt's job if both were built, and a printed rack on a 170 mm radius has to be sliced tooth by tooth without a seam. With a knob instead of a motor it beats nothing that option A does not do with fewer parts.</p>
+
+<div class="tablewrap">
+<table>
+  <tr><th>option</th><th>control</th><th>holds unpowered</th><th class="n">mass on carriage</th><th>motorizable</th><th class="n">parts cost</th></tr>
+  <tr class="rec"><td>A · notches and pawl</td><td>one ring per lever pull, top down</td><td>yes, the notch</td><td class="n">+15 g</td><td>no</td><td class="n">$0</td></tr>
+  <tr class="rec"><td>B · belt, motor at the foot</td><td>continuous, 0.004°</td><td>with A's notches, or hold current</td><td class="n">+20 g clamp</td><td>yes</td><td class="n">~$35</td></tr>
+  <tr><td>C · rack and pinion on saddle</td><td>continuous</td><td>only with a worm or brake</td><td class="n">+200 g motor</td><td>yes</td><td class="n">~$25</td></tr>
+</table>
+</div>
+<div class="verdict"><p><strong>Build A now and B when a motor is on the table.</strong> They compose: the notches remain the unpowered hold and the belt does the moving. The carriage's thumbscrew stays for the α1, where the exposure is long enough to see a vibration.</p></div>
+
+<h2 id="az"><b>3</b>Turning the rotor</h2>
+<p>The ring's outside is taken: the bearing race is in the middle of its 18 mm edge, and the 2.3 mm lips above and below it are too thin to carry teeth. The inside is free. The bore is 180 mm, and nothing is in it but the pedestal at the centre and the detent dimples, which are on the underside out at r = 95.</p>
+
+<h3>A · Internal ring gear in the bore, pinion on the base <span class="tag rec">recommended</span></h3>
+<p>Module-1 teeth cut into the bore make a 178-tooth internal gear (pitch diameter 178 mm). A 16-tooth pinion on a NEMA 17 standing on the base at r = 81 meshes with it, hidden inside the ring, turning the same direction as the ring at 11.1:1. The teeth are 18 mm tall, printed vertically, which is the best orientation a printed gear can have. The dimples, at r 92 to 98 on the underside, do not meet the teeth, which end at r = 91.</p>
+<figure>
+<svg viewBox="0 0 720 440" role="img" aria-label="Top view of the rotor ring with an internal ring gear on its bore, a pinion and motor on the base inside the ring, three idler bearings outside, and the arc's footprint offset from the centre">
+  <g transform="translate(300,220)">
+    <!-- ring at 0.85 px/mm: r 90..121 -->
+    <circle r="103" fill="none" stroke="#4F9A88" stroke-width="26"/>
+    <!-- internal teeth: ticks on the bore -->
+    <g stroke="#14181A" stroke-width="2">
+      <path id="tooth" d="M0 -76.5 L0 -73"/>
+    </g>
+    <g fill="none" stroke="#14181A" stroke-width="1.6" stroke-dasharray="1.6 1.6">
+      <circle r="76.5"/>
+    </g>
+    <!-- race groove hint -->
+    <circle r="102" fill="none" stroke="#14181A" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <!-- idlers at 75/195/315 deg, r 129 -->
+    <g fill="#B4BCC3">
+      <circle cx="28.4" cy="-105.9" r="9.4"/><circle cx="-105.9" cy="-28.4" r="9.4"/><circle cx="77.5" cy="77.5" r="9.4"/>
+    </g>
+    <!-- pinion at r 81 -->
+    <circle cx="-69" cy="0" r="7" fill="#B4BCC3"/>
+    <rect x="-58" y="-18" width="36" height="36" fill="#B4BCC3" opacity=".9"/>
+    <!-- pedestal -->
+    <circle r="9.4" fill="#7A8088"/>
+    <!-- arc footprint at y = -60 (drawn as x offset for the top view: arc plane at y=-60, spanning x 60..170) -->
+    <rect x="56" y="-59.5" width="89" height="17" fill="#D9736A" opacity=".85"/>
+    <!-- pad -->
+    <path d="M78 -60 A103 103 0 0 1 100 -25 L 92 -21 A 90 90 0 0 0 66 -52 Z" fill="#4F9A88" opacity=".6"/>
+    <!-- detent pawl -->
+    <rect x="-100" y="-4" width="17" height="10" fill="#C99A3C" transform="rotate(-50)"/>
+  </g>
+  <g font-family="IBM Plex Sans, sans-serif" font-size="14" fill="#EAF1EF">
+    <text x="20" y="30">rotor ring, ø242, race on the rim</text>
+    <text x="20" y="50">(three 608 idlers on the base corners)</text>
+    <text x="20" y="200">NEMA 17 + 16T pinion,</text>
+    <text x="20" y="220">on the base inside the bore</text>
+    <text x="20" y="250">178T internal gear</text>
+    <text x="20" y="270">cut into the bore · 11.1 : 1</text>
+    <text x="456" y="210">arc's bar on the pad,</text>
+    <text x="456" y="230">at y = −60</text>
+    <text x="440" y="400">detent pawl, r 95 (stays as a manual backup)</text>
+    <text x="316" y="250">pedestal</text>
+  </g>
+  <g font-family="IBM Plex Mono, monospace" font-size="12" fill="#EAF1EF">
+    <rect x="560" y="24" width="85" height="3" fill="#EAF1EF"/><text x="560" y="44">100 mm</text>
+  </g>
+</svg>
+<figcaption>Rotor drive from inside the bore. The race and idlers are untouched; the gear is on the surface nothing else uses, and the motor stands on the base where its cable never moves.</figcaption>
+</figure>
+<ul>
+  <li>Torque at the ring: 26 N·cm × 11.1 = 2.9 N·m, twenty times what turning needs and enough to ride the detent pawl without noticing it. Keep the pawl: with the motor off it still indexes by hand.</li>
+  <li>Resolution: 200 steps × 16 microsteps × 11.1 = 35,500 per turn, 0.010°. Backlash in a printed module-1 mesh is 0.2 to 0.3° at the ring, and it only matters if you approach a frame from alternating directions. The firmware always approaches from the same side.</li>
+  <li>Homing: a nub on the ring's underside and a microswitch on the base, or TMC2209 StallGuard against a hard stop. Position is then dead-reckoned, which a gear allows and a friction roller does not.</li>
+  <li>Motor and cable on the stator: nothing on the rotor needs power except the elevation belt, whose motor is at the foot. One cable to the rotor side, with a loop of slack for one turn each way; the firmware never winds more than 360°.</li>
+</ul>
+
+<h3>B · A driven roller in place of one idler</h3>
+<p>Swap one 608 for a urethane roller of the same Ø22 on a motor, and the race the ring already has becomes the drive surface, at 10.7:1 for free. It is the smallest change to the part and the one I would not trust: the load on the ring is a 1.3 kg camera out on one side, so the contact force at the roller changes with azimuth, and a friction drive that slips by an unknown amount has to carry an encoder to know where it is. That is a magnetic ring encoder or an optical strip on a 242 mm ring, which is more work than the gear it was avoiding.</p>
+
+<h3>C · Worm on the rim</h3>
+<p>Self-locking, so the rotor holds against the camera's lopsided load with the power off, which is a real virtue. But the rim is taken by the race, a printed worm mesh is the least tolerant of any printed gear, and at 240:1 the ring turns 10° in about 1.3 s at a motor speed that is already near a stepper's torque cliff. If holding unpowered ever matters, a friction brake on the ring's top face is cheaper than a worm.</p>
+
+<h3>D · GT2 belt round the rim</h3>
+<p>Teeth printed on the rim at 2 mm pitch, 380 of them, are one-millimetre features at the edge of what a 0.4 mm nozzle draws cleanly, and again the rim is where the race lives. Ruled out by the race more than by the teeth.</p>
+
+<div class="verdict"><p><strong>Internal ring gear, module 1, 178 teeth, 16-tooth pinion.</strong> It uses the one free surface, hides the drive, and keeps every cable on the stator. The pawl stays.</p></div>
+
+<h2 id="elec"><b>4</b>Electronics and firmware</h2>
+<p>Two steppers, two silent drivers with stall detection, one microcontroller with Bluetooth, one supply. The phone is the operator's console over BLE; nothing here needs a screen.</p>
+<div class="tablewrap">
+<table>
+  <tr><th>role</th><th>part</th><th class="n">qty</th><th class="n">≈ cost</th><th>why this one</th></tr>
+  <tr><td>rotor motor</td><td class="part">StepperOnline 17HS13-0404S (NEMA 17, 26 N·cm, 0.4 A, 33 mm)</td><td class="n">1</td><td class="n">$12</td><td>low current keeps the drivers cool; torque is not the constraint</td></tr>
+  <tr><td>elevation motor</td><td class="part">same, 17HS13-0404S</td><td class="n">1</td><td class="n">$12</td><td>51 N on a 16T pulley; one spare covers both</td></tr>
+  <tr><td>drivers</td><td class="part">BIGTREETECH TMC2209 v1.3 (UART)</td><td class="n">2</td><td class="n">$16</td><td>silent, StallGuard for sensorless homing, hold-current control</td></tr>
+  <tr><td>controller</td><td class="part">ESP32-S3-DevKitC-1 (or Seeed XIAO ESP32S3)</td><td class="n">1</td><td class="n">$10</td><td>BLE 5 to the phone, Wi-Fi for logs, enough pins for two UART drivers</td></tr>
+  <tr><td>pulleys</td><td class="part">GT2 16T, 5 mm bore, 6 mm belt</td><td class="n">1</td><td class="n">$4</td><td>the 5.1 mm pitch radius that makes 15 N easy</td></tr>
+  <tr><td>idlers</td><td class="part">GT2 20T toothless idler, 5 mm bore, with bearings</td><td class="n">2</td><td class="n">$6</td><td>at each end of the arc's slot, on M5 axles</td></tr>
+  <tr><td>belt</td><td class="part">GT2 6 mm open belt, 1 m</td><td class="n">1</td><td class="n">$6</td><td>spliced in the shoe's clamp</td></tr>
+  <tr><td>pinion</td><td class="part">module 1, 16T steel spur, 5 mm bore, set screw</td><td class="n">1</td><td class="n">$6</td><td>the one gear worth buying; the 178T is printed</td></tr>
+  <tr><td>homing</td><td class="part">Omron SS-5GL microswitch</td><td class="n">2</td><td class="n">$4</td><td>StallGuard is the backup, not the primary, for a jig that holds a camera</td></tr>
+  <tr><td>supply</td><td class="part">12 V 3 A barrel supply + 5 V buck</td><td class="n">1</td><td class="n">$14</td><td>steppers at 12 V; the ESP32 off the buck</td></tr>
+  <tr><td>α1 trigger</td><td class="part">Sony Multi-terminal shutter cable (JJC Cable-F2 or equivalent, cut) + 2× PC817</td><td class="n">1</td><td class="n">$14</td><td>focus and shutter lines pulled to ground through optocouplers</td></tr>
+  <tr><td>wiring</td><td class="part">JST-XH 4-pin, 22 AWG, 0.5 m rotor-side loom</td><td class="n">—</td><td class="n">$10</td><td>one loom to the elevation motor with a 360° service loop</td></tr>
+  <tr><td colspan="3"><strong>total</strong></td><td class="n"><strong>~$115</strong></td><td>plus the reprinted ring, arc and shoe</td></tr>
+</table>
+</div>
+<p><strong>Firmware.</strong> The ESP32 runs the same state machine the animation does, verbatim: <code>SET_ELEVATION</code>, <code>ROTATE_AZIMUTH</code>, <code>SETTLE</code>, <code>CAPTURE</code>, <code>INCREMENT</code>. It exposes one BLE service with three characteristics: <code>protocol</code> (the ring table as JSON, written by the app), <code>command</code> (home, start, pause, abort, go to φ/θ), and <code>status</code> (state, ring, frame, φ, θ, notified on every change). <code>CAPTURE</code> is a handshake, not a timer: the jig announces it is settled, the phone takes the frame and acknowledges, and only then does the jig increment. For the α1 the jig pulses the shutter line itself and waits the exposure. Settling is measured rather than assumed: the app reads the phone's gyroscope and reports settled when rotation rate has been under 0.5°/s for 150 ms, which is typically well under the spec's 200 ms for the phone and longer for the α1 on a long lens. Arduino with AccelStepper and TMCStepper is enough; there is nothing here that needs a real-time OS.</p>
+
+<h2 id="trig"><b>5</b>Firing each camera</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>camera</th><th>route</th><th>what it gives</th><th>what it costs</th></tr>
+  <tr class="rec"><td>iPhone</td><td>the app, over BLE (section 7)</td><td>48 MP, ProRAW or HEIF, locked focus, exposure and white balance, per-frame intrinsics, the manifest written as it goes</td><td>an app to write</td></tr>
+  <tr><td>iPhone, no app</td><td>ESP32 as a BLE keyboard sending volume-up to the stock Camera app</td><td>works today with zero code on the phone; the jig runs the whole sequence blind</td><td>no manifest, no lock on focus, frames sorted by timestamp afterwards</td></tr>
+  <tr class="rec"><td>α1</td><td>Multi-terminal cable, focus then shutter pulled low through optocouplers, 100 ms apart</td><td>native RAW, any lens, no software on the camera</td><td>frames come off the card later; the manifest is matched by capture time, which the α1 stamps to the second, so the jig also logs its own clock per frame</td></tr>
+  <tr><td>α1, tethered</td><td>Sony Camera Remote SDK over USB from a Mac beside the jig</td><td>files land on the Mac as they are shot, with the jig's pose written into their sidecar immediately</td><td>a Mac in the tent and a second program</td></tr>
+</table>
+</div>
+
+<h2 id="mount"><b>6</b>Holding the tooth</h2>
+<p>The mount has three jobs that pull against each other: hold a 130 mm fossil still to a tenth of a millimetre through 108 settles, touch as little of it as possible so that what it touches is small enough to fill from the other pass, and be invisible to the reconstruction, which means matte, black, and featureless. A fourth job appears the moment the tooth is bigger than the frame: the mount has to work in two orientations, because no ring on this jig ever sees the underside of the root.</p>
+
+<h3>What does not work, and why</h3>
+<ul>
+  <li><strong>A clear acrylic rod or plate.</strong> Refraction moves the features seen through it and reflections add features that are not there. Structure-from-motion reads both as geometry. Transparent supports are the classic photogrammetry mistake.</li>
+  <li><strong>Hanging it on monofilament.</strong> A single line lets the tooth swing and twist for seconds after every rotor move; three lines in a tripod stop that but need a gallows over the origin that clears the arc at 90°, so a post 200 mm up from the base outside r = 180. It is buildable and the line is thin enough to mask, but the settle time defeats the point of a jig that indexes in a second.</li>
+  <li><strong>Putty alone for pass two.</strong> A megalodon tip on a lump of putty is a fossil balanced on its weakest point.</li>
+</ul>
+
+<h3>The specimen head system <span class="tag rec">recommended</span></h3>
+<p>The pedestal's 20 mm platform becomes a socket: a 1/4-20 brass insert in the top, the same part the receiver uses, and a family of heads that screw onto it. Every head is printed in matte black PETG and painted with Black 3.0 or Musou, which is what the spec asked for on the pedestal and which matters more here, ten millimetres from the enamel. The focal-height dial already absorbs a head's height.</p>
+<div class="tablewrap">
+<table>
+  <tr><th>head</th><th>holds</th><th>contact with the tooth</th><th>use</th></tr>
+  <tr><td>putty disc</td><td>Ø30 dish, 3 mm of museum putty (Quake Hold)</td><td>the root's base, ~15 cm²</td><td>pass one, upright, for any specimen under about 60 mm</td></tr>
+  <tr class="rec"><td>three-pin cradle</td><td>three 1.5 mm stainless pins in printed collets on 40 mm radial slides, each tipped with a 1 mm silicone bead</td><td>three points on the root, under 3 mm² each</td><td>pass one for the big tooth: the root's underside is 95% visible from the low rings</td></tr>
+  <tr class="rec"><td>tip cone</td><td>a Ø40 cup with a closed-cell foam liner, 25 mm deep</td><td>the top 20 mm of the crown, which pass one already captured</td><td>pass two, inverted: the root's underside and the base are fully exposed</td></tr>
+  <tr><td>flat chuck</td><td>two sprung jaws on the platform, 60 mm opening</td><td>two edges</td><td>flat specimens, slabs, small artifacts; not teeth</td></tr>
+</table>
+</div>
+<p><strong>Two passes, one reconstruction.</strong> With the head masked out of every frame, the two passes see the same textured surface and differ only in what is hidden. Run them through a single structure-from-motion job rather than reconstructing each and aligning afterwards: the enameloid band appears in both, the matcher registers them, and the merge happens where it should, in the bundle adjustment. This is why the app has to know which pass a frame belongs to and why the masks matter more than the lighting.</p>
+
+<h3>What it needs from the jig</h3>
+<ul>
+  <li>The pedestal gains one insert. The platform's dimple becomes the insert bore.</li>
+  <li>The three-pin cradle wants a slightly wider platform under it, Ø30, so the pedestal's cone starts 5 mm lower. The 75° sightline still clears: the draft rule is r ≤ 15 − d·tan 15° from a Ø30 platform, and the cone is recut to it.</li>
+  <li>The focal-height dial goes to 90 mm to put the inverted tooth's centroid on the origin with the cone under it. That is the ring's pad at 90 mm, still on the plate.</li>
+</ul>
+
+<h2 id="app"><b>7</b>The app and the asset</h2>
+<p>The reason to write an app is not the shutter. It is that the phone knows things about each frame that nothing downstream can recover, and it can hand them over only if something asks for them at the moment of capture.</p>
+<ul>
+  <li><strong>The intrinsics, per frame.</strong> iOS delivers the 3×3 camera matrix with each photo when <code>isCameraIntrinsicMatrixDeliveryEnabled</code> is set on the connection. It changes frame to frame because the stabilizer moves the lens, and focus breathing changes the focal length. A reconstruction that assumes one fixed camera absorbs that as error.</li>
+  <li><strong>The locks.</strong> Focus at a fixed lens position (<code>setFocusModeLocked</code>), exposure at a fixed duration and ISO, white balance fixed, 48 MP with <code>maxPhotoDimensions</code>, ProRAW if the pipeline wants it. Every frame identical except for where the camera is.</li>
+  <li><strong>Settle, measured.</strong> The gyroscope says when the rotor has stopped ringing, per frame, instead of a fixed 200 ms.</li>
+  <li><strong>The pose prior.</strong> The jig's kinematics give each frame's camera position to a millimetre and its orientation to a fraction of a degree before any image is looked at. Written into the manifest, they seed structure-from-motion instead of leaving it to guess, and they catch a frame that was taken at the wrong index.</li>
+  <li><strong>The mask.</strong> iOS 17's Vision foreground-instance request lifts the specimen off the tent background on the phone, so every frame ships with a mask. The matte black head and the white tent make that mask nearly free, and the masks are what let the two passes register as one object.</li>
+</ul>
+
+<h3>Two versions</h3>
+<div class="phase"><b class="k">v1 · manual jig</b><div>
+  <p>No electronics. The app drives the operator: it shows the next ring and azimuth, watches the gyroscope for the settle, fires, and reads the pose off the phone itself. Elevation is the gravity vector in the phone's frame, which is exact for a camera bolted to the arc. Azimuth is the gyroscope's integrated yaw, re-zeroed at each ring's first frame at the pad's home mark; drift over one 40 s ring is under a degree, and the manifest records it as a prior with that uncertainty, not as truth. ARKit's world tracking would give a full pose but takes over the camera and caps frames at 12 MP on most bodies, so it is the fallback, not the default.</p>
+</div></div>
+<div class="phase"><b class="k">v2 · motorized jig</b><div>
+  <p>The app connects to the ESP32, writes the protocol, and runs the handshake in section 4. The operator presses one button. Poses come from the jig's indices and are exact to the mechanism's repeatability.</p>
+</div></div>
+
+<h3>One asset</h3>
+<p>A capture is a folder, and the folder is the unit FossilRecord ingests: one specimen, one session, however many passes. Nothing in it needs the app to read.</p>
+<pre>meherrin-big_2026-09-15_A/
+  session.json        specimen id, jig build (dial, ring size), camera and lens, lens locks,
+                      protocol table, pass (A upright on pins / B inverted in the cone),
+                      frames[]: n, ring, phi, theta, file, capture time, intrinsics 3×3,
+                                exposure, gyro settle time, pose prior (position, quaternion, sigma)
+  frames/0001.heic …  or .dng with ProRAW; the α1's ARW files dropped in by hand or by the tether
+  masks/0001.png      foreground masks from the phone, or from the same model run on the Mac
+  colmap/cameras.txt  one camera per frame with its own intrinsics
+  colmap/images.txt   the pose priors, ready for a prior-seeded mapper
+  manifest.sha256     so a moved folder can prove it is complete</pre>
+<p>The α1 fits the same folder: the jig logs the frame index against its own clock, the camera stamps capture time to the second, and a small Mac-side step matches them and writes the same <code>session.json</code>. The phone app can do that matching too, if the card is read into it, but the Mac is where the RAW files are going anyway.</p>
+
+<h2 id="plan"><b>8</b>The order to do it in</h2>
+<div class="phase"><b class="k">phase 1</b><div>
+  <p><strong>Manual jig, complete.</strong> Notches and pawl on the arc and saddle; the pedestal insert and three heads: putty disc, three-pin cradle, tip cone; the platform widened to Ø30 and the dial to 90 mm. App v1 with locks, intrinsics, gyro settle, IMU poses, masks, and the folder. Every frame the spec asked for, taken properly, with nothing bought but pins, putty, foam and paint.</p>
+</div></div>
+<div class="phase"><b class="k">phase 2</b><div>
+  <p><strong>Motors.</strong> Ring reprinted with the internal gear; arc reprinted with idler posts and the motor mount on the leg; shoe with the belt clamp. The parts table in section 4, about $115. Firmware with the BLE service; app v2. The α1 on the shutter cable.</p>
+</div></div>
+<div class="phase"><b class="k">phase 3</b><div>
+  <p><strong>The pipeline.</strong> A prior-seeded structure-from-motion run on both passes at once, masks in, then the splat. FossilRecord takes the folder as one asset and the model as its derivative. This is where the two-pass merge is proven on the Meherrin tooth before any other specimen goes on the jig.</p>
+</div></div>
+<p>Everything in phase 1 changes the generator and is swept the way the rest of the jig is. Phase 2 changes three printed parts and adds a fourth. If you want to start, the notches and the specimen heads are an afternoon in the generator, and the app's v1 is the part that turns frames into an asset regardless of what the jig becomes.</p>
+</main>
+</body>
+</html>

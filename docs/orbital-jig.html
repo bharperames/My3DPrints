@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbital scanning jig — capture</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+<style>
+  /* The shop is dark-only: these are its own ground, panel and ink
+     tokens, so this page reads as one of its rooms. Part colours were
+     picked against the dark scene ground, hardware included -- a
+     near-black phone on a near-black ground disappears. */
+  :root {
+    --bg:#14181A; --surface:#1D2327; --surface-2:#232B2F;
+    --ink:#EAF1EF; --ink-soft:#AFBEBB; --line:#313B40; --edge:#4A5A62;
+    --accent:#5FA893; --accent-ink:#14201C;
+    --good:#7CC287; --warn:#E7B75E; --risk:#E08578;
+    --p-stator:#7A8088; --p-rotor:#4F9A88; --p-arc:#D9736A;
+    --p-carriage:#63A6C4; --p-small:#C99A3C; --hw:#B4BCC3;
+    --cam:#5A626B; --tooth:#EFE7D2;
+    --r1:#D9A84E; --r2:#7CC287; --r3:#63A6C4; --r4:#E08578;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.5 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line);
+    background:var(--surface); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; letter-spacing:-0.01em; }
+  .sub { color:var(--ink-soft); font-size:12.5px; }
+  a.back { margin-left:auto; color:var(--accent); text-decoration:none; font-size:12.5px; }
+  a.back:hover { text-decoration:underline; }
+  .wrap { display:flex; gap:0; height:calc(100vh - 58px); }
+  @media (max-width: 900px) { .wrap { flex-direction:column; height:auto; } }
+  #view { flex:1; position:relative; min-height:420px; background:var(--surface-2); }
+  #view canvas { display:block; width:100%; height:100%; }
+  #hud { position:absolute; left:12px; top:10px; font-size:12.5px;
+    font-variant-numeric:tabular-nums; color:var(--ink);
+    background:color-mix(in srgb,var(--surface) 88%,transparent);
+    border:1px solid var(--line); border-radius:6px; padding:6px 10px;
+    max-width:min(560px, calc(100% - 24px)); line-height:1.45; }
+  #hud b { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; }
+  #vfbox { position:absolute; left:12px; bottom:12px; pointer-events:none;
+    border:2px solid var(--edge); border-radius:6px;
+    box-shadow:0 4px 18px rgba(0,0,0,.25); transition:border-color .15s; }
+  #vfbox.flash { border-color:#FFFFFF; box-shadow:0 0 0 3px rgba(255,255,255,.65), 0 4px 18px rgba(0,0,0,.25); }
+  #vfbox span { position:absolute; left:6px; top:4px; font-size:11px; font-weight:600;
+    color:var(--ink); background:color-mix(in srgb,var(--surface) 82%,transparent);
+    padding:1px 6px; border-radius:4px; }
+  #vfbox.off { display:none; }
+  aside { width:372px; flex:0 0 372px; overflow:auto; padding:14px 16px 24px;
+    border-left:1px solid var(--line); background:var(--surface); }
+  @media (max-width: 900px) { aside { width:auto; flex:none; border-left:0; border-top:1px solid var(--line); } }
+  .bar { display:flex; gap:6px; margin:10px 0; flex-wrap:wrap; align-items:center; }
+  button { font:inherit; font-size:12.5px; padding:6px 12px; border-radius:6px;
+    border:1px solid var(--edge); background:var(--surface); color:var(--ink); cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  button:disabled { opacity:.45; cursor:default; }
+  .seg { display:inline-flex; border:1px solid var(--edge); border-radius:6px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; padding:5px 10px; }
+  .seg button + button { border-left:1px solid var(--edge); }
+  .seg button.on { background:var(--accent); color:var(--accent-ink); }
+  .lbl { font-size:12px; color:var(--ink-soft); margin-right:4px; }
+  .rings { margin:12px 0 6px; }
+  .ring { display:grid; grid-template-columns:18px 1fr auto; gap:8px 10px; align-items:center;
+    padding:7px 8px; border:1px solid var(--edge); border-radius:7px; margin-bottom:6px;
+    cursor:pointer; background:var(--surface); }
+  .ring:hover { border-color:var(--accent); }
+  .ring.on { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+  .ring.done { opacity:.75; }
+  .ring .dot { width:12px; height:12px; border-radius:50%; }
+  .ring b { font-size:13px; }
+  .ring .meta { font-size:11.5px; color:var(--ink-soft); }
+  .ring .n { font-variant-numeric:tabular-nums; font-size:12.5px; }
+  .ring .target { grid-column:2 / -1; font-size:11.5px; color:var(--ink-soft); line-height:1.35; }
+  .ring .prog { grid-column:1 / -1; height:4px; background:var(--surface-2); border-radius:2px; overflow:hidden; }
+  .ring .prog i { display:block; height:100%; width:0; }
+  .toggles { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12.5px; margin:8px 0; }
+  .toggles label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  td { padding:3px 0; border-bottom:1px solid var(--line); }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
+  .note { font-size:11.5px; color:var(--ink-soft); border-top:1px solid var(--line);
+    margin-top:14px; padding-top:12px; }
+  .note b { color:var(--ink); }
+  .modebar { position:relative; margin:10px 0; }
+  .modepop { position:absolute; z-index:20; top:100%; left:0; right:0; margin-top:6px;
+    display:none; grid-template-columns:repeat(2,1fr); gap:6px; padding:8px;
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:9px; box-shadow:0 8px 24px rgba(0,0,0,.18); }
+  .modepop.open { display:grid; }
+  .modecur { display:flex; align-items:center; gap:8px; width:100%;
+    padding:5px 8px; border:1px solid var(--edge); border-radius:7px;
+    background:var(--surface); cursor:pointer; text-align:left; }
+  .modecur .thumb { width:52px; height:36px; flex:0 0 52px; border-radius:4px;
+    border:1px solid var(--line); background:var(--surface-2) center/cover no-repeat; }
+  .modecur b { font-size:12.5px; font-weight:600; }
+  .modecur i { font-style:normal; margin-left:auto; color:var(--ink-soft); font-size:10px; }
+  .modebtn { width:100%; padding:0; border:2px solid var(--line); border-radius:7px;
+    background:var(--surface-2); cursor:pointer; overflow:hidden; display:block;
+    text-align:left; position:relative; }
+  .modebtn .thumb { display:block; height:104px; width:100%;
+    background:var(--surface-2) center/cover no-repeat; }
+  .modebtn span { position:absolute; left:0; right:0; bottom:0; font-size:10.5px;
+    padding:3px 5px; line-height:1.2; font-weight:600; color:var(--ink);
+    border-top:1px solid var(--line);
+    background:color-mix(in srgb,var(--surface) 84%,transparent); }
+  .modebtn:hover, .modebtn.on { border-color:var(--accent); }
+  .modebtn:last-child { grid-column:1 / -1; }
+  .verdict { font-size:12.5px; padding:8px 10px; border-radius:6px; margin-top:8px; display:none; }
+  .verdict.ok { display:block; background:color-mix(in srgb,var(--good) 15%,transparent); color:var(--good); }
+  .verdict.bad { display:block; background:color-mix(in srgb,var(--risk) 15%,transparent); color:var(--risk); }
+  .key { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+</style>
+<script type="importmap">
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
+"three/addons/loaders/3MFLoader.js":"../vendor/loaders/3MFLoader.js",
+"three/addons/loaders/GLTFLoader.js":"../vendor/loaders/GLTFLoader.js",
+"three/addons/utils/BufferGeometryUtils.js":"../vendor/utils/BufferGeometryUtils.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1 id="title">Orbital scanning jig — capture sequence</h1>
+  <span class="sub" id="sub">loading…</span>
+  <a class="back" href="../index.html">← the shop</a>
+</header>
+<div class="wrap">
+  <div id="view">
+    <div id="hud">STATE_INIT — fetching the printed file…</div>
+    <div id="vfbox" class="off"><span id="vflabel">viewfinder · what this frame captures</span></div>
+  </div>
+  <aside>
+    <div class="bar">
+      <button id="play" class="primary">▶ Run the capture</button>
+      <button id="step">One frame ▶</button>
+      <button id="reset">Reset</button>
+    </div>
+    <div class="bar">
+      <span class="lbl">camera</span>
+      <span class="seg" id="camsel"></span>
+    </div>
+    <div class="bar">
+      <span class="lbl">lens</span>
+      <span class="seg" id="lenssel"></span>
+    </div>
+    <div class="bar">
+      <span class="lbl">speed</span>
+      <span class="seg" id="speed">
+        <button data-s="1" class="on">1×</button><button data-s="3">3×</button><button data-s="10">10×</button>
+      </span>
+    </div>
+    <div id="verdict" class="verdict"></div>
+    <div class="rings" id="rings"></div>
+    <div id="modes" class="modebar"></div>
+    <div class="toggles">
+      <label><input type="checkbox" id="t-path" checked> capture path</label>
+      <label><input type="checkbox" id="t-rays"> keep rays</label>
+      <label><input type="checkbox" id="t-vf" checked> viewfinder</label>
+      <label><input type="checkbox" id="t-hw" checked> hardware &amp; camera</label>
+    </div>
+    <table id="facts"></table>
+    <div class="note">
+      <b>What is drawn is what prints.</b> The bodies are read straight out of
+      the 3MF the shop builds for this part — the file that goes to the
+      printer — and put back into their assembled positions from the
+      transforms the generator wrote into the same archive. Nothing here is
+      a copy of the geometry made for the page. The grey parts are stand-ins
+      for hardware that is bought, not printed: three 608 bearings on their
+      M4 axles, the M5 thumbscrew, the ballast, and the camera you pick:
+      a phone held landscape in a spring clamp on the receiver's 1/4-20, or
+      a Sony α1 on an Arca plate behind one of its macros, the receiver
+      slid along its channel to sit under the body's socket. The main lens
+      is on the 150&nbsp;mm sphere either way. The specimen is the scanned tooth from
+      <code>models/specimen/</code>, at its real size, base on the platform;
+      the jig is built with its focal height at that tooth's centroid.
+      <code>?file=</code> picks another glTF from that folder and
+      <code>?specimen=</code> overrides the height.
+      <br><br>
+      <b>The sequence is the spec's state machine.</b> Set elevation along the
+      arc, turn the rotor to the next azimuth, hold 200&nbsp;ms for the
+      mechanics to settle, expose — the frustum flashes at 20 to 200&nbsp;mm
+      and a ray is cast to the specimen — then increment. Four rings, 108
+      frames. The viewfinder inset is a second render from the camera's own
+      position with the chosen lens's field, so each flash shows what that
+      frame holds. The spec drew one 32° frustum, which frames
+      86&nbsp;×&nbsp;57&nbsp;mm at 150&nbsp;mm and cannot hold a 129&nbsp;mm
+      tooth; the phone's main camera frames 216&nbsp;×&nbsp;162, and the
+      α1's 90 macro 60&nbsp;×&nbsp;40, so the lens is a choice here. What
+      no lens fixes is depth of field: a phone's main camera at f/1.8 and
+      150&nbsp;mm holds roughly 5&nbsp;mm in focus against a 31&nbsp;mm-thick
+      specimen, where the α1's macro at f/8–f/13 holds the whole tooth.
+      <br><br>
+      <b>One thing the spec does not add up on.</b> The rotor's detent ring
+      has 36 dimples at 10°, which serves the horizon ring (10° steps) and the
+      zenith ring (20°). The 12° and 15° steps of the middle rings land
+      between dimples: on those the thumb holds the rotor against the pawl's
+      spring, and the HUD says so.
+    </div>
+  </aside>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { toCreasedNormals, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { unzipSync } from '../vendor/libs/fflate.module.js';
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const hud = document.getElementById('hud');
+const errors = [];
+addEventListener('error', e => errors.push(String(e.message || e)));
+
+/* ---------- the printed file, and the assembly written inside it ---------- */
+const Q = new URLSearchParams(location.search);
+/* The specimen comes first, because the jig is built for it: the dial is
+   how far the specimen's centre sits above the platform, and the page
+   reads that off the mesh rather than guessing. A scanned tooth in
+   models/specimen/ (glTF, y up, millimetres, base at y = 0); without one,
+   a drawn stand-in. */
+const SPECIMEN_GLB = '../models/specimen/' + (new URLSearchParams(location.search).get('file') || 'BigMeherrin.glb');
+let specimenMesh = null, specimenInfo = null;
+try {
+  hud.textContent = 'STATE_INIT — loading the specimen…';
+  const g = await new GLTFLoader().loadAsync(SPECIMEN_GLB);
+  const root = g.scene;
+  root.rotation.x = Math.PI / 2;                 // glTF is y-up; the jig is z-up
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root);
+  // centroid as the mean of the vertices: what the shop's own measurement
+  // reported for this file, and what the focal point should sit on
+  let sum = new THREE.Vector3(), n = 0;
+  root.traverse(o => { if (o.isMesh) { const p = o.geometry.attributes.position;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld); sum.add(v); n++; } } });
+  const c = sum.multiplyScalar(1 / n);
+  specimenInfo = { name: SPECIMEN_GLB.split('/').pop(), height: box.max.z - box.min.z,
+    width: box.max.x - box.min.x, depth: box.max.y - box.min.y,
+    centroid: c.z - box.min.z, box, center: box.getCenter(new THREE.Vector3()) };
+  specimenMesh = root;
+} catch (e) { specimenInfo = null; }
+const specimen = Q.get('specimen') ? +Q.get('specimen')
+  : specimenInfo ? Math.min(70, Math.max(6, Math.round(specimenInfo.centroid))) : 12;
+const params = JSON.stringify({ specimen });
+const src = `../src?id=orbital_jig&params=${encodeURIComponent(params)}`;
+hud.textContent = 'STATE_INIT — building the jig from its generator (a few seconds the first time)…';
+const res = await fetch(src);
+hud.textContent = 'STATE_INIT — loading Stator, Rotor, Arc, Carriage, Center Post, Tooth Mesh…';
+if (!res.ok) {
+  let msg = res.statusText;
+  try { msg = (await res.json()).error || msg; } catch (e) {}
+  hud.textContent = 'could not build the part: ' + msg;
+  throw new Error(msg);
+}
+const buf = await res.arrayBuffer();
+const files = unzipSync(new Uint8Array(buf));
+const D = JSON.parse(new TextDecoder().decode(files['Metadata/orbital_jig.json']));
+const model = new ThreeMFLoader().parse(buf);
+const R = D.R, DEG = Math.PI / 180;
+
+/* ---------- scene, z-up like the spec ---------- */
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(css('--surface-2'));
+const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
+camera.up.set(0, 0, 1);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+camera.position.set(560, -600, 360);
+controls.target.set(0, 0, 10);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x404050, 1.9);
+hemi.position.set(0, 0, 1);
+scene.add(hemi);
+const key = new THREE.DirectionalLight(0xffffff, 2.0);
+key.position.set(0.7, -0.9, 1.3);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.6);
+fill.position.set(-0.8, 0.6, 0.4);
+scene.add(fill);
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  layoutViewfinder();
+}
+addEventListener('resize', resize);
+
+/* ---------- bodies: rotor carries carriage, stator stays put ---------- */
+const stator = new THREE.Group(), rotor = new THREE.Group(), carriage = new THREE.Group();
+rotor.add(carriage);
+scene.add(stator, rotor);
+const groupOf = n => D.carriage.includes(n) ? carriage : D.rotor_side.includes(n) ? rotor : stator;
+const colorOf = n => n === 'stator' ? '--p-stator' : n === 'rotor' ? '--p-rotor'
+  : n === 'arc' ? '--p-arc' : (n === 'saddle' || n === 'shoe') ? '--p-carriage' : '--p-small';
+const printed = {}, allMeshes = [], allEdges = [];
+function addBody(name, geometry, group, cssVar, opts = {}) {
+  // 3MF carries no normals. Creased at 30 degrees, not averaged: a bore
+  // keeps its edge and the ring's one-degree facets read as a cylinder.
+  const g = geometry.getAttribute('normal') ? geometry : toCreasedNormals(geometry, Math.PI / 6);
+  const base = new THREE.Color(css(cssVar));
+  const mat = new THREE.MeshStandardMaterial({ color: base, roughness: opts.rough ?? .6,
+    metalness: opts.metal ?? .05 });
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.name = name;
+  if (opts.matrix) { mesh.matrixAutoUpdate = false; mesh.matrix.copy(opts.matrix); }
+  const eg = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25),
+    new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.35) }));
+  eg.name = name + ':edges';
+  mesh.add(eg);                       // child: inherits the transform
+  group.add(mesh);
+  allMeshes.push(mesh); allEdges.push(eg);
+  mesh.userData.hardware = !!opts.hardware;
+  return mesh;
+}
+const found = [];
+model.traverse(o => {
+  if (!o.isMesh) return;
+  const name = (o.name || (o.parent && o.parent.name) || '').replace(/[^a-z_]/gi, '');
+  if (!D.to_world[name]) { errors.push('unnamed body in the 3MF: ' + o.name); return; }
+  // the geometry is the body as it lies on the plate; the archive's own
+  // transform stands it back up where it was designed. The loader's build
+  // item transform (plate placement) is deliberately ignored.
+  const M = new THREE.Matrix4().set(...D.to_world[name]);
+  printed[name] = addBody(name, o.geometry, groupOf(name), colorOf(name), { matrix: M });
+  found.push(name);
+});
+for (const n of Object.keys(D.to_world)) if (!found.includes(n)) errors.push('missing body ' + n);
+
+/* ---------- hardware stand-ins: bought, not printed ---------- */
+const hardware = new THREE.Group(); scene.add(hardware);
+const hwRotor = new THREE.Group(), hwCarriage = new THREE.Group();
+rotor.add(hwRotor); carriage.add(hwCarriage);
+const HW = { rough: .35, metal: .6, hardware: true };
+function ringGeom(ro, ri, h) {
+  const s = new THREE.Shape(); s.absarc(0, 0, ro, 0, Math.PI * 2, false);
+  const hole = new THREE.Path(); hole.absarc(0, 0, ri, 0, Math.PI * 2, true);
+  s.holes.push(hole);
+  return new THREE.ExtrudeGeometry(s, { depth: h, bevelEnabled: false, curveSegments: 48 });
+}
+const cylZ = (r, h, n = 48) => new THREE.CylinderGeometry(r, r, h, n).rotateX(Math.PI / 2);
+const B = D.bearing;
+for (const phi of B.phi) {
+  const x = B.pitch_r * Math.cos(phi * DEG), y = B.pitch_r * Math.sin(phi * DEG);
+  const brg = addBody('bearing', ringGeom(B.r, B.bore / 2, B.w), hardware, '--hw', HW);
+  brg.position.set(x, y, B.z - B.w / 2);
+  const inner = addBody('race', ringGeom(6.0, B.bore / 2 + 0.01, B.w + 0.02), hardware, '--hw',
+    { rough: .3, metal: .7, hardware: true });
+  inner.position.set(x, y, B.z - B.w / 2 - 0.01);
+  const head = addBody('bolt', cylZ(B.head_r, B.head_h, 24), hardware, '--cam', HW);
+  head.position.set(x, y, B.z + B.w / 2 + 1.0 + B.head_h / 2);   // on the sleeve's flange
+}
+// thumbscrew through the arc's slot, knob outboard
+const T = D.thumbscrew;
+const shaft = addBody('thumbscrew', new THREE.CylinderGeometry(T.r, T.r, T.y1 - T.y0, 24), hwCarriage, '--hw', HW);
+shaft.position.set(T.u, (T.y0 + T.y1) / 2, 0);
+const knob = addBody('knob', new THREE.CylinderGeometry(T.knob_r, T.knob_r, T.knob_h, 20), hwCarriage, '--cam', HW);
+knob.position.set(T.u, T.y0 - T.knob_h / 2 + 0.5, 0);
+// ballast: washers on the ring and in the carriage's boss
+const bl = D.ballast;
+const wr = addBody('ballast', cylZ(bl.d / 2 - 1, 5, 40), hwRotor, '--hw', HW);
+wr.position.set(bl.r * Math.cos(bl.phi * DEG), bl.r * Math.sin(bl.phi * DEG), bl.z_floor + 2.5);
+const cb = D.cb_pocket;
+const wc = addBody('ballast', cylZ(cb.r - 1, 6, 40), hwCarriage, '--hw', HW);
+wc.position.set(cb.u, D.pupil[1], cb.v_mouth + 3);
+// the camera: whichever one is chosen, from the same boxes the generator
+// swept against the arc and its leg. Boxes are world coordinates at
+// theta = 0, the carriage's build pose, so they go straight in. The
+// receiver slides along its channel to sit under the camera's socket.
+const camGroup = new THREE.Group(); carriage.add(camGroup);
+const recvShift = new THREE.Group(); carriage.add(recvShift);
+recvShift.add(printed.receiver);
+let camKind = D.cameras[Q.get('camera')] ? Q.get('camera') : D.camera_default;
+let lensId = null;
+const PH = { rough: .45, metal: .55, hardware: true };
+function boxMesh(name, [lo, hi], cssVar, opts) {
+  const m = addBody(name, new THREE.BoxGeometry(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]), camGroup, cssVar, opts);
+  m.position.set((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2);
+  m.userData.camera = true;
+  return m;
+}
+function buildCamera(kind, id) {
+  const c = D.cameras[kind];
+  const lens = c.lenses.find(l => l.id === id) || c.lenses.find(l => l.id === c.default_lens);
+  const cfg = c.configs[lens.id];
+  for (const o of [...camGroup.children]) { camGroup.remove(o); }
+  for (let k = allMeshes.length - 1; k >= 0; k--) if (allMeshes[k].userData.camera) {
+    const m = allMeshes.splice(k, 1)[0];
+    const ei = allEdges.indexOf(m.children[0]); if (ei >= 0) allEdges.splice(ei, 1);
+  }
+  if (kind === 'iphone') {
+    for (const b of cfg.boxes.phone) boxMesh('phone', b, '--cam', PH);
+    const body = cfg.boxes.phone[0];
+    // the screen: a near-black face a hair proud of the body's far side
+    const scr = boxMesh('screen', [[body[1][0], body[0][1] + 3, body[0][2] + 3], [body[1][0] + 0.3, body[1][1] - 3, body[1][2] - 3]], '--cam', { rough: .2, metal: .8, hardware: true });
+    scr.material.color.multiplyScalar(0.25);
+    for (const l of c.rings) {
+      const ring = addBody('lens', new THREE.CylinderGeometry(l.r, l.r, 1.2, 32).rotateZ(Math.PI / 2), camGroup, '--hw', { rough: .3, metal: .7, hardware: true });
+      ring.position.set(l.c[0] - 0.6, l.c[1], l.c[2]); ring.userData.camera = true;
+      const glass = addBody('glass', new THREE.CylinderGeometry(l.r - 1.6, l.r - 1.6, 0.6, 32).rotateZ(Math.PI / 2), camGroup, '--cam', { rough: .05, metal: .9, hardware: true });
+      glass.position.set(l.c[0] - 1.3, l.c[1], l.c[2]); glass.userData.camera = true;
+    }
+    for (const b of cfg.boxes.clamp) boxMesh('clamp', b, '--hw', HW);
+  } else {
+    // the a1: a barrel for the lens rather than the sweep's box round it
+    const [lo, hi] = cfg.boxes.lens[0];
+    const r = (hi[1] - lo[1]) / 2, len = hi[0] - lo[0];
+    const barrel = addBody('lens', new THREE.CylinderGeometry(r, r - 3, len, 48).rotateZ(Math.PI / 2), camGroup, '--cam', { rough: .5, metal: .35, hardware: true });
+    barrel.position.set((lo[0] + hi[0]) / 2, 0, 0); barrel.userData.camera = true;
+    const front = addBody('glass', new THREE.CylinderGeometry(r - 8, r - 8, 1.0, 48).rotateZ(Math.PI / 2), camGroup, '--cam', { rough: .05, metal: .9, hardware: true });
+    front.position.set(lo[0] + 0.4, 0, 0); front.userData.camera = true;
+    for (const b of cfg.boxes.body) boxMesh('body', b, '--cam', { rough: .7, metal: .15, hardware: true });
+    for (const b of cfg.boxes.plate) boxMesh('plate', b, '--hw', HW);
+  }
+  recvShift.position.x = cfg.receiver_u - D.receiver_u;
+  camKind = kind; lensId = lens.id;
+  F.fov_deg = lens.fov_deg; F.aspect = lens.aspect;
+  frustum.geometry.dispose(); frustum.geometry = frustumGeom();
+  vf.fov = vfovOf(F) / DEG; vf.aspect = F.aspect; vf.updateProjectionMatrix();
+  layoutViewfinder();
+  document.querySelectorAll('#camsel button').forEach(b => b.classList.toggle('on', b.dataset.id === kind));
+  const ls = document.getElementById('lenssel'); ls.innerHTML = '';
+  for (const L of c.lenses) {
+    const b = document.createElement('button');
+    b.dataset.id = L.id; b.textContent = L.name.replace(/,.*$/, '').replace(' macro', '');
+    b.title = `${L.name}: ${L.fov_deg}° across, ${L.aspect.toFixed(2)}:1`;
+    b.className = L.id === lens.id ? 'on' : '';
+    b.onclick = () => buildCamera(kind, L.id);
+    ls.appendChild(b);
+  }
+  const w = 2 * R * Math.tan(F.fov_deg / 2 * DEG);
+  document.getElementById('f-cam').textContent = c.name;
+  document.getElementById('f-lens').textContent = `${lens.name} · ${lens.fov_deg}° across · ${F.near}–${F.far} mm`;
+  document.getElementById('f-frame').textContent = `${w.toFixed(0)} × ${(w / F.aspect).toFixed(0)} mm at R`;
+  document.getElementById('vflabel').textContent = `viewfinder · ${lens.fov_deg}° · ${w.toFixed(0)} × ${(w / F.aspect).toFixed(0)} mm at the specimen`;
+  applyView();
+}
+for (const [k, c] of Object.entries(D.cameras)) {
+  const b = document.createElement('button');
+  b.dataset.id = k; b.textContent = c.name.replace(/ (in|on) .*$/, '');
+  b.title = c.name;
+  b.onclick = () => buildCamera(k, null);
+  document.getElementById('camsel').appendChild(b);
+}
+// a small mark where the pupil is
+const pupil = addBody('pupil', new THREE.SphereGeometry(1.6, 12, 8), hwCarriage, '--r1', { hardware: true });
+pupil.position.set(R, D.pupil[1], 0);
+
+/* ---------- the specimen: a shark tooth on the platform ---------- */
+// Not a printed part, so it is drawn with smooth normals on purpose: the
+// blade is one continuous surface and creases on it would be fiction.
+function toothGeometry() {
+  const H = 27, NA = 40, NT = 28;
+  const pos = [], idx = [];
+  for (let j = 0; j <= NT; j++) {
+    const t = j / NT;
+    const w = 11.5 * Math.pow(1 - t, 0.85) + 0.25;      // half-width of the blade
+    const k = 0.28 * w + 0.15;                          // half-thickness
+    const bow = 2.5 * t * t;                            // lingual curve
+    for (let i = 0; i < NA; i++) {
+      const a = i / NA * Math.PI * 2;
+      pos.push(w * Math.cos(a), k * Math.sin(a) + bow, H * t);
+    }
+  }
+  for (let j = 0; j < NT; j++) for (let i = 0; i < NA; i++) {
+    const a = j * NA + i, b = j * NA + (i + 1) % NA, c = a + NA, d = b + NA;
+    idx.push(a, b, d, a, d, c);
+  }
+  // cap the base
+  const base = pos.length / 3; pos.push(0, 0, 0);
+  for (let i = 0; i < NA; i++) idx.push(base, (i + 1) % NA, i);
+  const crown = new THREE.BufferGeometry();
+  crown.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  crown.setIndex(idx); crown.computeVertexNormals();
+  // the crown carries no uvs, so the lobes must not either or the merge refuses
+  const lobe = () => { const g = new THREE.SphereGeometry(1, 28, 18).scale(9.5, 4.2, 4.5); g.deleteAttribute('uv'); return g; };
+  const l1 = lobe().translate(-6.5, 0.8, -0.5), l2 = lobe().translate(6.5, 0.8, -0.5);
+  const merged = mergeGeometries([crown.toNonIndexed(), l1.toNonIndexed(), l2.toNonIndexed()], false);
+  return merged;
+}
+let tooth;
+if (specimenMesh) {
+  // base on the platform, centred on the pedestal; the focal point is
+  // then `specimen` mm above the platform, which the jig was built for
+  const holder = new THREE.Group();
+  holder.add(specimenMesh);
+  const b = specimenInfo.box, ctr = specimenInfo.center;
+  specimenMesh.position.set(-ctr.x, -ctr.y, -b.min.z);
+  holder.position.set(0, 0, D.levels.plat);
+  tooth = holder; tooth.name = 'tooth';
+  stator.add(holder);
+} else {
+  const toothMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(css('--tooth')), roughness: .45, metalness: .0 });
+  tooth = new THREE.Mesh(toothGeometry(), toothMat);
+  tooth.name = 'tooth';
+  tooth.position.set(0, 0, D.levels.plat + 4.2);
+  tooth.rotation.z = 0.35;
+  stator.add(tooth);
+}
+
+/* ---------- spec kinematics ---------- */
+const Pc = (phi, th) => new THREE.Vector3(R * Math.cos(th) * Math.cos(phi), R * Math.cos(th) * Math.sin(phi), R * Math.sin(th));
+const vUp = (phi, th) => new THREE.Vector3(-Math.sin(th) * Math.cos(phi), -Math.sin(th) * Math.sin(phi), Math.cos(th));
+function pose(phiDeg, thDeg) {
+  rotor.rotation.z = phiDeg * DEG;
+  carriage.rotation.y = -thDeg * DEG;
+}
+
+/* ---------- capture overlay: frustum, ray, markers, paths ---------- */
+const overlay = new THREE.Group(); scene.add(overlay);
+const F = Object.assign({ fov_deg: 32, aspect: 1.5 }, D.frustum);
+const vfovOf = f => 2 * Math.atan(Math.tan(f.fov_deg / 2 * DEG) / f.aspect);
+const vf = new THREE.PerspectiveCamera(vfovOf(F) / DEG, F.aspect, 5, 1200);
+vf.up.set(0, 0, 1);
+function frustumGeom() {
+  const pts = [];
+  const rect = d => { const hw = d * Math.tan(F.fov_deg / 2 * DEG), hh = hw / F.aspect;
+    return [[-hw, -hh, -d], [hw, -hh, -d], [hw, hh, -d], [-hw, hh, -d]]; };
+  const n = rect(F.near), f = rect(F.far);
+  for (let i = 0; i < 4; i++) {
+    pts.push(...n[i], ...n[(i + 1) % 4]);
+    pts.push(...f[i], ...f[(i + 1) % 4]);
+    pts.push(...n[i], ...f[i]);
+  }
+  return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+}
+const frustum = new THREE.LineSegments(frustumGeom(),
+  new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
+frustum.frustumCulled = false;
+overlay.add(frustum);
+const rayGeom = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+const ray = new THREE.Line(rayGeom, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 }));
+ray.frustumCulled = false;
+overlay.add(ray);
+const keptRays = new THREE.Group(); overlay.add(keptRays);
+const ringCol = ['--r1', '--r2', '--r3', '--r4'].map(v => new THREE.Color(css(v)));
+const markers = new THREE.Group(), paths = new THREE.Group(), planned = new THREE.Group();
+overlay.add(markers, paths, planned);
+const markerGeom = new THREE.SphereGeometry(2.3, 14, 10);
+const pathLines = D.protocol.map((p, k) => {
+  const n = Math.round(360 / p.step) + 1;
+  const g = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(n * 3), 3));
+  g.setDrawRange(0, 0);
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: ringCol[k] }));
+  l.frustumCulled = false;
+  paths.add(l);
+  // the planned latitude circle, faint, so the shell is visible before it is shot
+  const th = p.elev * DEG;
+  const curve = new THREE.EllipseCurve(0, 0, R * Math.cos(th), R * Math.cos(th), 0, 2 * Math.PI, false, 0);
+  const cg = new THREE.BufferGeometry().setFromPoints(curve.getPoints(180));
+  const c = new THREE.Line(cg, new THREE.LineDashedMaterial({ color: ringCol[k], dashSize: 4, gapSize: 5, transparent: true, opacity: .55 }));
+  c.computeLineDistances();
+  c.position.z = R * Math.sin(th);
+  planned.add(c);
+  return { line: l, n: 0 };
+});
+const captured = [];   // {ring, phi, theta, p:[x,y,z]}
+function capture(phiDeg, thDeg, k) {
+  const phi = phiDeg * DEG, th = thDeg * DEG;
+  const p = Pc(phi, th);
+  // frustum: the viewfinder camera's own pose, copied
+  vf.position.copy(p); vf.up.copy(vUp(phi, th)); vf.lookAt(0, 0, 0); vf.updateMatrixWorld();
+  frustum.position.copy(vf.position); frustum.quaternion.copy(vf.quaternion);
+  frustum.material.opacity = 1;
+  const a = ray.geometry.attributes.position;
+  a.setXYZ(0, p.x, p.y, p.z); a.setXYZ(1, 0, 0, 0); a.needsUpdate = true;
+  ray.material.opacity = 1;
+  if (document.getElementById('t-rays').checked) {
+    const kg = new THREE.BufferGeometry().setFromPoints([p, new THREE.Vector3()]);
+    keptRays.add(new THREE.Line(kg, new THREE.LineBasicMaterial({ color: ringCol[k], transparent: true, opacity: .35 })));
+  }
+  const m = new THREE.Mesh(markerGeom, new THREE.MeshBasicMaterial({ color: ringCol[k] }));
+  m.position.copy(p); m.userData.ring = k;
+  markers.add(m);
+  const pl = pathLines[k];
+  pl.line.geometry.attributes.position.setXYZ(pl.n, p.x, p.y, p.z);
+  pl.n++;
+  if (pl.n === Math.round(360 / D.protocol[k].step)) {   // close the loop
+    const f = pl.line.geometry.attributes.position;
+    f.setXYZ(pl.n, f.getX(0), f.getY(0), f.getZ(0)); pl.n++;
+  }
+  pl.line.geometry.attributes.position.needsUpdate = true;
+  pl.line.geometry.setDrawRange(0, pl.n);
+  captured.push({ ring: k + 1, phi: phiDeg % 360, theta: thDeg, p: [p.x, p.y, p.z] });
+  vfbox.classList.add('flash'); setTimeout(() => vfbox.classList.remove('flash'), 220);
+}
+function clearCaptures(fromRing = 0) {
+  for (const m of [...markers.children]) if (m.userData.ring >= fromRing) markers.remove(m);
+  for (let k = fromRing; k < pathLines.length; k++) { pathLines[k].n = 0; pathLines[k].line.geometry.setDrawRange(0, 0); }
+  keptRays.clear();
+  for (let i = captured.length - 1; i >= 0; i--) if (captured[i].ring - 1 >= fromRing) captured.splice(i, 1);
+  frustum.material.opacity = 0; ray.material.opacity = 0;
+}
+
+/* ---------- the state machine ---------- */
+const RINGS = D.protocol;
+const FRAMES = RINGS.map(p => Math.round(360 / p.step));
+const TOTAL = FRAMES.reduce((a, b) => a + b, 0);
+const ELEV_RATE = 14, AZ_RATE = 55;         // deg/s of simulated time
+const SETTLE = 0.2, FLASH = 0.32;           // seconds
+let S;
+function init() {
+  S = { state: 'INIT', k: 0, i: 0, phi: 0, theta: RINGS[0].elev, phiT: 0, thetaT: RINGS[0].elev,
+        phiBase: 0, t: 0, playing: false, stepOnce: false, done: false, frames: 0 };
+  clearCaptures(0);
+  pose(S.phi, S.theta);
+  S.state = 'SET_ELEVATION';
+  updateRings(); setPlayLabel(); showHud();
+}
+let speed = 1;
+const ease = (x) => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+function advance(dt) {
+  switch (S.state) {
+    case 'SET_ELEVATION': {
+      S.thetaT = RINGS[S.k].elev;
+      const d = S.thetaT - S.theta;
+      if (Math.abs(d) < 1e-6) { S.state = 'ROTATE_AZIMUTH'; S.t = 0; break; }
+      const stepD = Math.min(Math.abs(d), ELEV_RATE * dt);
+      S.theta += Math.sign(d) * stepD;
+      break;
+    }
+    case 'ROTATE_AZIMUTH': {
+      S.phiT = S.phiBase + S.i * RINGS[S.k].step;
+      const d = S.phiT - S.phi;
+      if (Math.abs(d) < 1e-6) { S.state = 'SETTLE'; S.t = 0; break; }
+      // ease into the stop: a rotor on a bearing race is turned by hand
+      const near = Math.max(0.15, Math.min(1, Math.abs(d) / 6));
+      const stepD = Math.min(Math.abs(d), AZ_RATE * near * dt);
+      S.phi += Math.sign(d) * stepD;
+      break;
+    }
+    case 'SETTLE': {
+      S.t += dt;
+      if (S.t >= SETTLE) { S.state = 'CAPTURE'; S.t = 0; capture(S.phi, S.theta, S.k); S.frames++; }
+      break;
+    }
+    case 'CAPTURE': {
+      S.t += dt;
+      const f = 1 - Math.min(1, S.t / FLASH);
+      frustum.material.opacity = f; ray.material.opacity = f;
+      if (S.t >= FLASH) { S.state = 'INCREMENT'; }
+      break;
+    }
+    case 'INCREMENT': {
+      S.i++;
+      if (S.i * RINGS[S.k].step >= 360 - 1e-9) {
+        // the rotor goes on round to 360, which is 0: it never turns back
+        S.phiBase += 360; S.i = 0; S.k++;
+        if (S.k >= RINGS.length) { S.state = 'DONE'; S.done = true; S.playing = false; setPlayLabel(); verdict(); break; }
+      }
+      S.state = 'SET_ELEVATION';
+      if (S.stepOnce) { S.stepOnce = false; S.playing = false; setPlayLabel(); }
+      break;
+    }
+  }
+  pose(S.phi, S.theta);
+}
+function verdict() {
+  const v = document.getElementById('verdict');
+  const off = captured.reduce((w, c) => Math.max(w, Math.abs(Math.hypot(...c.p) - R)), 0);
+  v.className = 'verdict ok';
+  v.textContent = `Scan complete: ${captured.length} frames on a ${R} mm shell, ` +
+    `${RINGS.length} rings at ${RINGS.map(r => r.elev + '°').join(', ')}. ` +
+    `Worst pupil radius error ${off.toFixed(3)} mm.`;
+}
+const detentOK = () => Math.abs(((S.phi % 10) + 10) % 10) < 1e-6 || Math.abs(((S.phi % 10) + 10) % 10 - 10) < 1e-6;
+function showHud() {
+  const r = RINGS[S.k] || RINGS[RINGS.length - 1];
+  const phi = ((S.phi % 360) + 360) % 360;
+  const name = S.state === 'DONE' ? 'SCAN_COMPLETE' : 'STATE_' + S.state;
+  const det = (S.state === 'SETTLE' || S.state === 'CAPTURE') ? (detentOK() ? ' · in detent' : ' · between detents, held') : '';
+  hud.innerHTML = `<b>${name}</b> · ring ${Math.min(S.k + 1, RINGS.length)} ${r.name} · ` +
+    `θ ${S.theta.toFixed(1)}° · φ ${phi.toFixed(1)}°${det}<br>` +
+    `frame ${S.frames} / ${TOTAL} · R ${R} mm · next Δφ ${r.step}°`;
+}
+
+/* ---------- side panel ---------- */
+const ringsEl = document.getElementById('rings');
+const TARGET = ['Basal root lobes, cervical margin lines, fine cutting serrations.',
+  'Lingual and labial crown faces, enameloid undulating textures.',
+  'Sub-apical profile, shoulder contours, lateral root curvatures.',
+  'Tip termination point, apical edge convergence, zenith closure.'];
+RINGS.forEach((p, k) => {
+  const d = document.createElement('div');
+  d.className = 'ring'; d.id = 'ring' + k;
+  d.innerHTML = `<span class="dot" style="background:${css(['--r1','--r2','--r3','--r4'][k])}"></span>` +
+    `<div><b>Ring ${p.ring} · ${p.name}</b><div class="meta">θ ${p.elev}° · Δφ ${p.step}° · ${FRAMES[k]} frames</div></div>` +
+    `<span class="n" id="rn${k}">0/${FRAMES[k]}</span>` +
+    `<div class="target">${TARGET[k]}</div>` +
+    `<div class="prog"><i id="rp${k}" style="background:${css(['--r1','--r2','--r3','--r4'][k])}"></i></div>`;
+  d.onclick = () => jumpTo(k);
+  ringsEl.appendChild(d);
+});
+function updateRings() {
+  RINGS.forEach((p, k) => {
+    const n = captured.filter(c => c.ring === k + 1).length;
+    document.getElementById('rn' + k).textContent = `${n}/${FRAMES[k]}`;
+    document.getElementById('rp' + k).style.width = (100 * n / FRAMES[k]) + '%';
+    const el = document.getElementById('ring' + k);
+    el.className = 'ring' + (k === S.k && !S.done ? ' on' : n === FRAMES[k] ? ' done' : '');
+  });
+}
+function jumpTo(k) {
+  clearCaptures(k);
+  S.k = k; S.i = 0; S.done = false; S.state = 'SET_ELEVATION'; S.t = 0;
+  S.phiBase = Math.ceil(S.phi / 360) * 360;
+  S.frames = captured.length;
+  document.getElementById('verdict').className = 'verdict';
+  updateRings(); setPlayLabel(); showHud();
+}
+const playBtn = document.getElementById('play');
+function setPlayLabel() {
+  playBtn.textContent = S.playing ? '⏸ Pause' : S.done ? '▶ Run again' : S.frames ? '▶ Run on' : '▶ Run the capture';
+}
+playBtn.onclick = () => {
+  if (S.done) init();
+  S.playing = !S.playing; S.stepOnce = false; setPlayLabel();
+};
+document.getElementById('step').onclick = () => {
+  if (S.done) init();
+  S.playing = true; S.stepOnce = true; setPlayLabel();
+};
+document.getElementById('reset').onclick = () => { init(); document.getElementById('verdict').className = 'verdict'; };
+document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
+  speed = +b.dataset.s;
+  document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b));
+});
+document.getElementById('t-path').onchange = e => { markers.visible = paths.visible = planned.visible = e.target.checked; };
+document.getElementById('t-rays').onchange = e => { keptRays.visible = e.target.checked; };
+document.getElementById('t-hw').onchange = e => { hardware.visible = hwRotor.visible = hwCarriage.visible = e.target.checked; };
+const vfbox = document.getElementById('vfbox');
+document.getElementById('t-vf').onchange = e => { vfbox.classList.toggle('off', !e.target.checked); };
+vfbox.classList.toggle('off', !document.getElementById('t-vf').checked);
+
+document.getElementById('sub').textContent =
+  `${TOTAL} frames on a ${R} mm shell · focal point ${specimen} mm above the platform · ` +
+  (specimenInfo ? `${specimenInfo.name}, ${specimenInfo.height.toFixed(0)} mm tall` : 'drawn specimen') +
+  ' · read from the printed 3MF';
+document.getElementById('facts').innerHTML = [
+  ['specimen', specimenInfo ? `${specimenInfo.name.replace(/\.glb$/, '')} · ${specimenInfo.height.toFixed(0)} × ${specimenInfo.width.toFixed(0)} × ${specimenInfo.depth.toFixed(0)} mm` : 'drawn stand-in'],
+  ['focal height (the dial)', specimen + ' mm' + (specimenInfo ? ` · centroid ${specimenInfo.centroid.toFixed(0)}` : '')],
+  ['working radius R', R.toFixed(0) + ' mm'],
+  ['rings (elevation)', RINGS.map(r => r.elev + '°').join(' / ')],
+  ['azimuth step', RINGS.map(r => r.step + '°').join(' / ')],
+  ['frames', FRAMES.join(' + ') + ' = ' + TOTAL],
+  ['camera', '<span id="f-cam"></span>'],
+  ['lens', '<span id="f-lens"></span>'],
+  ['frame', '<span id="f-frame"></span>'],
+  ['detents', `${D.detent.count} at ${D.detent.pitch_deg}°`],
+  ['arc', `r ${D.arc.ri}–${D.arc.ro} · slot ${D.arc.slot} mm`],
+  ['bearing pitch', D.bearing.pitch_r + ' mm · 3 × 608'],
+  ['arc plane off the meridian', Math.abs(D.y_arc) + ' mm'],
+  ['carriage range', `${D.elev_range[0]}–${D.elev_range[1]}°`],
+  ['printed volume', Object.values(D.volume_cm3).reduce((a, b) => a + b, 0).toFixed(0) + ' cm³'],
+].map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
+
+/* ---------- view modes, with thumbnails from this scene ---------- */
+const MODES = [['shaded', 'Shaded'], ['edges', 'Shaded + edges'], ['hlr', 'Edges only'],
+  ['wire', 'Wireframe'], ['xray', 'X-ray']];
+let mode = 'edges';
+const modebar = document.getElementById('modes');
+const modeCur = document.createElement('button');
+modeCur.className = 'modecur';
+modeCur.innerHTML = '<span class="thumb"></span><b></b><i>change ▾</i>';
+const modePop = document.createElement('div');
+modePop.className = 'modepop';
+modebar.append(modeCur, modePop);
+modeCur.onclick = () => modePop.classList.toggle('open');
+addEventListener('click', e => { if (!modebar.contains(e.target)) modePop.classList.remove('open'); });
+function setCurrent() {
+  modeCur.querySelector('b').textContent = MODES.find(m => m[0] === mode)[1];
+  const t = modePop.querySelector(`[data-mode="${mode}"] .thumb`);
+  if (t) modeCur.querySelector('.thumb').style.backgroundImage = t.style.backgroundImage;
+  for (const o of modePop.children) o.classList.toggle('on', o.dataset.mode === mode);
+}
+for (const [id, label] of MODES) {
+  const b = document.createElement('button');
+  b.className = 'modebtn' + (id === mode ? ' on' : '');
+  b.dataset.mode = id;
+  b.innerHTML = '<div class="thumb"></div><span>' + label + '</span>';
+  b.onclick = () => { mode = id; applyView(); setCurrent(); modePop.classList.remove('open'); };
+  modePop.appendChild(b);
+}
+function applyView() {
+  for (const m of allMeshes) {
+    m.material.visible = (mode !== 'hlr');
+    m.material.wireframe = (mode === 'wire');
+    m.material.transparent = (mode === 'xray');
+    m.material.opacity = (mode === 'xray') ? 0.28 : 1;
+    m.material.depthWrite = (mode !== 'xray');
+    m.material.needsUpdate = true;
+  }
+  for (const e of allEdges) e.visible = (mode === 'edges' || mode === 'hlr' || mode === 'xray');
+}
+applyView();
+function makeThumbs() {
+  controls.update();
+  const keep = mode, W = 340, H = 208;
+  const camPos = camera.position.clone(), camTgt = controls.target.clone(), aspect = camera.aspect;
+  const vis = new Map();
+  // one joint, close up: the carriage clamped on the arc, thumbscrew through the slot
+  const cast = new Set(['arc', 'saddle', 'shoe', 'receiver', 'thumbscrew', 'knob', 'ballast', 'phone', 'clamp', 'lens', 'glass', 'screen', 'body', 'plate']);
+  for (const o of [...allMeshes, tooth]) { vis.set(o, o.visible); o.visible = cast.has(o.name); }
+  const ov = overlay.visible; overlay.visible = false;
+  scene.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  for (const n of ['saddle', 'shoe']) box.expandByObject(printed[n]);
+  const mid = box.getCenter(new THREE.Vector3()), rad = box.getSize(new THREE.Vector3()).length() / 2;
+  renderer.setSize(W, H, false);
+  camera.aspect = W / H; camera.updateProjectionMatrix();
+  const dist = 0.7 * rad / Math.sin(camera.fov * Math.PI / 360);
+  camera.position.copy(mid).add(new THREE.Vector3(0.9, -0.75, 0.55).normalize().multiplyScalar(dist));
+  camera.lookAt(mid);
+  for (const [id] of MODES) {
+    mode = id; applyView();
+    renderer.render(scene, camera);
+    modePop.querySelector(`[data-mode="${id}"] .thumb`).style.backgroundImage = `url(${renderer.domElement.toDataURL('image/png')})`;
+  }
+  mode = keep; applyView(); setCurrent();
+  for (const [o, v] of vis) o.visible = v;
+  overlay.visible = ov;
+  camera.position.copy(camPos); controls.target.copy(camTgt);
+  camera.aspect = aspect; camera.updateProjectionMatrix(); controls.update();
+  resize();
+}
+
+/* ---------- render loop, with the viewfinder inset ---------- */
+let vfRect = { x: 12, y: 12, w: 300, h: 200 };
+function layoutViewfinder() {
+  const w = Math.round(Math.min(340, Math.max(220, view.clientWidth * 0.28)));
+  vfRect = { x: 12, y: 12, w, h: Math.round(w / F.aspect) };
+  vfbox.style.width = w + 'px'; vfbox.style.height = vfRect.h + 'px';
+}
+let last = performance.now();
+function tick(now) {
+  requestAnimationFrame(tick);
+  const dt = Math.min((now - last) / 1000, 0.05) * speed; last = now;
+  if (S.playing && !S.done) {
+    // sub-step so a 10x run still lands each state on its own frame
+    const n = Math.max(1, Math.ceil(dt / 0.02));
+    for (let i = 0; i < n; i++) advance(dt / n);
+    updateRings(); showHud();
+  } else if (S.state === 'CAPTURE' || S.state === 'SETTLE') {
+    // a paused flash still fades
+  }
+  // the near plane follows the dolly, so zooming in never clips the part
+  const dist = Math.max(1, camera.position.distanceTo(controls.target));
+  const near = Math.max(0.05, dist / 4000), far = Math.max(dist * 40, 4000);
+  if (Math.abs(camera.near - near) > near * 0.25 || camera.far !== far) {
+    camera.near = near; camera.far = far; camera.updateProjectionMatrix();
+  }
+  controls.update();
+  const W = renderer.domElement.width / renderer.getPixelRatio(), H = renderer.domElement.height / renderer.getPixelRatio();
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, W, H);
+  renderer.render(scene, camera);
+  if (!vfbox.classList.contains('off')) {
+    // the camera's own view: from the pupil, along v_forward, up along the arc
+    const phi = S.phi * DEG, th = S.theta * DEG;
+    vf.position.copy(Pc(phi, th)); vf.up.copy(vUp(phi, th)); vf.lookAt(0, 0, 0);
+    const ov = overlay.visible; overlay.visible = false;
+    renderer.setScissorTest(true);
+    renderer.setViewport(vfRect.x, vfRect.y, vfRect.w, vfRect.h);
+    renderer.setScissor(vfRect.x, vfRect.y, vfRect.w, vfRect.h);
+    renderer.render(scene, vf);
+    renderer.setScissorTest(false);
+    overlay.visible = ov;
+  }
+}
+
+window.__jig = {
+  get state() { return { ...S, captured: captured.length }; },
+  get captured() { return captured.slice(); },
+  get errors() { return errors.slice(); },
+  get bodies() { return Object.keys(printed); },
+  get pose() { return { phi: S.phi, theta: S.theta }; },
+  pupilWorld() { pupil.updateWorldMatrix(true, false); return pupil.getWorldPosition(new THREE.Vector3()).toArray(); },
+  set speed(v) { speed = v; },
+  run() { if (S.done) init(); S.playing = true; setPlayLabel(); },
+  pause() { S.playing = false; setPlayLabel(); },
+  step() { document.getElementById('step').click(); },
+  jump(k) { jumpTo(k); },
+  setMode(m) { mode = m; applyView(); setCurrent(); },
+  setCamera(k, l) { buildCamera(k, l); },
+  get camera() { return { kind: camKind, lens: lensId, fov: F.fov_deg, aspect: F.aspect, receiver_x: recvShift.position.x }; },
+  look(pos, tgt) { camera.position.set(...pos); controls.target.set(...tgt); controls.update(); },
+};
+resize(); init();
+buildCamera(camKind, Q.get('lens'));
+renderer.render(scene, camera);
+makeThumbs();
+requestAnimationFrame(tick);
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  setTimeout(() => { if (!S.playing && !S.frames) playBtn.click(); }, 500);
+}
+</script>
+</body>
+</html>

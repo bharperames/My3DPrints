@@ -299,6 +299,62 @@ PARTS = [
            dict(key="thread", label="thread \u00d8", unit="mm", min=10,
                 max=20, step=1, val=12)],
        out="knot-bolted-T{thread:g}.3mf"),
+    _p("orbital_jig", "Orbital scanning jig", "Designed here", "parametric",
+       "A photogrammetry rig that holds the specimen still and moves the "
+       "camera: azimuth on a 242 mm rotor ring riding three 608 bearings, "
+       "elevation on a 90-degree quadrant arc the ring carries, and the "
+       "camera\u2019s entrance pupil on a 150 mm sphere about the specimen "
+       "at every setting. A turntable would rotate the specimen under fixed "
+       "lights, and the highlights crawling across enamel between frames "
+       "read to structure-from-motion as the surface moving; here the "
+       "lights, the backdrop and the tooth never move. Ten printed bodies: "
+       "the stator plate with its pedestal and bearing towers, the rotor "
+       "ring with 36 detent dimples every ten degrees and a slotted pad, "
+       "the arc with its own leg down to that pad, a two-piece carriage "
+       "clamped through the arc\u2019s 5.2 mm slot by an M5 thumbscrew, an "
+       "receiver with 110 mm of fore/aft travel that takes an Arca plate or "
+       "a phone clamp on its 1/4-20 \u2014 the spec\u2019s 40 mm covers one "
+       "camera, and a phone\u2019s clamp foot and a full-frame body behind a "
+       "90 mm macro sit 90 mm apart \u2014 a detent pawl and three "
+       "bearing sleeves. The spec\u2019s numbers were kept where they agree "
+       "with each other and derived where they do not: a ring guided on its "
+       "perimeter puts the bearing axes 11 mm outside it, at 129, not 95, which lands "
+       "them on the corners of the 250 mm triangle; the ring is 242 rather "
+       "than 246 because this shop packs with a 5 mm margin and a 3 mm gap "
+       "and 246 does not go into that; a 608 has an "
+       "8 mm bore and the axle is M4, so each bearing rides a printed sleeve, "
+       "and one sleeve\u2019s bore is a millimetre off-centre for the 2.0 mm "
+       "of preload travel the spec asks for. The arc sits outside the ring "
+       "and 73 mm above it, and any bridge from the ring\u2019s side pushes "
+       "the ring off the plate, so the bridge is the arc\u2019s: a leg and a "
+       "bar that key into the pad. The arc\u2019s plane is 60 mm off the "
+       "meridian because the lens and the arc want the same radial band; "
+       "the carriage reaches back across so the pupil sits where the "
+       "spec\u2019s equations put it, checked at 10, 45 and 80 degrees. "
+       "Every clearance is swept, not assumed: the carriage with a phone in "
+       "its clamp and again with a Sony \u03b11 behind each of its macros, "
+       "through 10\u201380 degrees against the arc and its leg, the "
+       "whole rotor side through a full turn against the base, each bearing "
+       "proved to touch its race and to collide when pushed a third of a "
+       "millimetre in. The pedestal\u2019s top 30 mm drafts inward at 15 "
+       "degrees so that at 75 degrees of elevation the camera sees the "
+       "platform and nothing under it, measured off the built mesh. PETG, "
+       "four or five walls, 25\u201330% gyroid; the base and pedestal in "
+       "matte black so they drop out of feature matching. One dial: how far "
+       "the specimen\u2019s centre sits above the platform, which moves the "
+       "ring\u2019s pad and nothing else.",
+       version="0.1.0",
+       pages=[dict(label="Run the 108-frame capture",
+                   href="docs/orbital-jig.html"),
+              dict(label="Drives, mounts and the app: the study",
+                   href="docs/orbital-jig-plan.html")],
+       gen=["gen_orbital_jig.py"], params=[
+           dict(key="specimen", label="focal height", unit="mm", min=6,
+                max=70, step=1, val=12)],
+       # ten flat-bottomed bodies on broad faces; a brim on the ring's
+       # underside would scar the detent dimples
+       brim="off",
+       out="orbital-jig-S{specimen:g}.3mf"),
     _p("trex_teeth", "Skeleton T-Rex \u2014 real teeth", "Flexi Factory",
        "parametric",
        "Flexi Factory\u2019s skeleton T-Rex with its printed teeth replaced "
