@@ -28,7 +28,9 @@ a.back{margin-left:auto;color:var(--accent);text-decoration:none;font-size:12.5p
 .dial{display:flex;align-items:center;gap:8px;background:var(--surface);
   border:1px solid var(--line);border-radius:8px;padding:5px 11px}
 .dial label{color:var(--muted);font-size:12px;white-space:nowrap}
-.dial input{width:132px;vertical-align:middle}
+.dial input{width:72px;vertical-align:middle;background:var(--surface);
+  color:var(--ink);border:1px solid var(--line);border-radius:6px;
+  padding:3px 6px;font:inherit;font-size:12.5px}
 .dial b{font:600 12.5px "Chakra Petch",sans-serif;min-width:2.9em;text-align:right}
 #wrap{flex:1;position:relative;min-height:380px}
 canvas{display:block;width:100%;height:100%}
@@ -55,22 +57,24 @@ canvas{display:block;width:100%;height:100%}
 </div>
 <div class="bar">
   <span class="dial"><label>depth</label>
-    <input id="d-depth" type="range" min="1.5" max="5.0" step="0.25" value="3.5"><b>3.5</b></span>
+    <input id="d-depth" type="number" step="0.25" min="0" value="3.5"></span>
   <span class="dial"><label>socket wall</label>
-    <input id="d-inset" type="range" min="0.2" max="2.0" step="0.05" value="0.35"><b>0.35</b></span>
+    <input id="d-inset" type="number" step="0.05" min="0" value="0.35"></span>
   <span class="dial"><label>square to jaw</label>
-    <input id="d-align" type="range" min="0" max="1" step="0.05" value="1"><b>1</b></span>
+    <input id="d-align" type="number" step="0.05" min="0" value="1"></span>
+  <span class="dial"><label>widen along jaw</label>
+    <input id="d-grow" type="number" step="0.1" min="0" value="0"></span>
   <span class="dial"><label>open to tongue</label>
-    <input id="d-lingual" type="range" min="0" max="2" step="0.25" value="1"><b>1</b></span>
+    <input id="d-lingual" type="number" step="0.25" min="0" value="1"></span>
   <span class="dial"><label>trough depth</label>
-    <input id="d-ling_depth" type="range" min="0.5" max="4" step="0.25" value="3"><b>3</b></span>
+    <input id="d-ling_depth" type="number" step="0.25" min="0" value="3"></span>
   <span class="dial"><label>trough lip</label>
-    <input id="d-ling_wall" type="range" min="0.6" max="2" step="0.1" value="1.2"><b>1.2</b></span>
+    <input id="d-ling_wall" type="number" step="0.1" min="0" value="1.2"></span>
   <span class="dial"><label>allow lean at cheek</label>
-    <input id="d-lean" type="range" min="0" max="0.6" step="0.05" value="0"><b>0</b></span>
+    <input id="d-lean" type="number" step="0.05" min="0" value="0"></span>
   <button class="chip on" id="ghost">ghost teeth</button>
   <button class="chip" id="scrub">clean up (deburr)</button>
-  <button class="chip" id="pin">pin as reference &rarr;</button>
+  <button class="chip" id="pin">pin, then show changes &rarr;</button>
   <button class="chip" id="reset">reset dials</button>
 </div>
 <div id="wrap"><canvas id="gl"></canvas>
@@ -104,7 +108,8 @@ const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
 const controls = new OrbitControls(camera, cv); controls.enableDamping = true;
 
 const EDGE_SURF = 0x11181C, EDGE_DRAW = 0x8CF0C8;
-let mode = 'edges', part = 'skull', live = null, ref = null, framed = false;
+let mode = 'edges', part = 'body', live = null, ref = null, framed = false;
+let refDials = null;          // the dials the reference was cut with
 
 function dress(obj, colour){
   obj.traverse(o => { if (o.isMesh){
@@ -146,28 +151,50 @@ mk(document.getElementById('modes'),
    [['shaded','shaded'],['edges','+ edges'],['hlr','edges only'],
     ['wire','wireframe'],['xray','x-ray']], mode, id => { mode = id; applyMode(); });
 mk(document.getElementById('parts'),
-   [['skull','upper jaw'],['body','lower jaw']], part,
-   id => { part = id; framed = false; ref = null;
+   [['body','lower jaw'],['skull','upper jaw']], part,
+   id => { part = id; framed = false; ref = null; refDials = null;
+           applyPartDefaults();
            document.getElementById('tagL').innerHTML =
              '<b>reference</b><i>cutting\u2026</i>';
            loadGhosts(); cut(); });
 
-const dials = {depth: 3.5,
+// Every dial the cutter takes, in the order they read in the tag. There
+// used to be a second cutter here with its own set; when it went, the line
+// that named these went with it and the two references to it dangled --
+// str.replace does not complain when it matches nothing.
+const LIVE = ['depth', 'inset', 'grow', 'lingual', 'ling_depth', 'ling_wall',
+              'align', 'lean'];
+const dials = {depth: 3.5, grow: 0.0,
                inset: 0.35, lean: 0.0, align: 1.0,
                lingual: 1.0, ling_depth: 3.0, ling_wall: 1.2};
+// Each part has its own settled numbers; the jaw is a slender arch where
+// the skull's palate is a thick one, and it takes a shallower socket, a
+// deeper reach through the inner wall and a thinner lip.
+const PART_DEFAULTS = {
+  skull: {depth: 3.5, lingual: 1.0, ling_depth: 3.0, ling_wall: 1.2},
+  body:  {depth: 2.5, lingual: 2.5, ling_depth: 2.75, ling_wall: 0.6}};
+function applyPartDefaults(){
+  Object.assign(dials, PART_DEFAULTS[part] || {});
+  for (const k of Object.keys(dials)){
+    const el = document.getElementById('d-' + k);
+    if (el) el.value = dials[k];
+  }
+}
 const DEFAULTS = {...dials};
 for (const k of Object.keys(dials)){
   const el = document.getElementById('d-' + k);
-  el.oninput = () => { dials[k] = +el.value;
-    el.parentElement.querySelector('b').textContent = (+el.value).toFixed(2).replace(/0$/,'');
-    schedule(); };
+  // A number box, not a slider. The slider ranges here were invented -- I
+  // picked round numbers around whatever I had last measured -- and Brett
+  // ended up pinned at a minimum I had made up, unable to try the value
+  // that measured better. A box has no ceiling to guess at.
+  el.oninput = () => { const v = parseFloat(el.value);
+    if (Number.isFinite(v)){ dials[k] = v; schedule(); } };
 }
 document.getElementById('reset').onclick = () => {
   Object.assign(dials, DEFAULTS);
   for (const k of Object.keys(dials)){
     const el = document.getElementById('d-' + k);
     el.value = dials[k];
-    el.parentElement.querySelector('b').textContent = dials[k];
   }
   cut();
 };
@@ -178,17 +205,65 @@ document.getElementById('reset').onclick = () => {
 document.getElementById('scrub').onclick = e => {
   scrub = !scrub; e.target.classList.toggle('on', scrub); cut();
 };
+// PIN records the DIALS, not the mesh. The left pane then shows what
+// changed since: the solid this cut takes that the reference kept (red) and
+// the solid it leaves that the reference had removed (blue). Cloning the
+// mesh only ever gave two pictures to compare by eye; a boolean gives the
+// difference itself, which is the thing being judged.
 function pinNow(){
   if (!live) return;
-  if (ref) scene.remove(ref);
-  ref = live.clone(true);
-  ref.traverse(o => { if (o.isMesh){ o.material = o.material.clone();
-                                     o.material.color.setHex(0xE0A268);
-                                     o.userData.edges = null; } });
-  scene.add(ref);
-  document.getElementById('tagL').innerHTML = document.getElementById('tagR').innerHTML
-    .replace('<b>live</b>', '<b>reference</b>');
-  applyMode();
+  refDials = {...dials};
+  document.getElementById('tagL').innerHTML =
+    '<b>changes vs pinned</b><i>cutting\u2026</i>';
+  diff();
+}
+const DIFF_COLOUR = {gone: 0xE2574B, kept: 0x4B8FE2};   // red taken, blue left
+let diffInflight = false;
+async function diff(){
+  if (!refDials || diffInflight) return;
+  diffInflight = true;
+  try {
+    const q = new URLSearchParams({part,
+      ref: JSON.stringify(dialsToKw(refDials)),
+      cur: JSON.stringify(dialsToKw(dials))});
+    const r = await fetch('/diff?' + q);
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('json')){
+      if (ref) scene.remove(ref); ref = null;
+      document.getElementById('tagL').innerHTML =
+        '<b>changes vs pinned</b><i>no difference</i>';
+      return;
+    }
+    const meta = JSON.parse(r.headers.get('X-Meta') || '{}');
+    const buf = await r.arrayBuffer();
+    const g = await new Promise((ok, no) => loader.parse(buf, '', ok, no));
+    if (ref) scene.remove(ref);
+    ref = g.scene; ref.rotation.x = -Math.PI / 2;
+    ref.traverse(o => {
+      if (!o.isMesh) return;
+      const which = (o.name || '').includes('kept') ? 'kept' : 'gone';
+      o.material = new THREE.MeshStandardMaterial({
+        color: DIFF_COLOUR[which], roughness: .55, metalness: .0,
+        transparent: true, opacity: .92});
+      o.userData.edges = null;
+    });
+    scene.add(ref);
+    document.getElementById('tagL').innerHTML =
+      `<b>changes vs pinned</b><i><span style="color:#E2574B">` +
+      `${meta.gone} mm&sup3; now cut away</span> &middot; ` +
+      `<span style="color:#7FB3F0">${meta.kept} mm&sup3; now left standing</span>` +
+      `<br>${meta.ms} ms</i>`;
+    applyMode();
+  } catch (e){
+    document.getElementById('tagL').innerHTML =
+      '<b>changes vs pinned</b><i>' + e.message + '</i>';
+  } finally { diffInflight = false; }
+}
+function dialsToKw(d){
+  return {depth_max: d.depth, inset: d.inset, grow: d.grow, align: d.align,
+          lean: d.lean, lingual: d.lingual, ling_depth: d.ling_depth,
+          ling_wall: d.ling_wall};
 }
 document.getElementById('pin').onclick = pinNow;
 
@@ -224,6 +299,7 @@ async function cut(){
                        : ' &middot; no tunnels') +
       (meta.scrub ? ' &middot; <span style="color:var(--accent)">deburred</span>' : '') + `</i>`;
     applyMode();
+    if (refDials) diff();
     if (!framed){ frame(); framed = true; }
     // An empty left pane reads as a bug. The first cut of a part becomes the
     // reference automatically; pinning later replaces it.
@@ -330,7 +406,7 @@ function draw(){
     renderer.render(scene, camera);
   }
 }
-draw(); loadGhosts(); cut();
+applyPartDefaults(); draw(); loadGhosts(); cut();
 </script>
 </body>
 </html>

@@ -108,6 +108,25 @@ INSET = 0.35          # wall beside a socket (mm)
 LINGUAL = 1.0         # how far past the inner surface the trough breaks (mm)
 LING_DEPTH = 3.0      # deepest the trough may go where the bone allows (mm)
 LING_WALL = 1.2       # lip left in front of the trough (mm)
+# The lower jaw is a slender arch where the skull's palate is a thick one, so
+# it takes the channel on its own terms: further through the inner wall and
+# deeper, which leaves the fewest bridges spanning it (7 against 9 at the
+# skull's numbers) and takes 1594 mm3 out where sockets alone take 579.
+JAW_LINGUAL = 2.5
+JAW_LING_DEPTH = 2.75   # Brett, comparing against 3.0: "a great improvement"
+# Shallower sockets on the jaw. Brett: "the holes don't need to be this deep
+# on the lower jaw ... that is constraining the removal of the remaining
+# lingual part." Measured, dropping the socket from 3.5 to 2.5 halves the
+# thin material left standing (0.11% of the surface to 0.06%) and costs 32
+# mm3 of the 1594 removed; 1.5 takes two more bridges out but the socket
+# stops being deep enough to steady a root.
+JAW_DEPTH = 2.5
+# The trough's labial limit on the jaw. This is the dial that reaches the
+# ridges of gum standing between the sockets: at 1.2 the limit goes negative
+# at 137 of 717 stations, so the channel never gets across to them at all.
+# Measured, dropping it to 0.6 takes the inter-tooth material from 54.6% to
+# 42.2% solid and costs nothing in wall (0.06% thin against a 0.02% floor).
+JAW_LING_WALL = 0.6
 
 
 def load(member):
@@ -147,13 +166,47 @@ def keep_real(mesh, floor=1.0, min_faces=32, single=False):
     silently keeps while dropping a real part. Normals are fixed first so
     the survivors all read positive.
     """
+    # SPLIT FIRST, AND DO NOT WELD.
+    #
+    # This used to run `tidy` over the whole mesh before splitting, and
+    # `tidy` merges vertices. Where a cut runs close to the surface the
+    # boolean leaves coincident geometry, and welding it makes edges shared
+    # by four faces -- the part stops being closed. Measured on the lower
+    # jaw: the difference comes back watertight with 165 pieces, 142 of them
+    # slivers; dropping the slivers leaves a closed 23-piece part, and
+    # merging its vertices is the single step that opens it.
+    #
+    # Degenerate faces still go, per part, because that does not move any
+    # vertex. What a boolean leaves unwelded is a seam, not a hole, and the
+    # mesh is closed across it.
+    # WELD ONLY IF WELDING LEAVES IT CLOSED.
+    #
+    # Merging vertices is what tidies a boolean's seams, and on the skull it
+    # is the difference between a closed part and an open one. On the lower
+    # jaw it is the opposite: the trough runs close to a thin wall, the
+    # boolean leaves coincident geometry there, and welding it makes edges
+    # shared by four faces. Neither part is wrong -- the right answer differs
+    # per part, so ask rather than pick, and say which was used.
     parts = []
-    for p in tidy(mesh).split(only_watertight=False):
+    for p in mesh.split(only_watertight=False):
         if len(p.faces) < min_faces or abs(p.volume) <= floor:
             continue
+        # Nothing is removed from the raw path. Dropping degenerate faces
+        # can itself open a shell, and the boolean's output is closed as it
+        # stands -- the cleaning belongs on the welded candidate below,
+        # which is only used if it stays closed.
+        p = p.copy()
         trimesh.repair.fix_normals(p)
         parts.append(p)
-    return trimesh.util.concatenate(parts) if parts else mesh
+    if not parts: return mesh
+    raw = trimesh.util.concatenate(parts)
+    welded = raw.copy(); welded.merge_vertices()
+    welded.update_faces(welded.nondegenerate_faces())
+    welded.update_faces(welded.unique_faces())
+    welded.remove_unreferenced_vertices()
+    if welded.is_watertight or not raw.is_watertight:
+        return welded
+    return raw
 
 
 def painted_regions(mesh, paint):
@@ -282,7 +335,7 @@ def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None,
     return got, len(regions)
 
 
-def build(names, width=WIDTH, depth=DEPTH, depth_max=DEPTH_MAX, scrub=False,
+def build(names, width=WIDTH, depth=DEPTH, depth_max=None, scrub=False,
           **extra):
     out, rep = [], {}
     for name in names:
@@ -297,13 +350,27 @@ def build(names, width=WIDTH, depth=DEPTH, depth_max=DEPTH_MAX, scrub=False,
             # every setting tried came back not watertight with 13 to 17 new
             # handles, down to a 1 mm trough barely breaking the surface.
             # Sockets alone on this part, and they gate clean.
-            jaw = dict(extra); jaw["lingual"] = 0.0
+            # The jaw's own defaults fill in only what the CALLER LEFT OUT.
+            # This used to substitute whenever a value happened to equal the
+            # skull's default, which cannot tell "unset" from "deliberately
+            # 1.2" -- so asking for the two side by side built the same part
+            # twice and the diff came back empty.
+            jaw = dict(extra)
+            if depth_max is None: depth_max = JAW_DEPTH
+            jaw.setdefault("lingual", JAW_LINGUAL)
+            jaw.setdefault("ling_depth", JAW_LING_DEPTH)
+            jaw.setdefault("ling_wall", JAW_LING_WALL)
             m, n = trough(m, paint, width, depth,
                           regions=jaw_regions(m, paint),
                           depth_max=depth_max, scrub=scrub, **jaw)
         elif how == "cut":
-            m, n = trough(m, paint, width, depth, depth_max=depth_max,
-                          scrub=scrub, **extra)
+            sk = dict(extra)
+            sk.setdefault("lingual", LINGUAL)
+            sk.setdefault("ling_depth", LING_DEPTH)
+            sk.setdefault("ling_wall", LING_WALL)
+            m, n = trough(m, paint, width, depth,
+                          depth_max=DEPTH_MAX if depth_max is None else depth_max,
+                          scrub=scrub, **sk)
         out.append((name, m))
         rep[name] = dict(faces=len(m.faces), volume=round(float(m.volume), 1),
                          teeth_removed=n)

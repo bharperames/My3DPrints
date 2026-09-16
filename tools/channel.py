@@ -207,8 +207,8 @@ def _loft(org, u, v, ax, zs, radii):
 
 
 def drill_prism(mesh, regions, frames, depth=3.5, inset=0.35, reach=7.0,
-                keep=0.9, over=1.5, lean=0.0, align=1.0, report=None,
-                **_ignored):
+                keep=0.9, over=1.5, lean=0.0, align=1.0, grow=0.0,
+                report=None, **_ignored):
     """Brett's cylinder: the tooth outline, inset, swept down its own axis.
 
     Every socket before this one was cut oversize and then clipped back to
@@ -303,15 +303,52 @@ def drill_prism(mesh, regions, frames, depth=3.5, inset=0.35, reach=7.0,
         nth, nz = 96, 12
         th = np.linspace(0, 2 * np.pi, nth, endpoint=False)
         dirs = np.cos(th)[:, None] * u + np.sin(th)[:, None] * v
+        # WIDEN ALONG THE JAW, BUT ONLY BELOW THE GUM.
+        #
+        # A cone cuts its own tooth's outline and nothing else, and the
+        # designer's outlines come as close as 0.23 mm to one another -- so
+        # the bone between a close pair survives as a blade a quarter of a
+        # millimetre thick, standing in the finished channel. The trough
+        # cannot take it: it sits on the CHEEK side of the gum line, where
+        # the trough's labial limit is already at or past zero.
+        #
+        # Widening at EVERY depth does not work: between teeth the gum
+        # surface dips, so a widened mouth ring stands out of the bone and
+        # the containment bisection throws the tooth out -- all twelve of
+        # them, measured. The mouth keeps the designer's outline and the
+        # widening ramps in with depth, which is where the blade is anyway.
+        rg = None
+        if grow > 1e-6:
+            from shapely import affinity
+            from shapely.geometry import MultiPolygon
+            kk = int(tree.query(f["c"])[1])
+            t3 = np.cross(U[kk], A[kk])
+            t3 = t3 / max(np.linalg.norm(t3), 1e-9)
+            tx, ty = float(np.dot(t3, u)), float(np.dot(t3, v))
+            n2 = max(np.hypot(tx, ty), 1e-9)
+            tx, ty = tx / n2, ty / n2
+            wide = MultiPolygon([
+                affinity.translate(sec, tx * grow, ty * grow),
+                affinity.translate(sec, -tx * grow, -ty * grow),
+                sec]).convex_hull
+            rg, _ = _outline_radii(wide, th)
         r0, ctr = _outline_radii(sec, th)
         org = c + ctr[0] * u + ctr[1] * v
         rise = float(np.max((f["ring"] - c) @ ax)) + 0.75
         zs = np.linspace(0.0, depth, nz)
 
         def rings(shrink):
-            """Radii at each depth for a cone closing to `shrink` at the floor."""
-            k = 1.0 - (1.0 - shrink) * (zs / max(zs[-1], 1e-6))
-            return np.maximum(r0[None, :] * k[:, None] - inset, 0.05)
+            """Radii at each depth for a cone closing to `shrink` at the floor.
+
+            The mouth is the designer's outline; any widening along the jaw
+            ramps in with depth, so the base interpolates from r0 at the
+            surface to the widened section at the floor.
+            """
+            t = zs / max(zs[-1], 1e-6)
+            base = (r0[None, :] if rg is None
+                    else r0[None, :] + (rg - r0)[None, :] * t[:, None])
+            k = 1.0 - (1.0 - shrink) * t
+            return np.maximum(base * k[:, None] - inset, 0.05)
 
         def fits(shrink):
             R = rings(shrink)
@@ -348,6 +385,44 @@ def drill_prism(mesh, regions, frames, depth=3.5, inset=0.35, reach=7.0,
 
 
 def _sweep(P, A, U, lab, lin, top, depth):
+    """The channel, as a union of per-segment convex hulls.
+
+    Built as ONE long tube this is a thin, self-touching solid a few hundred
+    stations long, and that is the shape a CSG engine handles worst: the
+    subtraction left material the cutter demonstrably contained -- 79 sample
+    points in one cluster, 0.22% of the channel, standing as a blade in the
+    finished jaw. Hulling each segment between neighbouring stations makes
+    every piece convex by construction, so no piece can fold through itself,
+    and the union of them is exact. Same volume to a cubic millimetre, a
+    third of the leftovers, and it unions in well under a second.
+    """
+    quads = []
+    for k in range(len(P)):
+        a, u = A[k], U[k]
+        quads.append(np.array([
+            P[k] + a * lab[k] + u * top,
+            P[k] - a * lin[k] + u * top,
+            P[k] - a * lin[k] - u * depth[k],
+            P[k] + a * lab[k] - u * depth[k]]))
+    # OVERLAP THE HULLS BY A STATION. Hulling each ADJACENT pair covers the
+    # channel exactly, and "exactly" is the problem: consecutive hulls meet
+    # on a shared quad, so the seam between them is tangent and the boolean
+    # can leave a knife-edge of material standing there. Spanning three
+    # stations makes each hull overlap its neighbour by a whole segment, so
+    # the seams are interior to a solid rather than between two.
+    hulls = []
+    for k in range(len(quads) - 1):
+        j = min(k + 2, len(quads) - 1)
+        try:
+            h = trimesh.convex.convex_hull(np.vstack(quads[k:j + 1]))
+        except Exception:                                   # noqa: BLE001
+            continue
+        if h.is_volume and h.volume > 1e-9: hulls.append(h)
+    if not hulls: return None
+    return trimesh.boolean.union(hulls, engine="manifold")
+
+
+def _sweep_tube(P, A, U, lab, lin, top, depth):
     """A continuous tube along the path, not a row of boxes.
 
     One box per station is a row of rectangular prisms, and where the arch
@@ -385,7 +460,8 @@ def _sweep(P, A, U, lab, lin, top, depth):
 
 
 def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
-                   floor=1.2, per_mm=8.0):
+                   floor=1.2, per_mm=8.0, reach_cap=4.0, bloat=0.08,
+                   report=None):
     """One open channel behind the sockets, bounded only on the cheek side.
 
     Brett's ask, and the first cut here that is deliberately allowed OUT of
@@ -437,14 +513,35 @@ def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
         d_out = reach(C[k] + a * 0.05, a)          # to the cheek
         d_in = reach(C[k] - a * 0.05, -a)          # to the tongue side
         if d_out is None or d_in is None: continue
-        lab[k], lin[k], ok[k] = d_out - wall, d_in + past, True
+        # CAP THE LINGUAL REACH. `d_in` is the distance to the first surface
+        # going toward the tongue, and on a U-shaped arch that ray can miss
+        # the near wall and hit the FAR SIDE of the jaw -- measured, up to
+        # 21.7 mm. The section then balloons past the midline, the swept tube
+        # overlaps the opposite side of the arch, and a self-intersecting
+        # cutter does not subtract properly: 118 of 717 stations ended up
+        # with their own rectangle centre outside the solid they built, and
+        # the material they were supposed to remove stayed put.
+        lin[k], ok[k] = min(d_in, reach_cap) + past, True
+        lab[k] = d_out - wall
         # LET THE DEPTH FOLLOW THE BONE. One depth for the whole arch is
         # limited by the shallowest station, so the back -- where there is
         # most material -- is cut no deeper than the front, and Brett wants
         # it deeper there. Measure how far down the jaw goes at each station
         # and take what is available, less `floor`.
-        d_dn = reach(C[k] - U[k] * 0.05, -U[k])
-        dep[k] = depth if d_dn is None else min(depth, max(0.4, d_dn - floor))
+        # MEASURE BONE, NOT AIR. The gum line runs through tooth CENTRES and
+        # is smoothed, so between teeth it sits a little above the scalloped
+        # surface -- and a ray fired down from there reports the distance to
+        # the bone's TOP face, not the thickness beneath it. Measured, that
+        # read 0.34 mm between teeth against 5.38 mm at one, so the trough
+        # went 0.4 mm deep in exactly the gaps, and the lingual wall below
+        # survived as the slivers Brett could see. Take the first solid SPAN
+        # the column crosses instead, which is the same correction the socket
+        # depth needed for the same reason.
+        o = C[k] + U[k] * 6.0
+        hh, rr, _ = mesh.ray.intersects_location([o], [-U[k]], multiple_hits=True)
+        ts = sorted(float(np.linalg.norm(h - o)) for h in hh)
+        span = (ts[1] - ts[0]) if len(ts) > 1 else None
+        dep[k] = depth if span is None else min(depth, max(0.4, span - floor))
     if ok.sum() < 4: return None
     # carry the measurement across any station whose rays missed, and smooth
     # it -- a limit that jumps from one station to the next puts a step in
@@ -460,7 +557,24 @@ def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
     lab = np.convolve(pad(lab), ker, mode="valid")
     lin = np.convolve(pad(lin), ker, mode="valid")
     dep = np.convolve(pad(dep), ker, mode="valid")
+    if report is not None:
+        # Hand back the stations the cut was actually built from, at the
+        # spacing it actually used. Recomputing them outside tests a claim
+        # the cutter never made.
+        report.update(C=C.copy(), A=A.copy(), U=U.copy(),
+                      lab=lab.copy(), lin=lin.copy(), dep=dep.copy())
     tube = _sweep(C, A, U, lab, lin, over, dep)
+    # PUSH THE CUTTER OUT A HAIR. Its wall lands exactly on the bone's own
+    # surface in places, and a boolean between coincident surfaces is where
+    # CSG is least reliable -- the subtraction left blades standing that the
+    # cutter demonstrably contained, and intersecting to find them came back
+    # empty because manifold's own arithmetic disagreed with the geometry.
+    # Inflating by `bloat` breaks the coincidence: measured, 55 leftover
+    # sample points to zero at 0.02 mm, and the two bridges across the
+    # channel go at 0.10. A tenth of a millimetre is a quarter of the
+    # nozzle -- below anything the printer resolves.
+    if tube is not None and bloat > 1e-9:
+        tube.vertices = tube.vertices + tube.vertex_normals * bloat
     if tube.is_volume and tube.volume > 1e-6:
         return tube
     # a tube can fold where the arch turns hardest; fall back to the boxes
@@ -499,7 +613,14 @@ def channel(mesh, frames, regions=None, depth_max=3.5, reach=4.0, **extra):
     ling = float(extra.pop("lingual", 0.0))
     ldepth = float(extra.pop("ling_depth", 0.0) or depth_max)
     lwall = float(extra.pop("ling_wall", 0.0) or 1.2)
-    for k in ("grow", "rscale", "lip", "width", "depth", "over", "centre",
+    # How much bone stays UNDER the channel. On the skull this is never the
+    # binding constraint; on the lower jaw it is -- reserving 1.2 mm where
+    # there is only 1.6 leaves a 0.4 mm cut, which is why a fifth of that
+    # arch was barely touched and why the depth terraced between stations
+    # that could cut and stations that could not.
+    lfloor = float(extra.pop("ling_floor", 0.0) or 1.2)
+    lcap = float(extra.pop("ling_cap", 0.0) or 4.0)
+    for k in ("rscale", "lip", "width", "depth", "over", "centre",
               "wall", "min_width", "mode", "cone", "radial", "scrub"):
         extra.pop(k, None)
     cuts = [drill_prism(mesh, regions, frames, depth=depth_max,

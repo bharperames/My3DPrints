@@ -258,6 +258,8 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/socket":
             return self._socket(parse_qs(url.query))
+        if url.path == "/diff":
+            return self._diff(parse_qs(url.query))
         if url.path == "/rings":
             return self._rings(parse_qs(url.query))
         if url.path == "/shop/catalog":
@@ -437,11 +439,11 @@ class Handler(SimpleHTTPRequestHandler):
         """
         import io, time
         t0 = time.time()
-        part = (q.get("part", ["skull"])[0])
+        part = (q.get("part", ["body"])[0])
         if part not in ("skull", "body"):
             return self._json(400, {"ok": False, "error": f"unknown part {part}"})
         try:
-            d = float(q.get("depth", [3.5])[0])
+            d = float(q.get("depth", [3.5 if part == "skull" else 2.5])[0])
         except ValueError:
             return self._json(400, {"ok": False, "error": "bad number"})
         try:
@@ -463,17 +465,29 @@ class Handler(SimpleHTTPRequestHandler):
                 base = trimesh.boolean.difference(
                     [src, trimesh.boolean.union(hulls, engine="manifold")],
                     engine="manifold")
+                # The baseline has to go through the SAME pipeline as the
+                # build it is compared against. `keep_real` drops the two
+                # inverted zero-volume shells the designer's body carries,
+                # and dropping them shifts the Euler count by two -- so a raw
+                # baseline made every body cut look like it had punched a
+                # pair of tunnels it never touched.
                 cache.update(src=src, paint=paint, regions=regions,
                              tree=cKDTree(C), vol0=float(base.volume),
-                             genus0=_genus(base))
+                             genus0=_genus(G.keep_real(
+                                 base, single=(part == "skull"))))
             c = cache
             scrub = q.get("scrub", ["0"])[0] not in ("0", "", "false")
-            kw = dict(inset=float(q.get("inset", [0.35])[0]),
-                      lean=float(q.get("lean", [0.0])[0]),
-                      align=float(q.get("align", [1.0])[0]),
-                      lingual=float(q.get("lingual", [1.0])[0]),
-                      ling_depth=float(q.get("ling_depth", [3.0])[0]),
-                      ling_wall=float(q.get("ling_wall", [1.2])[0]))
+            # Each part's OWN defaults, so the bench opens on the part the
+            # plate build would make rather than on the skull's numbers.
+            dflt = (dict(depth=3.5, lingual=1.0, ling_depth=3.0, ling_wall=1.2)
+                    if part == "skull" else
+                    dict(depth=2.5, lingual=2.5, ling_depth=2.75, ling_wall=0.6))
+            g = lambda k, d: float(q.get(k, [d])[0])
+            kw = dict(inset=g("inset", 0.35), grow=g("grow", 0.0),
+                      lean=g("lean", 0.0), align=g("align", 1.0),
+                      lingual=g("lingual", dflt["lingual"]),
+                      ling_depth=g("ling_depth", dflt["ling_depth"]),
+                      ling_wall=g("ling_wall", dflt["ling_wall"]))
             items, rep = G.build([part if part == "skull" else "body"],
                                  depth_max=d, scrub=scrub, **kw)
             m = items[0][1]
@@ -503,6 +517,65 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:                              # noqa: BLE001
             return self._json(500, {"ok": False, "error": f"{type(e).__name__}: {e}"})
 
+    def _diff(self, q):
+        """What the current dials changed, against a pinned reference.
+
+        Two cuts, two subtractions: REF minus CUR is material the reference
+        still had and this one takes away; CUR minus REF is material this one
+        leaves that the reference had removed. Returned as two named
+        geometries so the page can colour them without guessing -- doing it
+        by vertex distance in the browser would shade a surface rather than
+        show the solid that changed.
+        """
+        import io, json as _json, time
+        t0 = time.time()
+        part = q.get("part", ["body"])[0]
+        if part not in ("skull", "body"):
+            return self._json(400, {"ok": False, "error": f"unknown part {part}"})
+        try:
+            a = _json.loads(unquote(q.get("ref", ["{}"])[0]) or "{}")
+            b = _json.loads(unquote(q.get("cur", ["{}"])[0]) or "{}")
+        except ValueError:
+            return self._json(400, {"ok": False, "error": "bad params"})
+        try:
+            import numpy as np, trimesh
+            sys.path.insert(0, os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "tools"))
+            import gen_trex as G
+            from channel import tooth_frames, gum_path
+            from scipy.spatial import cKDTree
+            cache = _socket_cache.setdefault(part, {})
+            if "tree" not in cache:
+                member = "head" if part == "skull" else "body"
+                src, paint = G.load(G.OBJ[member]); src = G.tidy(src)
+                regions = (G.painted_regions(src, paint) if part == "skull"
+                           else G.jaw_regions(src, paint))
+                C, N, A, U = gum_path(src, tooth_frames(src, regions))
+                cache.update(tree=cKDTree(C))
+            def build(kw):
+                items, _ = G.build([part], scrub=False, **kw)
+                return items[0][1]
+            ma, mb = build(a), build(b)
+            gone = trimesh.boolean.difference([ma, mb], engine="manifold")
+            kept = trimesh.boolean.difference([mb, ma], engine="manifold")
+            sc = trimesh.Scene()
+            meta = {"ms": 0, "gone": 0.0, "kept": 0.0}
+            tree = cache["tree"]
+            for name, m in (("gone", gone), ("kept", kept)):
+                if m is None or m.volume <= 1e-6: continue
+                meta[name] = round(float(m.volume), 1)
+                keep = np.where(tree.query(m.triangles_center)[0] < 26.0)[0]
+                if not len(keep): continue
+                sc.add_geometry(m.submesh([keep], append=True), geom_name=name)
+            if not len(sc.geometry):
+                return self._json(200, {"ok": True, "empty": True})
+            buf = trimesh.exchange.gltf.export_glb(sc)
+            meta["ms"] = int(1000 * (time.time() - t0))
+            return self._bin(200, buf, "model/gltf-binary",
+                             {"X-Meta": json.dumps(meta)})
+        except Exception as e:                              # noqa: BLE001
+            return self._json(500, {"ok": False, "error": f"{type(e).__name__}: {e}"})
+
     def _rings(self, q):
         """The designer's own tooth boundaries, as ordered loops.
 
@@ -513,7 +586,7 @@ class Handler(SimpleHTTPRequestHandler):
         runs them through np.unique, which throws the order away; a loop has
         to be walked in order to be drawn.
         """
-        part = q.get("part", ["skull"])[0]
+        part = q.get("part", ["body"])[0]
         if part not in ("skull", "body"):
             return self._json(400, {"ok": False, "error": f"unknown part {part}"})
         try:

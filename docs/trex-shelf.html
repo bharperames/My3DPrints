@@ -110,6 +110,17 @@ key.position.set(1, 1.4, 0.8); scene.add(key);
 const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
 const controls = new OrbitControls(camera, cv);
 controls.enableDamping = true;
+// The spin yields on the first pointer-down or wheel tick of a gesture. The
+// BUTTON is cleared with the flag, not just the flag: the draw loop sets
+// autoRotate from `spin` every frame, so clearing the control alone would be
+// overwritten on the next one -- and a button still lit while the part sits
+// still needs two clicks to spin again, the first only restating what it
+// already claims.
+controls.addEventListener('start', () => {
+  if (!spin) return;
+  spin = false;
+  document.getElementById('spin').classList.remove('on');
+});
 
 // LEFT is what Brett actually printed; RIGHT is the current build. Both
 // panes used to hold abandoned experiments, which made the page lie about
