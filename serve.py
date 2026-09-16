@@ -441,7 +441,6 @@ class Handler(SimpleHTTPRequestHandler):
         if part not in ("skull", "body"):
             return self._json(400, {"ok": False, "error": f"unknown part {part}"})
         try:
-            f = float(q.get("rscale", [0.94])[0]); g = float(q.get("grow", [0.45])[0])
             d = float(q.get("depth", [3.5])[0])
         except ValueError:
             return self._json(400, {"ok": False, "error": "bad number"})
@@ -469,18 +468,12 @@ class Handler(SimpleHTTPRequestHandler):
                              genus0=_genus(base))
             c = cache
             scrub = q.get("scrub", ["0"])[0] not in ("0", "", "false")
-            lip = float(q.get("lip", [0.6])[0])
-            mode = q.get("mode", ["prism"])[0]
-            if mode == "prism":
-                kw = dict(mode="prism", inset=float(q.get("inset", [0.35])[0]),
-                          lean=float(q.get("lean", [0.0])[0]),
-                          align=float(q.get("align", [1.0])[0]),
-                          cone=q.get("cone", ["1"])[0] not in ("0", "", "false"),
-                          lingual=float(q.get("lingual", [1.0])[0]),
-                          ling_depth=float(q.get("ling_depth", [3.0])[0]),
-                          ling_wall=float(q.get("ling_wall", [1.2])[0]))
-            else:
-                kw = dict(rscale=f, grow=g, lip=lip)
+            kw = dict(inset=float(q.get("inset", [0.35])[0]),
+                      lean=float(q.get("lean", [0.0])[0]),
+                      align=float(q.get("align", [1.0])[0]),
+                      lingual=float(q.get("lingual", [1.0])[0]),
+                      ling_depth=float(q.get("ling_depth", [3.0])[0]),
+                      ling_wall=float(q.get("ling_wall", [1.2])[0]))
             items, rep = G.build([part if part == "skull" else "body"],
                                  depth_max=d, scrub=scrub, **kw)
             m = items[0][1]
@@ -504,7 +497,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "bodies": len(m.split(only_watertight=False)),
                     "watertight": tight,
                     "tunnels": (_genus(m) - c["genus0"]) if tight else None,
-                    "scrub": bool(scrub), "mode": mode}
+                    "scrub": bool(scrub)}
             return self._bin(200, buf, "model/gltf-binary",
                              {"X-Meta": json.dumps(meta)})
         except Exception as e:                              # noqa: BLE001

@@ -68,7 +68,6 @@ OBJ = {
 }
 
 PARTS = {
-    "testjaw":   ("head", "test", "the gum arcs alone, for trying teeth and epoxy"),
     "skull":     ("head", "cut",  "the eyeless skull, ready for real teeth"),
     "body":      ("body", "jaw",  "the body, its lower jaw ready for real teeth"),
     "skullorig": ("head", None,   "the eyeless skull as the designer drew it"),
@@ -283,39 +282,6 @@ def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None,
     return got, len(regions)
 
 
-def test_jaw(mesh, paint, width=WIDTH, depth=DEPTH, wall=1.5):
-    """The gum arc on its own: the channel plus just enough bone to hold it.
-
-    Printing the whole skull to find out whether a tooth root sits in the
-    trough is an hour for an answer a few minutes can give. This keeps the
-    bone inside a box swept along the same path -- the channel plus `wall`
-    either side and underneath -- and throws the rest of the skull away, so
-    what comes out is the real curve, the real width and the real depth.
-    """
-    from channel import tooth_frames, gum_path, band_boxes
-    cut, n = trough(mesh, paint, width, depth)
-    idx = np.where(paint == TOOTH_PAINT)[0]
-    lab = trimesh.graph.connected_component_labels(
-        trimesh.graph.face_adjacency(mesh.faces[idx]), node_count=len(idx))
-    fr = tooth_frames(mesh, [idx[lab == r] for r in range(lab.max() + 1)])
-    # A region to keep, not a cut: the swept box is fine for this, and the
-    # offset shell would be the wrong tool -- it defines a lip, not a slab.
-    C, N, A, U = gum_path(mesh, fr)
-    keep = band_boxes(C, A, U, width + 2 * wall, depth + wall, wall)
-    box = trimesh.boolean.union(keep, engine="manifold")
-    got = trimesh.boolean.intersection([cut, box], engine="manifold")
-    # The skull's tooth rows are not joined by a continuous bar of bone --
-    # left and right are separate arcs and the openings break them further
-    # -- so this comes out in pieces however generously the box is drawn.
-    # Keep the arcs worth printing and drop the chips the cut shears off.
-    pieces = sorted((p for p in tidy(got).split(only_watertight=False)
-                     if len(p.faces) >= 32), key=lambda p: -abs(p.volume))
-    if not pieces: return got, n
-    big = [p for p in pieces if abs(p.volume) >= 0.15 * abs(pieces[0].volume)]
-    for p in big: trimesh.repair.fix_normals(p)
-    return trimesh.util.concatenate(big), n
-
-
 def build(names, width=WIDTH, depth=DEPTH, depth_max=DEPTH_MAX, scrub=False,
           **extra):
     out, rep = [], {}
@@ -323,12 +289,18 @@ def build(names, width=WIDTH, depth=DEPTH, depth_max=DEPTH_MAX, scrub=False,
         member, how, _ = PARTS[name]
         m, paint = load(OBJ[member])
         n = 0
-        if how == "test":
-            m, n = test_jaw(m, paint, width, depth)
-        elif how == "jaw":
+        if how == "jaw":
+            # NO TROUGH ON THE LOWER JAW. The skull's palate is behind a
+            # thick arch and an open channel through it leaves the part
+            # sounder; the lower jaw is a slender arch and IS the wall, so
+            # cutting through its lingual side opens the piece -- measured,
+            # every setting tried came back not watertight with 13 to 17 new
+            # handles, down to a 1 mm trough barely breaking the surface.
+            # Sockets alone on this part, and they gate clean.
+            jaw = dict(extra); jaw["lingual"] = 0.0
             m, n = trough(m, paint, width, depth,
                           regions=jaw_regions(m, paint),
-                          depth_max=depth_max, scrub=scrub, **extra)
+                          depth_max=depth_max, scrub=scrub, **jaw)
         elif how == "cut":
             m, n = trough(m, paint, width, depth, depth_max=depth_max,
                           scrub=scrub, **extra)
@@ -383,7 +355,7 @@ def main():
     # ran. It existed to clean up the old voxel cutter's spurs; exact CSG
     # does not leave any.
     items, rep = build(names, a.width, a.depth, a.depth_max, scrub=False,
-                       mode="prism", cone=True, align=1.0, inset=a.inset,
+                       align=1.0, inset=a.inset,
                        lingual=a.lingual, ling_depth=a.ling_depth,
                        ling_wall=a.ling_wall)
     sc = layout(items)
