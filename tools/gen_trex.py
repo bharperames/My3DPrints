@@ -84,18 +84,31 @@ WIDTH, DEPTH = 3.5, 3.0
 # the shelf follows the maxilla down where the maxilla is deep, which is
 # where the putty and the tooth roots want the room.
 DEPTH_MAX = 3.5
-# The socket cutter's settled dials. A prism swept square to the jaw, its
-# section the designer's own tooth outline inset by INSET: the inset is what
-# protects the lip, so nothing downstream has to clip the socket back and the
-# mouth stays as wide as the floor. 1.0 is the value that fits all fourteen
-# teeth -- at 0.6 the bone behind the rearmost one has no room for a socket.
+# The settled cutter, in two parts.
 #
-# 1.2 rather than 1.0 because 1.0 drills THROUGH the jaw at teeth 10 and 11:
-# the skull's genus goes 8 -> 10, two tunnels the designer did not have. The
-# part stays watertight either way -- a tunnel through a solid is still a
-# closed manifold -- so nothing but a genus count catches it. At 1.2 those
-# sockets narrow to 1.8 and the count comes back to 8.
-INSET = 1.2
+# SOCKETS. One cone per tooth, starting at the designer's own painted tooth
+# outline and tapering with depth, swept square to the JAW rather than along
+# the tooth's own axis -- a leaning axis foreshortens the outline, and
+# squaring it to the gum line's perpendicular gains the front teeth a third
+# more area. The taper is one number per tooth, found by bisection: the
+# widest cone whose whole surface stays inside the bone. Its sides must be
+# STRAIGHT; a radius derived from the measured distance to the bone makes the
+# wall an offset of the skin, which runs parallel to the surface and shaves
+# it into hundreds of slivers.
+#
+# TROUGH. One channel swept along the gum line behind the sockets, bounded on
+# the cheek side only -- LING_WALL of lip is kept there, and the tongue side
+# is cut clean through the palate so every socket opens into one continuous
+# channel. A clipped tooth root does not fit a socket sized to the crown;
+# this is where it goes, and where the epoxy keys in. Its depth follows the
+# bone station by station, which is what lets the back run deeper than the
+# front: one depth for the whole arch is limited by the shallowest point, and
+# applying it everywhere is what put handles in the part at 2.0 mm and tore
+# it at 2.5. Measured per station, 3.0 is clean and 3.5 is not.
+INSET = 0.35          # wall beside a socket (mm)
+LINGUAL = 1.0         # how far past the inner surface the trough breaks (mm)
+LING_DEPTH = 3.0      # deepest the trough may go where the bone allows (mm)
+LING_WALL = 1.2       # lip left in front of the trough (mm)
 
 
 def load(member):
@@ -349,7 +362,13 @@ def main():
     ap.add_argument("--depth-max", type=float, default=DEPTH_MAX,
                     help="deepest the shelf may go where the bone allows (mm)")
     ap.add_argument("--inset", type=float, default=INSET,
-                    help="how far inside the tooth outline the socket sits (mm)")
+                    help="wall beside each socket (mm)")
+    ap.add_argument("--lingual", type=float, default=LINGUAL,
+                    help="how far past the inner surface the trough breaks (mm)")
+    ap.add_argument("--ling-depth", type=float, default=LING_DEPTH,
+                    help="deepest the trough may go where the bone allows (mm)")
+    ap.add_argument("--ling-wall", type=float, default=LING_WALL,
+                    help="lip left in front of the trough (mm)")
     ap.add_argument("--out")
     a = ap.parse_args()
     names = [p.strip() for p in a.parts.split(",") if p.strip()]
@@ -358,8 +377,15 @@ def main():
         print(json.dumps({"ok": False, "error": f"unknown part(s): {bad}. "
                                                 f"choose from {list(PARTS)}"}))
         return 1
-    items, rep = build(names, a.width, a.depth, a.depth_max,
-                       scrub=True, inset=a.inset)
+    # scrub (deburr) is OFF. It is a morphological opening, so where the
+    # wall is thin it removes the material outright rather than smoothing it
+    # -- measured, ten new tunnels through a file that was clean before it
+    # ran. It existed to clean up the old voxel cutter's spurs; exact CSG
+    # does not leave any.
+    items, rep = build(names, a.width, a.depth, a.depth_max, scrub=False,
+                       mode="prism", cone=True, align=1.0, inset=a.inset,
+                       lingual=a.lingual, ling_depth=a.ling_depth,
+                       ling_wall=a.ling_wall)
     sc = layout(items)
     out = a.out or os.path.join(os.path.dirname(HERE), "models", "custom",
                                 "trex-" + "-".join(names) + ".3mf")

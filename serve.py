@@ -472,9 +472,13 @@ class Handler(SimpleHTTPRequestHandler):
             lip = float(q.get("lip", [0.6])[0])
             mode = q.get("mode", ["prism"])[0]
             if mode == "prism":
-                kw = dict(mode="prism", inset=float(q.get("inset", [1.2])[0]),
+                kw = dict(mode="prism", inset=float(q.get("inset", [0.35])[0]),
                           lean=float(q.get("lean", [0.0])[0]),
-                          align=float(q.get("align", [1.0])[0]))
+                          align=float(q.get("align", [1.0])[0]),
+                          cone=q.get("cone", ["1"])[0] not in ("0", "", "false"),
+                          lingual=float(q.get("lingual", [1.0])[0]),
+                          ling_depth=float(q.get("ling_depth", [3.0])[0]),
+                          ling_wall=float(q.get("ling_wall", [1.2])[0]))
             else:
                 kw = dict(rscale=f, grow=g, lip=lip)
             items, rep = G.build([part if part == "skull" else "body"],

@@ -921,15 +921,164 @@ def drill_prism(mesh, regions, frames, depth=3.5, inset=1.2, reach=7.0,
     return trimesh.boolean.union(solids, engine="manifold")
 
 
+def _sweep(P, A, U, lab, lin, top, depth):
+    """A continuous tube along the path, not a row of boxes.
+
+    One box per station is a row of rectangular prisms, and where the arch
+    curves each box's corners stand proud of its neighbour's -- the union's
+    outer boundary is the envelope of those corners, which reads as a
+    staircase on the finished surface. Brett saw it immediately: "large
+    blocky artifacts."
+
+    Connecting each station's four corners to the next one's instead gives a
+    ruled surface with nothing to step on. Same section, same path; the
+    difference is that the sides are now continuous rather than sampled.
+    """
+    ring = []
+    for k in range(len(P)):
+        a, u = A[k], U[k]
+        ring.append(np.array([
+            P[k] + a * lab[k] + u * top,
+            P[k] - a * lin[k] + u * top,
+            P[k] - a * lin[k] - u * depth[k],
+            P[k] + a * lab[k] - u * depth[k]]))
+    V = np.vstack(ring)
+    F = []
+    for k in range(len(ring) - 1):
+        b0, b1 = 4 * k, 4 * (k + 1)
+        for i in range(4):
+            j = (i + 1) % 4
+            F.append([b0 + i, b1 + i, b1 + j])
+            F.append([b0 + i, b1 + j, b0 + j])
+    n = len(ring) - 1
+    F += [[0, 2, 1], [0, 3, 2]]                       # near cap
+    F += [[4 * n + 0, 4 * n + 1, 4 * n + 2], [4 * n + 0, 4 * n + 2, 4 * n + 3]]
+    m = trimesh.Trimesh(vertices=V, faces=np.array(F), process=True)
+    m.fix_normals()
+    return m
+
+
+def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
+                   floor=1.2, per_mm=8.0):
+    """One open channel behind the sockets, bounded only on the cheek side.
+
+    Brett's ask, and the first cut here that is deliberately allowed OUT of
+    the bone: "allow the removal to not be constrained by the lingual side
+    and basically connect all those openings together, but leaving the labial
+    side shape that is still missing tooth contoured alone." A real tooth's
+    root -- even clipped -- does not fit a socket sized to the crown, and a
+    trough open to the tongue gives it somewhere to go and somewhere for the
+    epoxy to key into.
+
+    So at each station along the gum line, take a section that runs from just
+    PAST the inner surface all the way out to the inner face of the lip, and
+    sweep it. One constraint survives, the one that matters: the labial limit
+    is where the cheek is, less `wall`, so the tooth-contoured outer wall the
+    cones cut is never touched.
+
+    The lingual side is bounded only so the cut does not cross the mouth and
+    eat the opposite tooth row -- the first surface going inward, plus
+    `past`. That is through the palate, which is what "open to the inside of
+    the mouth" means on an upper jaw.
+    """
+    C, N, A, U = gum_path(mesh, frames)
+    # FINER STATIONS THAN THE SOCKETS NEED.
+    #
+    # The gum path is sampled for placing pockets, about 1.5 a millimetre.
+    # Swept, that spacing is visible: the sides are ruled between stations,
+    # so each segment reads as a facet and the run of them as blocks. Brett:
+    # "perhaps with a finer discretization the effect would not be
+    # noticeable." Re-sample the path alone -- the measurements below are
+    # taken at the finer spacing too, so the wall follows the bone as closely
+    # as it is drawn.
+    seg = np.linalg.norm(np.diff(C, axis=0), axis=1)
+    arc = np.concatenate([[0.0], np.cumsum(seg)])
+    fine = np.linspace(0.0, arc[-1], max(len(C), int(arc[-1] * per_mm)))
+    lerp = lambda M: np.column_stack(
+        [np.interp(fine, arc, M[:, i]) for i in range(3)])
+    unit = lambda M: M / np.maximum(np.linalg.norm(M, axis=1), 1e-9)[:, None]
+    C, A, U = lerp(C), unit(lerp(A)), unit(lerp(U))
+    lab = np.zeros(len(C)); lin = np.zeros(len(C)); ok = np.zeros(len(C), bool)
+    dep = np.full(len(C), depth)
+    for k in range(len(C)):
+        a = A[k]
+
+        def reach(o, d):
+            hit, ri, _ = mesh.ray.intersects_location(
+                [o], [d], multiple_hits=False)
+            return float(np.linalg.norm(hit[0] - o)) if len(ri) else None
+
+        d_out = reach(C[k] + a * 0.05, a)          # to the cheek
+        d_in = reach(C[k] - a * 0.05, -a)          # to the tongue side
+        if d_out is None or d_in is None: continue
+        lab[k], lin[k], ok[k] = d_out - wall, d_in + past, True
+        # LET THE DEPTH FOLLOW THE BONE. One depth for the whole arch is
+        # limited by the shallowest station, so the back -- where there is
+        # most material -- is cut no deeper than the front, and Brett wants
+        # it deeper there. Measure how far down the jaw goes at each station
+        # and take what is available, less `floor`.
+        d_dn = reach(C[k] - U[k] * 0.05, -U[k])
+        dep[k] = depth if d_dn is None else min(depth, max(0.4, d_dn - floor))
+    if ok.sum() < 4: return None
+    # carry the measurement across any station whose rays missed, and smooth
+    # it -- a limit that jumps from one station to the next puts a step in
+    # the swept wall just as surely as the boxes did
+    idx = np.arange(len(C))
+    lab = np.interp(idx, idx[ok], lab[ok])
+    lin = np.interp(idx, idx[ok], lin[ok])
+    dep = np.interp(idx, idx[ok], dep[ok])
+    win = 9
+    ker = np.ones(win) / win
+    pad = lambda v: np.concatenate([np.repeat(v[:1], win // 2), v,
+                                    np.repeat(v[-1:], win // 2)])
+    lab = np.convolve(pad(lab), ker, mode="valid")
+    lin = np.convolve(pad(lin), ker, mode="valid")
+    dep = np.convolve(pad(dep), ker, mode="valid")
+    tube = _sweep(C, A, U, lab, lin, over, dep)
+    if tube.is_volume and tube.volume > 1e-6:
+        return tube
+    # a tube can fold where the arch turns hardest; fall back to the boxes
+    step = float(np.median(np.linalg.norm(np.diff(C, axis=0), axis=1)))
+    out = []
+    for k in range(len(C)):
+        a, u = A[k], U[k]
+        t = np.cross(a, u); nt = np.linalg.norm(t)
+        if nt < 1e-9 or lab[k] + lin[k] <= 0.2: continue
+        t = t / nt
+        box = trimesh.creation.box([lab[k] + lin[k], 2.2 * step, dep[k] + over])
+        M = np.eye(4)
+        M[:3, 0], M[:3, 1], M[:3, 2] = a, t, u
+        M[:3, 3] = C[k] + a * (lab[k] - lin[k]) / 2.0 + u * (over - dep[k]) / 2.0
+        box.apply_transform(M); out.append(box)
+    if not out: return None
+    return trimesh.boolean.union(out, engine="manifold")
+
+
 def channel(mesh, frames, regions=None, width=3.5, depth=3.0, over=0.6,
             centre=True, wall=1.6, min_width=1.6, reach=4.0, depth_max=3.5,
             mode="prism", **extra):
     """The solids to subtract for the ledge. One, now, not a hundred and sixty."""
     if mode == "prism":
         for k in ("grow", "rscale", "lip"): extra.pop(k, None)
-        return [drill_prism(mesh, regions, frames, depth=depth_max,
+        ling = extra.pop("lingual", 0.0)
+        # The trough may be SHALLOWER than the sockets. Brett: "the depth can
+        # be shallower with this approach" -- a channel open to the tongue
+        # gives a root somewhere to go sideways, so it does not have to be
+        # bought with depth the way a closed socket did.
+        ldepth = float(extra.pop("ling_depth", 0.0) or depth_max)
+        cuts = [drill_prism(mesh, regions, frames, depth=depth_max,
                             reach=reach, **extra)]
-    for k in ("inset", "lean", "align", "radial", "cone"):
+        if ling:
+            # The trough's labial limit is its OWN wall, not the socket's.
+            # Reusing `inset` left a 0.35 mm lip -- thinner than one 0.4 mm
+            # extrusion -- because a socket's margin and the thickness of the
+            # cheek in front of an open channel are different questions.
+            tr = lingual_trough(mesh, frames, depth=ldepth,
+                                wall=float(extra.pop("ling_wall", 0.0) or 1.2),
+                                past=float(ling))
+            if tr is not None: cuts.append(tr)
+        return cuts
+    for k in ("inset", "lean", "align", "radial", "cone", "lingual", "ling_depth", "ling_wall"):
         extra.pop(k, None)
     return [drill_ledge(mesh, regions, frames, depth=depth_max, wall=wall,
                         reach=reach, **extra)]
