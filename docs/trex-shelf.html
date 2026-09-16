@@ -55,7 +55,7 @@ canvas{display:block;width:100%;height:100%}
 <body>
 <header>
   <h1>Gum shelf — side by side</h1>
-  <span class="sub">the current build, two viewpoints · mark up the right pane</span>
+  <span class="sub">the two finished parts — skull left, body with its lower jaw right</span>
   <a class="back" href="../index.html">← My Print Shop</a>
 </header>
 <div id="bar">
@@ -80,8 +80,8 @@ canvas{display:block;width:100%;height:100%}
 </div>
 <div id="view">
   <canvas id="gl"></canvas>
-  <div class="tag" id="tagL">current build<i>reference angle</i></div>
-  <div class="tag" id="tagR">current build<i>markup pane</i></div>
+  <div class="tag" id="tagL">skull — final<i>locked · 1233 mm³ out · sliced clean</i></div>
+  <div class="tag" id="tagR">lower jaw — depth 2.5<i>916 mm³ out · side-wall 0.00%</i></div>
   <div id="hint">drag to orbit · click to set the pivot · scroll to zoom · both panes share one camera</div>
   <div id="err"></div>
 </div>
@@ -118,8 +118,8 @@ controls.enableDamping = true;
 // model is what is useful while the model is still moving -- and it is what
 // the markup wants: mark on one, keep the other as the reference angle.
 const VARIANTS = [
-  {key: 'a', file: '../models/custom/trex-skull-drill.3mf', colour: 0xE0A268},
-  {key: 'b', file: '../models/custom/trex-skull-drill.3mf', colour: 0x5BD6B0},
+  {key: 'a', file: '../models/custom/trex-skull-final.3mf',    colour: 0xE0A268},
+  {key: 'b', file: '../models/custom/trex-body-final-2.5.3mf', colour: 0x5BD6B0},
 ];
 const groups = {};
 let overlay = false, spin = false, mode = 'edges';
@@ -191,10 +191,10 @@ document.getElementById('overlay').onclick = e => {
   document.getElementById('tagR').classList.toggle('hide', overlay);
   const L = document.getElementById('tagL');
   L.innerHTML = overlay
-    ? '<span style="color:#E0A268">\u25a0</span> as printed &nbsp; ' +
-      '<span style="color:#5BD6B0">\u25a0</span> current build' +
+    ? '<span style="color:#E0A268">\u25a0</span> before &nbsp; ' +
+      '<span style="color:#5BD6B0">\u25a0</span> after' +
       '<i>tan showing through = bone the deeper cut took away</i>'
-    : 'current build<i>reference angle</i>';
+    : 'skull — final<i>locked</i>';
   L.style.borderLeftColor = overlay ? '#5BD6B0' : '#E0A268';
   applyMode(); frame();
 };

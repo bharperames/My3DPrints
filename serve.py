@@ -108,6 +108,17 @@ def _shop_modules():
     return catalog, plateshop
 
 
+_socket_cache = {}
+
+
+def _genus(m):
+    """Through-holes in a closed solid, from Euler's V - E + F = 2 - 2g.
+
+    Only meaningful when the mesh is watertight; callers check that first.
+    """
+    return (2 - (len(m.vertices) - len(m.edges_unique) + len(m.faces))) // 2
+
+
 class Handler(SimpleHTTPRequestHandler):
     def _read_json(self, limit=200_000):
         n = int(self.headers.get("Content-Length", 0))
@@ -245,6 +256,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == "/socket":
+            return self._socket(parse_qs(url.query))
+        if url.path == "/rings":
+            return self._rings(parse_qs(url.query))
         if url.path == "/shop/catalog":
             cat, _ = _shop_modules()
             return self._json(200, {"ok": True, **cat.catalog()})
@@ -390,6 +405,15 @@ class Handler(SimpleHTTPRequestHandler):
             subprocess.Popen(["open", "-a", app, path])
         self._json(200, {"ok": True, "app": app, "file": os.path.basename(path), "dry": dry})
 
+    def _bin(self, code, body, ctype, extra=None):
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        for k, v in (extra or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        self.wfile.write(body)
+
     def _json(self, code, obj):
         body = json.dumps(obj).encode()
         self.send_response(code)
@@ -397,6 +421,126 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _socket(self, q):
+        """Cut the gum sockets with the dials the viewer is holding.
+
+        The whole point is that this answers fast enough to drag a slider
+        against. Two things make that possible: the source mesh is parsed
+        once and kept (1.8 s on the body, every time, otherwise), and
+        `deburr` is off -- it is 84% of a build and a preview does not need
+        it. Anything headed for a plate is built again with it on.
+
+        Only the jaw comes back, not the whole animal: a body is 767k faces
+        and 30 MB of GLB, and the 28 mm around the gum line is both the part
+        being judged and a twentieth of the size.
+        """
+        import io, time
+        t0 = time.time()
+        part = (q.get("part", ["skull"])[0])
+        if part not in ("skull", "body"):
+            return self._json(400, {"ok": False, "error": f"unknown part {part}"})
+        try:
+            f = float(q.get("rscale", [0.94])[0]); g = float(q.get("grow", [0.45])[0])
+            d = float(q.get("depth", [3.5])[0])
+        except ValueError:
+            return self._json(400, {"ok": False, "error": "bad number"})
+        try:
+            import numpy as np, trimesh
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+            import gen_trex as G
+            from channel import tooth_frames, gum_path
+            from scipy.spatial import cKDTree
+            cache = _socket_cache.setdefault(part, {})
+            if "src" not in cache:
+                member = "head" if part == "skull" else "body"
+                src, paint = G.load(G.OBJ[member]); src = G.tidy(src)
+                regions = (G.painted_regions(src, paint) if part == "skull"
+                           else G.jaw_regions(src, paint))
+                C, N, A, U = gum_path(src, tooth_frames(src, regions))
+                # measure against the part with the TEETH ALREADY OFF, or
+                # "removed" counts the teeth and reads ~1000 mm3 high
+                hulls = [src.submesh([r], append=True).convex_hull for r in regions]
+                base = trimesh.boolean.difference(
+                    [src, trimesh.boolean.union(hulls, engine="manifold")],
+                    engine="manifold")
+                cache.update(src=src, paint=paint, regions=regions,
+                             tree=cKDTree(C), vol0=float(base.volume),
+                             genus0=_genus(base))
+            c = cache
+            scrub = q.get("scrub", ["0"])[0] not in ("0", "", "false")
+            lip = float(q.get("lip", [0.6])[0])
+            mode = q.get("mode", ["prism"])[0]
+            if mode == "prism":
+                kw = dict(mode="prism", inset=float(q.get("inset", [1.2])[0]),
+                          lean=float(q.get("lean", [0.0])[0]),
+                          align=float(q.get("align", [1.0])[0]))
+            else:
+                kw = dict(rscale=f, grow=g, lip=lip)
+            items, rep = G.build([part if part == "skull" else "body"],
+                                 depth_max=d, scrub=scrub, **kw)
+            m = items[0][1]
+            keep = np.where(c["tree"].query(m.triangles_center)[0] < 26.0)[0]
+            crop = m.submesh([keep], append=True)
+            buf = trimesh.exchange.gltf.export_glb(trimesh.Scene(crop))
+            # Watertightness and genus cost ~20 ms on an 80k-face skull --
+            # both read the same edge-adjacency table, which trimesh builds
+            # once and caches -- against seconds for the cut itself. Genus
+            # counts the solid's through-holes, so `tunnels` is how many the
+            # cutter made that the designer did not, and a socket that leaves
+            # through the side wall shows up here and nowhere else.
+            #
+            # It is reported ONLY when the mesh is watertight: Euler's
+            # V-E+F = 2-2g holds for a closed surface and nothing else, so on
+            # an open mesh the same arithmetic returns a number that is not a
+            # tunnel count and can read clean while the part is torn.
+            tight = bool(m.is_watertight)
+            meta = {"removed": round(c["vol0"] - float(m.volume), 1),
+                    "faces": len(crop.faces), "ms": int(1000 * (time.time() - t0)),
+                    "bodies": len(m.split(only_watertight=False)),
+                    "watertight": tight,
+                    "tunnels": (_genus(m) - c["genus0"]) if tight else None,
+                    "scrub": bool(scrub), "mode": mode}
+            return self._bin(200, buf, "model/gltf-binary",
+                             {"X-Meta": json.dumps(meta)})
+        except Exception as e:                              # noqa: BLE001
+            return self._json(500, {"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+    def _rings(self, q):
+        """The designer's own tooth boundaries, as ordered loops.
+
+        Where a tooth-painted triangle meets a bone-painted one is the true
+        socket outline -- it is what every frame, axis and radius in the
+        cutter is derived from, so it is worth being able to see it against
+        what the cutter actually did. `tooth_frames` keeps these points but
+        runs them through np.unique, which throws the order away; a loop has
+        to be walked in order to be drawn.
+        """
+        part = q.get("part", ["skull"])[0]
+        if part not in ("skull", "body"):
+            return self._json(400, {"ok": False, "error": f"unknown part {part}"})
+        try:
+            import numpy as np
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+            import gen_trex as G
+            cache = _socket_cache.setdefault(part, {})
+            if "rings" not in cache:
+                member = "head" if part == "skull" else "body"
+                src, paint = G.load(G.OBJ[member]); src = G.tidy(src)
+                regions = (G.painted_regions(src, paint) if part == "skull"
+                           else G.jaw_regions(src, paint))
+                loops = []
+                for faces in regions:
+                    sub = src.submesh([faces], append=True); sub.merge_vertices()
+                    ents = list(sub.outline().entities)
+                    if not ents: continue
+                    e = max(ents, key=lambda x: len(x.points))
+                    pts = sub.vertices[np.asarray(e.points)]
+                    loops.append([[round(float(v), 4) for v in p] for p in pts])
+                cache["rings"] = loops
+            return self._json(200, {"ok": True, "rings": cache["rings"]})
+        except Exception as e:                              # noqa: BLE001
+            return self._json(500, {"ok": False, "error": f"{type(e).__name__}: {e}"})
 
     def log_message(self, fmt, *args):
         if "/open" in (args[0] if args else ""):

@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Socket Bench</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎚️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--bg:#0F1316;--surface:#161C20;--surface-2:#1B2226;--line:#283238;
+  --ink:#E6ECEF;--muted:#93A3AB;--faint:#6E7F88;--accent:#5BD6B0;--warm:#E0A268}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;
+  font:400 13px/1.5 "IBM Plex Mono",ui-monospace,monospace}
+header{padding:11px 18px;border-bottom:1px solid var(--line);display:flex;gap:14px;
+  align-items:baseline;flex-wrap:wrap}
+h1{margin:0;font:700 18px "Chakra Petch",sans-serif}
+.sub{color:var(--faint);font-size:12.5px}
+a.back{margin-left:auto;color:var(--accent);text-decoration:none;font-size:12.5px}
+.bar{padding:9px 18px;border-bottom:1px solid var(--line);display:flex;gap:9px;
+  align-items:center;flex-wrap:wrap}
+.chip{font:500 12px "IBM Plex Mono",monospace;padding:5px 11px;border-radius:99px;
+  background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#062A22;font-weight:600}
+.chip:disabled{opacity:.45;cursor:default}
+.dial{display:flex;align-items:center;gap:8px;background:var(--surface);
+  border:1px solid var(--line);border-radius:8px;padding:5px 11px}
+.dial label{color:var(--muted);font-size:12px;white-space:nowrap}
+.dial input{width:132px;vertical-align:middle}
+.dial b{font:600 12.5px "Chakra Petch",sans-serif;min-width:2.9em;text-align:right}
+#wrap{flex:1;position:relative;min-height:380px}
+canvas{display:block;width:100%;height:100%}
+.tag{position:absolute;top:11px;background:rgba(15,19,22,.86);border:1px solid var(--line);
+  border-radius:7px;padding:6px 11px;font-size:11.5px;pointer-events:none;line-height:1.5}
+.tag b{font:600 12.5px "Chakra Petch",sans-serif;display:block}
+.tag i{font-style:normal;color:var(--faint)}
+#tagL{left:11px;border-left:3px solid var(--warm)}
+#tagR{left:calc(50% + 11px);border-left:3px solid var(--accent)}
+#busy{position:absolute;right:14px;top:11px;color:var(--accent);font-size:12px;display:none}
+#busy.on{display:block}
+#hint{position:absolute;left:12px;bottom:9px;color:var(--faint);font-size:11.5px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Socket bench</h1>
+  <span class="sub">drag a dial &mdash; the right pane is re-cut for real</span>
+  <a class="back" href="../index.html">&larr; My Print Shop</a>
+</header>
+<div class="bar">
+  <span class="sub">part</span><span id="parts"></span>
+  <span class="sub" style="margin-left:10px">view</span><span id="modes"></span>
+</div>
+<div class="bar">
+  <span class="dial" id="cutmode"><label>cutter</label>
+    <button class="chip" data-cut="hull">hull</button><button class="chip on"
+      data-cut="prism">prism</button></span>
+  <span class="dial hull-only"><label>socket radius</label>
+    <input id="d-rscale" type="range" min="0.80" max="1.30" step="0.02" value="0.94"><b>0.94</b></span>
+  <span class="dial hull-only"><label>widen along jaw</label>
+    <input id="d-grow" type="range" min="0" max="1.6" step="0.05" value="0.45"><b>0.45</b></span>
+  <span class="dial"><label>depth</label>
+    <input id="d-depth" type="range" min="1.5" max="5.0" step="0.25" value="3.5"><b>3.5</b></span>
+  <span class="dial hull-only"><label>inset from lip</label>
+    <input id="d-lip" type="range" min="0" max="2.0" step="0.1" value="0.6"><b>0.6</b></span>
+  <span class="dial prism-only"><label>inset from outline</label>
+    <input id="d-inset" type="range" min="0.2" max="2.0" step="0.05" value="1.2"><b>1.20</b></span>
+  <span class="dial prism-only"><label>square to jaw</label>
+    <input id="d-align" type="range" min="0" max="1" step="0.05" value="1"><b>1</b></span>
+  <span class="dial prism-only"><label>allow lean at cheek</label>
+    <input id="d-lean" type="range" min="0" max="0.6" step="0.05" value="0"><b>0</b></span>
+  <button class="chip on" id="ghost">ghost teeth</button>
+  <button class="chip" id="scrub">clean up (deburr)</button>
+  <button class="chip" id="pin">pin as reference &rarr;</button>
+  <button class="chip" id="reset">reset dials</button>
+</div>
+<div id="wrap"><canvas id="gl"></canvas>
+  <div class="tag" id="tagL"><b>reference</b><i>pin a cut to compare against</i></div>
+  <div class="tag" id="tagR"><b>live</b><i>&mdash;</i></div>
+  <div id="busy">cutting&hellip;</div>
+  <div id="hint">drag to orbit &middot; click to set the pivot &middot; scroll to zoom</div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
+"three/addons/loaders/GLTFLoader.js":"../vendor/loaders/GLTFLoader.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+const cv = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas: cv, antialias: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setScissorTest(true);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(getComputedStyle(document.documentElement)
+  .getPropertyValue('--surface-2').trim());
+scene.add(new THREE.HemisphereLight(0xffffff, 0x40484f, 2.0));
+const key = new THREE.DirectionalLight(0xffffff, 2.0);
+key.position.set(1, 1.4, 0.8); scene.add(key);
+const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
+const controls = new OrbitControls(camera, cv); controls.enableDamping = true;
+
+const EDGE_SURF = 0x11181C, EDGE_DRAW = 0x8CF0C8;
+let mode = 'edges', part = 'skull', live = null, ref = null, framed = false;
+
+function dress(obj, colour){
+  obj.traverse(o => { if (o.isMesh){
+    if (!o.geometry.getAttribute('normal')) o.geometry.computeVertexNormals();
+    o.material = new THREE.MeshStandardMaterial({color: colour, flatShading: true,
+      roughness: .62, metalness: .04});
+  }});
+  return obj;
+}
+function edgesOf(m){
+  if (!m.userData.edges){
+    m.userData.edges = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25),
+      new THREE.LineBasicMaterial({color: EDGE_SURF}));
+    m.add(m.userData.edges);
+  }
+  return m.userData.edges;
+}
+function applyMode(){
+  for (const g of [ref, live]) if (g) g.traverse(o => {
+    if (!o.isMesh) return;
+    const mt = o.material;
+    mt.visible = mode !== 'hlr'; mt.wireframe = mode === 'wire';
+    mt.transparent = mode === 'xray'; mt.opacity = mode === 'xray' ? .28 : 1;
+    mt.depthWrite = mode !== 'xray'; mt.needsUpdate = true;
+    if (['edges','hlr','xray'].includes(mode)){
+      const e = edgesOf(o); e.visible = true;
+      e.material.color.setHex(mode === 'edges' ? EDGE_SURF : EDGE_DRAW);
+    } else if (o.userData.edges) o.userData.edges.visible = false;
+  });
+}
+const mk = (host, items, cur, on) => items.forEach(([id, label]) => {
+  const b = document.createElement('button');
+  b.className = 'chip' + (id === cur ? ' on' : ''); b.textContent = label;
+  b.onclick = () => { host.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b));
+                      on(id); };
+  host.append(b);
+});
+mk(document.getElementById('modes'),
+   [['shaded','shaded'],['edges','+ edges'],['hlr','edges only'],
+    ['wire','wireframe'],['xray','x-ray']], mode, id => { mode = id; applyMode(); });
+mk(document.getElementById('parts'),
+   [['skull','upper jaw'],['body','lower jaw']], part,
+   id => { part = id; framed = false; ref = null;
+           document.getElementById('tagL').innerHTML =
+             '<b>reference</b><i>cutting\u2026</i>';
+           loadGhosts(); cut(); });
+
+// Two cutters, and they share only `depth`. The hull cutter grows a socket
+// oversize and clips it back; the prism cutter sweeps the designer's outline,
+// inset, straight down the tooth's own axis. Showing both sets of dials at
+// once would invite reading a number that the running cutter ignores, so the
+// switch hides the ones that do nothing.
+const DIALS = {hull: ['rscale', 'grow', 'lip'],
+               prism: ['inset', 'align', 'lean']};
+let cutter = 'hull';
+const dials = {rscale: 0.94, grow: 0.45, depth: 3.5, lip: 0.6,
+               inset: 1.2, lean: 0.0, align: 1.0};
+const DEFAULTS = {...dials};
+for (const k of Object.keys(dials)){
+  const el = document.getElementById('d-' + k);
+  el.oninput = () => { dials[k] = +el.value;
+    el.parentElement.querySelector('b').textContent = (+el.value).toFixed(2).replace(/0$/,'');
+    schedule(); };
+}
+function setCutter(which, quiet){
+  cutter = which;
+  for (const b of document.querySelectorAll('#cutmode .chip'))
+    b.classList.toggle('on', b.dataset.cut === which);
+  for (const el of document.querySelectorAll('.hull-only'))
+    el.style.display = which === 'hull' ? '' : 'none';
+  for (const el of document.querySelectorAll('.prism-only'))
+    el.style.display = which === 'prism' ? '' : 'none';
+  if (!quiet) cut();
+}
+for (const b of document.querySelectorAll('#cutmode .chip'))
+  b.onclick = () => setCutter(b.dataset.cut);
+setCutter('prism', true);   // the first cut is fired by the part picker
+
+document.getElementById('reset').onclick = () => {
+  Object.assign(dials, DEFAULTS);
+  for (const k of Object.keys(dials)){
+    const el = document.getElementById('d-' + k);
+    el.value = dials[k];
+    el.parentElement.querySelector('b').textContent = dials[k];
+  }
+  cut();
+};
+// Deburr is a morphological opening over the whole part and costs 40x a
+// plain cut, so it is a button rather than something the dials trigger.
+// It is also what strips the thin spurs left at the socket rims, which is
+// why it belongs in the loop at all and not only in the final export.
+document.getElementById('scrub').onclick = e => {
+  scrub = !scrub; e.target.classList.toggle('on', scrub); cut();
+};
+function pinNow(){
+  if (!live) return;
+  if (ref) scene.remove(ref);
+  ref = live.clone(true);
+  ref.traverse(o => { if (o.isMesh){ o.material = o.material.clone();
+                                     o.material.color.setHex(0xE0A268);
+                                     o.userData.edges = null; } });
+  scene.add(ref);
+  document.getElementById('tagL').innerHTML = document.getElementById('tagR').innerHTML
+    .replace('<b>live</b>', '<b>reference</b>');
+  applyMode();
+}
+document.getElementById('pin').onclick = pinNow;
+
+// One request in flight at a time, and the newest wins: dragging a slider
+// fires dozens of changes and a body takes seconds, so without this the
+// panes would show whichever cut happened to come back last.
+let timer = null, inflight = false, pending = false, scrub = false;
+function schedule(){ clearTimeout(timer); timer = setTimeout(cut, 220); }
+const loader = new GLTFLoader();
+async function cut(){
+  if (inflight){ pending = true; return; }
+  inflight = true; document.getElementById('busy').classList.add('on');
+  const live_keys = ['depth', ...DIALS[cutter]];
+  const q = new URLSearchParams({part, scrub: scrub ? 1 : 0, mode: cutter,
+    ...Object.fromEntries(live_keys.map(k => [k, dials[k]]))});
+  document.getElementById('busy').textContent =
+    scrub ? 'cleaning up\u2026 (this one is slow)' : 'cutting\u2026';
+  try {
+    const r = await fetch('/socket?' + q);
+    if (!r.ok) throw new Error((await r.json()).error || r.status);
+    const meta = JSON.parse(r.headers.get('X-Meta') || '{}');
+    const buf = await r.arrayBuffer();
+    const g = await new Promise((ok, no) => loader.parse(buf, '', ok, no));
+    if (live) scene.remove(live);
+    live = dress(g.scene, 0x5BD6B0); live.rotation.x = -Math.PI / 2; scene.add(live);
+    document.getElementById('tagR').innerHTML =
+      `<b>live</b><i>${cutter} &middot; depth ${dials.depth} &middot; ` +
+      DIALS[cutter].map(k => `${k} ${dials[k]}`).join(' \u00b7 ') +
+      `<br>${meta.removed} mm&sup3; out &middot; ${meta.bodies} bodies &middot; ${meta.ms} ms` +
+      (meta.watertight === false
+        ? ' &middot; <b style="color:#F08A7A">NOT WATERTIGHT</b>'
+        : meta.tunnels ? ` &middot; <b style="color:#F08A7A">${meta.tunnels} tunnel`
+                         + `${meta.tunnels > 1 ? 's' : ''} through the bone</b>`
+                       : ' &middot; no tunnels') +
+      (meta.scrub ? ' &middot; <span style="color:var(--accent)">deburred</span>' : '') + `</i>`;
+    applyMode();
+    if (!framed){ frame(); framed = true; }
+    // An empty left pane reads as a bug. The first cut of a part becomes the
+    // reference automatically; pinning later replaces it.
+    if (!ref) pinNow();
+  } catch (e){
+    document.getElementById('tagR').innerHTML = `<b>live</b><i>failed: ${e}</i>`;
+  }
+  inflight = false; document.getElementById('busy').classList.remove('on');
+  if (pending){ pending = false; cut(); }
+}
+
+// The designer's tooth boundaries, drawn dim over both panes. This is the
+// TRUE socket outline -- every axis, radius and frame in the cutter comes
+// off these loops -- so seeing them against what was actually cut is the
+// most direct check there is of whether the cutter is honouring them.
+let ghosts = null, showGhosts = true;
+async function loadGhosts(){
+  if (ghosts){ scene.remove(ghosts); ghosts = null; }
+  try {
+    const r = await fetch('/rings?part=' + part);
+    const j = await r.json();
+    if (!j.ok) return;
+    ghosts = new THREE.Group();
+    // Two passes per loop: a wide soft halo and a bright core on top of it.
+    // A single 1 px line is all a GL line primitive can give, and at this
+    // scale that reads as a hint rather than a landmark.
+    const halo = new THREE.LineBasicMaterial({color: 0xFFC24E, transparent: true,
+                                              opacity: 0.30, depthTest: false});
+    const core = new THREE.LineBasicMaterial({color: 0xFFE9A8, transparent: true,
+                                              opacity: 0.95, depthTest: false});
+    for (const loop of j.rings){
+      const pts = loop.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+      pts.push(pts[0].clone());                    // close the loop
+      const g0 = new THREE.BufferGeometry().setFromPoints(pts);
+      // the halo is the same curve pushed out along its own normal a hair,
+      // so it reads as thickness rather than a second line beside it
+      const c = new THREE.Vector3();
+      pts.forEach(p => c.add(p)); c.divideScalar(pts.length);
+      const swell = pts.map(p => p.clone().add(
+        p.clone().sub(c).normalize().multiplyScalar(0.10)));
+      ghosts.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(swell), halo));
+      ghosts.add(new THREE.Line(g0, core));
+    }
+    ghosts.rotation.x = -Math.PI / 2;              // same frame as the meshes
+    ghosts.renderOrder = 5;
+    ghosts.visible = showGhosts;
+    scene.add(ghosts);
+  } catch (e){ /* the overlay is not worth failing the page over */ }
+}
+document.getElementById('ghost').onclick = e => {
+  showGhosts = !showGhosts;
+  e.target.classList.toggle('on', showGhosts);
+  if (ghosts) ghosts.visible = showGhosts;
+};
+
+const ray = new THREE.Raycaster(); let downAt = null;
+cv.addEventListener('pointerdown', e => downAt = {x: e.clientX, y: e.clientY});
+cv.addEventListener('pointerup', e => {
+  if (!downAt) return;
+  const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y); downAt = null;
+  if (moved > 4 || !live) return;
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top, half = r.width / 2;
+  const px = x < half ? 0 : half, pw = half;
+  camera.aspect = pw / r.height; camera.updateProjectionMatrix();
+  ray.setFromCamera(new THREE.Vector2(((x - px) / pw) * 2 - 1, -(y / r.height) * 2 + 1), camera);
+  const hits = [];
+  (x < half && ref ? ref : live).traverse(o => { if (o.isMesh) hits.push(o); });
+  const h = ray.intersectObjects(hits, false)[0];
+  if (h){ controls.target.copy(h.point); controls.update(); }
+});
+
+function frame(){
+  const box = new THREE.Box3(); if (live) box.expandByObject(live);
+  if (box.isEmpty()) return;
+  const c = box.getCenter(new THREE.Vector3());
+  const sz = box.getSize(new THREE.Vector3());
+  const dir = new THREE.Vector3(0.1, -1, 0.25).normalize();
+  const vf = Math.tan(camera.fov * Math.PI / 360);
+  const asp = 0.5 * cv.clientWidth / cv.clientHeight;
+  const r = Math.max(sz.x, sz.y, sz.z) / 2;
+  camera.position.copy(c).add(dir.multiplyScalar(1.25 * Math.max(r / vf, r / (vf * asp))));
+  controls.target.copy(c); controls.update();
+}
+function clip(){
+  const d = Math.max(1, camera.position.distanceTo(controls.target));
+  const near = Math.max(0.05, d / 4000), far = Math.max(d * 40, 4000);
+  if (Math.abs(camera.near - near) > near * .25 || camera.far !== far){
+    camera.near = near; camera.far = far; camera.updateProjectionMatrix();
+  }
+}
+function draw(){
+  requestAnimationFrame(draw);
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * renderer.getPixelRatio()) ||
+      cv.height !== Math.round(h * renderer.getPixelRatio())) renderer.setSize(w, h, false);
+  controls.update(); clip();
+  for (const [x, g] of [[0, ref], [w / 2, live]]){
+    if (ref) ref.visible = (g === ref);
+    if (live) live.visible = (g === live);
+    if (ghosts) ghosts.visible = showGhosts;
+    renderer.setViewport(x, 0, w / 2, h); renderer.setScissor(x, 0, w / 2, h);
+    camera.aspect = (w / 2) / h; camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+  }
+}
+draw(); loadGhosts(); cut();
+</script>
+</body>
+</html>

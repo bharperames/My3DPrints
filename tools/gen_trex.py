@@ -84,6 +84,18 @@ WIDTH, DEPTH = 3.5, 3.0
 # the shelf follows the maxilla down where the maxilla is deep, which is
 # where the putty and the tooth roots want the room.
 DEPTH_MAX = 3.5
+# The socket cutter's settled dials. A prism swept square to the jaw, its
+# section the designer's own tooth outline inset by INSET: the inset is what
+# protects the lip, so nothing downstream has to clip the socket back and the
+# mouth stays as wide as the floor. 1.0 is the value that fits all fourteen
+# teeth -- at 0.6 the bone behind the rearmost one has no room for a socket.
+#
+# 1.2 rather than 1.0 because 1.0 drills THROUGH the jaw at teeth 10 and 11:
+# the skull's genus goes 8 -> 10, two tunnels the designer did not have. The
+# part stays watertight either way -- a tunnel through a solid is still a
+# closed manifold -- so nothing but a genus count catches it. At 1.2 those
+# sockets narrow to 1.8 and the count comes back to 8.
+INSET = 1.2
 
 
 def load(member):
@@ -226,17 +238,26 @@ def _deburr_once(mesh, wall, keep, pitch):
 
 
 def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None,
-           depth_max=DEPTH_MAX):
+           depth_max=DEPTH_MAX, scrub=False, **extra):
     from channel import tooth_frames, channel
     regions = painted_regions(mesh, paint) if regions is None else regions
     # a tooth is a cone, so its own convex hull is the tooth
     cuts = [mesh.submesh([r], append=True).convex_hull for r in regions]
     cuts += channel(mesh, tooth_frames(mesh, regions), regions=regions,
                     width=width, depth=depth, over=1.0, centre=True,
-                    depth_max=depth_max)
+                    depth_max=depth_max, **extra)
     u = trimesh.boolean.union(cuts, engine="manifold")
     was = len(mesh.split(only_watertight=False))
-    got = deburr(trimesh.boolean.difference([mesh, u], engine="manifold"))
+    # `deburr` is a morphological opening over the WHOLE part, and on the body
+    # it costs 418 s of a 420 s build -- 84% of it.
+    #
+    # It is NOT free to skip, which is what I assumed before measuring it: on
+    # the skull it takes 40 mm3 off an 8084 mm3 part and drops 3100 faces, so
+    # it is still finding thin material even under the drill. Off for a live
+    # preview, where 0.7 s against 43 s is the difference between a slider
+    # that responds and one that does not; ON for anything going to a plate.
+    got = trimesh.boolean.difference([mesh, u], engine="manifold")
+    if scrub: got = deburr(got)
     got = keep_real(got, single=(was == 1))
     # A cut cannot make new objects. Where a pocket's inboard sweep severs a
     # strut at the back of the mouth it frees a piece of the inner palate --
@@ -282,7 +303,8 @@ def test_jaw(mesh, paint, width=WIDTH, depth=DEPTH, wall=1.5):
     return trimesh.util.concatenate(big), n
 
 
-def build(names, width=WIDTH, depth=DEPTH, depth_max=DEPTH_MAX):
+def build(names, width=WIDTH, depth=DEPTH, depth_max=DEPTH_MAX, scrub=False,
+          **extra):
     out, rep = [], {}
     for name in names:
         member, how, _ = PARTS[name]
@@ -293,9 +315,10 @@ def build(names, width=WIDTH, depth=DEPTH, depth_max=DEPTH_MAX):
         elif how == "jaw":
             m, n = trough(m, paint, width, depth,
                           regions=jaw_regions(m, paint),
-                          depth_max=depth_max)
+                          depth_max=depth_max, scrub=scrub, **extra)
         elif how == "cut":
-            m, n = trough(m, paint, width, depth, depth_max=depth_max)
+            m, n = trough(m, paint, width, depth, depth_max=depth_max,
+                          scrub=scrub, **extra)
         out.append((name, m))
         rep[name] = dict(faces=len(m.faces), volume=round(float(m.volume), 1),
                          teeth_removed=n)
@@ -325,6 +348,8 @@ def main():
                     help="gum trough depth (mm)")
     ap.add_argument("--depth-max", type=float, default=DEPTH_MAX,
                     help="deepest the shelf may go where the bone allows (mm)")
+    ap.add_argument("--inset", type=float, default=INSET,
+                    help="how far inside the tooth outline the socket sits (mm)")
     ap.add_argument("--out")
     a = ap.parse_args()
     names = [p.strip() for p in a.parts.split(",") if p.strip()]
@@ -333,7 +358,8 @@ def main():
         print(json.dumps({"ok": False, "error": f"unknown part(s): {bad}. "
                                                 f"choose from {list(PARTS)}"}))
         return 1
-    items, rep = build(names, a.width, a.depth, a.depth_max)
+    items, rep = build(names, a.width, a.depth, a.depth_max,
+                       scrub=True, inset=a.inset)
     sc = layout(items)
     out = a.out or os.path.join(os.path.dirname(HERE), "models", "custom",
                                 "trex-" + "-".join(names) + ".3mf")
