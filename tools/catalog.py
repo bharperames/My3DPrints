@@ -471,70 +471,45 @@ PARTS = [
                          hint="two jaws, 60 mm \u2014 slabs, not teeth")])],
        out="specimen-heads-{head}.3mf"),
     _p("trex_teeth", "Skeleton T-Rex \u2014 real teeth", "Flexi Factory",
-       "parametric",
+       # A FROZEN FILE, not a generator run. This card used to build on every
+       # order, and the build and the bench drifted apart: the generator's
+       # command-line defaults were the SKULL's numbers and went through on
+       # every run, so the jaw came out cut with the skull's settings while
+       # the bench showed the settled one. Two different parts from one word,
+       # "default". The geometry here is the one that was measured and
+       # approved; `make trex` rewrites it when the design actually changes.
+       "library",
        "Flexi Factory\u2019s skeleton T-Rex with its printed teeth replaced "
-       "by a ledge you can set real shark teeth on and bed in black epoxy. "
-       "The lip you see from outside is left exactly as the designer drew "
-       "it; the cut goes in behind it, so a tooth root presses against the "
-       "labial wall and reads as inset in the jaw. Which triangles were "
-       "teeth is not a guess: the designer painted them and the paint ships "
-       "in the 3MF, one attribute per triangle, so every tooth comes off "
-       "complete down to the ring where it meets the jaw. Nothing is held "
-       "on the lingual side \u2014 that is inside the mouth and no one "
-       "looks at it, and trying to hold it was what left paper-thin flaps. "
-       "The feet keep their talons on purpose: they are what the model "
-       "stands on. The arm claws keep theirs because swapping them buys "
-       "little. The test jaw is the gum arcs on their own \u2014 minutes "
-       "and a gram to find out whether a root sits right, before three "
-       "hours go into the pair.",
-       # 3.0.0, not 2.1.0: the ledge is cut on different planes and to a
-       # different depth at every station along the gum line, so a skull
-       # from 2.x and a skull from 3.x are not the same part. The 2.x skull
-       # perforated its own lip -- see the write-up on the card.
-       # 4.0.0: the ledge is drilled from the painted teeth rather than swept
-       #        along the gum line, so every pocket is the shape of the tooth
-       #        that made it. A 3.x skull and a 4.x skull are not the same
-       #        part anywhere along the arch.
-       version="4.0.0",
-       proven="Printed in PLA Black and the mounting area is right \u2014 "
-              "Brett, on the 4.0.0 print: \u201cthe teeth mounting area "
-              "looks good\u201d. Plain PLA, not silk: silk has failed twice "
-              "here on thin sections and the labial lip is one. No support, "
-              "no brim, no slicer warning, 26 min and 7.2 g. The 2.x skull "
-              "before it was open to daylight at four places along the tooth "
-              "row; this one is unbroken, and a skin test over 40,000 points "
-              "puts side-wall penetration at 0.00%, the same as an uncut "
-              "skull. Teeth to fit the channel are still being sourced.",
-       pages=[dict(label="Compare the two shelf depths",
-                   href="docs/trex-shelf.html")],
-       gen=["gen_trex.py"], params=[
-           dict(key="parts", label="parts", type="checks", val="skull,body",
-                choices=[
-                    dict(value="testjaw", label="test jaw",
-                         hint="the gum arcs alone \u2014 11 min, 1 g"),
-                    dict(value="skull", label="skull, for real teeth",
-                         hint="printed teeth off, channel along the gum"),
-                    dict(value="body", label="body, for real teeth",
-                         hint="lower jaw the same, claws left on"),
-                    dict(value="skullorig", label="skull, with cartoon teeth",
-                         hint="the designer\u2019s eyeless skull, teeth on"),
-                    dict(value="eyes", label="skull with eyes",
-                         hint="the designer\u2019s other skull"),
-                    dict(value="bodyorig", label="body, as drawn",
-                         hint="untouched, teeth and claws on"),
-                    dict(value="bone", label="bone",
-                         hint="the loose bone in the set")],
-                hint="pick any combination \u2014 they arrive on one plate"),
-           # One dial, and it is the one that changes the part. `width` and
-           # `depth` were the swept trough's, and the drill has neither --
-           # a pocket is the shape of the tooth that made it. Leaving them
-           # on the card meant two sliders that moved and did nothing.
-           dict(key="depth-max", label="how deep the pockets go", unit="mm",
-                min=2.5, max=6.0, step=0.5, val=3.5,
-                hint="3.5 is the printed one \u2014 past about 4.5 the "
-                     "deepest pockets start coming out through the side of "
-                     "the jaw at the back")],
-       out="trex-{parts}.3mf"),
+       "by sockets you can set real shark teeth in and bed in black epoxy. "
+       "Each socket is a cone that starts at the designer\u2019s own painted "
+       "tooth outline and narrows with depth, and behind them runs one open "
+       "channel that joins every socket together. A real root \u2014 even "
+       "clipped \u2014 does not fit a hole sized to the crown, so the "
+       "channel is where it goes and where the epoxy keys in. The lip you "
+       "see from outside is left exactly as the designer drew it: the cut is "
+       "bounded on the cheek side and nowhere else, so a tooth reads as "
+       "inset in the jaw while the tongue side opens straight into the "
+       "mouth. Which triangles were teeth is not a guess \u2014 the designer "
+       "painted them and the paint ships in the 3MF, one attribute per "
+       "triangle, so every tooth comes off complete down to the ring where "
+       "it meets the jaw. The feet keep their talons on purpose: they are "
+       "what the model stands on.",
+       version="5.0.0",
+       path=os.path.join(os.path.dirname(HERE), "models", "custom",
+                         "trex-real-teeth-v5.3mf"),
+       proven="Skull and lower jaw on one plate, 2h52m and 58.5 g, no "
+              "support, no brim, no slicer warning. Both watertight; the "
+              "skull\u2019s genus matches the untouched model, which is the "
+              "only test that catches a socket leaving through a side wall "
+              "\u2014 a tunnel through a solid keeps it closed, so "
+              "watertightness cannot see one. The 4.x ledge printed in PLA "
+              "Black and the mounting area was right, but it held a "
+              "tooth\u2019s crown and not its root; that is what this "
+              "changes. Plain PLA, not silk: silk has failed twice here on "
+              "thin sections and the labial lip is one.",
+       settings="skull: socket 3.5, lingual 1.0, trough 3.0, lip 1.2 \u2014 "
+                "jaw: socket 2.5, lingual 2.5, trough 2.75, lip 0.6 \u2014 "
+                "both at socket wall 0.35, square to the jaw, no deburr"),
     _p("binary_rings", "Zoo Talker Code Disks", "Designed here", "parametric",
        "A set of coded disks for use with the Zoo Talkers Animal Sounds "
        "Zoo, which reads concentric rings as bits. "
@@ -783,8 +758,37 @@ def stale(part, path):
     built = os.path.getmtime(path)
     srcs = [os.path.join(HERE, g) for g in (part.get("gen") or [])[:1]]
     srcs.append(os.path.join(HERE, "embed_settings.py"))
+    # AND WHAT THE GENERATOR IMPORTS. Watching only the named script meant a
+    # part could be rebuilt from a cutter that had changed underneath it and
+    # nobody would know: gen_trex.py barely moved all day while channel.py
+    # was rewritten around it, so every order served a cached 3MF while the
+    # badge said it was made to order. One level of local imports is enough
+    # to catch that, and it costs a stat per module.
+    srcs += _local_imports(srcs[0]) if srcs else []
     return any(os.path.exists(f) and os.path.getmtime(f) > built
                for f in srcs)
+
+
+def _local_imports(script, _cache={}):
+    """Modules this script imports that live beside it."""
+    if script in _cache: return _cache[script]
+    out = []
+    try:
+        import ast
+        tree = ast.parse(open(script).read())
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names.update(a.name.split(".")[0] for a in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                names.add(node.module.split(".")[0])
+        for n in sorted(names):
+            f = os.path.join(HERE, n + ".py")
+            if os.path.exists(f): out.append(f)
+    except Exception:                                       # noqa: BLE001
+        pass
+    _cache[script] = out
+    return out
 
 
 def out_path(part, params=None):

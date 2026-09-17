@@ -2,7 +2,7 @@ PY := $(HOME)/.claude/skills/3d-print-check/.venv/bin/python
 PORT := 8742
 PID  := .serve.pid
 
-.PHONY: serve stop open log
+.PHONY: serve stop open log trex
 
 serve: stop
 	@nohup $(PY) serve.py > .serve.log 2>&1 & echo $$! > $(PID)
@@ -41,3 +41,13 @@ clean-cache:
 clean-cache-yes:
 	rm -rf models/custom models/glb/prev models/previews.json
 	@echo "cleared. run 'make build'"
+
+# Rewrite the frozen T-Rex the shop serves. The card is a library entry now,
+# so nothing rebuilds on order -- this is the only thing that changes it, and
+# it is deliberate: the card used to generate on every order and the geometry
+# drifted from what was measured and approved.
+trex:
+	$(PY) tools/gen_trex.py --parts skull,body \
+	  --out models/custom/trex-real-teeth-v5.3mf
+	@$(PY) -c "import trimesh; sc=trimesh.load('models/custom/trex-real-teeth-v5.3mf', process=False); \
+	  [print(f'  {n}: {len(m.faces)} faces, watertight {m.is_watertight}') for n,m in sorted(sc.geometry.items())]"

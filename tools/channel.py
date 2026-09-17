@@ -563,8 +563,25 @@ def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
         # the cutter never made.
         report.update(C=C.copy(), A=A.copy(), U=U.copy(),
                       lab=lab.copy(), lin=lin.copy(), dep=dep.copy())
+    # PUSH THE CUTTER OUT A HAIR -- BY WIDENING ITS SECTION.
+    #
+    # Its wall lands exactly on the bone's own surface in places, and a
+    # boolean between coincident surfaces is where CSG is least reliable:
+    # the subtraction left blades standing that the cutter demonstrably
+    # contained, and intersecting to find them came back empty because
+    # manifold's arithmetic disagreed with the geometry. Breaking the
+    # coincidence fixes it -- 55 stranded sample points to zero at 0.02 mm.
+    #
+    # Do it in the SECTION, not by shoving the finished mesh's vertices
+    # along their normals. On a union of hulls those normals are averages
+    # over adjacent facets, so inflating that way moves edges inconsistently
+    # and leaves the channel floor visibly ridged.
+    if bloat > 1e-9:
+        lab = lab + bloat
+        lin = lin + bloat
+        dep = dep + bloat
     tube = _sweep(C, A, U, lab, lin, over, dep)
-    # PUSH THE CUTTER OUT A HAIR. Its wall lands exactly on the bone's own
+    # (kept for reference) Its wall lands exactly on the bone's own
     # surface in places, and a boolean between coincident surfaces is where
     # CSG is least reliable -- the subtraction left blades standing that the
     # cutter demonstrably contained, and intersecting to find them came back
@@ -573,8 +590,7 @@ def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
     # sample points to zero at 0.02 mm, and the two bridges across the
     # channel go at 0.10. A tenth of a millimetre is a quarter of the
     # nozzle -- below anything the printer resolves.
-    if tube is not None and bloat > 1e-9:
-        tube.vertices = tube.vertices + tube.vertex_normals * bloat
+
     if tube.is_volume and tube.volume > 1e-6:
         return tube
     # a tube can fold where the arch turns hardest; fall back to the boxes

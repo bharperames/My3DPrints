@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Socket Options</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦷</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--bg:#0F1316;--surface:#161C20;--surface-2:#1B2226;--line:#283238;
+  --ink:#E6ECEF;--muted:#93A3AB;--faint:#6E7F88;--accent:#5BD6B0;--warn:#E0A268}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;
+  font:400 13px/1.5 "IBM Plex Mono",ui-monospace,monospace}
+header{padding:12px 18px;border-bottom:1px solid var(--line);display:flex;
+  gap:16px;align-items:baseline;flex-wrap:wrap}
+h1{margin:0;font:700 18px "Chakra Petch",sans-serif}
+.sub{color:var(--faint);font-size:12.5px}
+a.back{margin-left:auto;color:var(--accent);text-decoration:none;font-size:12.5px}
+#bar{padding:9px 18px;border-bottom:1px solid var(--line);display:flex;gap:8px;
+  align-items:center;flex-wrap:wrap}
+.chip{font:500 12px "IBM Plex Mono",monospace;padding:5px 11px;border-radius:99px;
+  background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#062A22;font-weight:600}
+#wrap{flex:1;position:relative;min-height:400px}
+canvas{display:block;width:100%;height:100%}
+#tiles{position:absolute;inset:0;display:grid;pointer-events:none}
+.tile{border:1px solid var(--line);position:relative}
+.cap{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(15,19,22,.92) 45%);
+  padding:20px 9px 7px;font-size:11px;line-height:1.45}
+.cap b{font:600 12px "Chakra Petch",sans-serif;color:var(--ink);display:block}
+.cap i{font-style:normal;color:var(--faint)}
+.cap .ok{color:var(--accent)} .cap .no{color:var(--warn)}
+#err{position:absolute;inset:0;display:none;place-items:center;padding:30px;
+  text-align:center;color:var(--muted)}
+#err.on{display:grid}
+</style>
+</head>
+<body>
+<header>
+  <h1>Socket options</h1>
+  <span class="sub">nine cuts of the same skull &middot; one camera moves them all</span>
+  <a class="back" href="../index.html">&larr; My Print Shop</a>
+</header>
+<div id="bar"><span class="sub">view</span><span id="modes"></span>
+  <span class="sub" style="margin-left:10px">rows: socket radius &middot; columns: ridge widening</span></div>
+<div id="wrap"><canvas id="gl"></canvas><div id="tiles"></div><div id="err"></div></div>
+
+<script type="importmap">
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
+"three/addons/loaders/3MFLoader.js":"../vendor/loaders/3MFLoader.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {ThreeMFLoader} from 'three/addons/loaders/3MFLoader.js';
+
+const cv = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas: cv, antialias: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setScissorTest(true);          // one context, nine viewports
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(getComputedStyle(document.documentElement)
+  .getPropertyValue('--surface-2').trim());
+scene.add(new THREE.HemisphereLight(0xffffff, 0x40484f, 2.0));
+const key = new THREE.DirectionalLight(0xffffff, 2.0);
+key.position.set(1, 1.4, 0.8); scene.add(key);
+const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
+const controls = new OrbitControls(camera, cv); controls.enableDamping = true;
+
+let mode = 'edges', groups = [], rows = [];
+const EDGE_SURF = 0x11181C, EDGE_DRAW = 0x8CF0C8;
+function edgesOf(m){
+  if (!m.userData.edges){
+    const l = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 25),
+      new THREE.LineBasicMaterial({color: EDGE_SURF}));
+    m.userData.edges = l; m.add(l);
+  }
+  return m.userData.edges;
+}
+function applyMode(){
+  for (const g of groups) g.traverse(o => {
+    if (!o.isMesh) return;
+    const mt = o.material;
+    mt.visible = mode !== 'hlr';
+    mt.wireframe = mode === 'wire';
+    mt.transparent = mode === 'xray';
+    mt.opacity = mode === 'xray' ? 0.28 : 1;
+    mt.depthWrite = mode !== 'xray';
+    mt.needsUpdate = true;
+    if (['edges','hlr','xray'].includes(mode)){
+      const e = edgesOf(o); e.visible = true;
+      e.material.color.setHex(mode === 'edges' ? EDGE_SURF : EDGE_DRAW);
+    } else if (o.userData.edges) o.userData.edges.visible = false;
+  });
+}
+[['shaded','shaded'],['edges','+ edges'],['hlr','edges only'],
+ ['wire','wireframe'],['xray','x-ray']].forEach(([id,label]) => {
+  const b = document.createElement('button');
+  b.className = 'chip' + (id === mode ? ' on' : ''); b.textContent = label;
+  b.onclick = () => { mode = id;
+    document.querySelectorAll('#modes .chip').forEach(x => x.classList.toggle('on', x === b));
+    applyMode(); };
+  document.getElementById('modes').append(b);
+});
+
+const loader = new ThreeMFLoader();
+fetch('../models/custom/opts/index.json').then(r => r.json()).then(async list => {
+  rows = list;
+  const grid = document.getElementById('tiles');
+  const n = Math.ceil(Math.sqrt(list.length));
+  grid.style.gridTemplateColumns = `repeat(${n},1fr)`;
+  grid.style.gridTemplateRows = `repeat(${Math.ceil(list.length/n)},1fr)`;
+  for (const r of list){
+    const t = document.createElement('div'); t.className = 'tile';
+    t.innerHTML = `<div class="cap"><b>radius ${r.rscale} &middot; widen ${r.grow}</b>` +
+      `<i>${r.removed} mm&sup3; out &middot; thinnest 1% ${r.p01} mm &middot; ` +
+      `<span class="${r.thin < 0.8 ? 'ok' : 'no'}">${r.thin}% under 0.8</span> &middot; ` +
+      `<span class="${r.side === 0 ? 'ok' : 'no'}">side-wall ${r.side}%</span></i></div>`;
+    grid.append(t);
+  }
+  for (const r of list){
+    const obj = await new Promise((ok, no) =>
+      loader.load(`../models/custom/opts/${r.name}.3mf`, ok, undefined, no));
+    obj.rotation.x = -Math.PI/2;
+    obj.traverse(o => { if (o.isMesh){
+      if (!o.geometry.getAttribute('normal')) o.geometry.computeVertexNormals();
+      o.material = new THREE.MeshStandardMaterial({color: 0x9FD8C4,
+        flatShading: true, roughness: .62, metalness: .04}); }});
+    groups.push(obj); scene.add(obj);
+  }
+  applyMode(); frame();
+}).catch(e => {
+  const el = document.getElementById('err'); el.classList.add('on');
+  el.innerHTML = '<div><b>The options are still building.</b><br><br>' +
+    'They land in <code>models/custom/opts/</code> as they finish.<br>' +
+    '<small>' + e + '</small></div>';
+});
+
+function frame(){
+  const box = new THREE.Box3();
+  if (groups[0]) box.expandByObject(groups[0]);
+  if (box.isEmpty()) return;
+  const c = box.getCenter(new THREE.Vector3());
+  const r = box.getSize(new THREE.Vector3()).length() / 2;
+  const dist = 1.15 * r / Math.sin(camera.fov * Math.PI / 360);
+  camera.position.copy(c).add(new THREE.Vector3(0.05,-1,0.12).normalize().multiplyScalar(dist));
+  controls.target.copy(c); controls.update();
+}
+function clip(){
+  const d = Math.max(1, camera.position.distanceTo(controls.target));
+  const near = Math.max(0.05, d/4000), far = Math.max(d*40, 4000);
+  if (Math.abs(camera.near-near) > near*0.25 || camera.far !== far){
+    camera.near = near; camera.far = far; camera.updateProjectionMatrix();
+  }
+}
+function draw(){
+  requestAnimationFrame(draw);
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w*renderer.getPixelRatio()) ||
+      cv.height !== Math.round(h*renderer.getPixelRatio())) renderer.setSize(w, h, false);
+  controls.update(); clip();
+  if (!groups.length){ renderer.setViewport(0,0,w,h); renderer.setScissor(0,0,w,h);
+                       renderer.render(scene, camera); return; }
+  const n = Math.ceil(Math.sqrt(groups.length));
+  const rowsN = Math.ceil(groups.length/n), tw = w/n, th = h/rowsN;
+  groups.forEach((g, i) => {
+    groups.forEach((x, j) => x.visible = (i === j));
+    const cx = (i % n) * tw, cy = h - (Math.floor(i/n)+1) * th;
+    renderer.setViewport(cx, cy, tw, th);   // CSS px: three applies the ratio
+    renderer.setScissor(cx, cy, tw, th);
+    camera.aspect = tw/th; camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+  });
+}
+draw();
+</script>
+</body>
+</html>

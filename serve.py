@@ -443,7 +443,7 @@ class Handler(SimpleHTTPRequestHandler):
         if part not in ("skull", "body"):
             return self._json(400, {"ok": False, "error": f"unknown part {part}"})
         try:
-            d = float(q.get("depth", [3.5 if part == "skull" else 2.5])[0])
+            d = float(q.get("depth", [3.5])[0])
         except ValueError:
             return self._json(400, {"ok": False, "error": "bad number"})
         try:

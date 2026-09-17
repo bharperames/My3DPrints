@@ -108,10 +108,9 @@ INSET = 0.35          # wall beside a socket (mm)
 LINGUAL = 1.0         # how far past the inner surface the trough breaks (mm)
 LING_DEPTH = 3.0      # deepest the trough may go where the bone allows (mm)
 LING_WALL = 1.2       # lip left in front of the trough (mm)
-# The lower jaw is a slender arch where the skull's palate is a thick one, so
-# it takes the channel on its own terms: further through the inner wall and
-# deeper, which leaves the fewest bridges spanning it (7 against 9 at the
-# skull's numbers) and takes 1594 mm3 out where sockets alone take 579.
+# The lower jaw's settled numbers: socket 2.5, through the inner wall by 2.5,
+# trough 2.75 deep with a 0.6 mm lip. Confirmed by Brett against the render
+# of this exact combination -- "the correct lower jaw (as good as it got)".
 JAW_LINGUAL = 2.5
 JAW_LING_DEPTH = 2.75   # Brett, comparing against 3.0: "a great improvement"
 # Shallower sockets on the jaw. Brett: "the holes don't need to be this deep
@@ -356,6 +355,7 @@ def build(names, width=WIDTH, depth=DEPTH, depth_max=None, scrub=False,
             # 1.2" -- so asking for the two side by side built the same part
             # twice and the diff came back empty.
             jaw = dict(extra)
+            jaw.setdefault("inset", INSET)
             if depth_max is None: depth_max = JAW_DEPTH
             jaw.setdefault("lingual", JAW_LINGUAL)
             jaw.setdefault("ling_depth", JAW_LING_DEPTH)
@@ -365,6 +365,7 @@ def build(names, width=WIDTH, depth=DEPTH, depth_max=None, scrub=False,
                           depth_max=depth_max, scrub=scrub, **jaw)
         elif how == "cut":
             sk = dict(extra)
+            sk.setdefault("inset", INSET)
             sk.setdefault("lingual", LINGUAL)
             sk.setdefault("ling_depth", LING_DEPTH)
             sk.setdefault("ling_wall", LING_WALL)
@@ -398,15 +399,15 @@ def main():
                     help="gum trough width (mm)")
     ap.add_argument("--depth", type=float, default=DEPTH,
                     help="gum trough depth (mm)")
-    ap.add_argument("--depth-max", type=float, default=DEPTH_MAX,
+    ap.add_argument("--depth-max", type=float, default=None,
                     help="deepest the shelf may go where the bone allows (mm)")
-    ap.add_argument("--inset", type=float, default=INSET,
+    ap.add_argument("--inset", type=float, default=None,
                     help="wall beside each socket (mm)")
-    ap.add_argument("--lingual", type=float, default=LINGUAL,
+    ap.add_argument("--lingual", type=float, default=None,
                     help="how far past the inner surface the trough breaks (mm)")
-    ap.add_argument("--ling-depth", type=float, default=LING_DEPTH,
+    ap.add_argument("--ling-depth", type=float, default=None,
                     help="deepest the trough may go where the bone allows (mm)")
-    ap.add_argument("--ling-wall", type=float, default=LING_WALL,
+    ap.add_argument("--ling-wall", type=float, default=None,
                     help="lip left in front of the trough (mm)")
     ap.add_argument("--out")
     a = ap.parse_args()
@@ -421,10 +422,16 @@ def main():
     # -- measured, ten new tunnels through a file that was clean before it
     # ran. It existed to clean up the old voxel cutter's spurs; exact CSG
     # does not leave any.
+    # PASS ONLY WHAT WAS ASKED FOR. These used to default to the skull's
+    # numbers and go through on every run, so `build` saw them as provided,
+    # its per-part defaults never filled in, and THE JAW WAS CUT WITH THE
+    # SKULL'S SETTINGS -- the bench and the file the shop handed to Bambu
+    # were different parts, which is exactly how Brett found it.
+    kw = {k: v for k, v in (("inset", a.inset), ("lingual", a.lingual),
+                            ("ling_depth", a.ling_depth),
+                            ("ling_wall", a.ling_wall)) if v is not None}
     items, rep = build(names, a.width, a.depth, a.depth_max, scrub=False,
-                       align=1.0, inset=a.inset,
-                       lingual=a.lingual, ling_depth=a.ling_depth,
-                       ling_wall=a.ling_wall)
+                       align=1.0, **kw)
     sc = layout(items)
     out = a.out or os.path.join(os.path.dirname(HERE), "models", "custom",
                                 "trex-" + "-".join(names) + ".3mf")
