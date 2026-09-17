@@ -167,6 +167,7 @@ h1 .tld{color:var(--accent)}
   text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .savelink:hover{color:var(--accent-ink);text-decoration:underline}
 .card{scroll-margin-top:20px}
+.card.focus{outline:2px solid var(--accent);outline-offset:4px}
 .card:target{outline:2px solid var(--accent);outline-offset:-2px}
 .pairlink{font:600 12.5px "IBM Plex Sans",sans-serif;color:var(--accent-ink);text-decoration:none}
 .pairlink:hover{text-decoration:underline}
@@ -1517,7 +1518,8 @@ renderer.setAnimationLoop(animate);
       lab.textContent = `${p.label} \u2014 ${chosen.size} of ${hi - lo + 1}`;
       wrap.querySelectorAll('.chip[data-code]').forEach(b =>
         b.classList.toggle('on', chosen.has(+b.dataset.code)));
-      if (!quiet) schedule();
+      if (!quiet){ schedule();
+        wrap.dispatchEvent(new Event('change', {bubbles: true})); }
     };
     const bulk = (fn, name) => {
       const b = document.createElement('button');
@@ -1603,6 +1605,10 @@ renderer.setAnimationLoop(animate);
         } else chosen.add(c.value);
         b.classList.toggle('on');
         emit(); schedule();
+        // A slider fires `change` on its own and the card rebuilds the
+        // preview off that. A button fires nothing, so the chips sat
+        // ticked while the picture stayed on the old set.
+        wrap.dispatchEvent(new Event('change', {bubbles: true}));
       };
       row.append(b);
     });
@@ -2096,7 +2102,30 @@ renderer.setAnimationLoop(animate);
     redraw = setTimeout(() => { limit = PAGE; render(); }, 120); };
   fam.onchange = () => { limit = PAGE; render(); };
   $('cat-more').onclick = () => { limit += PAGE; render(); };
+  // ?part=<id> opens the shop on one card, scrolled to and outlined, and
+  // any further key that names one of its dials seeds that dial -- so a
+  // page can hand someone the X-wing with ?part=tooth_stand&stand=xw_l
+  const Q = new URLSearchParams(location.search);
+  const focusId = Q.get('part');
+  if (focusId && byId[focusId]){
+    const store = own.get(focusId) || {}; own.set(focusId, store);
+    for (const d of (byId[focusId].params || []))
+      if (Q.has(d.key)) store[d.key] = (d.type || isNaN(+Q.get(d.key)))
+        ? Q.get(d.key) : +Q.get(d.key);
+  }
   render();
+  if (focusId){
+    let card = document.querySelector(`.card[data-id="${CSS.escape(focusId)}"]`);
+    if (!card){ limit = 1e9; render();
+      card = document.querySelector(`.card[data-id="${CSS.escape(focusId)}"]`); }
+    if (card){
+      card.classList.add('focus');
+      setTimeout(() => card.scrollIntoView({block: 'center'}), 50);
+      // a seeded dial is a change nobody clicked: ask for its preview now
+      if ((byId[focusId].params || []).some(d => Q.has(d.key)))
+        queueLivePreview(byId[focusId], card.querySelector('.view'), true);
+    }
+  }
 
   let lastReports = {};
   function renderBom(){

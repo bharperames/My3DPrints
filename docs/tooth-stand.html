@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tooth stands — two ways to hold it</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦷</text></svg>">
+<style>
+  /* The shop's own dark tokens, so this page reads as one of its rooms. */
+  :root {
+    --bg:#14181A; --surface:#1D2327; --surface-2:#232B2F;
+    --ink:#EAF1EF; --ink-soft:#AFBEBB; --line:#313B40; --edge:#4A5A62;
+    --accent:#5FA893; --accent-ink:#14201C;
+    --good:#7CC287; --warn:#E7B75E; --risk:#E08578;
+    --p-stand:#4F9A88; --p-head:#C99A3C; --tooth:#EFE7D2;
+    --plane:#63A6C4; --ray:#D9A84E;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.5 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line);
+    background:var(--surface); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; letter-spacing:-0.01em; }
+  .sub { color:var(--ink-soft); font-size:12.5px; }
+  a.back { margin-left:auto; color:var(--accent); text-decoration:none; font-size:12.5px; }
+  a.back:hover { text-decoration:underline; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:0; height:calc(100vh - 52px); }
+  #view { position:relative; min-height:320px; background:var(--bg); }
+  #view canvas { display:block; }
+  #hud { position:absolute; left:12px; top:12px; font-size:12.5px; color:var(--ink-soft);
+    background:color-mix(in srgb,var(--surface) 86%,transparent); padding:6px 10px;
+    border-radius:6px; border:1px solid var(--line); max-width:70%; }
+  aside { background:var(--surface); border-left:1px solid var(--line);
+    padding:16px; overflow-y:auto; }
+  h2 { font-size:12.5px; margin:0 0 8px; color:var(--ink-soft);
+    font-weight:600; }
+  .group { margin-bottom:18px; }
+  .pick { display:grid; gap:6px; }
+  button.m { text-align:left; background:var(--surface-2); color:var(--ink);
+    border:1px solid var(--line); border-radius:6px; padding:8px 10px;
+    font:inherit; font-size:13px; cursor:pointer; display:flex;
+    align-items:baseline; gap:8px; }
+  button.m:hover { border-color:var(--edge); }
+  button.m[aria-pressed="true"] { border-color:var(--accent);
+    background:color-mix(in srgb,var(--accent) 16%,var(--surface-2)); }
+  button.m .n { font-weight:600; }
+  button.m .h { color:var(--ink-soft); font-size:12px; margin-left:auto; }
+  .swatch { width:9px; height:9px; border-radius:2px; flex:none; }
+  .row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .row button { background:var(--surface-2); color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:6px; padding:5px 9px;
+    font:inherit; font-size:12.5px; cursor:pointer; }
+  .row button[aria-pressed="true"] { color:var(--ink); border-color:var(--accent); }
+  label.chk { display:flex; align-items:center; gap:7px; font-size:12.5px;
+    color:var(--ink-soft); margin-bottom:6px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  td { padding:4px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  td:first-child { color:var(--ink-soft); padding-right:10px; }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  .verdict { font-size:12.5px; padding:8px 10px; border-radius:6px; margin-top:10px; }
+  .verdict.ok { background:color-mix(in srgb,var(--good) 15%,transparent); color:var(--good); }
+  .verdict.trade { background:color-mix(in srgb,var(--warn) 15%,transparent); color:var(--warn); }
+  .note { font-size:12.5px; color:var(--ink-soft); margin-top:10px; }
+  @media (max-width:900px) {
+    main { grid-template-columns:1fr; height:auto; }
+    #view { height:58vh; }
+    aside { border-left:0; border-top:1px solid var(--line); }
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
+"three/addons/loaders/3MFLoader.js":"../vendor/loaders/3MFLoader.js",
+"three/addons/loaders/GLTFLoader.js":"../vendor/loaders/GLTFLoader.js",
+"three/addons/utils/BufferGeometryUtils.js":"../vendor/utils/BufferGeometryUtils.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1>Tooth stands — two ways to hold it</h1>
+  <span class="sub" id="sub">loading…</span>
+  <a class="back" href="../index.html">← the shop</a>
+</header>
+<main>
+  <div id="view"><div id="hud">loading…</div></div>
+  <aside>
+    <div class="group">
+      <h2>Cone stands — four on a quadrilateral</h2>
+      <div class="pick" id="pick-stand"></div>
+    </div>
+    <div class="group">
+      <h2>X-wings — scissors that open to fit</h2>
+      <div class="pick" id="pick-xwing"></div>
+      <label class="chk" id="open-row" hidden style="display:flex;gap:8px;align-items:center">
+        <span>open</span>
+        <input type="range" id="open" min="10" max="80" step="0.5" value="17" style="flex:1">
+        <span id="open-val" style="font-variant-numeric:tabular-nums;min-width:9ch"></span>
+      </label>
+    </div>
+    <div class="group">
+      <h2>Screw-on heads — the plan's alternative</h2>
+      <div class="pick" id="pick-head"></div>
+    </div>
+    <div class="group">
+      <h2>Show</h2>
+      <div class="row" id="modes"></div>
+      <label class="chk"><input type="checkbox" id="c-plane" checked> the plane the tooth rests on</label>
+      <label class="chk"><input type="checkbox" id="c-rays" checked> sightlines from the 15° ring</label>
+      <label class="chk"><input type="checkbox" id="c-tooth" checked> the specimen</label>
+    </div>
+    <div class="group">
+      <h2>Measured</h2>
+      <table id="facts"></table>
+      <div id="verdict" class="verdict ok"></div>
+      <div class="note" id="note"></div>
+    </div>
+  </aside>
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { mergeGeometries, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { unzipSync } from '../vendor/libs/fflate.module.js';
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const hud = document.getElementById('hud');
+const errors = [];
+addEventListener('error', e => errors.push(String(e.message || e)));
+
+/* ---------- the printed files, and the metadata written inside them ----------
+   Both families come from their own generators, through the same /src
+   endpoint the rest of the shop uses, so what is on screen is the
+   geometry that would be printed -- not a drawing of it. */
+async function loadPart(id, params, metaName) {
+  const src = `../src?id=${id}&params=${encodeURIComponent(JSON.stringify(params))}`;
+  const res = await fetch(src);
+  if (!res.ok) {
+    let msg = res.statusText;
+    try { msg = (await res.json()).error || msg; } catch (e) {}
+    throw new Error(`${id}: ${msg}`);
+  }
+  const buf = await res.arrayBuffer();
+  const files = unzipSync(new Uint8Array(buf));
+  const meta = JSON.parse(new TextDecoder().decode(files[`Metadata/${metaName}`]));
+  const group = new ThreeMFLoader().parse(buf);
+  // The archive holds each body as it lies on the PLATE; to_world stands
+  // it back up in the frame it was designed in, which is the frame the
+  // contact plane and the specimen are drawn in. Baking the matrix into
+  // a cloned geometry rather than posing the mesh keeps every bounding
+  // box downstream in built coordinates too. The loader's own build-item
+  // placement is ignored, as the jig's page ignores it.
+  const meshes = [];
+  group.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const byName = {};
+  const names = Object.keys(meta.to_world);
+  meshes.forEach((o, i) => {
+    const n = names.includes(o.name) ? o.name : names[i];
+    if (!n) return;
+    const g = o.geometry.clone();
+    g.applyMatrix4(new THREE.Matrix4().set(...meta.to_world[n]));
+    // 3MF carries no vertex normals, and a lit material without them
+    // renders flat black -- which is exactly how this page first looked
+    const out = g.getAttribute('normal') ? g : toCreasedNormals(g, Math.PI / 6);
+    out.computeBoundingBox();
+    byName[n] = out;
+  });
+  const missing = names.filter(n => !byName[n]);
+  if (missing.length) throw new Error(`${id}: missing ${missing.join(', ')}`);
+  return { meta, byName };
+}
+
+hud.textContent = 'building both families from their generators (a few seconds the first time)…';
+let STAND, HEAD;
+try {
+  [STAND, HEAD] = await Promise.all([
+    loadPart('tooth_stand', { stand: 'xs,s,m,l,xw_s,xw_m,xw_l' }, 'tooth_stand.json'),
+    loadPart('specimen_heads',
+      { head: 'putty_disc,pin_cradle,tip_cone,flat_chuck' },
+      'specimen_heads.json')]);
+} catch (e) {
+  hud.textContent = 'could not build: ' + e.message;
+  throw e;
+}
+
+/* ---------- the specimen ---------- */
+let toothGeo = null, toothH = 129, toothHadNormals = null;
+try {
+  const g = await new GLTFLoader().loadAsync('../models/specimen/BigMeherrin.glb');
+  const root = g.scene;
+  root.rotation.x = Math.PI / 2;               // glTF is y-up; these parts are z-up
+  root.updateMatrixWorld(true);
+  const geos = [];
+  root.traverse(o => { if (o.isMesh) { const q = o.geometry.clone();
+    q.applyMatrix4(o.matrixWorld); geos.push(q); } });
+  if (geos.length) {
+    // merge rather than take the first: a glTF may arrive as several
+    // meshes, and dropping the rest would quietly show a partial tooth
+    toothGeo = geos.length > 1 ? mergeGeometries(geos, false) : geos[0];
+    // The specimen is generated geometry -- lifted from a contour by
+    // FossilRecord's restoration pipeline -- and arrives with no vertex
+    // normals, which renders a lit material flat black. Recorded rather
+    // than assumed, so the page can say which case it hit.
+    toothHadNormals = !!toothGeo.getAttribute('normal');
+    if (!toothHadNormals) toothGeo = toCreasedNormals(toothGeo, Math.PI / 4);
+    toothGeo.computeBoundingBox();
+    const b = toothGeo.boundingBox;
+    toothGeo.translate(-(b.min.x + b.max.x) / 2, -(b.min.y + b.max.y) / 2, -b.min.z);
+    toothGeo.computeBoundingBox();
+    toothH = toothGeo.boundingBox.max.z;
+  }
+} catch (e) { toothGeo = null; }
+
+/* ---------- what each mount is, and what it does to the specimen ----------
+   tooth_mm    what size of specimen this mount is for
+   invert      the tip cone takes the crown, so the tooth hangs upside down
+   rise        how far the mount reaches above the plane the tooth rests on;
+               the whole comparison is this number */
+const MOUNTS = [];
+for (const s of STAND.meta.stands) {
+  MOUNTS.push({
+    key: 'stand_' + s.id, family: 'stand', label: s.name,
+    hint: `teeth ${s.teeth[0]}–${s.teeth[1]} mm`,
+    geo: STAND.byName['stand_' + s.id],
+    contactZ: s.contact_z, toothMM: (s.teeth[0] + s.teeth[1]) / 2,
+    rise: 0, invert: false,
+    facts: [['cross span', `${s.cross} mm · ${(s.cross / 25.4).toFixed(2)} in`], ['fore/aft span', `${s.fore} mm · ${(s.fore / 25.4).toFixed(2)} in`],
+            ['cone height', s.cone + ' mm'],
+            ['cone base Ø', (2 * s.base_r).toFixed(2) + ' mm'],
+            ['tip Ø', (2 * STAND.meta.cone.tip_r).toFixed(2) + ' mm'],
+            ['contact points', '4 — two per root lobe']],
+    blurb: 'Four cones on a quadrilateral, two per root lobe and none in ' +
+           'the notch between them. Nothing on the stand rises above the ' +
+           'plane of the four dish rims, so no camera above the horizon ' +
+           'can see it in front of the tooth.'
+  });
+}
+for (const x of (STAND.meta.xwings || [])) {
+  const k = x.id.slice(3);
+  const o = x.opening || { beta: [x.alpha, x.alpha], fore: [x.fore, x.fore], cross: [x.cross, x.cross] };
+  MOUNTS.push({
+    key: 'xwing_' + k, family: 'xwing', label: x.name,
+    hint: `pins ${o.fore[0]}–${o.fore[1]} mm apart`,
+    geo: STAND.byName['xwing_' + k + '_base'], geo2: STAND.byName['xwing_' + k + '_top'],
+    extras: [STAND.byName['xwing_' + k + '_pin']].filter(Boolean),
+    contactZ: x.contact_z, toothMM: (x.teeth[0] + x.teeth[1]) / 2,
+    rise: 0, invert: false, xw: x, opening: o, beta: x.alpha,
+    facts: [],
+    blurb: 'Scissors: two arms with a cone at each end, both flat on the ' +
+           'table so all four spires stand on the ground. The upper arm\'s ' +
+           'connector bridges over the lower bar and a plain Ø6 printed pin ' +
+           'is pressed down through both; the upper ends are relieved only ' +
+           'where the lower bar sweeps. Opening the arms ' +
+           `moves the pins from ${o.fore[0]} to ${o.fore[1]} mm apart; the ` +
+           'range is measured by turning the built blade against the built ' +
+           'base until they touch, and the cups are checked level with the ' +
+           `connector on the lower bar.`
+  });
+}
+function xwFacts(m) {
+  const L = m.xw.L, b = m.beta * Math.PI / 180;
+  const cross = 2 * L * Math.cos(b), fore = 2 * L * Math.sin(b);
+  return [['opening β', `${m.beta.toFixed(1)}° · clear ${m.opening.beta[0]}–${m.opening.beta[1]}°`],
+          ['cross span', `${cross.toFixed(1)} mm · ${(cross / 25.4).toFixed(2)} in`],
+          ['fore/aft span', `${fore.toFixed(1)} mm · ${(fore / 25.4).toFixed(2)} in`],
+          ['pin circle', `L ${L} mm`],
+          ['pivot', m.xw.pivot],
+          ['holds a 500 g tooth on one cup', `${m.xw.hold.margin}× margin`],
+          ['cone height', m.xw.cone + ' mm'],
+          ['tip Ø', (2 * m.xw.tip_r).toFixed(2) + ' mm'],
+          ['contact points', '4 — two per root lobe']];
+}
+const HEAD_INFO = {
+  putty_disc: { label: 'Putty disc', hint: 'under 60 mm', toothMM: 45, invert: false,
+    blurb: 'A 30 mm dish with 3 mm of museum putty in it. The putty is the ' +
+           'contact, and the dish rim sits level with it, so nothing stands ' +
+           'proud of the specimen.' },
+  pin_cradle: { label: 'Three-pin cradle', hint: 'the big tooth', toothMM: 129, invert: false,
+    blurb: 'Three 1.5 mm stainless pins in printed collets that slide ' +
+           'radially, each tipped with a silicone bead. Everything printed ' +
+           'sits far below the tooth; only the pins reach it.' },
+  tip_cone: { label: 'Tip cone', hint: 'inverted, pass two', toothMM: 129, invert: true,
+    blurb: 'A 40 mm cup, 25 mm deep, that takes the CROWN so the tooth ' +
+           'hangs inverted. It is the one mount here that deliberately ' +
+           'hides part of the specimen, and it buys the root underside — ' +
+           'which no ring on this jig ever sees with the tooth upright.' },
+  flat_chuck: { label: 'Flat chuck', hint: 'slabs, not teeth', toothMM: 60, invert: false,
+    blurb: 'Two jaws on a 60 mm opening. A chuck grips from the sides, so ' +
+           'its jaws stand beside the specimen by definition — which is why ' +
+           'the plan marked it for slabs rather than teeth.' }
+};
+for (const n of HEAD.meta.heads) {
+  const g = HEAD.byName[n], info = HEAD_INFO[n];
+  const top = g.boundingBox.max.z;
+  MOUNTS.push({
+    key: n, family: 'head', label: info.label, hint: info.hint, geo: g,
+    contactZ: HEAD.meta.contact_z[n], toothMM: info.toothMM,
+    rise: +(top - HEAD.meta.contact_z[n]).toFixed(2), invert: info.invert,
+    facts: [['contact plane', HEAD.meta.contact_z[n].toFixed(1) + ' mm up'],
+            ['dock', '1/4-20 insert'],
+            ['height', (top).toFixed(1) + ' mm']],
+    blurb: info.blurb
+  });
+}
+
+/* ---------- scene, z-up like the parts ---------- */
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(css('--bg'));
+const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
+camera.up.set(0, 0, 1);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x223036, 1.5));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(120, -160, 220); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+fill.position.set(-140, 90, 60); scene.add(fill);
+
+const root = new THREE.Group();          // everything for the current mount
+scene.add(root);
+
+/* the pedestal's platform, for scale: every mount lands on this */
+const platform = new THREE.Mesh(
+  new THREE.CylinderGeometry(10, 10, 4, 96).rotateX(Math.PI / 2),
+  new THREE.MeshStandardMaterial({ color: 0x3A4249, roughness: 0.9 }));
+platform.position.z = -2;
+scene.add(platform);
+
+let MODE = 'shaded';
+const MAT = () => ({
+  shaded: c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.0 }),
+  edges: c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6 }),
+  wire: c => new THREE.MeshBasicMaterial({ color: c, wireframe: true }),
+  xray: c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5,
+    transparent: true, opacity: 0.32, depthWrite: false })
+}[MODE]);
+
+let current = null, xwTop = null;
+document.getElementById('open').oninput = e => {
+  if (!current || current.family !== 'xwing' || !xwTop) return;
+  current.beta = +e.target.value;
+  xwTop.rotation.z = 2 * (current.beta - current.xw.alpha) * Math.PI / 180;
+  document.getElementById('open-val').textContent = current.beta.toFixed(1) + '°';
+  current.facts = xwFacts(current);
+  paint(current);
+};
+
+function build(mount) {
+  current = mount;
+  while (root.children.length) root.remove(root.children[0]);
+  // the X-wing's base takes the stand colour; its bar, the moving part,
+  // takes the heads' so the two read as two bodies
+  const colour = mount.family === 'head' ? css('--p-head') : css('--p-stand');
+
+  const part = new THREE.Mesh(mount.geo, MAT()(new THREE.Color(colour)));
+  root.add(part);
+  if (MODE === 'edges') {
+    const e = new THREE.LineSegments(
+      new THREE.EdgesGeometry(mount.geo, 24),
+      new THREE.LineBasicMaterial({ color: css('--ink') }));
+    root.add(e);
+  }
+  /* the X-wing's bar: its own mesh, turned about the post by the opening
+     chosen on the slider. It was built at the default half-angle alpha,
+     and the pins sit at ±beta, so the bar turns by 2(beta − alpha). */
+  xwTop = null;
+  if (mount.family === 'xwing') {
+    xwTop = new THREE.Group();
+    xwTop.add(new THREE.Mesh(mount.geo2, MAT()(new THREE.Color(css('--p-head')))));
+    if (MODE === 'edges') xwTop.add(new THREE.LineSegments(
+      new THREE.EdgesGeometry(mount.geo2, 24),
+      new THREE.LineBasicMaterial({ color: css('--ink') })));
+    xwTop.rotation.z = 2 * (mount.beta - mount.xw.alpha) * Math.PI / 180;
+    root.add(xwTop);
+    // the printed pin and its thumb nut, on the axis, which do not turn
+    for (const g of (mount.extras || [])) {
+      const m = new THREE.Mesh(g, MAT()(new THREE.Color(css('--hw') || '#B4BCC3')));
+      root.add(m);
+      if (MODE === 'edges') root.add(new THREE.LineSegments(
+        new THREE.EdgesGeometry(g, 24), new THREE.LineBasicMaterial({ color: css('--ink') })));
+    }
+    mount.facts = xwFacts(mount);
+  }
+  const row = document.getElementById('open-row');
+  row.hidden = mount.family !== 'xwing';
+  if (mount.family === 'xwing') {
+    const sl = document.getElementById('open');
+    sl.min = mount.opening.beta[0]; sl.max = mount.opening.beta[1]; sl.value = mount.beta;
+    document.getElementById('open-val').textContent = mount.beta.toFixed(1) + '°';
+  }
+
+  /* the cradle's bought parts: three stainless pins and their silicone
+     beads are what actually touch the tooth, so without them the render
+     shows a specimen floating above a base for no visible reason */
+  if (mount.key === 'pin_cradle' && HEAD.meta.pins) {
+    const P = HEAD.meta.pins;
+    const steel = new THREE.MeshStandardMaterial({ color: 0xB4BCC3,
+      roughness: 0.3, metalness: 0.7 });
+    const silicone = new THREE.MeshStandardMaterial({ color: 0x2A2E31,
+      roughness: 0.95 });
+    for (const phi of P.phi) {
+      const a = phi * Math.PI / 180;
+      const x = P.r * Math.cos(a), y = P.r * Math.sin(a);
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(
+        P.pin_r, P.pin_r, P.length, 16).rotateX(Math.PI / 2), steel);
+      pin.position.set(x, y, P.z0 + P.length / 2);
+      root.add(pin);
+      const bead = new THREE.Mesh(
+        new THREE.SphereGeometry(P.bead_r, 16, 12), silicone);
+      bead.position.set(x, y, P.z0 + P.length);
+      root.add(bead);
+    }
+  }
+
+  /* the specimen, scaled to what this mount is for */
+  if (toothGeo && document.getElementById('c-tooth').checked) {
+    const k = mount.toothMM / toothH;
+    const t = new THREE.Mesh(toothGeo, new THREE.MeshStandardMaterial({
+      color: css('--tooth'), roughness: 0.75,
+      transparent: MODE === 'xray', opacity: MODE === 'xray' ? 0.35 : 1 }));
+    t.scale.setScalar(k);
+    if (mount.invert) {
+      // the crown goes into the cup: flip, and drop the tip to the floor
+      t.rotation.x = Math.PI;
+      t.position.z = mount.contactZ + mount.toothMM;
+    } else {
+      t.position.z = mount.contactZ;
+    }
+    root.add(t);
+  }
+
+  /* the plane the specimen rests on */
+  if (document.getElementById('c-plane').checked) {
+    const r = Math.max(12, mount.toothMM * 0.45);
+    const disc = new THREE.Mesh(
+      new THREE.CircleGeometry(r, 96),
+      new THREE.MeshBasicMaterial({ color: css('--plane'), transparent: true,
+        opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
+    disc.position.z = mount.contactZ;
+    root.add(disc);
+    const ring = new THREE.LineLoop(
+      new THREE.CircleGeometry(r, 96),
+      new THREE.LineBasicMaterial({ color: css('--plane') }));
+    ring.position.z = mount.contactZ;
+    root.add(ring);
+  }
+
+  /* sightlines from the lowest ring: the case that decides occlusion */
+  if (document.getElementById('c-rays').checked) {
+    const R = 150, th = 15 * Math.PI / 180;
+    const centre = new THREE.Vector3(0, 0, mount.contactZ + mount.toothMM * 0.35);
+    const pts = [];
+    for (let i = 0; i < 24; i++) {
+      const phi = i / 24 * Math.PI * 2;
+      const cam = new THREE.Vector3(
+        R * Math.cos(th) * Math.cos(phi), R * Math.cos(th) * Math.sin(phi),
+        centre.z + R * Math.sin(th));
+      pts.push(centre.clone(), cam);
+    }
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    root.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+      color: css('--ray'), transparent: true, opacity: 0.30 })));
+  }
+
+  frame(mount);
+  paint(mount);
+}
+
+function frame(mount) {
+  const box = new THREE.Box3().setFromObject(root);
+  const c = box.getCenter(new THREE.Vector3());
+  const r = Math.max(box.getSize(new THREE.Vector3()).length() * 0.55, 40);
+  controls.target.copy(c);
+  camera.position.set(c.x + r * 1.5, c.y - r * 1.9, c.z + r * 0.85);
+  camera.near = r / 100; camera.far = r * 40;
+  camera.updateProjectionMatrix();
+}
+
+function paint(mount) {
+  document.querySelectorAll('button.m').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.key === mount.key)));
+  const rows = [['reaches above the plane',
+    (mount.rise > 0 ? '+' : '') + mount.rise.toFixed(2) + ' mm'],
+    ['specimen shown', mount.toothMM.toFixed(0) + ' mm'], ...mount.facts];
+  document.getElementById('facts').innerHTML = rows.map(
+    ([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
+  const v = document.getElementById('verdict');
+  if (mount.rise <= 0.01) {
+    v.className = 'verdict ok';
+    v.textContent = 'Nothing rises above the plane the tooth rests on, so ' +
+      'no camera above the horizon sees this mount in front of the specimen.';
+  } else {
+    v.className = 'verdict trade';
+    v.textContent = `This mount stands ${mount.rise.toFixed(1)} mm above the ` +
+      'plane the specimen rests on, and occludes it directly — by design.';
+  }
+  document.getElementById('note').textContent = mount.blurb;
+  document.getElementById('sub').textContent =
+    `${MOUNTS.length} mounts · geometry read from the printed 3MF`;
+}
+
+/* ---------- controls ---------- */
+function mkButtons(hostId, family) {
+  const host = document.getElementById(hostId);
+  for (const m of MOUNTS.filter(x => x.family === family)) {
+    const b = document.createElement('button');
+    b.className = 'm'; b.dataset.key = m.key;
+    b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = `<span class="swatch" style="background:${
+      family === 'head' ? css('--p-head') : css('--p-stand')}"></span>` +
+      `<span class="n">${m.label}</span><span class="h">${m.hint}</span>`;
+    b.onclick = () => build(m);
+    host.appendChild(b);
+  }
+}
+mkButtons('pick-stand', 'stand');
+mkButtons('pick-xwing', 'xwing');
+mkButtons('pick-head', 'head');
+
+const modes = document.getElementById('modes');
+for (const [id, label] of [['shaded', 'shaded'], ['edges', 'edges'],
+                           ['wire', 'wireframe'], ['xray', 'X-ray']]) {
+  const b = document.createElement('button');
+  b.textContent = label; b.dataset.mode = id;
+  b.setAttribute('aria-pressed', String(id === MODE));
+  b.onclick = () => {
+    MODE = id;
+    modes.querySelectorAll('button').forEach(x =>
+      x.setAttribute('aria-pressed', String(x.dataset.mode === id)));
+    build(current);
+  };
+  modes.appendChild(b);
+}
+for (const id of ['c-plane', 'c-rays', 'c-tooth'])
+  document.getElementById(id).onchange = () => build(current);
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / Math.max(h, 1);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+build(MOUNTS[3]);                       // the L stand, the one with a real check
+hud.textContent = '';
+hud.style.display = 'none';
+
+(function tick() {
+  requestAnimationFrame(tick);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+
+/* a handle for the headless checks */
+window.__stands = {
+  mounts: MOUNTS.map(m => ({ key: m.key, family: m.family, rise: m.rise,
+                             contactZ: m.contactZ,
+                             // in BUILT coordinates: a body still in plate
+                             // space would not straddle the origin
+                             box: { min: m.geo.boundingBox.min.toArray(),
+                                    max: m.geo.boundingBox.max.toArray() } })),
+  get current() { return current && current.key; },
+  get beta() { return current && current.beta; },
+  open(b) { const sl = document.getElementById('open'); sl.value = b; sl.oninput({ target: sl }); },
+  pick(k) { build(MOUNTS.find(m => m.key === k)); },
+  get mode() { return MODE; },
+  toothHadNormals, toothH,
+  errors
+};
+</script>
+</body>
+</html>

@@ -355,6 +355,121 @@ PARTS = [
        # underside would scar the detent dimples
        brim="off",
        out="orbital-jig-S{specimen:g}.3mf"),
+    _p("tooth_stand", "Tooth stands for the jig", "Designed here",
+       "parametric",
+       "A forest of cones for the orbital jig to fly around. The jig holds "
+       "the specimen still and moves the camera, so whatever the tooth sits "
+       "on is in all 108 frames: the mount is an optical part as much as a "
+       "mechanical one. A shark tooth root is bilobate, coming down on two "
+       "lobes with a notch between them, and each lobe presents a face "
+       "rather than a point \u2014 so the tooth rides on FOUR cones, two per "
+       "lobe, fore and aft, and never in the notch, which is exactly where "
+       "the low rings want to see. Each cone is one solid of revolution: a "
+       "flank at 7 degrees included blending through a 2.5 mm fillet onto "
+       "a round pad on its arm, and a tip that is a cup rather than a "
+       "point \u2014 \u00d83 mm and a millimetre deep on the M and L, "
+       "smaller on the XS and S \u2014 holding the dab of museum wax that is "
+       "what actually stops the tooth sliding. "
+       "The taper is held constant by growing the base with the height, "
+       "because a 3.5 mm base is a needle at 12 mm tall and a stump at 24. "
+       "Four sizes, because teeth are not one size: FossilRecord measures "
+       "6,369 of them from 6.6 mm to 252, median 25.9, and the spans here "
+       "come from that \u2014 root width runs about 0.76 of length across "
+       "801 shape-normalised specimens, the cross span is 0.70 of that so "
+       "the tips land on the lobes inboard of the thinning edge, and the "
+       "fore/aft span is 0.55 of the root's thickness. The optical claim is "
+       "gated geometrically rather than cosmetically: nothing on the stand "
+       "rises above the plane of the four dish rims, and the tests prove "
+       "that is the right gate by showing a probe that sees 8% occlusion "
+       "from a post beside the specimen and 0% from a 120 mm disc beneath "
+       "it \u2014 nothing under the contact plane can hide a tooth sitting "
+       "on it from any camera above the horizon. Matte black PETG, solid "
+       "shells, and printed as a plate of four so the fine tips get their "
+       "minimum layer time from the travel between parts. The underside is "
+       "one flat plane: the hub\u2019s 20 mm face sits on the pedestal\u2019s "
+       "20 mm platform and takes the tipping moment, a speck of tac holds "
+       "it there, and off the jig it sits on a table the same way \u2014 so "
+       "the jig itself is unchanged. Nothing keys the rotation on "
+       "purpose: structure-from-motion does not care how the tooth is "
+       "turned, and being able to spin the quadrilateral onto the lobes is "
+       "worth more than an index. Three X-wings sit beside the fixed four: "
+       "scissors: two arms with a cone at each end, both flat on the "
+       "table so all four spires stand on the ground. The lower arm is a "
+       "plain bar; the upper arm\u2019s ends are plain bars joined by a "
+       "connector that bridges over the lower bar and rests on it, and a "
+       "plain \u00d86 printed pin is pressed down through both. The "
+       "upper arm\u2019s ends are relieved only where the lower bar sweeps "
+       "between the closed and open limits, so nothing at the crossing "
+       "stops the swing before the pads meet out at the ends, and the "
+       "range is measured by turning the built arm against the built base "
+       "until they touch, arms alone and with their cones. The pin\u2019s "
+       "squeeze is measured off the built bodies too. A sideways newton at "
+       "any cup stays under 5 MPa, where the spec\u2019s 1.3 mm point read "
+       "37.",
+       version="0.2.0",
+       pages=[dict(label="Stand the tooth on it, both ways",
+                   href="docs/tooth-stand.html"),
+              dict(label="Watch the scissors work",
+                   href="docs/xwing.html")],
+       gen=["gen_tooth_stand.py"], params=[
+           dict(key="stand", label="sizes", type="checks", val="xs,s,m,l",
+                choices=[
+                    dict(value="xs", label="XS",
+                         hint="teeth 10\u201328 mm \u2014 10 mm across"),
+                    dict(value="s", label="S",
+                         hint="teeth 25\u201355 mm \u2014 20 mm across"),
+                    dict(value="m", label="M",
+                         hint="teeth 50\u201395 mm \u2014 38 mm across"),
+                    dict(value="l", label="L",
+                         hint="teeth 90\u2013150 mm \u2014 60 mm across"),
+                    dict(value="xw_s", label="X-wing S",
+                         hint="scissors: 12\u201330 mm between the pins"),
+                    dict(value="xw_m", label="X-wing M",
+                         hint="scissors: 14\u201338 mm between the pins"),
+                    dict(value="xw_l", label="X-wing L",
+                         hint="scissors: 15\u201361 mm between the pins")])],
+       out="tooth-stand-{stand}.3mf"),
+    _p("specimen_heads", "Specimen heads \u2014 the screw-on study",
+       "Designed here", "parametric",
+       "The other answer to holding the tooth, built so it can be looked at "
+       "beside the cone stands instead of argued about. The jig\u2019s "
+       "platform takes a 1/4-20 brass insert \u2014 the same part the camera "
+       "receiver uses \u2014 and four heads screw onto it: a 30 mm dish "
+       "holding 3 mm of museum putty for anything under about 60 mm; a "
+       "three-pin cradle whose 1.5 mm stainless pins sit in printed collets "
+       "that slide radially, each tipped with a 1 mm silicone bead, for the "
+       "big tooth; a 40 mm cup 25 mm deep with a closed-cell foam liner "
+       "that takes the CROWN so the tooth hangs inverted and its root "
+       "underside \u2014 which no ring on this jig ever sees upright \u2014 "
+       "is fully exposed for a second pass; and a two-jaw chuck on a 60 mm "
+       "opening for slabs, which are not teeth. Measured the same way the "
+       "cone stands are, because the only thing that decides whether a "
+       "mount appears in the frames is whether it rises above the plane the "
+       "specimen rests on. Two of these do not. Two of them do, and on "
+       "purpose: the cup swallows 25 mm of crown to buy the root underside, "
+       "and a chuck grips from the sides by definition. That is the trade "
+       "the cone forest does not make, and the reason to have both.",
+       version="0.1.0",
+       pages=[dict(label="Stand the tooth on it, both ways",
+                   href="docs/tooth-stand.html"),
+              dict(label="Watch the scissors work",
+                   href="docs/xwing.html")],
+       gen=["gen_specimen_heads.py"], params=[
+           dict(key="head", label="heads", type="checks",
+                val="putty_disc,pin_cradle,tip_cone,flat_chuck",
+                choices=[
+                    dict(value="putty_disc", label="putty disc",
+                         hint="\u00d830 dish, 3 mm of putty \u2014 upright, "
+                              "under 60 mm"),
+                    dict(value="pin_cradle", label="three-pin cradle",
+                         hint="stainless pins on radial slides \u2014 the "
+                              "big tooth"),
+                    dict(value="tip_cone", label="tip cone",
+                         hint="\u00d840 cup, 25 deep \u2014 inverted, for "
+                              "the root underside"),
+                    dict(value="flat_chuck", label="flat chuck",
+                         hint="two jaws, 60 mm \u2014 slabs, not teeth")])],
+       out="specimen-heads-{head}.3mf"),
     _p("trex_teeth", "Skeleton T-Rex \u2014 real teeth", "Flexi Factory",
        "parametric",
        "Flexi Factory\u2019s skeleton T-Rex with its printed teeth replaced "

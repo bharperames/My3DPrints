@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>X-wing — the scissors working</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✂️</text></svg>">
+<style>
+  :root {
+    --bg:#14181A; --surface:#1D2327; --surface-2:#232B2F;
+    --ink:#EAF1EF; --ink-soft:#AFBEBB; --line:#313B40; --edge:#4A5A62;
+    --accent:#5FA893; --accent-ink:#14201C;
+    --good:#7CC287; --warn:#E7B75E; --risk:#E08578;
+    --p-base:#4F9A88; --p-top:#D9736A; --p-pin:#B4BCC3; --bridge:#FF5A3C;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.5 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); background:var(--surface);
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; }
+  .sub { color:var(--ink-soft); font-size:12.5px; }
+  a.back { margin-left:auto; color:var(--accent); text-decoration:none; font-size:12.5px; }
+  .wrap { display:flex; height:calc(100vh - 58px); }
+  @media (max-width:900px) { .wrap { flex-direction:column; height:auto; } }
+  #view { flex:1; position:relative; min-height:420px; background:var(--surface-2); }
+  #view canvas { display:block; width:100%; height:100%; }
+  #hud { position:absolute; left:12px; top:10px; font-size:12.5px; color:var(--ink);
+    background:color-mix(in srgb,var(--surface) 88%,transparent); border:1px solid var(--line);
+    border-radius:6px; padding:6px 10px; font-variant-numeric:tabular-nums; }
+  aside { width:372px; flex:0 0 372px; overflow:auto; padding:14px 16px 24px;
+    border-left:1px solid var(--line); background:var(--surface); }
+  @media (max-width:900px) { aside { width:auto; flex:none; border-left:0; border-top:1px solid var(--line); } }
+  .bar { display:flex; gap:6px; margin:10px 0; flex-wrap:wrap; align-items:center; }
+  button { font:inherit; font-size:12.5px; padding:6px 12px; border-radius:6px;
+    border:1px solid var(--edge); background:var(--surface); color:var(--ink); cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .seg { display:inline-flex; border:1px solid var(--edge); border-radius:6px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; padding:5px 10px; }
+  .seg button + button { border-left:1px solid var(--edge); }
+  .seg button.on { background:var(--accent); color:var(--accent-ink); }
+  .lbl { font-size:12px; color:var(--ink-soft); margin-right:4px; }
+  .step { padding:8px 10px; border:1px solid var(--edge); border-radius:7px; margin-bottom:6px; }
+  .step.on { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+  .step.done { opacity:.7; }
+  .step b { font-size:13px; }
+  .step p { margin:4px 0 0; font-size:12.5px; color:var(--ink-soft); }
+  .step .n { display:inline-block; width:18px; height:18px; border-radius:50%; background:var(--accent);
+    color:var(--accent-ink); font-size:11px; font-weight:700; text-align:center; line-height:18px; margin-right:6px; }
+  .toggles { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12.5px; margin:8px 0; }
+  .toggles label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  td { padding:3px 0; border-bottom:1px solid var(--line); }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
+  .verdict { font-size:12.5px; padding:8px 10px; border-radius:6px; margin-top:8px; }
+  .verdict.bad { background:color-mix(in srgb,var(--risk) 15%,transparent); color:var(--risk); }
+  .verdict.ok { background:color-mix(in srgb,var(--good) 15%,transparent); color:var(--good); }
+  .note { font-size:11.5px; color:var(--ink-soft); border-top:1px solid var(--line); margin-top:14px; padding-top:12px; }
+  .note b { color:var(--ink); }
+  input[type=range] { flex:1; }
+</style>
+<script type="importmap">
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
+"three/addons/loaders/3MFLoader.js":"../vendor/loaders/3MFLoader.js",
+"three/addons/utils/BufferGeometryUtils.js":"../vendor/utils/BufferGeometryUtils.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1 id="title">X-wing — the scissors working</h1>
+  <span class="sub" id="sub">loading…</span>
+  <a class="back" href="tooth-stand.html">← the stands</a>
+</header>
+<div class="wrap">
+  <div id="view"><div id="hud">building from the generator…</div></div>
+  <aside>
+    <div class="bar">
+      <button id="play" class="primary">▶ Play</button>
+      <button id="back">◀ Step</button>
+      <button id="fwd">Step ▶</button>
+      <button id="reset">Reset</button>
+    </div>
+    <div class="bar">
+      <span class="lbl">size</span>
+      <span class="seg" id="size">
+        <button data-s="xw_s">S</button><button data-s="xw_m">M</button><button data-s="xw_l">L</button>
+      </span>
+    </div>
+    <div class="bar">
+      <span class="lbl">open β</span>
+      <input type="range" id="beta" min="10" max="80" step="0.5">
+      <span id="beta-val" style="min-width:8ch;font-variant-numeric:tabular-nums"></span>
+    </div>
+    <div class="bar">
+      <span class="lbl">show</span>
+      <span class="seg" id="modes">
+        <button data-m="edges" class="on">shaded + edges</button><button data-m="shaded">shaded</button><button data-m="xray">X-ray</button>
+      </span>
+    </div>
+    <div class="toggles">
+      <label><input type="checkbox" id="t-pin" checked> pin</label>
+    </div>
+    <div id="steps"></div>
+    <div id="verdict" class="verdict"></div>
+    <table id="facts"></table>
+    <div class="note">
+      <b>What is drawn is what prints.</b> The three bodies are read from the
+      3MF the shop builds for this stand and put back in their assembled
+      poses from the transforms the generator wrote into the same archive.
+      The rotation limits are measured the same way: the whole upper arm,
+      cones and pads included, turned about the pin against the whole lower
+      arm until the two first touch.
+    </div>
+  </aside>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { unzipSync } from '../vendor/libs/fflate.module.js';
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const hud = document.getElementById('hud');
+const errors = [];
+addEventListener('error', e => errors.push(String(e.message || e)));
+const Q = new URLSearchParams(location.search);
+let SIZE = ['xw_s', 'xw_m', 'xw_l'].includes(Q.get('size')) ? Q.get('size') : 'xw_l';
+const DEG = Math.PI / 180;
+
+/* ---------- scene ---------- */
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(css('--surface-2'));
+const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
+camera.up.set(0, 0, 1);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+const hemi = new THREE.HemisphereLight(0xffffff, 0x404050, 1.9); hemi.position.set(0, 0, 1); scene.add(hemi);
+const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(0.7, -0.9, 1.3); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.6); fill.position.set(-0.8, 0.6, 0.4); scene.add(fill);
+const table = new THREE.Mesh(new THREE.PlaneGeometry(400, 400),
+  new THREE.MeshStandardMaterial({ color: new THREE.Color(css('--surface')), roughness: 1 }));
+table.position.z = -0.05; scene.add(table);
+const grid = new THREE.GridHelper(400, 40, 0x3A4046, 0x2A3136); grid.rotation.x = Math.PI / 2; grid.position.z = -0.04; scene.add(grid);
+function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize);
+
+/* ---------- the printed file ---------- */
+let dowelMeshes = [], coneMeshes = [];
+let D, X, bodies = {}, root, topGroup, pinMesh, baseMesh, bridgeMesh, allMeshes = [], allEdges = [];
+async function load(size) {
+  hud.textContent = 'building from the generator (a minute the first time)…';
+  const src = `../src?id=tooth_stand&params=${encodeURIComponent(JSON.stringify({ stand: size }))}`;
+  const res = await fetch(src);
+  if (!res.ok) { let m = res.statusText; try { m = (await res.json()).error || m; } catch (e) {} hud.textContent = 'could not build: ' + m; throw new Error(m); }
+  const buf = await res.arrayBuffer();
+  const files = unzipSync(new Uint8Array(buf));
+  D = JSON.parse(new TextDecoder().decode(files['Metadata/tooth_stand.json']));
+  X = D.xwings.find(x => x.id === size);
+  const model = new ThreeMFLoader().parse(buf);
+  if (root) scene.remove(root);
+  root = new THREE.Group(); scene.add(root);
+  topGroup = new THREE.Group(); root.add(topGroup);
+  allMeshes = []; allEdges = []; bodies = {}; dowelMeshes = []; coneMeshes = [];
+  const names = Object.keys(D.to_world);
+  const meshes = []; model.traverse(o => { if (o.isMesh) meshes.push(o); });
+  meshes.forEach((o, i) => {
+    const n = names.includes(o.name) ? o.name : names[i];
+    if (!n) return;
+    const g = o.geometry.clone();
+    g.applyMatrix4(new THREE.Matrix4().set(...D.to_world[n]));
+    // 3MF carries no normals; creased at 30 degrees, never averaged
+    const geom = g.getAttribute('normal') ? g : toCreasedNormals(g, Math.PI / 6);
+    // the upper arm's press-in cones travel with the upper arm
+    const kind = n.endsWith('_base') ? 'base' : n.endsWith('_pin') ? 'pin' : 'top';
+    const col = new THREE.Color(css({ base: '--p-base', top: '--p-top', pin: '--p-pin' }[kind]));
+    const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color: col, roughness: .6, metalness: kind === 'pin' ? .5 : .05 }));
+    const eg = new THREE.LineSegments(new THREE.EdgesGeometry(geom, 25), new THREE.LineBasicMaterial({ color: col.clone().multiplyScalar(0.35) }));
+    mesh.add(eg); allMeshes.push(mesh); allEdges.push(eg);
+    mesh.name = n; bodies[n] = mesh; if (kind === 'pin') pinMesh = mesh;
+    if (n.includes('_dowel')) dowelMeshes.push(mesh);
+    if (n.includes('_cone')) coneMeshes.push(mesh);
+    (kind === 'base' ? root : topGroup).add(mesh);
+  });
+  baseMesh = Object.entries(bodies).find(([n]) => n.endsWith('_base'))?.[1];
+  // the pin turns with nothing; it lives in root so the top can turn under it
+  if (pinMesh) { topGroup.remove(pinMesh); root.add(pinMesh); }
+  bridgeMesh = new THREE.Group();
+  applyView();
+  const R = X.L * 1.9;
+  controls.target.set(0, 0, 12);
+  camera.position.set(R * 1.1, -R * 1.4, R * 1.0);
+  document.querySelectorAll('#size button').forEach(b => b.classList.toggle('on', b.dataset.s === size));
+  const sl = document.getElementById('beta');
+  sl.min = X.opening.beta[0]; sl.max = X.opening.beta[1];
+  facts(); drawSteps();
+  document.title = `${X.name} — the scissors working`;
+  document.getElementById('title').textContent = `${X.name} — the scissors working`;
+  document.getElementById('sub').textContent = `${Object.keys(bodies).length} bodies · pin circle ${X.L} mm · read from the printed 3MF`;
+}
+
+/* ---------- pose ---------- */
+let beta, drop = { top: 0, pin: 0, dowel: 0, cone: 0 };
+function pose() {
+  topGroup.rotation.z = 2 * (beta - X.alpha) * DEG;
+  topGroup.position.z = drop.top;
+  if (pinMesh) pinMesh.position.z = drop.pin;
+  // the dowels and cones ride on the upper arm, so their drop adds to its
+  for (const m of dowelMeshes) m.position.z = drop.dowel;
+  for (const m of coneMeshes) m.position.z = drop.cone;
+  document.getElementById('beta').value = beta;
+  const fore = 2 * X.L * Math.sin(beta * DEG), cross = 2 * X.L * Math.cos(beta * DEG);
+  document.getElementById('beta-val').textContent = beta.toFixed(1) + '°';
+  hud.innerHTML = `β ${beta.toFixed(1)}° · pins ${fore.toFixed(1)} apart, ${cross.toFixed(1)} across · clear ${X.opening.beta[0]}–${X.opening.beta[1]}°`;
+}
+document.getElementById('beta').oninput = e => { stopRun(); beta = +e.target.value; pose(); };
+
+/* ---------- steps, as the Knot page does them ---------- */
+const XW = () => ({ dowel_r: (X.dowel && X.dowel.r) || 1.5, dowel_proud: (X.dowel && X.dowel.proud) || 3.6 });
+const STEPS = [
+  { title: 'The lower arm', text: () => `A bar on the table with a cone at each end, tapering to a 3 mm neck either side of a Ø${2 * X.hub_r} hub round the pin hole. The notches the taper leaves are where the upper arm's legs swing in.`,
+    set: () => { drop.top = 40; drop.pin = 60; drop.dowel = 30; drop.cone = 55; beta = X.alpha; }, anim: null },
+  { title: 'The upper arm comes down over it', text: () => `One flat-topped piece ${X.upper_t} mm tall with a pocket underneath that clears the lower hub and the channel the lower bar swings through. Its two pads stand on the table either side.`,
+    set: () => { beta = X.alpha; }, anim: { key: 'top', from: 40, to: 0, rate: 30 } },
+  { title: 'The pin presses down', text: () => `A plain Ø${2 * X.pin.r} pin: a press fit in the lower arm, a running fit in the upper arm's hub, head on top, tip flush underneath.`,
+    set: () => {}, anim: { key: 'pin', from: 60, to: 0, rate: 40 } },
+  { title: 'Press the dowels into the upper arm', text: () => `Two plain Ø${2 * XW().dowel_r} dowels, one into each socket in the upper arm's pads. The sockets are drawn a tenth over the dowel, which PETG prints as a firm press; each dowel stands ${XW().dowel_proud} mm proud.`,
+    set: () => {}, anim: { key: 'dowel', from: 30, to: 0, rate: 30 } },
+  { title: 'Slide the cones on', text: () => `Each cone has a socket in its flat foot, drawn three tenths over the dowel so it slips on snugly and comes back off for cleaning. The cones print standing on that foot.`,
+    set: () => {}, anim: { key: 'cone', from: 55, to: 0, rate: 34 } },
+  { title: 'Close it', text: 'The upper arm turns about the pin until its pads meet the lower arm\'s. This is the tightest the pins get.',
+    set: () => {}, anim: { key: 'beta', to: () => X.opening.beta[0], rate: 14 } },
+  { title: 'Open it', text: 'And out to the other limit, where the other pair of pads meet on the cross side.',
+    set: () => {}, anim: { key: 'beta', to: () => X.opening.beta[1], rate: 22 } },
+  { title: 'Back to square', text: 'The arms at 45°, the middle of the range.',
+    set: () => {}, anim: { key: 'beta', to: () => X.alpha, rate: 22 } },
+];
+let cur = 0, running = null, auto = false;
+const stepsEl = document.getElementById('steps');
+function drawSteps() { stepsEl.innerHTML = '';
+  STEPS.forEach((s, i) => { const d = document.createElement('div'); d.className = 'step'; d.id = 'step' + i;
+    d.innerHTML = `<b><span class="n">${i + 1}</span>${s.title}</b><p>${typeof s.text === 'function' ? s.text() : s.text}</p>`; stepsEl.appendChild(d); }); }
+function mark() { STEPS.forEach((_, j) => document.getElementById('step' + j).className = 'step' + (j === cur ? ' on' : j < cur ? ' done' : '')); }
+function goto(i) {
+  cur = Math.max(0, Math.min(STEPS.length - 1, i)); running = null;
+  drop = { top: 0, pin: 0, dowel: 0, cone: 0 }; beta = X.alpha;
+  for (let s = 0; s <= cur; s++) { STEPS[s].set(); if (s < cur && STEPS[s].anim) applyEnd(STEPS[s].anim); }
+  if (STEPS[cur].anim) applyStart(STEPS[cur].anim);
+  mark(); pose();
+}
+function applyEnd(a) { if (a.key === 'beta') beta = a.to(); else drop[a.key] = a.to; }
+function applyStart(a) { if (a.key === 'beta') return; drop[a.key] = a.from; }
+function startStep() {
+  const a = STEPS[cur].anim; mark();
+  if (!a) { running = null; if (auto && cur < STEPS.length - 1) { cur++; startStep(); } return; }
+  running = { a, target: a.key === 'beta' ? a.to() : a.to };
+}
+function stopRun() { running = null; auto = false; setPlay(); }
+const playBtn = document.getElementById('play');
+function setPlay() { playBtn.textContent = auto ? '⏸ Pause' : (cur >= STEPS.length - 1 && !running) ? '▶ Play again' : '▶ Play'; }
+playBtn.onclick = () => { if (auto) { stopRun(); return; } if (cur >= STEPS.length - 1 && !running) goto(0); auto = true; setPlay(); startStep(); };
+document.getElementById('fwd').onclick = () => { auto = false; if (running) { finish(); } else if (cur < STEPS.length - 1) { cur++; goto(cur); startStep(); } setPlay(); };
+document.getElementById('back').onclick = () => { auto = false; goto(cur - 1); setPlay(); };
+document.getElementById('reset').onclick = () => { auto = false; goto(0); setPlay(); };
+function finish() { const r = running; if (!r) return; if (r.a.key === 'beta') beta = r.target; else drop[r.a.key] = r.target; running = null; pose(); }
+document.querySelectorAll('#size button').forEach(b => b.onclick = async () => { SIZE = b.dataset.s; await load(SIZE); goto(0); });
+let MODE = 'edges';
+document.querySelectorAll('#modes button').forEach(b => b.onclick = () => { MODE = b.dataset.m;
+  document.querySelectorAll('#modes button').forEach(x => x.classList.toggle('on', x === b)); applyView(); });
+function applyView() {
+  for (const m of allMeshes) { m.material.transparent = MODE === 'xray'; m.material.opacity = MODE === 'xray' ? .3 : 1; m.material.depthWrite = MODE !== 'xray'; m.material.needsUpdate = true; }
+  for (const e of allEdges) e.visible = MODE !== 'shaded';
+  if (pinMesh) pinMesh.visible = document.getElementById('t-pin').checked;
+}
+document.getElementById('t-pin').onchange = applyView;
+
+function facts() {
+  const pr = X.print || {};
+  document.getElementById('facts').innerHTML = [
+    ['pin circle L', X.L + ' mm'], ['default β', X.alpha + '°'],
+    ['clear swing', `${X.opening.beta[0]}–${X.opening.beta[1]}°`],
+    ['pins apart, fore/aft', `${X.opening.fore[0]}–${X.opening.fore[1]} mm`],
+    ['loose cones', (X.cone_fit ? `on their feet, ${X.cone_fit.cone_on_plate_mm2} mm² on the plate, on Ø3 dowels` : 'on Ø3 dowels')],
+    ['upper arm prints', `roof-down · ${pr.overhang_mm2} mm² off the plate, widest ${pr.widest_mm} mm (the cone sockets)`],
+    ['pivot', X.pivot],
+  ].map(([a, c]) => `<tr><td>${a}</td><td>${c}</td></tr>`).join('');
+  const v = document.getElementById('verdict');
+  v.className = 'verdict ok';
+  v.textContent = `Prints with no bridge: the upper arm goes roof-down on the plate, and the only surfaces over air are its two ${pr.widest_mm} mm cone socket floors.`;
+}
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function tick(now) {
+  requestAnimationFrame(tick);
+  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  if (running) {
+    const r = running;
+    if (r.a.key === 'beta') { const d = r.target - beta; const st = Math.min(Math.abs(d), r.a.rate * dt); beta += Math.sign(d) * st; if (Math.abs(r.target - beta) < 1e-6) running = null; }
+    else { const d = r.target - drop[r.a.key]; const st = Math.min(Math.abs(d), r.a.rate * dt); drop[r.a.key] += Math.sign(d) * st; if (Math.abs(r.target - drop[r.a.key]) < 1e-6) running = null; }
+    pose();
+    if (!running) { if (auto && cur < STEPS.length - 1) { cur++; startStep(); } else { auto = false; setPlay(); } }
+  }
+  const dist = Math.max(1, camera.position.distanceTo(controls.target));
+  const near = Math.max(0.05, dist / 4000), far = Math.max(dist * 40, 4000);
+  if (Math.abs(camera.near - near) > near * 0.25 || camera.far !== far) { camera.near = near; camera.far = far; camera.updateProjectionMatrix(); }
+  controls.update(); renderer.render(scene, camera);
+}
+window.__xwing = {
+  get state() { return { size: SIZE, step: cur, beta, drop: { ...drop }, running: !!running, bridge: X && X.bridge, opening: X && X.opening }; },
+  get errors() { return errors.slice(); }, get bodies() { return Object.keys(bodies); },
+  goto, run() { auto = true; setPlay(); startStep(); }, open(b) { stopRun(); beta = b; pose(); },
+  look(p, t) { camera.position.set(...p); controls.target.set(...t); controls.update(); },
+};
+resize();
+await load(SIZE);
+goto(0); setPlay();
+requestAnimationFrame(tick);
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setTimeout(() => { if (cur === 0 && !auto) playBtn.click(); }, 500);
+</script>
+</body>
+</html>
