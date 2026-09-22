@@ -120,6 +120,19 @@ def _genus(m):
 
 
 class Handler(SimpleHTTPRequestHandler):
+    # Pages here are edited and reloaded all day, and SimpleHTTPRequestHandler
+    # sends no Cache-Control at all -- so a browser falls back to heuristic
+    # freshness, 10% of the file's age, and keeps an hours-old copy of a page
+    # that changed a minute ago. That is not theoretical: docs/tooth-stand.html
+    # went on reporting a part that had been removed from the catalog, from a
+    # copy in the browser, while the file on disk and the server's own answer
+    # were both correct.
+    def end_headers(self):
+        path = urlparse(self.path).path
+        if path.endswith((".html", ".js", ".css", ".json")) or path == "/":
+            self.send_header("Cache-Control", "no-cache, must-revalidate")
+        super().end_headers()
+
     def _read_json(self, limit=200_000):
         n = int(self.headers.get("Content-Length", 0))
         if n > limit:
