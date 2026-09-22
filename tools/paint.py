@@ -1,6 +1,6 @@
 """Read a Bambu 3MF object mesh together with its per-triangle paint.
 
-The colour is not computed from the shape: the designer painted it and it
+The color is not computed from the shape: the designer painted it and it
 ships in the file, one `paint_color` attribute per triangle. That makes an
 authored mask of which triangles are teeth and claws -- better than any
 detector, because it is what the author meant rather than what the geometry

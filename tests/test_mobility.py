@@ -146,7 +146,7 @@ class TestMobility(unittest.TestCase):
 
         The quantum is one lead because that is the unit a hand turns in,
         but the move that opens a puzzle is usually shorter: the few
-        millimetres a slot buys. Rounding it down to nothing made a slotted
+        millimeters a slot buys. Rounding it down to nothing made a slotted
         design and an unslotted one produce identical searches.
         """
         shell = box(40, 40, 40).difference(box(20, 20, 24), engine="manifold")

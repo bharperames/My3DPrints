@@ -2,7 +2,7 @@
 
 The teeth come from the designer's own paint, not from a detector: each
 tooth is a `paint_color` region in the 3MF, complete down to the ring where
-it meets the bone. Those rings give a centre, an axis and a width apiece,
+it meets the bone. Those rings give a center, an axis and a width apiece,
 and threading them in order gives the gum line.
 
 The teeth come off with their own convex hulls. The ledge behind them is
@@ -12,7 +12,7 @@ along the gum line -- see `shell_ledge` for why the swept version had to go.
 import numpy as np, trimesh
 
 def tooth_frames(mesh, regions):
-    """centre, outward axis and half-width of each painted tooth's base."""
+    """center, outward axis and half-width of each painted tooth's base."""
     out = []
     for faces in regions:
         sub = mesh.submesh([faces], append=True); sub.merge_vertices()
@@ -29,7 +29,7 @@ def tooth_frames(mesh, regions):
     return out
 
 def order_along_jaw(frames):
-    """Thread the teeth into one chain: nearest neighbour from an end."""
+    """Thread the teeth into one chain: nearest neighbor from an end."""
     C = np.array([f["c"] for f in frames])
     d = np.linalg.norm(C[:, None] - C[None], axis=2)
     start = int(np.unravel_index(np.argmax(d), d.shape)[0])
@@ -125,7 +125,7 @@ def _inside(mesh, pts, d=np.array([0.577, 0.577, 0.577])):
 
     `mesh.contains` counts parity over every crossing; this needs only the
     first one. If the first face a ray meets faces the same way the ray is
-    travelling, the ray was leaving the solid, so the point began inside it.
+    traveling, the ray was leaving the solid, so the point began inside it.
     A ray that hits nothing began outside. Agrees with `contains` on
     6000/6000 random points in this skull's bounding box, at about three
     times the speed -- `contains` counts parity over every crossing, this
@@ -160,7 +160,7 @@ def _ring_section(ring, axis):
 
 
 def _outline_radii(poly, th):
-    """The section's radius in each direction, about its own centre."""
+    """The section's radius in each direction, about its own center."""
     from shapely.geometry import LineString
     ctr = poly.centroid
     far = float(np.hypot(*(np.array(poly.bounds[2:]) - np.array(poly.bounds[:2])))) + 1.0
@@ -216,11 +216,11 @@ def drill_prism(mesh, regions, frames, depth=3.5, inset=0.35, reach=7.0,
     half-space fitted to rays cast at the cheek governs the whole socket,
     including the tongue side those rays never touched. Measured, the drill
     contributed nothing at all in the first 0.6 mm below the gum line while
-    cutting 99% of the cavity two millimetres down -- a socket with a mouth
+    cutting 99% of the cavity two millimeters down -- a socket with a mouth
     smaller than its throat, which is exactly what the renders showed.
 
     So do not cut oversize. Take the designer's own outline, inset it by
-    `inset` millimetres, and sweep THAT down the tooth's axis. The lip is
+    `inset` millimeters, and sweep THAT down the tooth's axis. The lip is
     protected by construction -- the cut never reaches it -- and because the
     section is constant, the mouth is as wide as the floor. There is nothing
     left to clip, and no guard shell to subtract.
@@ -308,7 +308,7 @@ def drill_prism(mesh, regions, frames, depth=3.5, inset=0.35, reach=7.0,
         # A cone cuts its own tooth's outline and nothing else, and the
         # designer's outlines come as close as 0.23 mm to one another -- so
         # the bone between a close pair survives as a blade a quarter of a
-        # millimetre thick, standing in the finished channel. The trough
+        # millimeter thick, standing in the finished channel. The trough
         # cannot take it: it sits on the CHEEK side of the gum line, where
         # the trough's labial limit is already at or past zero.
         #
@@ -391,9 +391,9 @@ def _sweep(P, A, U, lab, lin, top, depth):
     stations long, and that is the shape a CSG engine handles worst: the
     subtraction left material the cutter demonstrably contained -- 79 sample
     points in one cluster, 0.22% of the channel, standing as a blade in the
-    finished jaw. Hulling each segment between neighbouring stations makes
+    finished jaw. Hulling each segment between neighboring stations makes
     every piece convex by construction, so no piece can fold through itself,
-    and the union of them is exact. Same volume to a cubic millimetre, a
+    and the union of them is exact. Same volume to a cubic millimeter, a
     third of the leftovers, and it unions in well under a second.
     """
     quads = []
@@ -408,7 +408,7 @@ def _sweep(P, A, U, lab, lin, top, depth):
     # channel exactly, and "exactly" is the problem: consecutive hulls meet
     # on a shared quad, so the seam between them is tangent and the boolean
     # can leave a knife-edge of material standing there. Spanning three
-    # stations makes each hull overlap its neighbour by a whole segment, so
+    # stations makes each hull overlap its neighbor by a whole segment, so
     # the seams are interior to a solid rather than between two.
     hulls = []
     for k in range(len(quads) - 1):
@@ -426,7 +426,7 @@ def _sweep_tube(P, A, U, lab, lin, top, depth):
     """A continuous tube along the path, not a row of boxes.
 
     One box per station is a row of rectangular prisms, and where the arch
-    curves each box's corners stand proud of its neighbour's -- the union's
+    curves each box's corners stand proud of its neighbor's -- the union's
     outer boundary is the envelope of those corners, which reads as a
     staircase on the finished surface. Brett saw it immediately: "large
     blocky artifacts."
@@ -486,7 +486,7 @@ def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
     C, N, A, U = gum_path(mesh, frames)
     # FINER STATIONS THAN THE SOCKETS NEED.
     #
-    # The gum path is sampled for placing pockets, about 1.5 a millimetre.
+    # The gum path is sampled for placing pockets, about 1.5 a millimeter.
     # Swept, that spacing is visible: the sides are ruled between stations,
     # so each segment reads as a facet and the run of them as blocks. Brett:
     # "perhaps with a finer discretization the effect would not be
@@ -519,7 +519,7 @@ def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
         # 21.7 mm. The section then balloons past the midline, the swept tube
         # overlaps the opposite side of the arch, and a self-intersecting
         # cutter does not subtract properly: 118 of 717 stations ended up
-        # with their own rectangle centre outside the solid they built, and
+        # with their own rectangle center outside the solid they built, and
         # the material they were supposed to remove stayed put.
         lin[k], ok[k] = min(d_in, reach_cap) + past, True
         lab[k] = d_out - wall
@@ -588,7 +588,7 @@ def lingual_trough(mesh, frames, depth=3.5, wall=0.8, over=2.0, past=1.0,
     # empty because manifold's own arithmetic disagreed with the geometry.
     # Inflating by `bloat` breaks the coincidence: measured, 55 leftover
     # sample points to zero at 0.02 mm, and the two bridges across the
-    # channel go at 0.10. A tenth of a millimetre is a quarter of the
+    # channel go at 0.10. A tenth of a millimeter is a quarter of the
     # nozzle -- below anything the printer resolves.
 
     if tube.is_volume and tube.volume > 1e-6:
@@ -636,7 +636,7 @@ def channel(mesh, frames, regions=None, depth_max=3.5, reach=4.0, **extra):
     # that could cut and stations that could not.
     lfloor = float(extra.pop("ling_floor", 0.0) or 1.2)
     lcap = float(extra.pop("ling_cap", 0.0) or 4.0)
-    for k in ("rscale", "lip", "width", "depth", "over", "centre",
+    for k in ("rscale", "lip", "width", "depth", "over", "center",
               "wall", "min_width", "mode", "cone", "radial", "scrub"):
         extra.pop(k, None)
     cuts = [drill_prism(mesh, regions, frames, depth=depth_max,

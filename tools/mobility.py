@@ -10,7 +10,7 @@ that falls open in two moves and a knot that takes nine both "come apart".
 So this is the same machinery run as a search instead of a walk. A state is
 where every body is sitting, not merely which bodies are left, because the
 moves that make a puzzle interesting do not free anything: a head screwed
-further IN so a neighbour can slide is a move, and a search that only
+further IN so a neighbor can slide is a move, and a search that only
 records removals cannot see it happen. Bodies therefore carry poses, moves
 carry them between poses, and taking the thing apart is a shortest path
 through that graph.
@@ -50,7 +50,7 @@ WHAT IS NOT
 
 Poses compose as 4x4s, so a body may travel on one line and then another,
 but every move is a helix on one of the given lines. A body that only comes
-free by being tilted, or by travelling on a line nobody listed, reports as
+free by being tilted, or by traveling on a line nobody listed, reports as
 stuck. That is the honest failure — it under-reports mobility and so can
 call a working design welded, which is loud, rather than over-report it and
 call a welded design working, which is silent.
@@ -138,7 +138,7 @@ class Mobility:
 
         Resolution is the clearance, not the move quantum. Keying off the
         quantum tied "how far a hand moves a part" to "which positions are
-        distinct", and asking for maximal moves only — a quantum of a metre
+        distinct", and asking for maximal moves only — a quantum of a meter
         — collapsed every configuration onto home and the search ended one
         state in, reporting a design that opens as one that does not.
         """
@@ -237,10 +237,10 @@ class Mobility:
                 break
             s = s0 + span * i / (len(path) - 1)
             free_to = s
-            # Clear on the side it is travelling TOWARD. A body that starts
+            # Clear on the side it is traveling TOWARD. A body that starts
             # entirely beyond its neighbor and moves back at it is clear
             # along the axis at its first sample and was being reported as
-            # escaped after a fiftieth of a millimetre in the wrong
+            # escaped after a fiftieth of a millimeter in the wrong
             # direction. Escaping means leaving, not merely being apart.
             if ((direction > 0 and g_lo + s > r_hi + 0.05) or
                     (direction < 0 and g_hi + s < r_lo - 0.05)):
@@ -250,7 +250,7 @@ class Mobility:
             # The coarse sweep says "free to the last sample before the one
             # that hit", which is only true to within one coarse step --
             # 1.2 mm here -- and a maximal move is worth exactly its last
-            # millimetre. The key unit's slot is 5.7 mm and the coarse sweep
+            # millimeter. The key unit's slot is 5.7 mm and the coarse sweep
             # reported it free to 4.8, which left the head it carries still
             # inside the neighbor's pocket, and the neighbor could not turn.
             # So the last coarse interval is swept again at the fine step.
@@ -275,8 +275,8 @@ class Mobility:
             # As far as it will go, whether or not that is a whole quantum.
             # The quantum is one lead, because that is the unit a hand turns
             # in — but a puzzle's key move is very often SHORTER than that:
-            # the few millimetres of float a slot buys. Emitting only whole
-            # quanta made a five millimetre slot and no slot at all produce
+            # the few millimeters of float a slot buys. Emitting only whole
+            # quanta made a five millimeter slot and no slot at all produce
             # byte-identical searches, which is the tell. Three geometries
             # that differ cannot all be the same.
             stops.append(direction * abs(free_to))

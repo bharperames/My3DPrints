@@ -211,7 +211,7 @@ if __name__ == "__main__":
 def _clear_along(mover_span, static_span, s, direction, gap=0.05):
     """Has the mover travelled far enough along the axis to be past it.
 
-    Past it on the side it is travelling toward. A body that starts beyond
+    Past it on the side it is traveling toward. A body that starts beyond
     the static one and moves back at it is apart at its first sample and
     is not escaping.
     """
@@ -265,7 +265,7 @@ def escapes(rest, mover, lead, axes=(Z_AXIS,), span=None, clearance=0.30):
                     # phased to home is a rotation taken before the first
                     # sample -- 10 degrees on this lead -- and a body
                     # turning about a line far from its features moves them
-                    # millimetres in that jump.
+                    # millimeters in that jump.
                     if i == 0:
                         continue
                     s.cm.set_transform("mover", T)

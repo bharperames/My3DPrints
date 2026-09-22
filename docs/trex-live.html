@@ -111,10 +111,10 @@ const EDGE_SURF = 0x11181C, EDGE_DRAW = 0x8CF0C8;
 let mode = 'edges', part = 'body', live = null, ref = null, framed = false;
 let refDials = null;          // the dials the reference was cut with
 
-function dress(obj, colour){
+function dress(obj, color){
   obj.traverse(o => { if (o.isMesh){
     if (!o.geometry.getAttribute('normal')) o.geometry.computeVertexNormals();
-    o.material = new THREE.MeshStandardMaterial({color: colour, flatShading: true,
+    o.material = new THREE.MeshStandardMaterial({color: color, flatShading: true,
       roughness: .62, metalness: .04});
   }});
   return obj;

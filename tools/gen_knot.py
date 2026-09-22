@@ -68,7 +68,7 @@ block's own length of a - gap:
     a >= 2 pocket_cr + 2 wall + slot + gap
 
 The first Knot keyed the head over its whole height and had to slide 13 mm
-to free it. At a = 36 the longest slot that fits is under a millimetre, so
+to free it. At a = 36 the longest slot that fits is under a millimeter, so
 every variant at that size measured welded -- the geometry was being asked
 to swallow a 13 mm slide in 1 mm of room, and no search finds a way through
 that because there isn't one. Sized from the slot it came out at a = 49, a
@@ -77,7 +77,7 @@ that because there isn't one. Sized from the slot it came out at a = 49, a
 Two proportions were inherited rather than required. The key is now 5 mm
 of hex at the bottom of the pocket with a round counterbore above it, so
 the release distance is 5 mm rather than the head's height. And the head
-is sized to key and to bear -- two millimetres of pocket floor outside the
+is sized to key and to bear -- two millimeters of pocket floor outside the
 bore -- rather than to the toddler set's grip, because in this object no
 head is ever gripped: the block around it is the wrench. With the thread
 at 12 mm that gives a = 34 and a 68 mm cube.
@@ -124,7 +124,7 @@ closes the cycle is the slot's.
 The pocket opens on the face that ABUTS the next block, not on the outside
 of the cube, and that is the lock rather than a detail. Opening outward, a
 block has to travel outward to slide off the head it holds -- and outward is
-exactly where its neighbor is, four tenths of a millimetre away. The search
+exactly where its neighbor is, four tenths of a millimeter away. The search
 found that: with the first bolt lifted out, every remaining body had zero
 legal moves and the object was as welded five parts in as it had been at
 six.
@@ -154,7 +154,7 @@ FILLET = 2.0           # edge break on the bar, mm
 # print as one fused surface and slide on each other with nothing between,
 # and a sweep along a shared face never leaves contact, so the search calls
 # every such slide blocked from its first sample to its last. Both problems
-# are the same missing millimetre.
+# are the same missing millimeter.
 FACE_GAP = 0.20        # per face; neighbors are two of these apart
 # A head bottomed on its pocket floor is contact, not fit. The mesh shows
 # zero penetration and the boolean says the parts do not overlap, and FCL
@@ -166,13 +166,13 @@ FACE_GAP = 0.20        # per face; neighbors are two of these apart
 AXIAL_SLACK = 0.15     # head to pocket floor, and head to mouth
 # A hex head meets a hex pocket at one of six angles, and the bolt's angle
 # is set by its thread. Lining them up means turning the bolt by up to 30
-# degrees, which on this lead moves it a third of a millimetre along its
+# degrees, which on this lead moves it a third of a millimeter along its
 # axis -- so the pocket carries that much extra depth, or the last joint
 # cannot close. It costs the threaded joints nothing: their blocks screw
 # down until faces meet, wherever the head happens to sit.
 CLOCK_SLACK = 0.40
 # The head is as tall as the key and no taller. A head keys in five
-# millimetres of hex as surely as in thirteen, and the release distance --
+# millimeters of hex as surely as in thirteen, and the release distance --
 # how far the block-and-bolt unit has to slide before the head it carries is
 # clear of the neighbor's pocket -- is the head's height. The first cut at
 # this kept a full-height head and sank the rest of it in a round
@@ -182,7 +182,7 @@ CLOCK_SLACK = 0.40
 # needs neither.
 KEY_DEPTH = 5.0
 # The head is never gripped, so it is sized to what it does: it keys, and
-# it bears on the annulus of pocket floor outside the bore. Two millimetres
+# it bears on the annulus of pocket floor outside the bore. Two millimeters
 # of that annulus is the floor of the design, because on the key bolt it is
 # the only thing stopping the bolt sliding straight through its own block.
 BEARING = 2.0
@@ -314,7 +314,7 @@ def datum(t, a, gap=FACE_GAP):
     thread is a helix with a phase, so a bore and a bolt laid out from
     different datums are out of step by 2 pi times their offset over the
     lead and foul over the whole engagement. It came out clean at one value
-    of `a` and interfered at the next millimetre down, which is what a thing
+    of `a` and interfered at the next millimeter down, which is what a thing
     that works by luck looks like.
     """
     return a / 2.0 - gap - pocket_depth(t)
@@ -327,7 +327,7 @@ def block(t, a, slot=0.0, gap=FACE_GAP):
     outside of the cube, and that is the lock rather than a detail.
     Opening outward, a block has to travel outward to slide off the head it
     holds -- and outward is exactly where its neighbor is, half a
-    millimetre away. The search found that: with the first bolt lifted out,
+    millimeter away. The search found that: with the first bolt lifted out,
     every remaining body had zero legal moves. Turned inward, the same
     slide runs into open air, the neighbor's face caps the head instead of
     blocking the block, and the cycle unzips.
@@ -365,7 +365,7 @@ def block(t, a, slot=0.0, gap=FACE_GAP):
         # simple polygon. Toward -y, which the cyclic map turns into the
         # block's own -x: the unit has to travel the OTHER way, out of the
         # cube and into open air. Elongated the other way it would travel
-        # into its neighbor, four tenths of a millimetre off, and the slot
+        # into its neighbor, four tenths of a millimeter off, and the slot
         # would buy exactly that much.
         hexp = MultiPolygon([hexp, affinity.translate(hexp, 0, -slot)]) \
             .convex_hull

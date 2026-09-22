@@ -30,8 +30,8 @@ IT HAS TO BE CENTRED ON THE BONE, NOT ON THE TEETH
 
 Measured on this skull, the teeth sit 0.88 mm outboard of the middle of the
 jaw ridge, and the ridge is only 6.13 mm wide (4.99 at its narrowest). A
-3.5 mm trough centred on the tooth positions breaks through the palate for
-81% of its length. Centred on the ridge instead, the same 3.5 mm clears
+3.5 mm trough centerd on the tooth positions breaks through the palate for
+81% of its length. Centerd on the ridge instead, the same 3.5 mm clears
 everywhere but 2% of samples, and the finished skull's thinnest wall is
 0.40 mm -- exactly what the untouched skull already had, so the trough takes
 nothing away from what the designer shipped.
@@ -308,7 +308,7 @@ def trough(mesh, paint, width=WIDTH, depth=DEPTH, regions=None,
     # a tooth is a cone, so its own convex hull is the tooth
     cuts = [mesh.submesh([r], append=True).convex_hull for r in regions]
     cuts += channel(mesh, tooth_frames(mesh, regions), regions=regions,
-                    width=width, depth=depth, over=1.0, centre=True,
+                    width=width, depth=depth, over=1.0, center=True,
                     depth_max=depth_max, **extra)
     u = trimesh.boolean.union(cuts, engine="manifold")
     was = len(mesh.split(only_watertight=False))
@@ -441,7 +441,7 @@ def main():
     print(json.dumps({"ok": True, "parts": names, "file": os.path.basename(out),
                       "span": [round(float(ext[0]), 1), round(float(ext[1]), 1)],
                       "height": round(float(ext[2]), 1),
-                      "single_colour": True, "detail": rep}))
+                      "single_color": True, "detail": rep}))
     return 0
 
 

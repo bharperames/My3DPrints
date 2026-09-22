@@ -396,7 +396,7 @@ def stator(specimen=SPECIMEN):
         x, y, _ = polar(FOOT_R, a)
         tools.append(cyl(FOOT_D / 2.0, -BASE_T - 1, -BASE_T + FOOT_DEPTH,
                          x, y))
-    # the pawl's two M3 inserts, on the pawl's own centreline
+    # the pawl's two M3 inserts, on the pawl's own centerline
     for r_ in pawl_screws():
         x, y, _ = polar(r_, PAWL_PHI)
         tools.append(cyl(INS_M3[0], -INS_M3[1], 1.0, x, y, 48))

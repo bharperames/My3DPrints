@@ -83,7 +83,7 @@ KEY_DEPTH = 5.0        # hex engagement inside the counterbore
 # the bar they thread into — the block is the wrench — so their heads never
 # need to be touched and sit flush. The last one has no free bar left to
 # turn it, and flush in a 19.7 mm counterbore its 16.6 mm hex leaves three
-# tenths of a millimetre at the corners: no finger reaches it and no socket
+# tenths of a millimeter at the corners: no finger reaches it and no socket
 # driver could be printed thin enough to go over it. So that head, and only
 # that head, stands proud enough to take fingers.
 #
@@ -100,7 +100,7 @@ PROUD_LEADS = 1
 # thread wants and what the printed seed cube proved, but a hole the bolt
 # only has to pass through wants more: it is printed horizontally, where the
 # crown of a 12 mm hole droops, and any binding there fights every joint.
-# So the clearance bore is opened to 0.5 mm radial -- a whole millimetre on
+# So the clearance bore is opened to 0.5 mm radial -- a whole millimeter on
 # diameter -- and the threaded bore is left exactly where it was proved.
 CLEAR_RADIAL = 0.50
 def thread_for(major_d):
@@ -237,7 +237,7 @@ def assemble(t, a, entry="free", gap=FACE_GAP, slip=None,
     and it can be turned the last half turn once the second bar is in.
     Measured: parked between a quarter and three quarters of a turn short,
     the second bar sweeps free over its whole engagement, where at home it
-    jams after three millimetres. So the finished object keeps exactly one
+    jams after three millimeters. So the finished object keeps exactly one
     release, and one head standing proud.
 
     Which matters more than it sounds. A joint closes by turning either the

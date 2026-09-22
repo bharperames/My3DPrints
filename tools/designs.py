@@ -93,7 +93,7 @@ add("dragon_skin", "Dragon+Skin+225+pz+P2S.3mf", "dragon_skin",
     "height from 0.08 to 0.28 mm over the 9.8 mm height, Arachne walls and a "
     "Hilbert-curve bottom surface. It is not only prettier \u2014 their own "
     "slice recorded 90.6 g against the 99.2 g a flat 0.2 mm gives here. "
-    "Original by @SKFactory on Printables, shared under a licence that allows "
+    "Original by @SKFactory on Printables, shared under a license that allows "
     "it with attribution. Retargeted to the P2S here, and the profile came "
     "across whole: sliced on this machine the gcode runs 73 layers at twenty "
     "different thicknesses, 0.08 to 0.27 mm.",

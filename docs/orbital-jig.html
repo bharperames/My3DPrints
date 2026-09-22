@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
 <style>
   /* The shop is dark-only: these are its own ground, panel and ink
-     tokens, so this page reads as one of its rooms. Part colours were
+     tokens, so this page reads as one of its rooms. Part colors were
      picked against the dark scene ground, hardware included -- a
      near-black phone on a near-black ground disappears. */
   :root {
@@ -216,9 +216,9 @@ addEventListener('error', e => errors.push(String(e.message || e)));
 /* ---------- the printed file, and the assembly written inside it ---------- */
 const Q = new URLSearchParams(location.search);
 /* The specimen comes first, because the jig is built for it: the dial is
-   how far the specimen's centre sits above the platform, and the page
+   how far the specimen's center sits above the platform, and the page
    reads that off the mesh rather than guessing. A scanned tooth in
-   models/specimen/ (glTF, y up, millimetres, base at y = 0); without one,
+   models/specimen/ (glTF, y up, millimeters, base at y = 0); without one,
    a drawn stand-in. */
 const SPECIMEN_GLB = '../models/specimen/' + (new URLSearchParams(location.search).get('file') || 'BigMeherrin.glb');
 let specimenMesh = null, specimenInfo = null;
@@ -484,7 +484,7 @@ function toothGeometry() {
 }
 let tooth;
 if (specimenMesh) {
-  // base on the platform, centred on the pedestal; the focal point is
+  // base on the platform, centerd on the pedestal; the focal point is
   // then `specimen` mm above the platform, which the jig was built for
   const holder = new THREE.Group();
   holder.add(specimenMesh);

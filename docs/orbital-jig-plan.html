@@ -87,7 +87,7 @@
   <a href="orbital-jig.html">the capture animation →</a>
 </header>
 <main>
-<p class="lead">The jig as printed turns by hand and changes elevation by loosening a thumbscrew. This is the study for the three things that would make it a machine: moving the carriage up and down the arc, turning the rotor, and getting the phone or the α1 to fire at the right moment and hand back the frames as one thing. It also takes the specimen mount seriously, because the tooth is the point and the spec gave it twenty millimetres of platform and no more thought.</p>
+<p class="lead">The jig as printed turns by hand and changes elevation by loosening a thumbscrew. This is the study for the three things that would make it a machine: moving the carriage up and down the arc, turning the rotor, and getting the phone or the α1 to fire at the right moment and hand back the frames as one thing. It also takes the specimen mount seriously, because the tooth is the point and the spec gave it twenty millimeters of platform and no more thought.</p>
 
 <nav class="toc">
   <a href="#loads"><b>1</b>What the drives have to move</a>
@@ -173,7 +173,7 @@
 <ul>
   <li>Holding: a 26 N·cm NEMA 17 on a 16-tooth GT2 pulley (5.1 mm pitch radius) holds 51 N, three times the 15 N load, energized. Unpowered it holds nothing, so the notches from option A stay, or the firmware keeps the elevation motor energized at reduced current between rings (TMC2209 hold current at 30% is 8 N·cm, still 16 N).</li>
   <li>Resolution: 3,200 microsteps per 32 mm of belt is 0.01 mm, or 0.004° at r = 155. Meaningless precision; what matters is repeatability, and a belt repeats to a tooth.</li>
-  <li>Belt length: the slot spans 4° to 86°, 222 mm of arc at r = 155, so the loop is about 480 mm plus the idlers. One metre of open belt covers it with a splice clamp printed into the shoe.</li>
+  <li>Belt length: the slot spans 4° to 86°, 222 mm of arc at r = 155, so the loop is about 480 mm plus the idlers. One meter of open belt covers it with a splice clamp printed into the shoe.</li>
   <li>Cost to the print: two idler posts on the arc (M4 axles, the same 608-style top-hat sleeves or GT2 idlers with their own bearings), a motor mount on the leg, a belt clamp on the shoe. The arc still fits its plate.</li>
 </ul>
 
@@ -191,12 +191,12 @@
 <div class="verdict"><p><strong>Build A now and B when a motor is on the table.</strong> They compose: the notches remain the unpowered hold and the belt does the moving. The carriage's thumbscrew stays for the α1, where the exposure is long enough to see a vibration.</p></div>
 
 <h2 id="az"><b>3</b>Turning the rotor</h2>
-<p>The ring's outside is taken: the bearing race is in the middle of its 18 mm edge, and the 2.3 mm lips above and below it are too thin to carry teeth. The inside is free. The bore is 180 mm, and nothing is in it but the pedestal at the centre and the detent dimples, which are on the underside out at r = 95.</p>
+<p>The ring's outside is taken: the bearing race is in the middle of its 18 mm edge, and the 2.3 mm lips above and below it are too thin to carry teeth. The inside is free. The bore is 180 mm, and nothing is in it but the pedestal at the center and the detent dimples, which are on the underside out at r = 95.</p>
 
 <h3>A · Internal ring gear in the bore, pinion on the base <span class="tag rec">recommended</span></h3>
 <p>Module-1 teeth cut into the bore make a 178-tooth internal gear (pitch diameter 178 mm). A 16-tooth pinion on a NEMA 17 standing on the base at r = 81 meshes with it, hidden inside the ring, turning the same direction as the ring at 11.1:1. The teeth are 18 mm tall, printed vertically, which is the best orientation a printed gear can have. The dimples, at r 92 to 98 on the underside, do not meet the teeth, which end at r = 91.</p>
 <figure>
-<svg viewBox="0 0 720 440" role="img" aria-label="Top view of the rotor ring with an internal ring gear on its bore, a pinion and motor on the base inside the ring, three idler bearings outside, and the arc's footprint offset from the centre">
+<svg viewBox="0 0 720 440" role="img" aria-label="Top view of the rotor ring with an internal ring gear on its bore, a pinion and motor on the base inside the ring, three idler bearings outside, and the arc's footprint offset from the center">
   <g transform="translate(300,220)">
     <!-- ring at 0.85 px/mm: r 90..121 -->
     <circle r="103" fill="none" stroke="#4F9A88" stroke-width="26"/>
@@ -257,7 +257,7 @@
 <p>Self-locking, so the rotor holds against the camera's lopsided load with the power off, which is a real virtue. But the rim is taken by the race, a printed worm mesh is the least tolerant of any printed gear, and at 240:1 the ring turns 10° in about 1.3 s at a motor speed that is already near a stepper's torque cliff. If holding unpowered ever matters, a friction brake on the ring's top face is cheaper than a worm.</p>
 
 <h3>D · GT2 belt round the rim</h3>
-<p>Teeth printed on the rim at 2 mm pitch, 380 of them, are one-millimetre features at the edge of what a 0.4 mm nozzle draws cleanly, and again the rim is where the race lives. Ruled out by the race more than by the teeth.</p>
+<p>Teeth printed on the rim at 2 mm pitch, 380 of them, are one-millimeter features at the edge of what a 0.4 mm nozzle draws cleanly, and again the rim is where the race lives. Ruled out by the race more than by the teeth.</p>
 
 <div class="verdict"><p><strong>Internal ring gear, module 1, 178 teeth, 16-tooth pinion.</strong> It uses the one free surface, hides the drive, and keeps every cable on the stator. The pawl stays.</p></div>
 
@@ -295,7 +295,7 @@
 </div>
 
 <h2 id="mount"><b>6</b>Holding the tooth</h2>
-<p>The mount has three jobs that pull against each other: hold a 130 mm fossil still to a tenth of a millimetre through 108 settles, touch as little of it as possible so that what it touches is small enough to fill from the other pass, and be invisible to the reconstruction, which means matte, black, and featureless. A fourth job appears the moment the tooth is bigger than the frame: the mount has to work in two orientations, because no ring on this jig ever sees the underside of the root.</p>
+<p>The mount has three jobs that pull against each other: hold a 130 mm fossil still to a tenth of a millimeter through 108 settles, touch as little of it as possible so that what it touches is small enough to fill from the other pass, and be invisible to the reconstruction, which means matte, black, and featureless. A fourth job appears the moment the tooth is bigger than the frame: the mount has to work in two orientations, because no ring on this jig ever sees the underside of the root.</p>
 
 <h3>What does not work, and why</h3>
 <ul>
@@ -305,7 +305,7 @@
 </ul>
 
 <h3>The specimen head system <span class="tag rec">recommended</span></h3>
-<p>The pedestal's 20 mm platform becomes a socket: a 1/4-20 brass insert in the top, the same part the receiver uses, and a family of heads that screw onto it. Every head is printed in matte black PETG and painted with Black 3.0 or Musou, which is what the spec asked for on the pedestal and which matters more here, ten millimetres from the enamel. The focal-height dial already absorbs a head's height.</p>
+<p>The pedestal's 20 mm platform becomes a socket: a 1/4-20 brass insert in the top, the same part the receiver uses, and a family of heads that screw onto it. Every head is printed in matte black PETG and painted with Black 3.0 or Musou, which is what the spec asked for on the pedestal and which matters more here, ten millimeters from the enamel. The focal-height dial already absorbs a head's height.</p>
 <div class="tablewrap">
 <table>
   <tr><th>head</th><th>holds</th><th>contact with the tooth</th><th>use</th></tr>
@@ -330,7 +330,7 @@
   <li><strong>The intrinsics, per frame.</strong> iOS delivers the 3×3 camera matrix with each photo when <code>isCameraIntrinsicMatrixDeliveryEnabled</code> is set on the connection. It changes frame to frame because the stabilizer moves the lens, and focus breathing changes the focal length. A reconstruction that assumes one fixed camera absorbs that as error.</li>
   <li><strong>The locks.</strong> Focus at a fixed lens position (<code>setFocusModeLocked</code>), exposure at a fixed duration and ISO, white balance fixed, 48 MP with <code>maxPhotoDimensions</code>, ProRAW if the pipeline wants it. Every frame identical except for where the camera is.</li>
   <li><strong>Settle, measured.</strong> The gyroscope says when the rotor has stopped ringing, per frame, instead of a fixed 200 ms.</li>
-  <li><strong>The pose prior.</strong> The jig's kinematics give each frame's camera position to a millimetre and its orientation to a fraction of a degree before any image is looked at. Written into the manifest, they seed structure-from-motion instead of leaving it to guess, and they catch a frame that was taken at the wrong index.</li>
+  <li><strong>The pose prior.</strong> The jig's kinematics give each frame's camera position to a millimeter and its orientation to a fraction of a degree before any image is looked at. Written into the manifest, they seed structure-from-motion instead of leaving it to guess, and they catch a frame that was taken at the wrong index.</li>
   <li><strong>The mask.</strong> iOS 17's Vision foreground-instance request lifts the specimen off the tent background on the phone, so every frame ships with a mask. The matte black head and the white tent make that mask nearly free, and the masks are what let the two passes register as one object.</li>
 </ul>
 

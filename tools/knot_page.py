@@ -105,7 +105,7 @@ def head_collider(t, a, gap=k.FACE_GAP):
     twentieth of real time. The shortcut has to go the right way, though,
     and twice it did not. Shrinking the end rings to the chamfer's
     circumradius pulls the FLATS in by 0.7 mm; so does cutting a 45 degree
-    chamfer plane. Both leave a hundred cubic millimetres of real head
+    chamfer plane. Both leave a hundred cubic millimeters of real head
     outside its own collider, which is a simulation looser than the part.
 
     The head's chamfer takes its CORNERS off, not its flats: the barrel
@@ -119,7 +119,7 @@ def head_collider(t, a, gap=k.FACE_GAP):
     head = trimesh.creation.extrude_polygon(t.hexagon(t.hex_cr), t.head_h)
     # and the length of shank between the head and the block's face, which
     # spans the gap between two blocks and is inside neither the block's box
-    # nor the head. Left out, seventy-five cubic millimetres of real bolt
+    # nor the head. Left out, seventy-five cubic millimeters of real bolt
     # had no collider at all, in exactly the place two blocks meet.
     span = (a / 2.0 + gap) - (x0 + t.head_h)
     ang = np.radians(np.arange(12) * 30.0 + 15.0)
@@ -141,7 +141,7 @@ def mesh_json(m):
 def ring_poly(r, n=12):
     """A polygon that CONTAINS the circle of radius r.
 
-    For a HOLE that is the loose direction: the modelled bore is a couple of
+    For a HOLE that is the loose direction: the modeled bore is a couple of
     tenths wider than the real one at the polygon corners, so a shank has
     more room in the simulation than in the print. For a "does it hold"
     test that is the safe way to be wrong.
@@ -282,7 +282,7 @@ def build(thread=12.0, design="burr", entry=None):
              "title": "Start with the blue bar",
              "text": "Three bars, four distinct parts. A threaded bore runs "
                      "the length of each; across it, a clearance bore with a "
-                     "counterbore at the outer face. Colours are only so the "
+                     "counterbore at the outer face. Colors are only so the "
                      "steps can name them."},
             {"parts": ["bolt0"], "from": list(-L[0] * BIG), "to": [0, 0, 0],
              "title": "Push the red bolt into the blue bar",
@@ -297,7 +297,7 @@ def build(thread=12.0, design="burr", entry=None):
              "title": "Turn the red bar on — but stop a quarter turn short",
              "text": "The bolt is keyed in the blue bar and cannot rotate, so "
                      "the red bar is the wrench. It is deliberately left "
-                     "three millimetres proud, which on a four millimetre "
+                     "three millimeters proud, which on a four millimeter "
                      "lead is three quarters of a turn: that lays the red "
                      "bar alongside the blue one, pointing the same way. A "
                      "bar swung about its own line sweeps a 45 mm radius, "
@@ -322,7 +322,7 @@ def build(thread=12.0, design="burr", entry=None):
              "screw": True, "engage": park, "line": 0,
              "title": "Swing the red bar down the last quarter turn",
              "text": "Now that the green bar is in, the red bar has room to "
-                     "finish. Three millimetres, a quarter turn, and it "
+                     "finish. Three millimeters, a quarter turn, and it "
                      "swings down off the blue bar's flank into place. The "
                      "three bars are square."},
             {"parts": ["bolt2"], "from": list(-L[2] * BIG), "to": [0, 0, 0],
@@ -357,7 +357,7 @@ def build(thread=12.0, design="burr", entry=None):
     d["hold"] = [f"unit{i}" for i in range(3)]
     # The burr's sequence, from an all-directions sweep of the real meshes:
     # every body pushed along 406 directions including the six exact axes,
-    # at a twentieth of a millimetre. Assembled, exactly one moves.
+    # at a twentieth of a millimeter. Assembled, exactly one moves.
     sl = slot + 0.20
     d["steps"] = [
         {"unit": "unit2", "from": [0, 0, 0], "to": [0, 0, 0],

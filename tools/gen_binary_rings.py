@@ -16,7 +16,7 @@ band standing at bit height is a 1; floor showing through is a 0.
 
 The reader has five plungers, each at its own radius so that the code reads
 at any rotation, and one of them sits on the axis. So the coding is five bit
-positions: a disc at the centre and four rings around it. The lip outside
+positions: a disc at the center and four rings around it. The lip outside
 them and the land outside that are structure -- neither ever carries a bit:
 
     bit 1    0      -> 2.375     Oe4.75    a disc, not a ring
@@ -62,15 +62,15 @@ the direction: a taller RELIEF would make 31 harder, not easier. Nothing to
 adjust.
 
 The bits are numbered from the middle out, the way the toys are talked
-about: bit 1 is the centre disc and bit 5 the outermost ring. In the code
-they are worth 1, 2, 4, 8 and 16, so an odd code is one with its centre
+about: bit 1 is the center disc and bit 5 the outermost ring. In the code
+they are worth 1, 2, 4, 8 and 16, so an odd code is one with its center
 standing and an even one has a pocket there.
 
 THE CENTRE IS A BIT
 
-It was modelled as a permanent solid nub until the animals said otherwise.
+It was modeled as a permanent solid nub until the animals said otherwise.
 The photographed ends in assets/zootalkers/ settle it both ways round: camel
-and tiger stand a boss at the centre, polar bear, turtle, koala and ostrich
+and tiger stand a boss at the center, polar bear, turtle, koala and ostrich
 sink a pocket there. It varies, so it is code, and reading it as structure
 cost the field a position it does not have.
 
@@ -110,7 +110,7 @@ code 0 disk. The set is 1 to 31. A code reads outward from the middle:
     code 10 = bits 2 and 4 = space, ring, space, ring, space
     code 14 = bits 2, 3, 4 = space, then one plateau three rings wide
 
-Read off the toys: tiger has its centre standing and seal has a pocket
+Read off the toys: tiger has its center standing and seal has a pocket
 there, so tiger is odd and seal is even. Koala carries everything but bits
 1 and 5, which is code 14 -- and it looks like it, a wide plateau with a
 pocket in the middle and floor showing outside it.
@@ -118,12 +118,12 @@ pocket in the middle and floor showing outside it.
 Counted off the reader (assets/zootalkers/reader-base.jpg) the plungers come
 to five, at radii of roughly 0.7, 4.0, 6.3, 8.1 and 10.9 on a Oe28 bore.
 Those radii are crude -- they are scaled off a photograph -- but the count
-is not, and five positions with the centre among them give the 31 speaking
+is not, and five positions with the center among them give the 31 speaking
 codes.
 
 WHAT THE MEASUREMENTS PIN, AND WHAT THEY DO NOT
 
-Pinned: the centre disc (Oe4.75), the field's outer edge (Oe27.88) and the
+Pinned: the center disc (Oe4.75), the field's outer edge (Oe27.88) and the
 lip (Oe33.30) are direct readings. The span from the disc's outer edge to
 the inner edge of an outer ring reads 8.44, which puts a ring boundary at
 r 10.8125 and so splits the field into 8.4375 inside and 3.1275 outside.
@@ -163,9 +163,9 @@ that is slightly too short feels like. So the rim is now the largest reading
 -- 11.75, against 11.66 / 11.70 / 11.30 and a later "almost 12" -- rather
 than their mean, and the relief follows it up through the same 7.78 drop.
 
-That is the whole of the licence the measurements give, and it is worth
+That is the whole of the license the measurements give, and it is worth
 being exact about where it ends. The readings bracket the relief between
-3.74 (the centre disc, read directly off the bore floor) and 4.32 (a bit
+3.74 (the center disc, read directly off the bore floor) and 4.32 (a bit
 ring, read the same way and long set aside as an outlier); 3.97 sits inside
 that bracket. 4.32 is where to go next if a press is still wanted, and it
 needs the rim at "almost 12" to stay arithmetically honest.
@@ -182,7 +182,7 @@ That supersedes an earlier rim-to-bit gap of 8.20 and the 3.35 it implied:
 off a bit ring remains the outlier, and remains set aside.
 
 The flange's top edge is slightly chamfered on the toy. That is deliberately
-not modelled -- a printed edge picks up about that much rounding unasked.
+not modeled -- a printed edge picks up about that much rounding unasked.
 
 PRINTING
 
@@ -245,7 +245,7 @@ NOZZLE = 0.4
 NUB_DIA = 4.75           # measured
 OUTER_DIA = 33.30        # measured -- the flange, not a bit
 INNER_DIA = 27.88        # measured -- where the coding stops
-BANDS = 5                # bit positions: a centre disc and four rings
+BANDS = 5                # bit positions: a center disc and four rings
 # The four rings, innermost out. Bit 0 is the disc inside them, whose radius
 # is NUB_DIA/2. See the note above on what the measurements fix (the sum,
 # and one boundary) and what is a choice (the split inside that boundary).
@@ -322,7 +322,7 @@ RIM_INNER = 12.19        # where the boss's raised rim begins. The band
 
 
 def midpoint_edges(plungers=PLUNGER_R, nub_dia=NUB_DIA, rim_inner=RIM_INNER):
-    """Band boundaries halfway between neighbouring plungers.
+    """Band boundaries halfway between neighboring plungers.
 
     Each band then owns exactly one plunger and every plunger is as far
     from an edge as the spacing allows. That is the whole job, and the grid
@@ -387,7 +387,7 @@ def parse_codes(spec, limit=2 ** BANDS, include_zero=False):
     side switches fully depressed *and* at least one bit standing, so a
     disc with nothing set is silent by the toy's own rule. It is still
     buildable — `--codes 0` gets it — because a silent disc is exactly
-    what a probe for the switch behaviour wants. It just has no business
+    what a probe for the switch behavior wants. It just has no business
     taking a slot on a plate of thirty-two animals.
     """
     out = set()
@@ -426,7 +426,7 @@ def plate_cols(n, pitch, bed=BED, margin=PLATE_MARGIN, gap=PLATE_GAP):
 
 def edges(widths=WIDTHS, outer_dia=OUTER_DIA, land=LAND,
           inner_dia=INNER_DIA, nub_dia=NUB_DIA):
-    """Outer radius of every band: the centre disc, its four rings, the rim
+    """Outer radius of every band: the center disc, its four rings, the rim
     relief, the lip and the land. The first entry is bit 0's own edge, not a
     preamble to the code -- the disc is a bit like the rings are.
 
@@ -450,7 +450,7 @@ def edges(widths=WIDTHS, outer_dia=OUTER_DIA, land=LAND,
 def bands(code, floor, bit_h, rim_h, land_h=None, n_relief=0):
     """Top height of each band, walking outward from the axis.
 
-    Every one of the five carries code, the centre disc included: the
+    Every one of the five carries code, the center disc included: the
     reader has a plunger on the axis and it reads what is under it like any
     other. The lip and the land outside them are structure -- the lip
     presses the switch that starts a read, the land is the flat the toy's
@@ -497,7 +497,7 @@ def profile(code, edge, floor, bit_h, rim_h, kerf, land_h=None):
 
 
 def _glyph_outline(text, size):
-    """Digits as one shapely polygon, centred on the origin.
+    """Digits as one shapely polygon, centerd on the origin.
 
     matplotlib hands back a flat list of contours with no nesting, so the
     counters in 0, 6, 8 and 9 arrive as ordinary rings and would fill in.
@@ -551,7 +551,7 @@ def build(code, floor=FLOOR, relief=RELIEF, rim=RIM, kerf=0.0, slack=SLACK,
         raise ValueError(f"code must be 0-{2 ** BANDS - 1}")
     if len(widths) != BANDS - 1 or any(w <= 0 for w in widths):
         raise ValueError(f"need {BANDS - 1} positive ring widths (bit 0 is "
-                         f"the centre disc, whose radius is its own), "
+                         f"the center disc, whose radius is its own), "
                          f"got {widths}")
     if floor < 3 * NOZZLE:
         raise ValueError(f"floor {floor:.2f} mm is under three nozzle widths "
@@ -685,7 +685,7 @@ def probe(a, b, label, **kw):
     tail, lead = outer - b, a - NUB_DIA / 2
     # Which band carries the ring depends on where it is, because the bands
     # that are NOT the ring still have to have a width. Near the axis there
-    # is no room inside the ring, so the centre disc shrinks to the probe's
+    # is no room inside the ring, so the center disc shrinks to the probe's
     # inner radius and the ring takes the first ring position. Near the rim
     # there is no room outside it, so the ring takes the last position and
     # the space inside is divided three ways. Either way every other band is
@@ -704,7 +704,7 @@ def probe(a, b, label, **kw):
 def test_plate(out, **kw):
     """One plate that answers every open question about this reader.
 
-    P0 is the centre disc alone. P1.. sweep a single ring outward across the
+    P0 is the center disc alone. P1.. sweep a single ring outward across the
     whole field, which locates all five plungers and, where they stop
     speaking, locates whatever it is out at the rim that swallows a read.
     Then three real codes: 16 is the reported failure with the new relief

@@ -188,7 +188,7 @@ scene.background = new THREE.Color(
 const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-const C = D.a;                                   // assembly centre
+const C = D.a;                                   // assembly center
 camera.position.set(C+150, C+110, C+150);
 controls.target.set(C, C, C);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 2.0));
@@ -255,7 +255,7 @@ for (const key of Object.keys(D.colliders)){
   body.position.set(c.x, c.y, c.z);
   body.linearDamping = 0.25; body.angularDamping = 0.85;
   // A bolt's shank lies inside its own bar's threaded bore, so their
-  // colliders overlap by three cubic centimetres by design — that pair is
+  // colliders overlap by three cubic centimeters by design — that pair is
   // held together by a THREAD, which no convex solid can express, and it
   // must never be resolved as a contact or the solver flings them apart.
   // One filter group per threaded pair, masked against itself.
@@ -397,7 +397,7 @@ function apply(off, upto){
 
     u.body.velocity.setZero(); u.body.angularVelocity.setZero();
     // Only a part that is actually IN the assembly carries a screw
-    // rotation. One still waiting off-stage is staged tens of millimetres
+    // rotation. One still waiting off-stage is staged tens of millimeters
     // out along its line, and applying the rule there spun it to whatever
     // angle that distance happened to work out to — a part lying on the
     // bench, visibly cocked over for no reason.
@@ -536,7 +536,7 @@ document.getElementById('shake').onclick = () => {
   const c = new CANNON.Vec3(0,0,0);
   for (const u of units) c.vadd(u.body.position, c);
   c.scale(1/3, c);
-  shaking = {t:0, worst:0, phase:-1, centre:c, pen:0, force:PULL_F, torque:PULL_T, secs:PULL_S,
+  shaking = {t:0, worst:0, phase:-1, center:c, pen:0, force:PULL_F, torque:PULL_T, secs:PULL_S,
              home:units.map(u => u.body.position.clone())};
   hud.textContent = 'pulling…';
 };
@@ -570,7 +570,7 @@ function tick(now){
       }
       // Ease the last stretch instead of running at full speed into the
       // stop. Driving flat out and then snapping produced a visible jump on
-      // the last frame; over the final two millimetres the speed tapers.
+      // the last frame; over the final two millimeters the speed tapers.
       const near = Math.max(0, Math.min(1, (total - gone) / 2.0));
       running.ease = 0.12 + 0.88 * near;
       if (running.skip || gone >= total - 0.02){
@@ -600,7 +600,7 @@ function tick(now){
       } else {
         // Two phases. The bar is carried up to the protruding thread at
         // approach speed and does not turn at all; only over the last
-        // `engage` millimetres, the length the thread actually bites, does
+        // `engage` millimeters, the length the thread actually bites, does
         // it turn — at a hand's pace, with travel coupled to the lead.
         const threading = !!running.lead && (total - gone) <= running.engage;
         const v = (threading ? Math.abs(running.lead)*TURNS_PER_SEC : SPEED)
@@ -647,13 +647,13 @@ function tick(now){
       // Not random shaking: every unit is PULLED, hard, in a direction
       // chosen to take it off the assembly, and the direction is changed
       // every second so the test works through many of them. Phase 0 pulls
-      // each unit straight out from the centre; after that each gets its
+      // each unit straight out from the center; after that each gets its
       // own random direction, plus a random twist.
       const ph = Math.floor(shaking.t);
       if (ph !== shaking.phase){
         shaking.phase = ph;
         shaking.pull = units.map((u, i) => {
-          if (ph === 0) return u.body.position.vsub(shaking.centre).unit();
+          if (ph === 0) return u.body.position.vsub(shaking.center).unit();
           const v = new CANNON.Vec3(Math.random()-.5, Math.random()-.5, Math.random()-.5);
           return v.unit();
         });
@@ -680,8 +680,8 @@ function tick(now){
       // apart: three units pulled outward do not cancel exactly, so the
       // object rotates 31 degrees as one piece and a world-space metric
       // reads 66 mm of "drift" while the parts have not moved a
-      // half-millimetre relative to each other. What matters is the pose of
-      // each unit in its neighbour's own frame.
+      // half-millimeter relative to each other. What matters is the pose of
+      // each unit in its neighbor's own frame.
       // Only the parts that are meant to hold each other. With six bodies
       // a bolt's own pose inside its bar is not the question — the bars
       // keeping register is.
@@ -701,7 +701,7 @@ function tick(now){
         const held = shaking.worst < 2;
         v.className = 'verdict ' + (held ? 'ok' : 'bad');
         v.textContent = held
-          ? `Held. Eight seconds with every unit pulled outward — straight out from the centre first, then a fresh direction each second. Worst drift out of register: ${shaking.worst.toFixed(2)} mm.`
+          ? `Held. Eight seconds with every unit pulled outward — straight out from the center first, then a fresh direction each second. Worst drift out of register: ${shaking.worst.toFixed(2)} mm.`
           : `Came apart. Pulled outward, the units drifted ${shaking.worst.toFixed(1)} mm out of register — past the ${D.slot_mm.toFixed(1)} mm that opens the ring.`;
         hud.textContent = 'shake finished';
         shaking = false; world.gravity.setZero();
@@ -844,7 +844,7 @@ window.__knot = {
   get verdict(){ return document.getElementById('verdict').textContent; },
                   get axisdev(){ const r=running; if(!r||!r.lead) return null;
     const u=r.movers[0];
-    // how far the body's centre has strayed off the line it should turn on
+    // how far the body's center has strayed off the line it should turn on
     const p=new THREE.Vector3(u.body.position.x,u.body.position.y,u.body.position.z)
       .sub(r.axis);
     const along=r.dir.clone().multiplyScalar(p.dot(r.dir));

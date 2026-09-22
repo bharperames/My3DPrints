@@ -129,8 +129,8 @@ controls.addEventListener('start', () => {
 // model is what is useful while the model is still moving -- and it is what
 // the markup wants: mark on one, keep the other as the reference angle.
 const VARIANTS = [
-  {key: 'a', file: '../models/custom/trex-skull-final.3mf',    colour: 0xE0A268},
-  {key: 'b', file: '../models/custom/trex-body-final-2.5.3mf', colour: 0x5BD6B0},
+  {key: 'a', file: '../models/custom/trex-skull-final.3mf',    color: 0xE0A268},
+  {key: 'b', file: '../models/custom/trex-body-final-2.5.3mf', color: 0x5BD6B0},
 ];
 const groups = {};
 let overlay = false, spin = false, mode = 'edges';
@@ -219,7 +219,7 @@ Promise.all(VARIANTS.map(v => new Promise((ok, no) => loader.load(v.file, ok, un
     obj.rotation.x = -Math.PI / 2;                 // trimesh writes Z up
     obj.traverse(o => { if (o.isMesh){
       if (!o.geometry.getAttribute('normal')) o.geometry.computeVertexNormals();
-      o.material = new THREE.MeshStandardMaterial({color: v.colour,
+      o.material = new THREE.MeshStandardMaterial({color: v.color,
         flatShading: true, roughness: 0.62, metalness: 0.04});
     }});
     groups[v.key] = obj; scene.add(obj);
@@ -245,7 +245,7 @@ function frame(){
   // Fit what the camera will actually see: project the eight corners onto
   // the view basis and size the distance from that, for both the vertical
   // fov and the pane's own aspect. Sizing off the box diagonal and aiming
-  // at a fraction of its height left the model off-centre in every view.
+  // at a fraction of its height left the model off-center in every view.
   const up0 = Math.abs(dir.y) > 0.95 ? new THREE.Vector3(0, 0, 1)
                                      : new THREE.Vector3(0, 1, 0);
   const rt = new THREE.Vector3().crossVectors(up0, dir).normalize();
@@ -262,7 +262,7 @@ function frame(){
   const vf = Math.tan(camera.fov * Math.PI / 360);
   const dist = v.zoom * 1.12 * Math.max(ey / vf, ex / (vf * aspect));
   camera.position.copy(c).add(dir.multiplyScalar(dist));
-  controls.target.copy(c);            // dead centre, every view
+  controls.target.copy(c);            // dead center, every view
   controls.update();
 }
 // What people report as a maximum zoom is the near plane, not the dolly:
@@ -275,7 +275,7 @@ function clip(){
   }
 }
 // Orbiting about the middle of the skull is no use when the thing being
-// inspected is two millimetres of shelf. A click puts the pivot on whatever
+// inspected is two millimeters of shelf. A click puts the pivot on whatever
 // is under the pointer. A drag is not a click, so the threshold matters.
 const ray = new THREE.Raycaster();
 let downAt = null;
@@ -313,7 +313,7 @@ pivot.visible = false; pivot.renderOrder = 10; scene.add(pivot);
    The teeth on this model were found by reading the designer's own
    per-triangle paint out of the 3MF. So a markup that paints triangles is
    not a new kind of artifact -- it is the same one, and the generator can
-   read it back. Colour is the message: what to cut, what to keep, what to
+   read it back. Color is the message: what to cut, what to keep, what to
    look at.                                                                */
 const TAGS = [
   {id: 'cut',  label: 'cut more here', rgb: [0xE5, 0x53, 0x4E]},
@@ -324,7 +324,7 @@ let marking = false, tag = TAGS[0], brush = 1.6;
 let paintMesh = null, paintTag = null, cent = null;
 
 function armPainting(){
-  // one colour attribute per vertex, so a triangle can be coloured on its
+  // one color attribute per vertex, so a triangle can be colored on its
   // own; the geometry has to stop sharing vertices for that to be possible
   if (paintMesh) return;
   const g = groups.b; if (!g) return;
