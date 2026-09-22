@@ -1,40 +1,26 @@
-# models/ is 780 MB and almost all of it is either regenerable or
-# somebody else's work, so it is excluded wholesale and re-included by
-# name. Git cannot re-include a file whose parent directory is
-# excluded, which is why this walks down a level at a time.
+# models/ is 780 MB and none of it belongs in a git history.
 #
 # A file earns a line below by failing one question: can anything in
-# this repository rebuild it? Six do. Everything else stays out --
-# generator cache, card previews, other people's designs on a public
-# repo, work derived from those designs, one-off local exports, and
-# anything a parameterized card already covers, which includes every
-# printed size of a design that has dials.
+# this repository rebuild it? Exactly one does. Everything else is the
+# output of a generator that is committed here -- cache, previews,
+# every printed size of a design that has dials, and every plate off
+# the experimental shelf, which differ from today's build only because
+# the code moved on. That is an argument for committing the code, which
+# is done, not for storing what it printed.
+#
+# The rest is other people's designs on a public repository, work
+# derived from them, and one-off local exports. Git cannot re-include a
+# file whose parent directory is excluded, hence the walk down a level.
 models/*
-!models/experimental/
-models/experimental/*
 
-# The plates a card can no longer rebuild. The rest of the shelf is
-# excluded because a card makes it exactly: check before adding one,
-# by building the card and comparing volume.
-!models/experimental/gazebo-r18-socket-gauge.3mf
-!models/experimental/gazebo-r21-rod-field-petg.3mf
-!models/experimental/movable-xwing-r5-build-your-own.3mf
-
-# The specimen. Three scans of one tooth were on disk -- BigMeherrin and
-# meherrin-textured identical vertex for vertex and sharing both
-# textures, sale145_tooth the same tooth off another bake -- and the
-# pages need exactly one. Nothing here can regenerate it: it came from a
-# scanner, not a generator.
+# The specimen: a photogrammetry bake of one tooth, read at runtime by
+# the stand page, the jig page and gen_tooth_stand. No generator makes
+# it and none ever will -- it came off a scanner. Three copies were on
+# disk; BigMeherrin was identical to this one vertex for vertex and
+# sale145_tooth was the same tooth off another bake.
 !models/specimen/
 models/specimen/*
 !models/specimen/meherrin-textured.glb
-
-# Designed here, and not regenerable -- these are library entries, with
-# no generator behind them. Everything else on the models/ shelf is
-# somebody else's design and this repository is public, so it stays out
-# whatever its license permits.
-!models/held-sphere-chained.3mf
-!models/held-sphere.3mf
 
 *.gcode
 .serve.pid
