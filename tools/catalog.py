@@ -113,6 +113,11 @@ SHELVES = [
               "control for a design on a shelf above."),
     dict(id="library", label="Library",
          note="Files found on disk, indexed and measured. Printable as-is."),
+    dict(id="experimental", label="Experimental",
+         note="Plates kept as numbered iterations of a design still being "
+              "worked out. Each one is what was actually printed, so a "
+              "later revision can be compared against it rather than "
+              "remembered."),
 ]
 
 # --- parts: each resolves to one 3MF on disk -----------------------------
@@ -174,9 +179,15 @@ PARTS = [
               "220/55 — clean first try. The same chain brimless on a "
               "tangent-line foot lifted links a few layers in.",
        out="chain-N{links}-L{len:g}-D{dia:g}-F{foot:g}.3mf"),
-    _p("sphere_stand", "Sphere Stand", "Sphere Stands", "parametric",
+    _p("sphere_stand", "Sphere Stand", "Stands", "parametric",
        "A ring that cradles a ball on a conformal spherical seat. Set the "
        "ball; the rest follow it at a 45 degree contact.",
+       keys="stand display sphere ball",
+       # the three printed sizes on the shelf are this card at three ball
+       # diameters, not three designs. Listing them separately gave four
+       # cards for one thing and buried the configurable one among them.
+       supersedes=["sphere_stand_1.0in.3mf", "sphere_stand_2.0in.3mf",
+                   "sphere_stand_3.0in.3mf"],
        version="1.0.1",
        gen=["gen_sphere_stand.py"], params=[
            dict(key="ball", label="ball", unit="mm", min=8, max=120,
@@ -260,7 +271,7 @@ PARTS = [
        "along every direction, in every combination of two bars moving at "
        "once, and again with rotation over seven thousand random screw "
        "motions, the most any part shifts relative to another is nine "
-       "tenths of a millimetre, which is the clearance it was built with. "
+       "tenths of a millimeter, which is the clearance it was built with. "
        "The only way in is to unscrew something, and a pull cannot turn a "
        "screw. Two of the three bolts are keyed \u2014 head sunk in a "
        "hexagonal counterbore, so the bolt can only turn if its bar turns, "
@@ -271,7 +282,7 @@ PARTS = [
        "which one of three identical faces has the bolt that moves, and "
        "only one of them is live. That one head stands a single thread lead "
        "proud of its face so fingers can reach it \u2014 flush, its hex "
-       "leaves three tenths of a millimetre inside the counterbore and "
+       "leaves three tenths of a millimeter inside the counterbore and "
        "nothing could grip it, and a separate key would be a part that is "
        "not the puzzle. The other two never need touching, because the bar "
        "they thread into is what turns them. Sizing comes from the "
@@ -323,7 +334,7 @@ PARTS = [
        "than 246 because this shop packs with a 5 mm margin and a 3 mm gap "
        "and 246 does not go into that; a 608 has an "
        "8 mm bore and the axle is M4, so each bearing rides a printed sleeve, "
-       "and one sleeve\u2019s bore is a millimetre off-centre for the 2.0 mm "
+       "and one sleeve\u2019s bore is a millimeter off-center for the 2.0 mm "
        "of preload travel the spec asks for. The arc sits outside the ring "
        "and 73 mm above it, and any bridge from the ring\u2019s side pushes "
        "the ring off the plate, so the bridge is the arc\u2019s: a leg and a "
@@ -336,13 +347,14 @@ PARTS = [
        "through 10\u201380 degrees against the arc and its leg, the "
        "whole rotor side through a full turn against the base, each bearing "
        "proved to touch its race and to collide when pushed a third of a "
-       "millimetre in. The pedestal\u2019s top 30 mm drafts inward at 15 "
+       "millimeter in. The pedestal\u2019s top 30 mm drafts inward at 15 "
        "degrees so that at 75 degrees of elevation the camera sees the "
        "platform and nothing under it, measured off the built mesh. PETG, "
        "four or five walls, 25\u201330% gyroid; the base and pedestal in "
        "matte black so they drop out of feature matching. One dial: how far "
-       "the specimen\u2019s centre sits above the platform, which moves the "
+       "the specimen\u2019s center sits above the platform, which moves the "
        "ring\u2019s pad and nothing else.",
+       keys="jig camera scan photogrammetry turntable fossil",
        version="0.1.0",
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
@@ -355,62 +367,61 @@ PARTS = [
        # underside would scar the detent dimples
        brim="off",
        out="orbital-jig-S{specimen:g}.3mf"),
-    _p("tooth_stand", "Tooth stands for the jig", "Designed here",
+    _p("tooth_stand", "Fixed X-wing tooth stands", "Stands",
        "parametric",
-       "A forest of cones for the orbital jig to fly around. The jig holds "
-       "the specimen still and moves the camera, so whatever the tooth sits "
-       "on is in all 108 frames: the mount is an optical part as much as a "
-       "mechanical one. A shark tooth root is bilobate, coming down on two "
-       "lobes with a notch between them, and each lobe presents a face "
-       "rather than a point \u2014 so the tooth rides on FOUR cones, two per "
-       "lobe, fore and aft, and never in the notch, which is exactly where "
-       "the low rings want to see. Each cone is one solid of revolution: a "
-       "flank at 7 degrees included blending through a 2.5 mm fillet onto "
-       "a round pad on its arm, and a tip that is a cup rather than a "
-       "point \u2014 \u00d83 mm and a millimetre deep on the M and L, "
-       "smaller on the XS and S \u2014 holding the dab of museum wax that is "
-       "what actually stops the tooth sliding. "
-       "The taper is held constant by growing the base with the height, "
-       "because a 3.5 mm base is a needle at 12 mm tall and a stump at 24. "
-       "Four sizes, because teeth are not one size: FossilRecord measures "
-       "6,369 of them from 6.6 mm to 252, median 25.9, and the spans here "
-       "come from that \u2014 root width runs about 0.76 of length across "
-       "801 shape-normalised specimens, the cross span is 0.70 of that so "
-       "the tips land on the lobes inboard of the thinning edge, and the "
-       "fore/aft span is 0.55 of the root's thickness. The optical claim is "
-       "gated geometrically rather than cosmetically: nothing on the stand "
-       "rises above the plane of the four dish rims, and the tests prove "
-       "that is the right gate by showing a probe that sees 8% occlusion "
-       "from a post beside the specimen and 0% from a 120 mm disc beneath "
-       "it \u2014 nothing under the contact plane can hide a tooth sitting "
-       "on it from any camera above the horizon. Matte black PETG, solid "
-       "shells, and printed as a plate of four so the fine tips get their "
-       "minimum layer time from the travel between parts. The underside is "
-       "one flat plane: the hub\u2019s 20 mm face sits on the pedestal\u2019s "
-       "20 mm platform and takes the tipping moment, a speck of tac holds "
-       "it there, and off the jig it sits on a table the same way \u2014 so "
-       "the jig itself is unchanged. Nothing keys the rotation on "
-       "purpose: structure-from-motion does not care how the tooth is "
-       "turned, and being able to spin the quadrilateral onto the lobes is "
-       "worth more than an index. Three X-wings sit beside the fixed four: "
-       "scissors: two arms with a cone at each end, both flat on the "
-       "table so all four spires stand on the ground. The lower arm is a "
-       "plain bar; the upper arm\u2019s ends are plain bars joined by a "
-       "connector that bridges over the lower bar and rests on it, and a "
-       "plain \u00d86 printed pin is pressed down through both. The "
-       "upper arm\u2019s ends are relieved only where the lower bar sweeps "
-       "between the closed and open limits, so nothing at the crossing "
-       "stops the swing before the pads meet out at the ends, and the "
-       "range is measured by turning the built arm against the built base "
-       "until they touch, arms alone and with their cones. The pin\u2019s "
-       "squeeze is measured off the built bodies too. A sideways newton at "
-       "any cup stays under 5 MPa, where the spec\u2019s 1.3 mm point read "
-       "37.",
-       version="0.2.0",
+       "A forest of cones for the orbital jig to fly around. The jig "
+       "holds the specimen still and moves the camera, so whatever the "
+       "tooth sits on is in all 108 frames: the mount is an optical "
+       "part as much as a mechanical one. A shark tooth root is "
+       "bilobate, coming down on two lobes with a notch between them, "
+       "and each lobe presents a face rather than a point \u2014 so the "
+       "tooth rides on FOUR cones, two per lobe, fore and aft, and "
+       "never in the notch, which is exactly where the low rings want "
+       "to see. Each cone is one solid of revolution: a flank at 7 "
+       "degrees included blending through a 2.5 mm fillet onto a round "
+       "pad on its arm, and a tip that is a cup rather than a point \u2014 "
+       "\u00d82.8 mm on the M and L, smaller on the XS and S \u2014 holding the "
+       "dab of museum wax that is what actually stops the tooth "
+       "sliding. A sideways newton at any cup reads 9\u201313 MPa against "
+       "PETG\u2019s 50, which is where the tips landed after the first "
+       "printed set came out too thick in the hand. The taper is held "
+       "constant by growing the base with the height, because a 3.5 mm "
+       "base is a needle at 12 mm tall and a stump at 24. Four sizes, "
+       "because teeth are not one size: FossilRecord measures 6,369 of "
+       "them from 6.6 mm to 252, median 25.9, and the spans here come "
+       "from that \u2014 root width runs about 0.76 of length across 801 "
+       "shape-normalized specimens, the cross span is 0.70 of that so "
+       "the tips land on the lobes inboard of the thinning edge, and "
+       "the fore/aft span is 0.55 of the root's thickness. The optical "
+       "claim is gated geometrically rather than cosmetically: nothing "
+       "on the stand rises above the plane of the four dish rims, and "
+       "the tests prove that is the right gate by showing a probe that "
+       "sees 8% occlusion from a post beside the specimen and 0% from a "
+       "120 mm disc beneath it \u2014 nothing under the contact plane can "
+       "hide a tooth sitting on it from any camera above the horizon. "
+       "Matte black PETG, solid shells, and printed as a plate of four "
+       "so the fine tips get their minimum layer time from the travel "
+       "between parts. The underside is one flat plane: the hub\u2019s 20 mm "
+       "face sits on the pedestal\u2019s 20 mm platform and takes the "
+       "tipping moment, a speck of tac holds it there, and off the jig "
+       "it sits on a table the same way \u2014 so the jig itself is "
+       "unchanged. Nothing keys the rotation on purpose: structure- "
+       "from-motion does not care how the tooth is turned, and being "
+       "able to spin the quadrilateral onto the lobes is worth more "
+       "than an index. The L\u2019s own pair of pins came in from 24 mm "
+       "centers to 20.3: printed at 24 they stood 18 mm apart in the "
+       "clear at the feet, and a meg root tapers in faster than that, "
+       "so it dropped past them instead of being held. 20.3 leaves 15 "
+       "mm of clear air, and the posts flex outward a little under a "
+       "root, so the working gap is the wider one. The cones here are "
+       "part of the body and cannot be swapped, so the saw flank is "
+       "drawn into them when --grip saw is asked for rather than "
+       "printed as a loose pair \u2014 for posts you can change your mind "
+       "about, see the movable X-wing. ",
+       keys="stand tooth fossil shark xwing cone jig fixed",
+       version="0.3.0",
        pages=[dict(label="Stand the tooth on it, both ways",
-                   href="docs/tooth-stand.html"),
-              dict(label="Watch the scissors work",
-                   href="docs/xwing.html")],
+                   href="docs/tooth-stand.html")],
        gen=["gen_tooth_stand.py"], params=[
            dict(key="stand", label="sizes", type="checks", val="xs,s,m,l",
                 choices=[
@@ -421,55 +432,271 @@ PARTS = [
                     dict(value="m", label="M",
                          hint="teeth 50\u201395 mm \u2014 38 mm across"),
                     dict(value="l", label="L",
-                         hint="teeth 90\u2013150 mm \u2014 60 mm across"),
+                         hint="teeth 90\u2013150 mm \u2014 60 mm across")])],
+       out="tooth-stand-{stand}.3mf"),
+
+    _p("movable_xwing", "Movable X-wing stands \u2014 build your own",
+       "Stands", "parametric",
+       "Two arms on a pin, with a cone at each end, both flat on the "
+       "table so all four spires stand on the ground. Where the fixed "
+       "stands settle one span and hold it, this one opens: set the "
+       "scissors to the tooth in front of you and the four cups follow. "
+       "The lower arm is a plain bar with a \u00d89 hub and a flat parabolic "
+       "tail \u2014 a foot against tipping back, as the fixed M and L have, "
+       "set square to the crook of the open scissors rather than to the "
+       "bar, and short enough to pass under the upper arm at every "
+       "setting. Its two spires stand on a short band so a rubber band "
+       "can be run round the whole lower half. The upper arm\u2019s ends are "
+       "relieved by that hub\u2019s profile and the channel the lower arm "
+       "sweeps through, cut as a pocket that opens upward when the arm "
+       "prints roof-down, so nothing on it is a bridge. A \u00d83 pin "
+       "presses into the lower arm and turns in the upper, and a second "
+       "pin goes on the plate a tenth fatter through the upper arm "
+       "alone, dimpled on the head, for when the first turns too freely "
+       "to hold a setting against the weight of a tooth. The cones are "
+       "loose pieces standing on their own pedestals, each sliding onto "
+       "a dowel pressed into the arm, with more of the dowel proud than "
+       "buried so the post has something to grip. Every fit is drawn "
+       "for how PETG prints and measured off the built parts, and two "
+       "printed sets have moved all of them: this printer takes about "
+       "0.15 mm off a small vertical hole, so \u00d83 pins now run in \u00d83.15 "
+       "drawn where they press and \u00d83.25 where they turn. Nothing on "
+       "the plate is brimmed: the loose posts stand on a 52 mm\u00b2 foot "
+       "and the dowels on 7 mm\u00b2 of \u00d83, which is bed contact enough, and "
+       "the pins lie on their \u00d87 heads. The first plate brimmed every "
+       "part because brim_type is a plate-wide switch, and that cost "
+       "208 mm of brim to cut off, merged the neighboring posts\u2019 brims "
+       "into one raft, and took a pin\u2019s head with it. --brim turns it "
+       "back on per group if anything ever lifts, and the packer then "
+       "leaves air between one brim and the next. A second flank is "
+       "there to try: --grip saw cuts a ratchet into the posts, one "
+       "barb every 1.2 mm standing 0.35 proud, pointing DOWN, because "
+       "four tapered posts squeezing a tapered root push it up and out "
+       "and the face that has to do work is the one a rising root runs "
+       "into. The barb\u2019s underside stands 39\u00b0 off vertical, so it "
+       "prints with no support, and --both-grips puts both flanks on "
+       "one plate, a smooth pair and a sawn pair, to swap on one arm "
+       "without reprinting the scissors. ",
+       keys="stand tooth fossil shark xwing scissor pivot pin adjustable",
+       supersedes=["movable-xwing-r5-build-your-own.3mf"],
+       version="0.3.0",
+       pages=[dict(label="Stand the tooth on it, both ways",
+                   href="docs/tooth-stand.html"),
+              dict(label="Watch the scissors work",
+                   href="docs/xwing.html")],
+       gen=["gen_tooth_stand.py"], params=[
+           dict(key="stand", label="sizes", type="checks", val="xw_m",
+                choices=[
                     dict(value="xw_s", label="X-wing S",
                          hint="scissors: 12\u201330 mm between the pins"),
                     dict(value="xw_m", label="X-wing M",
                          hint="scissors: 14\u201338 mm between the pins"),
                     dict(value="xw_l", label="X-wing L",
                          hint="scissors: 15\u201361 mm between the pins")])],
-       out="tooth-stand-{stand}.3mf"),
-    _p("specimen_heads", "Specimen heads \u2014 the screw-on study",
-       "Designed here", "parametric",
-       "The other answer to holding the tooth, built so it can be looked at "
-       "beside the cone stands instead of argued about. The jig\u2019s "
-       "platform takes a 1/4-20 brass insert \u2014 the same part the camera "
-       "receiver uses \u2014 and four heads screw onto it: a 30 mm dish "
-       "holding 3 mm of museum putty for anything under about 60 mm; a "
-       "three-pin cradle whose 1.5 mm stainless pins sit in printed collets "
-       "that slide radially, each tipped with a 1 mm silicone bead, for the "
-       "big tooth; a 40 mm cup 25 mm deep with a closed-cell foam liner "
-       "that takes the CROWN so the tooth hangs inverted and its root "
-       "underside \u2014 which no ring on this jig ever sees upright \u2014 "
-       "is fully exposed for a second pass; and a two-jaw chuck on a 60 mm "
-       "opening for slabs, which are not teeth. Measured the same way the "
-       "cone stands are, because the only thing that decides whether a "
-       "mount appears in the frames is whether it rises above the plane the "
-       "specimen rests on. Two of these do not. Two of them do, and on "
-       "purpose: the cup swallows 25 mm of crown to buy the root underside, "
-       "and a chuck grips from the sides by definition. That is the trade "
-       "the cone forest does not make, and the reason to have both.",
-       version="0.1.0",
+       out="movable-xwing-{stand}.3mf"),
+
+    _p("gazebo", "Tooth shaped stand with spikes",
+       "Stands", "parametric",
+       "PLA ONLY. The spikes are springs and they are sized as springs, "
+       "in PLA: \u00d81.6 tips on a flank of a degree and four fifths, "
+       "giving 0.08 mm at the tip under a root\u2019s share of a 500 g "
+       "tooth and taking 10 N before they yield. PETG is half as stiff "
+       "and two thirds as strong, and a set printed that way snapped in "
+       "the hand; a set sized against PETG\u2019s modulus by mistake and "
+       "printed in PLA came out the other way, too rigid to grip at all. "
+       "The material is stated here rather than offered because the part "
+       "does not work without it. "
+       "Six spikes stand on a circle, not on a rectangle, and that is "
+       "the whole idea. The four-cone stands put two cups under each "
+       "lobe of a bilobate root and keep out of the notch between them; "
+       "this one holds the notch. The underside of a root is hollow in "
+       "the middle, and a ring set inside that hollow lets it sink until "
+       "the cups meet the cavity wall all the way round. The wall slopes "
+       "down and outward, so the root centers itself under its own "
+       "weight, and turning the tooth changes nothing because a circle "
+       "has no orientation. The six are spaced three, four and five "
+       "twelfths of a half turn, so the ring offers three slot widths "
+       "rather than one and the tooth can be turned to whichever fits: "
+       "3.0, 4.4 and 5.7 mm of clear air on the S, 4.5, 6.4 and 8.1 on "
+       "the M, and 6.8, 9.4 and 11.8 on the L. "
+       "The pedestal is a shark tooth in plan \u2014 a real one, the "
+       "silhouette of a scanned Meherrin tooth projected along its "
+       "thinnest axis \u2014 and each size is scaled until a tooth at "
+       "the top of its band leans at least 15\u00b0 whichever way it "
+       "goes, so the shape is decoration paid for in grams and not in "
+       "stability. The silhouette stands 2.5 mm proud of the pedestal as "
+       "a relief, blended at both ends so it is a slope rather than a "
+       "step, with the spikes rising out of it. Nothing overhangs, "
+       "nothing needs support or a brim, and nothing is loose.",
+       material="PLA only",
+       keys="stand tooth fossil shark meg spike ring relief pla",
+       supersedes=["gazebo-r21-spiked-stands-pla.3mf"],
+       version="0.2.0",
        pages=[dict(label="Stand the tooth on it, both ways",
-                   href="docs/tooth-stand.html"),
-              dict(label="Watch the scissors work",
-                   href="docs/xwing.html")],
-       gen=["gen_specimen_heads.py"], params=[
-           dict(key="head", label="heads", type="checks",
-                val="putty_disc,pin_cradle,tip_cone,flat_chuck",
+                   href="docs/tooth-stand.html")],
+       gen=["gen_gazebo.py"], params=[
+           dict(key="size", label="sizes", type="checks",
+                val="gz_sg,gz_mg,gz_lg",
                 choices=[
-                    dict(value="putty_disc", label="putty disc",
-                         hint="\u00d830 dish, 3 mm of putty \u2014 upright, "
-                              "under 60 mm"),
-                    dict(value="pin_cradle", label="three-pin cradle",
-                         hint="stainless pins on radial slides \u2014 the "
-                              "big tooth"),
-                    dict(value="tip_cone", label="tip cone",
-                         hint="\u00d840 cup, 25 deep \u2014 inverted, for "
-                              "the root underside"),
-                    dict(value="flat_chuck", label="flat chuck",
-                         hint="two jaws, 60 mm \u2014 slabs, not teeth")])],
-       out="specimen-heads-{head}.3mf"),
+                    dict(value="gz_sg", label="Gazebo S",
+                         hint="teeth 25\u201355 mm \u2014 \u00d812 ring, slots 3.0/4.4/5.7"),
+                    dict(value="gz_mg", label="Gazebo M",
+                         hint="teeth 50\u201395 mm \u2014 \u00d816 ring, slots 4.5/6.4/8.1"),
+                    dict(value="gz_lg", label="Gazebo L",
+                         hint="teeth 90\u2013150 mm \u2014 \u00d822 ring, slots 6.8/9.4/11.8")])],
+       out="gazebo-{size}.3mf"),
+    _p("gazebo_rods", "Tooth shaped base for carbon rods",
+       "Stands", "parametric",
+       "The large ring on its meg-shaped pedestal, with six sockets for "
+       "1 mm carbon fiber rods instead of printed spikes. A rod is about "
+       "five times stiffer than the spike it replaces and half the "
+       "diameter at the tip, so it points where a spike gives, and "
+       "nothing about the base has to flex \u2014 which is why this may "
+       "be printed in either plastic while the spiked stands may not. "
+       "PETG is the better choice for a base that gets handled. The "
+       "sockets are 12 mm deep and the rods cut to 36.5 mm. "
+       "CHOOSE THE FILAMENT, because the socket is drawn to it. A bore "
+       "this small prints about half a millimeter under its drawn size, "
+       "which is nothing like the tenth and a half a \u00d83 hole loses, "
+       "and the loss is a property of the filament rather than of the "
+       "part: read on a gauge with the rod itself, PETG Basic wants "
+       "\u00d81.45, PLA Basic \u00d81.5 and PLA Silk \u00d81.7 for the "
+       "same rod. One tenth either way flips the fit from refusing the "
+       "rod to letting it fall out. A filament with no measurement behind "
+       "it is refused rather than guessed \u2014 print the gauge and it "
+       "becomes one line.",
+       keys="stand tooth fossil carbon rod socket bore petg pla",
+       supersedes=["gazebo-r21-rod-base-petg.3mf"],
+       version="1.0.0",
+       pages=[dict(label="Stand the tooth on it, both ways",
+                   href="docs/tooth-stand.html")],
+       gen=["gen_gazebo.py"], params=[
+           dict(key="size", label="sizes", type="checks",
+                val="gz_sr,gz_mr,gz_lr",
+                choices=[
+                    dict(value="gz_sr", label="S, carbon rods",
+                         hint="teeth 25\u201355 mm \u2014 rods cut to 22.5"),
+                    dict(value="gz_mr", label="M, carbon rods",
+                         hint="teeth 50\u201395 mm \u2014 rods cut to 31.5"),
+                    dict(value="gz_lr", label="L, carbon rods",
+                         hint="teeth 90\u2013150 mm \u2014 rods cut to 36.5")]),
+           dict(key="material", label="filament", type="select",
+                val="petg",
+                hint="Choose the filament \u2014 the socket is drawn to it. "
+                     "A \u00d81 mm bore comes out about half a millimeter "
+                     "under its drawn size, and how much it loses is a "
+                     "property of the plastic, not of the part. One tenth "
+                     "either way is the difference between refusing the "
+                     "rod and letting it fall out.",
+                choices=[
+                    dict(value="petg", label="PETG Basic",
+                         hint="sockets drawn \u00d81.45, measured"),
+                    dict(value="pla_basic", label="PLA Basic",
+                         hint="sockets drawn \u00d81.5, measured"),
+                    dict(value="pla_silk", label="PLA Silk",
+                         hint="sockets drawn \u00d81.7, measured")]),
+       ],
+       out="gazebo-rods-{size}-{material}.3mf"),
+    _p("rod_field", "Carbon Rod Field \u2014 56 configurable holes",
+       "Stands", "parametric",
+       "One part, 56 holes, maximum flexibility for irregular surfaces. "
+       "The holes are laid out as concentric rings whose phase turns "
+       "with the radius, which offers 14 exact rectangles and five "
+       "circles to nest a specimen on \u2014 plant rods where that "
+       "particular root wants them and leave the rest empty. "
+       "A golden-angle spiral was the first idea for the field and the "
+       "scoring says it is the wrong tool: against every rectangle from "
+       "10 x 5 to 51 x 26 mm it misses by 17.2 mm at worst where this "
+       "pattern misses by 8.1, because a spiral is built so that nothing "
+       "ever lines up and a centered rectangle is nothing but lining up. "
+       "PETG is worth it here in particular, since 56 bores leave only "
+       "2.08 mm of wall between them. "
+       "CHOOSE THE FILAMENT, because the socket is drawn to it. A bore "
+       "this small prints about half a millimeter under its drawn size, "
+       "and the loss belongs to the filament rather than to the part: "
+       "read with the rod itself, PETG Basic wants \u00d81.45, PLA Basic "
+       "\u00d81.5 and PLA Silk \u00d81.7. One tenth either way flips "
+       "the fit from refusing the rod to letting it fall out, and a "
+       "filament with no measurement behind it is refused rather than "
+       "guessed.",
+       keys="stand tooth fossil carbon rod socket bore field grid petg pla",
+       supersedes=["gazebo-r21-rod-field-petg.3mf"],
+       version="1.0.0",
+       pages=[dict(label="Stand the tooth on it, both ways",
+                   href="docs/tooth-stand.html")],
+       gen=["gen_gazebo.py", "--size", "gz_rf"], params=[
+           dict(key="material", label="filament", type="select",
+                val="petg",
+                hint="Choose the filament \u2014 the socket is drawn to it. "
+                     "A \u00d81 mm bore comes out about half a millimeter "
+                     "under its drawn size, and how much it loses is a "
+                     "property of the plastic, not of the part. One tenth "
+                     "either way is the difference between refusing the "
+                     "rod and letting it fall out.",
+                choices=[
+                    dict(value="petg", label="PETG Basic",
+                         hint="sockets drawn \u00d81.45, measured"),
+                    dict(value="pla_basic", label="PLA Basic",
+                         hint="sockets drawn \u00d81.5, measured"),
+                    dict(value="pla_silk", label="PLA Silk",
+                         hint="sockets drawn \u00d81.7, measured")]),
+       ],
+       out="gazebo-rod-field-{material}.3mf"),
+    _p("rod_gauge", "Rod socket gauge",
+       "Designed here", "parametric",
+       "A ladder of sockets to read a number off, because two guesses "
+       "cannot find a constant. Eleven bores from \u00d81.0 to \u00d82.0 "
+       "in tenths, twice: one row bored up a slim boss and one straight "
+       "into a solid plate, since those are the two sockets the tooth "
+       "stands use and there is no reason to assume they close by the "
+       "same amount, and a third row repeats the ladder with each bore "
+       "flanked by two more at the rod field\u2019s own spacing. A 5 x 5 "
+       "patch of \u00d81.5 bores at that spacing closes it out: the field "
+       "is the case still unexplained, since its holes sit in a solid "
+       "plate with material to spare and still would not take a rod in "
+       "PETG where the same size up a boss would. Either that is the "
+       "material or it is the crowding, and these rows separate them. "
+       "Every bore is a real socket \u2014 same boss, same "
+       "depth, same lead-in \u2014 so the rod itself reads the answer "
+       "rather than a caliper reading a preview. Push the rod along a "
+       "row from the narrow end: the first bore that takes it without "
+       "force is the size to draw from then on, for that printer, that "
+       "filament and that nozzle. The wedge and the etched sizes say "
+       "which end is which. The ladder starts at the rod\u2019s own "
+       "diameter on purpose: a bore drawn at \u00d81.0 cannot admit a "
+       "1 mm rod after any shrinkage, so the first column is the control "
+       "\u2014 and starting above it, which the first version did, would "
+       "have reported the lowest size on the ladder as the answer "
+       "without ever showing what lay beneath it. It has now been read in three "
+       "filaments on a 0.4 nozzle, and they do not agree: \u00d81.45 in "
+       "PETG Basic, \u00d81.5 in PLA Basic, \u00d81.7 in PLA Silk. In "
+       "PLA Basic, \u00d81.4 refuses the rod and \u00d81.6 lets it drop "
+       "through, so a tenth either side of the answer is the whole "
+       "usable range. The bore comes out about half a millimeter "
+       "under its drawn size, where a \u00d83 hole on the same printer "
+       "loses only 0.15 \u2014 the error is roughly constant in "
+       "millimeters, so it is ruinous at this scale and negligible at "
+       "six. Below \u00d81.2 drawn a bore stops holding a round shape at "
+       "all, which is the floor for any socket.",
+       keys="gauge calibration bore socket fit rod carbon test coupon",
+       version="1.0.0",
+       gen=["gen_gazebo.py", "--size", "gz_gauge"],
+       out="rod-socket-gauge.3mf"),
+    _p("rod_probe", "Rod bore probe",
+       "Designed here", "parametric",
+       "The gauge cut down to one question, for when the filament "
+       "changes and nothing else has. Fourteen bores in half-tenths from "
+       "\u00d81.35 to \u00d82.0, straight into a plate at the rod "
+       "field\u2019s own thickness and depth, labeled every tenth. It is "
+       "75 x 16 mm and prints in a quarter of an hour, which is the "
+       "point: the bore a 1 mm carbon rod wants is a property of the "
+       "filament and not of the part, and two PLAs measured 0.2 mm "
+       "apart. Read it with the rod, then draw sockets to what it says.",
+       keys="gauge calibration bore socket fit rod carbon test coupon",
+       version="1.0.0",
+       gen=["gen_gazebo.py", "--size", "gz_probe"],
+       out="rod-bore-probe.3mf"),
+    
     _p("trex_teeth", "Skeleton T-Rex \u2014 real teeth", "Flexi Factory",
        # A FROZEN FILE, not a generator run. This card used to build on every
        # order, and the build and the bench drifted apart: the generator's
@@ -494,6 +721,7 @@ PARTS = [
        "triangle, so every tooth comes off complete down to the ring where "
        "it meets the jaw. The feet keep their talons on purpose: they are "
        "what the model stands on.",
+       keys="tooth teeth fossil skeleton",
        version="5.0.0",
        path=os.path.join(os.path.dirname(HERE), "models", "custom",
                          "trex-real-teeth-v5.3mf"),
@@ -516,11 +744,11 @@ PARTS = [
        "The reader has five plungers, each at its own radius so the code "
        "reads at any rotation, and one of them sits on the axis \u2014 so "
        "the coding is five positions inside \u00d827.88: a \u00d84.75 disk "
-       "at the centre and four rings around it. That is 2^5 = 32 "
+       "at the center and four rings around it. That is 2^5 = 32 "
        "combinations, but the one with nothing standing gives the reader no "
        "bit to find and stays silent \u2014 so the set is 31 disks, 1 to 31. "
-       "Bit 1 is the centre and bit 5 the outermost "
-       "ring, worth 1, 2, 4, 8 and 16, so an odd code stands its centre up "
+       "Bit 1 is the center and bit 5 the outermost "
+       "ring, worth 1, 2, 4, 8 and 16, so an odd code stands its center up "
        "and an even one sinks a pocket there. The \u00d833.3 lip outside "
        "them carries no code: it "
        "is what presses the switch that starts a read, which the toy takes "
@@ -565,7 +793,7 @@ PARTS = [
        # 4.1.0: relief 3.35 -> 3.77. The nub and the bit rings read 7.78
        #        below the rim together, and the nub reads 3.74 off the bore
        #        floor: two readings 0.03 apart, replacing a single 8.20.
-       # 5.0.0: the centre is a bit, not a permanent nub. The reader has
+       # 5.0.0: the center is a bit, not a permanent nub. The reader has
        #        five plungers, one of them on the axis, and the animals
        #        vary there -- tiger stands a boss, seal sinks a pocket. So
        #        the field is a disk and four rings, not a nub and five
@@ -620,6 +848,63 @@ BY_ID = {p["id"]: p for p in PARTS}
 _LIB_INDEX = {}
 
 
+EXPERIMENTAL = os.path.join(MODELS, "experimental")
+
+
+def experimental(limit=200):
+    """Plates kept as numbered iterations, from models/experimental.
+
+    A design under development throws off a plate every time something
+    changes, and the question a week later is always "which one was
+    that". These are named for it:
+
+        <design>-r<n>-<what changed>.3mf
+
+    They resolve exactly like a library file -- the shop views them and
+    hands the path to the slicer -- so nothing downstream needs to know
+    they are different.
+    """
+    import datetime
+    import hashlib as _h
+    out = []
+    if not os.path.isdir(EXPERIMENTAL):
+        return out
+    skip = superseded()
+    for fn in sorted(os.listdir(EXPERIMENTAL)):
+        if not fn.lower().endswith((".3mf", ".stl")):
+            continue
+        # A plate a card can rebuild exactly is not a second design. These
+        # stay on disk -- they are what went to the slicer -- but the card
+        # is where you ask for them, with every size on by default and the
+        # ones you do not want switched off before it goes to the plate.
+        if fn.lower() in skip:
+            continue
+        path = os.path.join(EXPERIMENTAL, fn)
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        stem = os.path.splitext(fn)[0]
+        m = re.match(r"(.+?)-r(\d+)-(.+)$", stem)
+        if m:
+            design, rev, what = m.group(1), int(m.group(2)), m.group(3)
+            name = (design.replace("-", " ") + " r" + str(rev) + " \u2014 "
+                    + what.replace("-", " "))
+            ver = "0.0." + str(rev)
+        else:
+            design, rev, name, ver = stem, 0, stem.replace("-", " "), "\u2014"
+        day = datetime.date.fromtimestamp(st.st_mtime).isoformat()
+        out.append(_p("exp_" + _h.md5(path.encode()).hexdigest()[:10],
+                      name, "Experimental", "library",
+                      "An iteration of " + design.replace("-", " ")
+                      + ", kept as it was printed.",
+                      version=ver, path=path, size=st.st_size,
+                      changed=day, built=day, iteration=rev, design=design))
+        if len(out) >= limit:
+            break
+    return out
+
+
 def _lib_stamp():
     """What the library is built from: the shelf and the import list."""
     out = []
@@ -629,10 +914,11 @@ def _lib_stamp():
             out.append((f, st.st_size, int(st.st_mtime)))
         except OSError:
             out.append((f, None, None))
-    try:
-        out.append((MODELS, int(os.stat(MODELS).st_mtime)))
-    except OSError:
-        pass
+    for d in (MODELS, EXPERIMENTAL):
+        try:
+            out.append((d, int(os.stat(d).st_mtime)))
+        except OSError:
+            pass
     return tuple(out)
 
 
@@ -649,7 +935,7 @@ def find(part_id):
     if _LIB_INDEX.get("__stamp__") != stamp or part_id not in _LIB_INDEX:
         _LIB_INDEX.clear()
         _LIB_INDEX["__stamp__"] = stamp
-        _LIB_INDEX.update({p["id"]: p for p in library()})
+        _LIB_INDEX.update({p["id"]: p for p in library() + experimental()})
     if part_id in _LIB_INDEX and part_id != "__stamp__":
         return _LIB_INDEX[part_id]
     raise KeyError(part_id)
@@ -907,6 +1193,16 @@ def forget_imports():
         os.remove(IMPORTED)
 
 
+def superseded():
+    """Shelf files a parametric card already covers. They stay on disk --
+    they are what was printed -- but a design is one card."""
+    out = set()
+    for p in PARTS:
+        for f in p.get("supersedes") or []:
+            out.add(f.lower())
+    return out
+
+
 def library(dirs=None, limit=400, include_imported=True):
     """Printable files on disk, as catalog parts.
 
@@ -922,6 +1218,7 @@ def library(dirs=None, limit=400, include_imported=True):
     files_only = []
     if include_imported and dirs == [MODELS]:
         files_only = imported()
+    skip = superseded()
     seen, out = {}, []
     walks = [(d, None) for d in dirs] + [(None, f) for f in files_only]
     for d, one in walks:
@@ -939,6 +1236,12 @@ def library(dirs=None, limit=400, include_imported=True):
                 continue        # the generators' own output: already a part,
                                 # and listing it again puts the same design
                                 # in the catalog twice under two names
+            if "/experimental" in root:
+                continue        # same reason: experimental() already names
+                                # these, and the walk was listing every one
+                                # of them a second time under its raw file
+                                # name -- one plate, two cards, one of them
+                                # reading "gazebo-r21-spiked-stands-pla"
             if "print-shop-order" in root:
                 continue        # a plate this shop exported, downloaded and
                                 # then found again — an order is not a design
@@ -961,6 +1264,8 @@ def library(dirs=None, limit=400, include_imported=True):
                 # for the same object. Two files that merely share a generic
                 # name in unrelated project folders are not folded: "00
                 # start.3mf" means something different in each of them.
+                if fn.lower() in skip:
+                    continue
                 key = low
                 prev = seen.get(key)
                 same_design = prev is not None and (
@@ -1153,7 +1458,8 @@ def sets(parts):
 
 def catalog(with_library=True):
     """One list. A part is a part; some of them have options."""
-    entries = list(PARTS) + (library() if with_library else [])
+    entries = (list(PARTS) + experimental()
+               + (library() if with_library else []))
     prev = previews()
     parts = [enrich(dict(p, **provenance(p)), prev) for p in entries]
     # Every part carries a semver, including the ones nobody here authored.
@@ -1170,6 +1476,12 @@ def catalog(with_library=True):
         p["first_seen"] = e.get("first_seen", "")
         p["version_source"] = ("declared" if p["kind"] != "library"
                                else "observed")
+        # an experimental plate's version IS its iteration number, and the
+        # ledger has no business guessing one for it. The SOURCE stays
+        # "observed": the number is read off the file's name, which is
+        # exactly what observed means for a library entry.
+        if p.get("iteration") is not None:
+            p["version"] = "0.0." + str(p["iteration"])
     # WHAT ORDERING IT ACTUALLY DOES. The three kinds behave differently
     # and the card never said so: a library file is handed over as its
     # author saved it, a design with no dials is one canonical file that

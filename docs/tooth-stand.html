@@ -98,8 +98,8 @@
       </label>
     </div>
     <div class="group">
-      <h2>Screw-on heads — the plan's alternative</h2>
-      <div class="pick" id="pick-head"></div>
+      <h2>Gazebos — a ring of spikes for a hollow root</h2>
+      <div class="pick" id="pick-gazebo"></div>
     </div>
     <div class="group">
       <h2>Show</h2>
@@ -173,22 +173,50 @@ async function loadPart(id, params, metaName) {
 }
 
 hud.textContent = 'building both families from their generators (a few seconds the first time)…';
-let STAND, HEAD;
+// Each family is ordered from the CARD that offers it, which is four
+// cards now that the fixed and movable X-wings, the spiked stands and
+// the rod bases have been split apart. The page used to ask one card
+// for sizes it no longer sells -- it still built, because the generator
+// takes any id, but a page that orders what a card does not list is one
+// validation away from breaking.
+// deduped by id: tooth_stand.json lists the whole family whatever was
+// actually built, so a plain concatenation showed XS S M L twice
+const uniq = (rows) => {
+  const seen = new Map();
+  for (const r of rows) if (!seen.has(r.id)) seen.set(r.id, r);
+  return [...seen.values()];
+};
+const merge = (...ps) => ({
+  meta: Object.assign({}, ...ps.map(p => p.meta), {
+    stands: uniq(ps.flatMap(p => p.meta.stands || [])),
+    xwings: uniq(ps.flatMap(p => p.meta.xwings || [])),
+    sizes:  uniq(ps.flatMap(p => p.meta.sizes  || [])),
+  }),
+  byName: Object.assign({}, ...ps.map(p => p.byName)),
+});
+let STAND, GAZ;
 try {
-  [STAND, HEAD] = await Promise.all([
-    loadPart('tooth_stand', { stand: 'xs,s,m,l,xw_s,xw_m,xw_l' }, 'tooth_stand.json'),
-    loadPart('specimen_heads',
-      { head: 'putty_disc,pin_cradle,tip_cone,flat_chuck' },
-      'specimen_heads.json')]);
+  const [fixed, movable, spiked, rods] = await Promise.all([
+    loadPart('tooth_stand', { stand: 'xs,s,m,l' }, 'tooth_stand.json'),
+    loadPart('movable_xwing', { stand: 'xw_s,xw_m,xw_l' }, 'tooth_stand.json'),
+    loadPart('gazebo', { size: 'gz_sg,gz_mg,gz_lg' }, 'gazebo.json'),
+    loadPart('gazebo_rods', { material: 'pla_basic', size: 'gz_lr' },
+             'gazebo.json')]);
+  STAND = merge(fixed, movable);
+  GAZ = merge(spiked, rods);
 } catch (e) {
   hud.textContent = 'could not build: ' + e.message;
   throw e;
 }
 
 /* ---------- the specimen ---------- */
-let toothGeo = null, toothH = 129, toothHadNormals = null;
+let toothGeo = null, toothH = 129, toothHadNormals = null, toothSrc = null;
 try {
-  const g = await new GLTFLoader().loadAsync('../models/specimen/BigMeherrin.glb');
+  // The photogrammetry bake, not the contour lift: this one carries its
+  // own baseColor textures, and the page was throwing them away and
+  // painting the tooth a flat color instead.
+  const g = await new GLTFLoader().loadAsync(
+    '../models/specimen/meherrin-textured.glb');
   const root = g.scene;
   root.rotation.x = Math.PI / 2;               // glTF is y-up; these parts are z-up
   root.updateMatrixWorld(true);
@@ -199,19 +227,30 @@ try {
     // merge rather than take the first: a glTF may arrive as several
     // meshes, and dropping the rest would quietly show a partial tooth
     toothGeo = geos.length > 1 ? mergeGeometries(geos, false) : geos[0];
-    // The specimen is generated geometry -- lifted from a contour by
-    // FossilRecord's restoration pipeline -- and arrives with no vertex
-    // normals, which renders a lit material flat black. Recorded rather
-    // than assumed, so the page can say which case it hit.
     toothHadNormals = !!toothGeo.getAttribute('normal');
     if (!toothHadNormals) toothGeo = toCreasedNormals(toothGeo, Math.PI / 4);
     toothGeo.computeBoundingBox();
     const b = toothGeo.boundingBox;
-    toothGeo.translate(-(b.min.x + b.max.x) / 2, -(b.min.y + b.max.y) / 2, -b.min.z);
+    const dx = -(b.min.x + b.max.x) / 2, dy = -(b.min.y + b.max.y) / 2,
+          dz = -b.min.z;
+    toothGeo.translate(dx, dy, dz);
     toothGeo.computeBoundingBox();
     toothH = toothGeo.boundingBox.max.z;
+    // and keep the textured meshes themselves, moved by the same
+    // offsets, so the specimen can be drawn as scanned rather than as a
+    // silhouette in one color
+    toothSrc = new THREE.Group();
+    root.traverse(o => {
+      if (!o.isMesh) return;
+      const q = o.geometry.clone();
+      q.applyMatrix4(o.matrixWorld);
+      q.translate(dx, dy, dz);
+      if (!q.getAttribute('normal')) q.computeVertexNormals();
+      const m = Array.isArray(o.material) ? o.material[0] : o.material;
+      toothSrc.add(new THREE.Mesh(q, m.clone()));
+    });
   }
-} catch (e) { toothGeo = null; }
+} catch (e) { toothGeo = null; toothSrc = null; }
 
 /* ---------- what each mount is, and what it does to the specimen ----------
    tooth_mm    what size of specimen this mount is for
@@ -272,36 +311,47 @@ function xwFacts(m) {
           ['tip Ø', (2 * m.xw.tip_r).toFixed(2) + ' mm'],
           ['contact points', '4 — two per root lobe']];
 }
-const HEAD_INFO = {
-  putty_disc: { label: 'Putty disc', hint: 'under 60 mm', toothMM: 45, invert: false,
-    blurb: 'A 30 mm dish with 3 mm of museum putty in it. The putty is the ' +
-           'contact, and the dish rim sits level with it, so nothing stands ' +
-           'proud of the specimen.' },
-  pin_cradle: { label: 'Three-pin cradle', hint: 'the big tooth', toothMM: 129, invert: false,
-    blurb: 'Three 1.5 mm stainless pins in printed collets that slide ' +
-           'radially, each tipped with a silicone bead. Everything printed ' +
-           'sits far below the tooth; only the pins reach it.' },
-  tip_cone: { label: 'Tip cone', hint: 'inverted, pass two', toothMM: 129, invert: true,
-    blurb: 'A 40 mm cup, 25 mm deep, that takes the CROWN so the tooth ' +
-           'hangs inverted. It is the one mount here that deliberately ' +
-           'hides part of the specimen, and it buys the root underside — ' +
-           'which no ring on this jig ever sees with the tooth upright.' },
-  flat_chuck: { label: 'Flat chuck', hint: 'slabs, not teeth', toothMM: 60, invert: false,
-    blurb: 'Two jaws on a 60 mm opening. A chuck grips from the sides, so ' +
-           'its jaws stand beside the specimen by definition — which is why ' +
-           'the plan marked it for slabs rather than teeth.' }
-};
-for (const n of HEAD.meta.heads) {
-  const g = HEAD.byName[n], info = HEAD_INFO[n];
-  const top = g.boundingBox.max.z;
+/* The gazebos: a ring of spikes, or of sockets for carbon rods, on a
+   deck cut to the silhouette of a real meg tooth. They answer the same
+   question the cone stands do and answer it the other way round --
+   holding the hollow in the middle of the root rather than keeping out
+   of it -- which is why they belong on this page beside them. */
+for (const g of (GAZ.meta.sizes || [])) {
+  const body = GAZ.byName['gazebo_' + g.id.slice(3)];
+  if (!body) continue;
+  const rods = g.socket || null;
   MOUNTS.push({
-    key: n, family: 'head', label: info.label, hint: info.hint, geo: g,
-    contactZ: HEAD.meta.contact_z[n], toothMM: info.toothMM,
-    rise: +(top - HEAD.meta.contact_z[n]).toFixed(2), invert: info.invert,
-    facts: [['contact plane', HEAD.meta.contact_z[n].toFixed(1) + ' mm up'],
-            ['dock', '1/4-20 insert'],
-            ['height', (top).toFixed(1) + ' mm']],
-    blurb: info.blurb
+    key: g.id, family: 'gazebo', label: g.name,
+    hint: rods ? `Ø${rods.drawn_d} sockets, ${rods.rod_len_mm} mm rods`
+               : `teeth ${g.teeth[0]}–${g.teeth[1]} mm`,
+    geo: body, contactZ: g.contact_z,
+    toothMM: (g.teeth[0] + g.teeth[1]) / 2,
+    rise: 0, invert: false, gaz: g, rods,
+    facts: [['ring Ø', g.ring_d + ' mm'],
+            ['spikes', String(g.n)],
+            ['slot widths', (g.widths || []).join(' · ') + ' mm clear'],
+            [rods ? 'socket Ø' : 'tip Ø',
+             rods ? rods.drawn_d + ' mm drawn, ' + rods.printed_d_expected
+                    + ' printed'
+                  : (2 * g.tip_r).toFixed(2) + ' mm'],
+            ['deck', g.deck_d + ' mm across'],
+            ['leans before it tips', (g.tip_back_deg || 0) + '°']],
+    blurb: rods
+      ? 'The same ring, with sockets for 1 mm carbon rods instead of '
+        + 'printed spikes. A rod is five times stiffer than a spike and '
+        + 'half the diameter, so it points where a spike gives. The '
+        + 'socket is drawn Ø' + rods.drawn_d + ' because a bore this '
+        + 'small prints about half a millimeter under its drawn size, '
+        + 'and that number is a property of the filament: three of them '
+        + 'measured Ø1.45, Ø1.5 and Ø1.7 for the same rod.'
+      : 'The underside of a root is hollow, and a ring of spikes set '
+        + 'inside that hollow lets it sink until the cups meet the '
+        + 'cavity wall all the way round. The wall slopes down and '
+        + 'outward, so the root centers itself under its own weight, and '
+        + 'turning the tooth changes nothing because a circle has no '
+        + 'orientation. Six spikes, spaced three, four and five twelfths '
+        + 'of a half turn, so the ring offers three slot widths rather '
+        + 'than one.'
   });
 }
 
@@ -354,11 +404,11 @@ document.getElementById('open').oninput = e => {
 function build(mount) {
   current = mount;
   while (root.children.length) root.remove(root.children[0]);
-  // the X-wing's base takes the stand colour; its bar, the moving part,
+  // the X-wing's base takes the stand color; its bar, the moving part,
   // takes the heads' so the two read as two bodies
-  const colour = mount.family === 'head' ? css('--p-head') : css('--p-stand');
+  const color = mount.family === 'gazebo' ? css('--p-head') : css('--p-stand');
 
-  const part = new THREE.Mesh(mount.geo, MAT()(new THREE.Color(colour)));
+  const part = new THREE.Mesh(mount.geo, MAT()(new THREE.Color(color)));
   root.add(part);
   if (MODE === 'edges') {
     const e = new THREE.LineSegments(
@@ -395,35 +445,41 @@ function build(mount) {
     document.getElementById('open-val').textContent = mount.beta.toFixed(1) + '°';
   }
 
-  /* the cradle's bought parts: three stainless pins and their silicone
-     beads are what actually touch the tooth, so without them the render
-     shows a specimen floating above a base for no visible reason */
-  if (mount.key === 'pin_cradle' && HEAD.meta.pins) {
-    const P = HEAD.meta.pins;
-    const steel = new THREE.MeshStandardMaterial({ color: 0xB4BCC3,
-      roughness: 0.3, metalness: 0.7 });
-    const silicone = new THREE.MeshStandardMaterial({ color: 0x2A2E31,
-      roughness: 0.95 });
-    for (const phi of P.phi) {
-      const a = phi * Math.PI / 180;
-      const x = P.r * Math.cos(a), y = P.r * Math.sin(a);
-      const pin = new THREE.Mesh(new THREE.CylinderGeometry(
-        P.pin_r, P.pin_r, P.length, 16).rotateX(Math.PI / 2), steel);
-      pin.position.set(x, y, P.z0 + P.length / 2);
-      root.add(pin);
-      const bead = new THREE.Mesh(
-        new THREE.SphereGeometry(P.bead_r, 16, 12), silicone);
-      bead.position.set(x, y, P.z0 + P.length);
-      root.add(bead);
+  /* the carbon rods: on a rod base the printed part stops at the
+     socket, and without them the render shows a tooth floating over a
+     plate for no visible reason */
+  if (mount.rods) {
+    const carbon = new THREE.MeshStandardMaterial({ color: 0x17191B,
+      roughness: 0.45, metalness: 0.2 });
+    const d = mount.rods.rod_d || 1.0, len = mount.rods.rod_len_mm;
+    const z0 = mount.contactZ - len;
+    for (const [x, y] of mount.gaz.spikes) {
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(
+        d / 2, d / 2, len, 16).rotateX(Math.PI / 2), carbon);
+      rod.position.set(x, y, z0 + len / 2);
+      root.add(rod);
     }
   }
 
   /* the specimen, scaled to what this mount is for */
   if (toothGeo && document.getElementById('c-tooth').checked) {
     const k = mount.toothMM / toothH;
-    const t = new THREE.Mesh(toothGeo, new THREE.MeshStandardMaterial({
-      color: css('--tooth'), roughness: 0.75,
-      transparent: MODE === 'xray', opacity: MODE === 'xray' ? 0.35 : 1 }));
+    // the scanned surface where there is one, and the flat color only
+    // as the fallback -- in X-ray every material goes see-through
+    let t;
+    if (toothSrc && MODE !== 'wire') {
+      t = toothSrc.clone(true);
+      t.traverse(o => { if (o.isMesh) {
+        o.material = o.material.clone();
+        o.material.transparent = MODE === 'xray';
+        o.material.opacity = MODE === 'xray' ? 0.35 : 1;
+        o.material.depthWrite = MODE !== 'xray';
+      }});
+    } else {
+      t = new THREE.Mesh(toothGeo, new THREE.MeshStandardMaterial({
+        color: css('--tooth'), roughness: 0.75, wireframe: MODE === 'wire',
+        transparent: MODE === 'xray', opacity: MODE === 'xray' ? 0.35 : 1 }));
+    }
     t.scale.setScalar(k);
     if (mount.invert) {
       // the crown goes into the cup: flip, and drop the tip to the floor
@@ -443,29 +499,33 @@ function build(mount) {
       new THREE.MeshBasicMaterial({ color: css('--plane'), transparent: true,
         opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
     disc.position.z = mount.contactZ;
+    disc.userData.deco = true;
     root.add(disc);
     const ring = new THREE.LineLoop(
       new THREE.CircleGeometry(r, 96),
       new THREE.LineBasicMaterial({ color: css('--plane') }));
     ring.position.z = mount.contactZ;
+    ring.userData.deco = true;
     root.add(ring);
   }
 
   /* sightlines from the lowest ring: the case that decides occlusion */
   if (document.getElementById('c-rays').checked) {
     const R = 150, th = 15 * Math.PI / 180;
-    const centre = new THREE.Vector3(0, 0, mount.contactZ + mount.toothMM * 0.35);
+    const center = new THREE.Vector3(0, 0, mount.contactZ + mount.toothMM * 0.35);
     const pts = [];
     for (let i = 0; i < 24; i++) {
       const phi = i / 24 * Math.PI * 2;
       const cam = new THREE.Vector3(
         R * Math.cos(th) * Math.cos(phi), R * Math.cos(th) * Math.sin(phi),
-        centre.z + R * Math.sin(th));
-      pts.push(centre.clone(), cam);
+        center.z + R * Math.sin(th));
+      pts.push(center.clone(), cam);
     }
     const g = new THREE.BufferGeometry().setFromPoints(pts);
-    root.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({
-      color: css('--ray'), transparent: true, opacity: 0.30 })));
+    const rays = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+      color: css('--ray'), transparent: true, opacity: 0.30 }));
+    rays.userData.deco = true;
+    root.add(rays);
   }
 
   frame(mount);
@@ -473,7 +533,15 @@ function build(mount) {
 }
 
 function frame(mount) {
-  const box = new THREE.Box3().setFromObject(root);
+  // Only the mount and the specimen decide the view. The sightlines run
+  // 150 mm out and the contact disc scales with the tooth, so a box over
+  // everything pushed the camera back until the part was a speck and put
+  // the orbit center out in the rays.
+  const box = new THREE.Box3();
+  root.traverse(o => {
+    if (o.isMesh && !o.userData.deco) box.expandByObject(o);
+  });
+  if (box.isEmpty()) box.setFromObject(root);
   const c = box.getCenter(new THREE.Vector3());
   const r = Math.max(box.getSize(new THREE.Vector3()).length() * 0.55, 40);
   controls.target.copy(c);
@@ -513,7 +581,7 @@ function mkButtons(hostId, family) {
     b.className = 'm'; b.dataset.key = m.key;
     b.setAttribute('aria-pressed', 'false');
     b.innerHTML = `<span class="swatch" style="background:${
-      family === 'head' ? css('--p-head') : css('--p-stand')}"></span>` +
+      family === 'gazebo' ? css('--p-head') : css('--p-stand')}"></span>` +
       `<span class="n">${m.label}</span><span class="h">${m.hint}</span>`;
     b.onclick = () => build(m);
     host.appendChild(b);
@@ -521,7 +589,7 @@ function mkButtons(hostId, family) {
 }
 mkButtons('pick-stand', 'stand');
 mkButtons('pick-xwing', 'xwing');
-mkButtons('pick-head', 'head');
+mkButtons('pick-gazebo', 'gazebo');
 
 const modes = document.getElementById('modes');
 for (const [id, label] of [['shaded', 'shaded'], ['edges', 'edges'],

@@ -147,8 +147,19 @@ h1 .tld{color:var(--accent)}
 .view:active{cursor:grabbing}
 .view .status{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   color:var(--faint);font:500 13px "Chakra Petch",sans-serif}
+.numin{width:7ch;background:var(--panel);border:1px solid var(--edge);color:var(--ink);
+  border-radius:6px;padding:2px 6px;font:600 12px "IBM Plex Mono",monospace;
+  text-align:right}
+.numin:focus{outline:none;border-color:var(--accent)}
+.units{display:inline-flex;gap:4px;margin-left:10px}
+.units button{background:var(--panel);border:1px solid var(--edge);color:var(--muted);
+  border-radius:99px;padding:3px 9px;font:500 11px "IBM Plex Sans",sans-serif;cursor:pointer}
+.units button.on{background:var(--accent);color:#0b0f10;border-color:var(--accent)}
 .pill{position:absolute;top:12px;right:12px;font:500 12px/1 "IBM Plex Mono",monospace;
   padding:6px 10px;border-radius:99px;letter-spacing:.02em;z-index:6;pointer-events:none}
+/* a refusal says why, and the why is a sentence: it wraps rather than
+   running off the edge of the card with the fix in it cut away */
+.status.live{white-space:normal;overflow-wrap:anywhere;line-height:1.35}
 .pill.pass{background:var(--pass-bg);color:var(--pass);border:1px solid var(--pass)}
 .pill.warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
 .chips{position:absolute;left:10px;bottom:10px;display:flex;flex-wrap:wrap;gap:6px;z-index:6}
@@ -490,6 +501,10 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
       <input id="cat-q" type="search" placeholder="search the catalog…"
              aria-label="search the catalog">
       <select id="cat-fam" aria-label="filter by family"></select>
+      <span class="units" id="units" role="group" aria-label="units">
+        <button type="button" data-units="mm">mm</button>
+        <button type="button" data-units="in">in</button>
+      </span>
       <span class="catcount" id="cat-count"></span>
     </div>
     <div class="grid" id="cat-grid"></div>
@@ -647,8 +662,8 @@ renderer.setScissorTest(true);
 const loader = new GLTFLoader();
 const mf3Loader = new ThreeMFLoader();
 const stlLoader = new STLLoader();
-// The colours a GLB carried were baked in when it was built. Real geometry
-// arrives uncoloured, so the bodies are tinted here instead -- same palette,
+// The colors a GLB carried were baked in when it was built. Real geometry
+// arrives uncolored, so the bodies are tinted here instead -- same palette,
 // same job: telling one part of an assembly from the next.
 const BODY_COLOURS = [0xE9A063, 0x5AB2A8, 0x8192D6, 0xD6B058, 0xC98BB0,
                       0x86B77E, 0xD98A6B, 0x7FB3C9];
@@ -963,8 +978,10 @@ const lbV = { el: lbEl, entries: null, idx: 0, loaded: {}, current: null, visibl
 lbV.scene = makeScene();
 lbV.camera = new THREE.PerspectiveCamera(45, 4/3, 0.1, 5000);
 lbV.controls = new OrbitControls(lbV.camera, lbEl);
-lbV.controls.enableDamping = true; lbV.controls.autoRotate = true;
-lbV.controls.autoRotateSpeed = 0.8; lbV.controls.enableZoom = true;
+// the lightbox holds still: it is opened to look at one thing closely,
+// and a part that keeps turning has to be caught rather than read
+lbV.controls.enableDamping = true; lbV.controls.autoRotate = false;
+lbV.controls.enableZoom = true;
 let lbSuspended = [];
 function openLightbox(v){
   const entry = v.entries[v.idx];
@@ -1452,11 +1469,66 @@ renderer.setAnimationLoop(animate);
               + 'reason to override it';
     }
     const val = document.createElement('b'), r = document.createElement('input');
-    r.type = 'range'; r.min = p.min; r.max = p.max; r.step = p.step; r.value = get();
-    const show = () => val.textContent = num(r.value) + (p.unit ? ' '+p.unit : '');
-    r.oninput = () => { show(); set(Number(r.value)); schedule(); };
-    show();
-    l.append(p.label + ' ', r, val);
+    r.type = 'range'; r.value = get();
+    // A slider cannot be typed into, and half of these want a number
+    // rather than a position: the ball is 25.4 mm because it is an inch,
+    // not because that is where the thumb landed.
+    const box = document.createElement('input');
+    box.type = 'text'; box.className = 'numin'; box.inputMode = 'decimal';
+    box.setAttribute('aria-label', p.label + ' value');
+    const isLen = (p.unit || '').toLowerCase() === 'mm';
+    // The value is kept HERE, not in the range input. Assigning to a
+    // range snaps to its step, and the step is there to make dragging
+    // tidy -- it is not a constraint the generator has. Typing 3 in on a
+    // 0.5 mm step went in as 76.2 and came back 76, which reads as 2.992
+    // in: the box argued with the number that had just been typed into
+    // it. The thumb still lands on the nearest step; the number does not.
+    let cur = Number(get());
+    const show = () => {
+      box.value = isLen ? uval(cur, UNITS === 'in' ? 3 : 2) : num(cur);
+      val.textContent = isLen ? ulabel() : (p.unit ? p.unit : '');
+    };
+    // A dial should land on numbers of the unit it is SHOWING. In
+    // millimeters that is whole millimeters; in inches it is eighths,
+    // because that is how an inch is divided and 0.5 mm of travel reads
+    // as 0.0197 in, which is not a number anybody asked for. The ladder
+    // falls to sixteenths and below where a whole eighth would leave a
+    // short dial with two positions -- the strut runs 1.4 to 4.5 mm, and
+    // one eighth of an inch across it is a single place to stand. Exact
+    // values still go in by typing; the step is for dragging.
+    const LADDER = {mm: [1, 0.5, 0.25, 0.1],
+                    in: [1 / 8, 1 / 16, 1 / 32, 1 / 64].map(v => v * MM_IN)};
+    const stepMM = () => {
+      if (!isLen) return Number(p.step);
+      const span = Number(p.max) - Number(p.min);
+      const rung = LADDER[UNITS === 'in' ? 'in' : 'mm'];
+      return rung.find(v => span / v >= 6) || rung[rung.length - 1];
+    };
+    // anchored on zero, not on the dial's floor: with min 1.2 and a step
+    // of 1 the browser would offer 1.2, 2.2, 3.2 -- a whole-millimeter
+    // step landing on nothing whole
+    const relayout = () => {
+      const st = stepMM();
+      const lo = Math.ceil(Number(p.min) / st - 1e-9) * st;
+      const hi = Math.floor(Number(p.max) / st + 1e-9) * st;
+      r.min = String(lo); r.max = String(hi); r.step = String(st);
+      r.value = String(Math.min(hi, Math.max(lo, cur)));
+      show();
+    };
+    r._refresh = relayout;
+    const commit = txt => {
+      let v = parseFloat(String(txt).replace(/[^0-9.\-]/g, ''));
+      if (!isFinite(v)) { show(); return; }
+      if (isLen && UNITS === 'in') v *= MM_IN;
+      v = Math.min(Number(p.max), Math.max(Number(p.min), v));
+      cur = Math.round(v * 1e4) / 1e4;
+      r.value = String(cur); show(); set(cur); schedule();
+    };
+    box.onchange = () => commit(box.value);
+    box.onkeydown = e => { if (e.key === 'Enter') { commit(box.value); box.blur(); } };
+    r.oninput = () => { cur = Number(r.value); show(); set(cur); schedule(); };
+    relayout();
+    l.append(p.label + ' ', r, box, val);
     if (p.derived) l.append(Object.assign(document.createElement('i'),
       {className: 'follows', textContent: 'follows ' + p.derived}));
     return l;
@@ -1465,10 +1537,40 @@ renderer.setAnimationLoop(animate);
   // "0-31" or "1,2,4,8,16" — a spec, which a slider cannot express and
   // cannot be dragged to without passing through every value between.
   function dial(p, get, set){
+    if (p.type === 'select') return picker(p, get, set);
     if (p.type === 'codes') return codePicker(p, get, set);
     if (p.type === 'checks') return checks(p, get, set);
     return p.type === 'text' ? textbox(p, get, set) : slider(p, get, set);
   }
+  // One of N. The catalog had checks (many) and sliders (numbers) but
+  // no way to say "this one", which a filament is: the rod sockets are
+  // drawn to a bore that was measured per filament, and picking one is
+  // not a number and not a subset.
+  function picker(p, get, set){
+    const wrap = document.createElement('div'); wrap.className = 'checks';
+    // A row of bare chips does not say what it is choosing. The filament
+    // row read as three brand names above "bases", and the one thing the
+    // card had to say -- that the socket is drawn to the filament -- was
+    // only in the tooltip, where a chip nobody hovers never says it.
+    wrap.append(Object.assign(document.createElement('span'),
+      {className: 'clab', textContent: p.label}));
+    const row = document.createElement('div'); row.className = 'partchips';
+    for (const c of p.choices){
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip';
+      b.textContent = c.label; b.title = c.hint || '';
+      const mark = () => b.classList.toggle('on', String(get()) === String(c.value));
+      b.onclick = () => { set(c.value);
+        wrap.querySelectorAll('.chip').forEach(o => o.classList.remove('on'));
+        b.classList.add('on'); };
+      mark(); row.appendChild(b);
+    }
+    wrap.append(row);
+    if (p.hint) wrap.append(Object.assign(document.createElement('i'),
+      {className: 'hint', textContent: p.hint}));
+    return wrap;
+  }
+
   // A fixed set of parts is not a sentence to type. Free text let a list be
   // built that read "trough,body, trough" -- a duplicate and a stray space,
   // both of which the generator would have had to guess about. Chips can
@@ -1728,9 +1830,36 @@ renderer.setAnimationLoop(animate);
   const esc = t => String(t == null ? '' : t)
     .replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+  // One switch for the whole shop. Every number underneath stays in
+  // millimetres -- the generators speak mm and the slicer does too --
+  // and only what is DISPLAYED converts, so nothing can drift.
+  let UNITS = (() => { try { return localStorage.getItem('units') || 'mm'; }
+                       catch(e){ return 'mm'; } })();
+  const MM_IN = 25.4;
+  function uval(mm, dp){
+    const v = UNITS === 'in' ? mm / MM_IN : mm;
+    const d = dp == null ? (UNITS === 'in' ? 3 : 2) : dp;
+    return String(+v.toFixed(d));
+  }
+  const ulabel = () => UNITS === 'in' ? 'in' : 'mm';
+  function udims(d3, fallback){
+    if (!Array.isArray(d3)) return fallback || '';
+    return d3.map(v => uval(v)).join(' \u00d7 ') + ' ' + ulabel();
+  }
+  function setUnits(u){
+    UNITS = u;
+    try { localStorage.setItem('units', u); } catch(e){}
+    document.querySelectorAll('[data-units]').forEach(b =>
+      b.classList.toggle('on', b.dataset.units === u));
+    document.querySelectorAll('.specline').forEach(el => {
+      const q = byId[el.dataset.dim]; if (q) el.innerHTML = spec(q); });
+    document.querySelectorAll('input[type=range]').forEach(r => {
+      if (r._refresh) r._refresh(); });
+  }
   function spec(p){
     const bits = [];
-    if (p.dims) bits.push(p.dims);
+    if (p.dims3) bits.push(udims(p.dims3, p.dims));
+    else if (p.dims) bits.push(p.dims);
     if (p.bodies > 1) bits.push(p.bodies + ' bodies');
     if (p.tris) bits.push(p.tris.toLocaleString() + ' tris');
     if (p.copies > 1) bits.push(p.copies + ' copies on disk');
@@ -1801,6 +1930,20 @@ renderer.setAnimationLoop(animate);
     }
     return (out || parts[0]).trim();
   }
+  // A blurb is one long string and the details block printed it as one
+  // paragraph, which reads as a wall. Sentences are grouped into
+  // paragraphs of about three lines, which is where prose becomes
+  // readable without anybody having to mark up the source.
+  function paras(txt, cap){
+    const parts = String(txt).match(/[^.!?]+[.!?]+(\s|$)/g) || [String(txt)];
+    const out = []; let cur = '';
+    for (const s of parts){
+      if (cur && (cur + s).length > (cap || 300)) { out.push(cur.trim()); cur = ''; }
+      cur += s;
+    }
+    if (cur.trim()) out.push(cur.trim());
+    return out;
+  }
   function detailsBlock(p){
     const rest = p.blurb ? String(p.blurb).slice(lede(p.blurb).length).trim() : '';
     const printed = (typeof p.proven === 'string')
@@ -1808,7 +1951,8 @@ renderer.setAnimationLoop(animate);
     const adv = advice(p);
     if (!rest && !printed && !adv) return '';
     return '<details class="pdetails"><summary>Print details</summary>'
-      + (rest ? '<p class="principle">' + esc(rest) + '</p>' : '')
+      + (rest ? paras(rest).map(t =>
+            '<p class="principle">' + esc(t) + '</p>').join('') : '')
       + printed + adv + '</details>';
   }
 
@@ -2011,12 +2155,42 @@ renderer.setAnimationLoop(animate);
   const PAGE = 24;
   let limit = PAGE;
 
-  const hay = p => (p.name + ' ' + p.family + ' ' + (p.blurb || '') + ' ' +
-                    (p.designer || '')).toLowerCase();
   // Every word has to appear, not the whole phrase in order: "hourglass
   // cone 90" found nothing, because the name reads "Hourglass — cone,
   // 90 mm" and the punctuation sits between the words being typed.
   const terms = q => q.split(/\s+/).filter(Boolean);
+  // `esc` above is the HTML escaper; this one is for regexes
+  const rxEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // A name is short, so a prefix match is precise and lets the search
+  // work while it is still being typed: "sph" finds Sphere Stand.
+  // Name, family, designer and the card's own keywords. A blurb is
+  // prose: searching it put The Knot and the Code Disks under "stand",
+  // because both use the word as a verb, and no text match can tell a
+  // verb from a noun. Keywords are the catalog saying what a part IS.
+  const inName = (p, t) =>
+    new RegExp('(^|[^a-z0-9])' + rxEsc(t)).test(
+      ((p.name || '') + ' ' + (p.family || '') + ' ' +
+       (p.designer || '') + ' ' + (p.keys || '')).toLowerCase());
+  // A blurb is an essay, and a prefix match on one is mostly noise:
+  // searching "stand" pulled in every card that said "standard",
+  // "standing" or "stands the bolts in", which was 20 cards of 78 for a
+  // catalog holding about six stands. Whole words there, plural
+  // allowed.
+  const inBlurb = (p, t) =>
+    new RegExp('(^|[^a-z0-9])' + rxEsc(t) + '(s|es)?([^a-z0-9]|$)').test(
+      (p.blurb || '').toLowerCase());
+  // Ranked, not just filtered: a hit in the name is what was meant, a
+  // hit in the blurb is a cross-reference to something else.
+  const score = (p, q, useBlurb) => {
+    const ts = terms(q);
+    let n = 0;
+    for (const t of ts) {
+      if (inName(p, t)) n += 3;
+      else if (useBlurb && inBlurb(p, t)) n += 1;
+      else return 0;
+    }
+    return n;
+  };
   const hits = (text, q) => terms(q).every(t => text.includes(t));
   function chosen(){
     const q = $('cat-q').value.trim().toLowerCase(), f = fam.value;
@@ -2026,10 +2200,14 @@ renderer.setAnimationLoop(animate);
                  mem.map(p => p.name).join(' ')).toLowerCase();
       return (!q || hits(t, q)) &&
              (!f || mem.some(p => p.family === f));
-    }).map(k => ({kit: k}));
-    const parts = solo.filter(p => (!f || p.family === f) &&
-                                   (!q || hits(hay(p), q)))
-                      .map(p => ({part: p}));
+    }).map(k => ({kit: k, rank: 4}));
+    // Prose is the fallback, not the field: if nothing matches on what a
+    // part is, look in the blurbs rather than returning nothing.
+    let parts = solo.map(p => ({part: p, rank: q ? score(p, q, false) : 1}))
+                    .filter(e => (!f || e.part.family === f) && e.rank > 0);
+    if (q && !parts.length)
+      parts = solo.map(p => ({part: p, rank: score(p, q, true)}))
+                  .filter(e => (!f || e.part.family === f) && e.rank > 0);
     return kits.concat(parts);
   }
   const onPlate = e => e.kit
@@ -2051,8 +2229,15 @@ renderer.setAnimationLoop(animate);
     const all = chosen();
     // shelf first; within a shelf, what is on the plate sorts to the front,
     // so a long catalog never buries the thing being adjusted
-    all.sort((a, b) => shelfRank(shelfOf(a)) - shelfRank(shelfOf(b)) ||
-                       (onPlate(b) ? 1 : 0) - (onPlate(a) ? 1 : 0));
+    // With a query typed, relevance outranks the shelf: a card that only
+    // mentions the word in passing was sorting above the card named for
+    // it, because its shelf came first.
+    const searching = $('cat-q').value.trim() !== '';
+    all.sort((a, b) =>
+      (searching ? (b.rank || 0) - (a.rank || 0) : 0) ||
+      shelfRank(shelfOf(a)) - shelfRank(shelfOf(b)) ||
+      (b.rank || 0) - (a.rank || 0) ||
+      (onPlate(b) ? 1 : 0) - (onPlate(a) ? 1 : 0));
     const total = {};
     for (const e of all) total[shelfOf(e)] = (total[shelfOf(e)] || 0) + 1;
     const show = all.slice(0, limit);
@@ -2101,6 +2286,13 @@ renderer.setAnimationLoop(animate);
   $('cat-q').oninput = () => { clearTimeout(redraw);
     redraw = setTimeout(() => { limit = PAGE; render(); }, 120); };
   fam.onchange = () => { limit = PAGE; render(); };
+  // The switch is remembered, so the highlight has to be READ from the
+  // stored value rather than baked into the markup: the page came back
+  // in inches with "mm" lit, which is a page that lies about its numbers.
+  document.querySelectorAll('#units button').forEach(b => {
+    b.classList.toggle('on', b.dataset.units === UNITS);
+    b.onclick = () => setUnits(b.dataset.units);
+  });
   $('cat-more').onclick = () => { limit += PAGE; render(); };
   // ?part=<id> opens the shop on one card, scrolled to and outlined, and
   // any further key that names one of its dials seeds that dial -- so a

@@ -29,7 +29,7 @@ def _built_preview(pid, src, **kw):
 
     Parts are no longer shipped a GLB -- the page reads the 3MF itself --
     but the builder still lays parts out for the composites, and that
-    behaviour is what these tests are about. So build one on the spot
+    behavior is what these tests are about. So build one on the spot
     rather than reaching for an artifact that is deliberately not there.
     """
     import tempfile
@@ -118,6 +118,20 @@ class TestOneList(unittest.TestCase):
         dup = [p["id"] for p in self.parts
                if "/custom/" in p.get("path", "")]
         self.assertEqual(dup, [])
+
+    def test_an_experimental_plate_is_one_card_not_two(self):
+        # the shelf under models/experimental is named by experimental(),
+        # and the models/ walk was ALSO picking every plate up, so each one
+        # appeared twice: once as "Tooth Stands with gazebo spikes" and
+        # once as the raw "gazebo-r21-spiked-stands-pla". The control is
+        # below it: the scanner must still find them at all.
+        paths = [p.get("path", "") for p in self.parts]
+        exp = [q for q in paths if "/experimental/" in q]
+        self.assertEqual(sorted(exp), sorted(set(exp)),
+                         "an experimental plate is listed twice")
+        self.assertEqual(len(exp), len(catalog.experimental()),
+                         "the experimental shelf is not being read")
+        self.assertGreater(len(exp), 0)
 
     def test_unrelated_files_sharing_a_name_stay_separate(self):
         # "00 start.3mf" means something different in each project folder,
