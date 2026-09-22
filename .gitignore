@@ -28,9 +28,6 @@ models/specimen/*
 # whatever its license permits.
 !models/held-sphere-chained.3mf
 !models/held-sphere.3mf
-!models/sphere_stand_1.0in.3mf
-!models/sphere_stand_2.0in.3mf
-!models/sphere_stand_3.0in.3mf
 
 *.gcode
 .serve.pid
