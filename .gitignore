@@ -22,6 +22,16 @@ models/experimental/*
 models/specimen/*
 !models/specimen/meherrin-textured.glb
 
+# Designed here, and not regenerable -- these are library entries, with
+# no generator behind them. Everything else on the models/ shelf is
+# somebody else's design and this repository is public, so it stays out
+# whatever its license permits.
+!models/held-sphere-chained.3mf
+!models/held-sphere.3mf
+!models/sphere_stand_1.0in.3mf
+!models/sphere_stand_2.0in.3mf
+!models/sphere_stand_3.0in.3mf
+
 *.gcode
 .serve.pid
 .serve.log
