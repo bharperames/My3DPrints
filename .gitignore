@@ -1,11 +1,21 @@
-models/
-*.3mf
-*.stl
-*.glb
+# models/ is 780 MB and almost all of it is either regenerable or
+# somebody else's work, so it is excluded wholesale and re-included by
+# name. Git cannot re-include a file whose parent directory is
+# excluded, which is why this walks down a level at a time.
+models/*
+!models/experimental/
+models/experimental/*
+
+# The plates a card can no longer rebuild. The rest of the shelf is
+# excluded because a card makes it exactly: check before adding one,
+# by building the card and comparing volume.
+!models/experimental/gazebo-r18-socket-gauge.3mf
+!models/experimental/gazebo-r21-rod-field-petg.3mf
+!models/experimental/movable-xwing-r5-build-your-own.3mf
+
 *.gcode
 .serve.pid
 .serve.log
 __pycache__/
 .DS_Store
 tools/index_out/
-models/custom/

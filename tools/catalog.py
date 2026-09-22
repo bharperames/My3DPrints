@@ -478,7 +478,10 @@ PARTS = [
        "one plate, a smooth pair and a sawn pair, to swap on one arm "
        "without reprinting the scissors. ",
        keys="stand tooth fossil shark xwing scissor pivot pin adjustable",
-       supersedes=["movable-xwing-r5-build-your-own.3mf"],
+       # NOT superseding movable-xwing-r5: that plate carries both grip
+       # flanks, a smooth pair and a sawn pair to swap on one arm, and
+       # this card builds one grip. Claiming to cover a plate you cannot
+       # rebuild is how a record gets quietly dropped.
        version="0.3.0",
        pages=[dict(label="Stand the tooth on it, both ways",
                    href="docs/tooth-stand.html"),
@@ -620,7 +623,10 @@ PARTS = [
        "filament with no measurement behind it is refused rather than "
        "guessed.",
        keys="stand tooth fossil carbon rod socket bore field grid petg pla",
-       supersedes=["gazebo-r21-rod-field-petg.3mf"],
+       # NOT superseding gazebo-r21-rod-field-petg: that plate is the
+       # \u00d81.45 field whose 56 bores refused the rod, and this card
+       # draws \u00d81.475 through a deeper funnel now. It is the
+       # evidence for the change, and nothing here can make it again.
        version="1.0.0",
        pages=[dict(label="Stand the tooth on it, both ways",
                    href="docs/tooth-stand.html")],
