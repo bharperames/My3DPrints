@@ -2,6 +2,13 @@
 # somebody else's work, so it is excluded wholesale and re-included by
 # name. Git cannot re-include a file whose parent directory is
 # excluded, which is why this walks down a level at a time.
+#
+# A file earns a line below by failing one question: can anything in
+# this repository rebuild it? Six do. Everything else stays out --
+# generator cache, card previews, other people's designs on a public
+# repo, work derived from those designs, one-off local exports, and
+# anything a parameterized card already covers, which includes every
+# printed size of a design that has dials.
 models/*
 !models/experimental/
 models/experimental/*
