@@ -259,6 +259,52 @@ class TestGazebo(unittest.TestCase):
         self.assertFalse(hasattr(G, "field_chamfer"),
                          "two definitions of one feature is the bug")
 
+    def test_the_graded_field_is_legible_and_its_labels_miss_the_bores(self):
+        # the labels went on beside a hole and landed across three
+        # others, at a size whose strokes would not have cut anyway.
+        # Both halves are gated: clear of every bore, and no thinner
+        # than the stroke the gauge proved readable in the hand.
+        import numpy as np
+        from shapely import affinity
+        from shapely.geometry import Point
+        import gen_dice_cage as D
+        spec = G.BY_ID["gz_rfg"]
+        pts, label = G.field_grade_holes(spec)
+        self.assertEqual(len(label), len(G.FIELD_GRADE))
+        self.assertEqual(len(pts) + len(label), len(G.field_holes(spec)))
+        for b, (x, y) in label.items():
+            g = affinity.scale(D._raw_glyph("%.2f" % G.FIELD_GRADE[b]),
+                               G.GRADE_ETCH_SCALE, G.GRADE_ETCH_SCALE,
+                               origin=(0, 0)).buffer(G.GRADE_ETCH_BOLD,
+                                                     join_style=2)
+            lo_x, lo_y, hi_x, hi_y = g.bounds
+            g = affinity.translate(g, x - (lo_x + hi_x) / 2.0,
+                                   y - (lo_y + hi_y) / 2.0)
+            lo, hi = 0.0, 2.0
+            for _ in range(40):
+                m = (lo + hi) / 2.0
+                if g.buffer(-m / 2.0).is_empty:
+                    hi = m
+                else:
+                    lo = m
+            self.assertGreaterEqual(lo, 0.82, "thinner than the gauge's "
+                                              "proven stroke")
+            for hx, hy in pts:
+                d = G.field_grade_d_at(spec, hx, hy)
+                mouth = Point(hx, hy).buffer(d / 2.0 + G.field_lead(d)[1])
+                self.assertGreater(g.distance(mouth), 0.4,
+                                   "a label is on top of a bore")
+
+    def test_the_grade_brackets_the_size_that_failed(self):
+        # it exists to answer one question, so it has to reach past the
+        # answer in both directions: below is the size already known to
+        # refuse a rod, above is far enough that a shut ring means the
+        # trouble is not the bore at all
+        self.assertLess(G.FIELD_GRADE[0] - G.MATERIALS["petg"]["field"], 0.05)
+        self.assertGreater(G.FIELD_GRADE[-1] - G.MATERIALS["petg"]["field"],
+                           0.5)
+        self.assertEqual(sorted(G.FIELD_GRADE), list(G.FIELD_GRADE))
+
     def test_a_socket_tower_fits_the_ring_it_stands_on(self):
         # Ø6.4 towers are comfortable on the L, whose posts stand 8.4 mm
         # apart, and impossible on the S at 4.6: six of them fuse into a

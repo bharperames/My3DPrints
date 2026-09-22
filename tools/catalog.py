@@ -648,6 +648,42 @@ PARTS = [
                          hint="sockets drawn \u00d81.7, measured")]),
        ],
        out="gazebo-rod-field-{material}.3mf"),
+    _p("rod_field_graded", "Rod field \u2014 graded, to find the size",
+       "Stands", "parametric",
+       "The rod field with its five rings stepped in bore, because the "
+       "field is the only coupon that is honestly the field. A probe "
+       "answered \u00d81.45 for PETG and the field refused a rod at that "
+       "size; redrawn 25 microns larger it refused again, with a "
+       "toolpath the slicer leaves wider than the probe bore that works. "
+       "Same plate thickness, same 7 mm depth, same filament, same "
+       "profile \u2014 so whatever closes these holes is not the drawn "
+       "size on its own, and no strip of test bores 3 mm apart is going "
+       "to say what it is. "
+       "Five rings, \u00d81.50 at the center stepping to \u00d82.10 at "
+       "the rim, each size etched beside one of its own holes. Work "
+       "outward and the first ring that takes a rod is the number to "
+       "draw for that filament. The span is deliberately coarse: it "
+       "reaches from a whisker above the size that failed to nearly two "
+       "thirds of a millimeter above it, and if even the outer ring is "
+       "shut then the answer is not a size at all. "
+       "Reprint it whenever the spool changes, the same way the gauge is "
+       "reprinted \u2014 and the plate is not wasted afterward, since "
+       "every ring that takes a rod is a working field of its own.",
+       keys="gauge calibration bore socket fit rod carbon field graded "
+            "test coupon petg pla",
+       version="1.0.0",
+       gen=["gen_gazebo.py", "--size", "gz_rfg"], params=[
+           dict(key="material", label="filament", type="select",
+                val="petg",
+                hint="Only the funnel and the wall follow the filament "
+                     "here \u2014 the five bores are fixed, because "
+                     "finding what they should be is the whole point of "
+                     "the plate.",
+                choices=[
+                    dict(value="petg", label="PETG Basic"),
+                    dict(value="pla_basic", label="PLA Basic"),
+                    dict(value="pla_silk", label="PLA Silk")])],
+       out="rod-field-graded-{material}.3mf"),
     _p("rod_gauge", "Rod socket gauge",
        "Designed here", "parametric",
        "A ladder of sockets to read a number off, because two guesses "

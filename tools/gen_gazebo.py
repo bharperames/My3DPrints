@@ -358,9 +358,24 @@ FIELD_MIN_SP = 3.5            # centers, so 2 mm of wall between Ø1.5 holes
 # drawn O1.45 took no rod, and O1.475 through a deeper funnel took no rod
 # either. The probe cannot answer it -- a 14-bore strip is not a 56-bore
 # disc, which is the whole lesson -- so the coupon is the field itself
-# with its rings stepped. Coarse and wide on purpose: the useful range is
-# not known, and a fine ladder centered on a guess would miss it again.
-FIELD_GRADE = [1.50, 1.60, 1.70, 1.80, 1.90]
+# with its rings stepped.
+#
+# Coarse and WIDE on purpose. The step from the plate that failed to the
+# plate that failed again was 0.025 mm -- 25 microns, 6% of one
+# extrusion -- against a part where 56 bores out of 56 refused the rod.
+# A total failure is not rescued by a change smaller than the printer's
+# own precision. These five span +0.025 to +0.625 over the size that
+# failed, and if the outermost ring is still shut then the answer is not
+# a size at all, which is worth learning in one print rather than five.
+FIELD_GRADE = [1.50, 1.65, 1.80, 1.95, 2.10]
+GRADE_ETCH_SCALE = 2.6      # cap height. It cannot go up: the rings are
+                            # 3 mm apart radially and a taller label
+                            # touches the next ring's bores.
+GRADE_ETCH_BOLD = 0.10      # so the STROKES grow instead. At this cap the
+                            # glyph's own strokes are 0.63 mm, thinner
+                            # than the 0.82 that the gauge proved cuts;
+                            # widened they reach 0.90, and the 0 keeps
+                            # its counter, which a fatter pen would fill.
 
 FIELD_T = 8.0                 # the field deck is thicker: the hole IS the guide
 FIELD_R = 29.5                # the deck's corner radius
@@ -494,7 +509,11 @@ def spikes(spec):
                 for y in (GAUGE_ROW, 0.0, -GAUGE_ROW)
                 for k in range(n)]
     if spec.get("field"):
-        return field_holes(spec)
+        # the graded plate spends one hole a ring on its label, and a
+        # probe that rays down a hole that is not there reads the top
+        # face and calls the field seven millimeters out of plane
+        return field_grade_holes(spec)[0] if spec.get("grade") \
+            else field_holes(spec)
     w = np.array(weights(spec), dtype=float)
     edges = np.concatenate([[0.0], np.cumsum(w)])[:-1] / w.sum() * 360.0
     span = w / w.sum() * 360.0
@@ -635,27 +654,49 @@ def probe_etch(spec):
     return out
 
 
-def field_grade_etch(spec):
-    """Each ring's drawn size, cut into the deck beside one of its holes,
-    so the plate says what it is without a legend to lose."""
-    from shapely import affinity
-    import gen_dice_cage as D
+def field_grade_holes(spec):
+    """The graded field's holes, with one dropped per ring to make room
+    for that ring's label.
+
+    The labels went on beside a hole and landed across three others: at
+    3.58 mm centers there is no room between two bores for four digits,
+    and shrinking them to fit put the strokes under a millimeter, which
+    the ruler ticks already proved does not cut at all. So a hole is
+    spent instead -- five of fifty-six -- and the number goes where it
+    was, at a size that prints.
+    """
     P = np.array(field_holes(spec))
-    bands = field_bands(spec)
-    out = []
+    if not spec.get("grade"):
+        return [tuple(v) for v in P], {}
+    bands, keep, label = field_bands(spec), [], {}
     for b in range(len(FIELD_GRADE)):
         idx = np.where(bands == b)[0]
         if not len(idx):
             continue
-        # the hole of that ring nearest straight down the deck, so every
-        # label lands in the same column and reads as a ladder
-        k = idx[int(np.argmin(np.abs(P[idx][:, 0])))]
-        x, y = P[k]
+        # the hole nearest straight up: every label then reads in the
+        # same orientation, stacked outward like the rings themselves
+        k = idx[int(np.argmax(P[idx][:, 1] - np.abs(P[idx][:, 0]) * 3.0))]
+        label[b] = tuple(P[k])
+        keep += [int(i) for i in idx if i != k]
+    return [tuple(P[i]) for i in sorted(keep)], label
+
+
+def field_grade_etch(spec):
+    """Each ring's drawn size, cut where that ring's spare hole was."""
+    from shapely import affinity
+    import gen_dice_cage as D
+    _, label = field_grade_holes(spec)
+    out = []
+    for b, (x, y) in label.items():
         g = D._raw_glyph(f"{FIELD_GRADE[b]:.2f}")
         if g is None:
             continue
-        g = affinity.translate(affinity.scale(g, 2.0, 2.0, origin=(0, 0)),
-                               x, y - 2.6)
+        g = affinity.scale(g, GRADE_ETCH_SCALE, GRADE_ETCH_SCALE,
+                           origin=(0, 0)).buffer(GRADE_ETCH_BOLD,
+                                                 join_style=2)
+        lo_x, lo_y, hi_x, hi_y = g.bounds
+        g = affinity.translate(g, x - (lo_x + hi_x) / 2.0,
+                               y - (lo_y + hi_y) / 2.0)
         for q in (list(g.geoms) if g.geom_type == "MultiPolygon" else [g]):
             e = trimesh.creation.extrude_polygon(q, GAUGE_ETCH + 1.0)
             e.apply_translation([0.0, 0.0, FIELD_T - GAUGE_ETCH])
@@ -935,6 +976,12 @@ def field_grade_d(spec, i):
     return FIELD_GRADE[int(field_bands(spec)[i])]
 
 
+def field_grade_d_at(spec, x, y):
+    """The drawn bore for the hole at this point, by which ring it is on."""
+    r = float(np.hypot(x, y))
+    return FIELD_GRADE[int(np.searchsorted([9.5, 14.0, 18.0, 21.5], r))]
+
+
 def field_lead(bore=None):
     """The funnel, narrowed if this filament's bore leaves less room.
 
@@ -1052,9 +1099,9 @@ def stand(spec):
     if spec.get("field"):
         slab = trimesh.creation.extrude_polygon(base_plan(spec), FIELD_T)
         if spec.get("grade"):
-            pts = field_holes(spec)
-            holes = [field_bore(field_grade_d(spec, i), x, y)
-                     for i, (x, y) in enumerate(pts)]
+            pts, _ = field_grade_holes(spec)
+            holes = [field_bore(field_grade_d_at(spec, x, y), x, y)
+                     for x, y in pts]
             return cut(slab, holes + field_grade_etch(spec))
         return cut(slab, [field_bore(spec["rods"], x, y)
                           for x, y in field_holes(spec)])
@@ -1421,7 +1468,7 @@ def measure(parts):
             # a field has no ring to measure: what it has is what it
             # OFFERS -- the rectangles, the circles and the room between
             rep["field"][s["id"]] = dict(
-                holes=len(field_holes(s)), min_spacing=field_spacing(s),
+                holes=len(spikes(s)), min_spacing=field_spacing(s),
                 deck_d=round(2 * FIELD_R, 1), thickness=FIELD_T,
                 depth_mm=round(FIELD_T - 1.0, 1),
                 chamfer=field_lead(s["rods"])[1],
