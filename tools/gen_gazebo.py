@@ -354,6 +354,14 @@ RELIEF_D = 5.0              # and how far in it takes to get there
 RELIEF_RIM = 2.5            # flat pedestal left showing outside the mound
 
 FIELD_MIN_SP = 3.5            # centers, so 2 mm of wall between Ø1.5 holes
+# Five rings, graded, because predicting this field has failed twice:
+# drawn O1.45 took no rod, and O1.475 through a deeper funnel took no rod
+# either. The probe cannot answer it -- a 14-bore strip is not a 56-bore
+# disc, which is the whole lesson -- so the coupon is the field itself
+# with its rings stepped. Coarse and wide on purpose: the useful range is
+# not known, and a fine ladder centered on a guess would miss it again.
+FIELD_GRADE = [1.50, 1.60, 1.70, 1.80, 1.90]
+
 FIELD_T = 8.0                 # the field deck is thicker: the hole IS the guide
 FIELD_R = 29.5                # the deck's corner radius
 
@@ -442,6 +450,10 @@ SIZES = [
     dict(id="gz_gauge", name="Rod socket gauge", teeth=(90.0, 150.0),
          ring=22.0, gaps=GRADED, cone=30.0, tip=TIP_R, half=1.95,
          cross=60.0, fore=20.3, rods=GAUGE_D[0], gauge=True),
+    dict(id="gz_rfg", name="Rod field, graded", teeth=(25.0, 150.0),
+         ring=16.0, gaps=GRADED, cone=25.0, tip=TIP_R, half=HALF,
+         fillet=FILLET, cross=38.0, fore=16.0, rods=FIELD_GRADE[0],
+         field=True, grade=True),
     dict(id="gz_rf", name="Gazebo rod field", teeth=(25.0, 150.0), ring=16.0,
          gaps=GRADED, cone=25.0, tip=TIP_R, half=HALF, fillet=FILLET,
          cross=38.0, fore=16.0, rods=ROD_FIELD, field=True),
@@ -616,6 +628,34 @@ def probe_etch(spec):
             continue
         g = affinity.translate(affinity.scale(g, 3.4, 3.4, origin=(0, 0)),
                                x, -4.0)
+        for q in (list(g.geoms) if g.geom_type == "MultiPolygon" else [g]):
+            e = trimesh.creation.extrude_polygon(q, GAUGE_ETCH + 1.0)
+            e.apply_translation([0.0, 0.0, FIELD_T - GAUGE_ETCH])
+            out.append(e)
+    return out
+
+
+def field_grade_etch(spec):
+    """Each ring's drawn size, cut into the deck beside one of its holes,
+    so the plate says what it is without a legend to lose."""
+    from shapely import affinity
+    import gen_dice_cage as D
+    P = np.array(field_holes(spec))
+    bands = field_bands(spec)
+    out = []
+    for b in range(len(FIELD_GRADE)):
+        idx = np.where(bands == b)[0]
+        if not len(idx):
+            continue
+        # the hole of that ring nearest straight down the deck, so every
+        # label lands in the same column and reads as a ladder
+        k = idx[int(np.argmin(np.abs(P[idx][:, 0])))]
+        x, y = P[k]
+        g = D._raw_glyph(f"{FIELD_GRADE[b]:.2f}")
+        if g is None:
+            continue
+        g = affinity.translate(affinity.scale(g, 2.0, 2.0, origin=(0, 0)),
+                               x, y - 2.6)
         for q in (list(g.geoms) if g.geom_type == "MultiPolygon" else [g]):
             e = trimesh.creation.extrude_polygon(q, GAUGE_ETCH + 1.0)
             e.apply_translation([0.0, 0.0, FIELD_T - GAUGE_ETCH])
@@ -878,6 +918,23 @@ def _field_spacing(_c={}):
 FIELD_LEAD = (1.2, 0.35)
 
 
+
+
+def field_bands(spec):
+    """Each hole's ring, grouped so the rings are far enough apart to
+    tell by eye. Nine distinct radii collapse to five: 11.0 and 12.2 are
+    one ring in the hand, and so are 16.0/16.6, 19.8/20.5, 23.3/23.5."""
+    P = np.array(field_holes(spec))
+    r = np.hypot(*P.T)
+    edges = [9.5, 14.0, 18.0, 21.5]
+    return np.searchsorted(edges, r)
+
+
+def field_grade_d(spec, i):
+    """The drawn bore for hole i of a graded field."""
+    return FIELD_GRADE[int(field_bands(spec)[i])]
+
+
 def field_lead(bore=None):
     """The funnel, narrowed if this filament's bore leaves less room.
 
@@ -994,7 +1051,11 @@ def stand(spec):
     """
     if spec.get("field"):
         slab = trimesh.creation.extrude_polygon(base_plan(spec), FIELD_T)
-        r = spec["rods"] / 2.0
+        if spec.get("grade"):
+            pts = field_holes(spec)
+            holes = [field_bore(field_grade_d(spec, i), x, y)
+                     for i, (x, y) in enumerate(pts)]
+            return cut(slab, holes + field_grade_etch(spec))
         return cut(slab, [field_bore(spec["rods"], x, y)
                           for x, y in field_holes(spec)])
     if spec.get("probe"):

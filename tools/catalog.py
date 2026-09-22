@@ -1242,6 +1242,12 @@ def library(dirs=None, limit=400, include_imported=True):
                 continue        # the generators' own output: already a part,
                                 # and listing it again puts the same design
                                 # in the catalog twice under two names
+            if "/failed" in root:
+                continue        # plates that did not work. Kept for the
+                                # record, never orderable: a known-bad
+                                # plate sitting in the shop next to the
+                                # fixed one is how the bad one gets
+                                # printed a second time
             if "/experimental" in root:
                 continue        # same reason: experimental() already names
                                 # these, and the walk was listing every one
