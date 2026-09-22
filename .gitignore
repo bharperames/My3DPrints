@@ -13,6 +13,15 @@ models/experimental/*
 !models/experimental/gazebo-r21-rod-field-petg.3mf
 !models/experimental/movable-xwing-r5-build-your-own.3mf
 
+# The specimen. Three scans of one tooth were on disk -- BigMeherrin and
+# meherrin-textured identical vertex for vertex and sharing both
+# textures, sale145_tooth the same tooth off another bake -- and the
+# pages need exactly one. Nothing here can regenerate it: it came from a
+# scanner, not a generator.
+!models/specimen/
+models/specimen/*
+!models/specimen/meherrin-textured.glb
+
 *.gcode
 .serve.pid
 .serve.log

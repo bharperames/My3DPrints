@@ -79,7 +79,7 @@ PD_DISH_R, PD_DISH_D = 13.0, 3.0            # 3 mm of putty, its number
 # The plan gives the pins (1.5 mm stainless), the beads (1 mm silicone)
 # and "40 mm radial slides". Chosen here: the slide runs r = 8..33, which
 # is 25 mm of travel on a 80 mm base -- enough for the 82 mm lobe span
-# measured off BigMeherrin, and small enough to stay on the plate.
+# measured off the meherrin scan, and small enough to stay on the plate.
 PC_R, PC_T = 40.0, 7.0
 PC_SLOT = (8.0, 33.0, 3.2)  # r0, r1, half-width
 PC_PHI = (90.0, 210.0, 330.0)

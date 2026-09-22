@@ -41,7 +41,7 @@ Tooth lengths run from 6.6 mm to 252 mm, median 25.9, p95 110.3, so one
 stand cannot do it. Four cover the range, and each one is a size band
 rather than a species.
 
-The one tooth that exists as a mesh -- models/specimen/BigMeherrin.glb,
+The one tooth that exists as a mesh -- models/specimen/meherrin-textured.glb,
 lifted from its contour by FossilRecord's restoration pipeline, not
 scanned -- is the check on the largest stand, and it passes: levelled,
 its lobes touch down 82.1 mm apart and its root is 31.2 mm thick, so the
@@ -1261,8 +1261,11 @@ def tip_diameter(m, spec):
     return best
 
 
+# One scan, committed, because three were the same scan: BigMeherrin and
+# meherrin-textured are identical vertex for vertex and carry the same
+# two textures, and sale145_tooth is the same tooth off a different bake.
 SPECIMEN_GLB = os.path.join(HERE, "..", "models", "specimen",
-                            "BigMeherrin.glb")
+                            "meherrin-textured.glb")
 
 
 def surrogate(spec):
@@ -1276,7 +1279,7 @@ def surrogate(spec):
     a blob is a weaker claim than one cast on a tooth.
     """
     L = float(np.mean(spec["teeth"]))
-    what, m = "BigMeherrin scaled to %.0f mm" % L, None
+    what, m = "meherrin scaled to %.0f mm" % L, None
     if os.path.isfile(SPECIMEN_GLB):
         try:
             sc = trimesh.load(SPECIMEN_GLB, force="scene")

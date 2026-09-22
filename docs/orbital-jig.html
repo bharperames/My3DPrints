@@ -220,7 +220,7 @@ const Q = new URLSearchParams(location.search);
    reads that off the mesh rather than guessing. A scanned tooth in
    models/specimen/ (glTF, y up, millimeters, base at y = 0); without one,
    a drawn stand-in. */
-const SPECIMEN_GLB = '../models/specimen/' + (new URLSearchParams(location.search).get('file') || 'BigMeherrin.glb');
+const SPECIMEN_GLB = '../models/specimen/' + (new URLSearchParams(location.search).get('file') || 'meherrin-textured.glb');
 let specimenMesh = null, specimenInfo = null;
 try {
   hud.textContent = 'STATE_INIT — loading the specimen…';
