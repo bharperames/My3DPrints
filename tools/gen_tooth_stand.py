@@ -5,7 +5,7 @@ The jig holds the specimen still and flies the camera around it, so
 whatever the specimen sits on is in every one of the 108 frames. That
 makes the mount an optical part as much as a mechanical one. It has three
 jobs that pull against each other: hold the tooth to a tenth of a
-millimetre through 108 settles, touch it in places small enough that the
+millimeter through 108 settles, touch it in places small enough that the
 other rings fill them in, and be matte black and featureless so feature
 matching drops it.
 
@@ -23,7 +23,7 @@ WHERE THE SPANS COME FROM
 
 Not from a scan. FossilRecord measures teeth as outlines lifted from
 photographs -- 6,369 detected teeth with a length and a width, and 801
-with normalised shape ratios -- so the durable numbers here are widths
+with normalized shape ratios -- so the durable numbers here are widths
 and spans, and everything below is built from them:
 
     root width  ~ 0.76 x length      specimen_shapes.base_width, median
@@ -114,7 +114,11 @@ FILLET = 2.5                # concave blend from the flank onto the pad,
 PAD_MARGIN = 0.6            # the pad stands this far outside the fillet's foot
 
 # --- the cone ----------------------------------------------------------
-TIP_R = 1.875               # Ø3.75 tip: 25% thinner than the Ø5 the first
+TIP_R = 1.4                 # Ø2.8 tip, from the printed Ø3.75 which Brett
+                            # called too thick in the hand. Bending stress at
+                            # the tip goes as 1/r^3, so check cone_stress
+                            # after any change here
+TIP_R_WAS = 1.875           # Ø3.75 tip: 25% thinner than the Ø5 the first
                             # print had, on Brett's call after handling it.
                             # The cup still takes a dab of museum wax
                             # in, on a spire stout enough to handle. The
@@ -138,22 +142,32 @@ STANDS = [
     # fore 6, not the 3 the 0.55 x thickness rule gives: printed at 3 the
     # cups sat 2 mm apart and there was no getting a tooth between them
     dict(id="xs", name="XS", teeth=(10.0, 28.0), cross=10.0, fore=6.0,
-         cone=12.0, tip=1.125),
+         # the XS keeps a slightly fatter tip than the family: at 0.95 its
+         # 12 mm cone reads 17.8 MPa under a sideways newton, against 9-11
+         # for the rest
+         cone=12.0, tip=1.05),
     # fore spans opened out from the 0.55 x thickness rule -- 6, 11, 18
     # printed with the cups nearly touching, and a root lobe wants room
     # to settle between the two pins rather than balance across them
     dict(id="s", name="S", teeth=(25.0, 55.0), cross=20.0, fore=10.0,
-         cone=16.0, tip=1.5),
+         cone=16.0, tip=1.2),
     # the same parabolic foot as the L, at half its size
     dict(id="m", name="M", teeth=(50.0, 95.0), cross=38.0, fore=16.0,
          cone=20.0, tail=(HUB_R / 2.0, 15.75)),
-    # a tail behind the hub: the L stand's footprint is 24 mm across in
-    # the fore/aft direction under a tooth that can be 150 mm tall, and
+    # a tail behind the hub: the L stand's footprint is only about 20 mm
+    # across in the fore/aft direction under a tooth 150 mm tall, and
     # it tipped back. A flat parabola growing out of the hub circle
     # behind one side -- half the hub's width at its mouth, its vertex
     # 31.5 mm behind the pivot -- moves the tipping edge from 19 mm to
     # 31.5. (width at the mouth, reach behind the pivot)
-    dict(id="l", name="L", teeth=(90.0, 150.0), cross=60.0, fore=24.0,
+    # fore 20.3, not 24: printed at 24 the pair on each lobe stood about
+    # 18 mm apart in the clear at the feet of the cones, and a meg root
+    # tapers in faster than that -- it dropped past the pins instead of
+    # being gripped by them. The posts also flex outward under the root,
+    # so the working gap is a little wider than the drawn one. 20.3
+    # centers put 15.0 mm of clear air between the cones at their feet,
+    # which is the number to hold; at the tips it is 17.5.
+    dict(id="l", name="L", teeth=(90.0, 150.0), cross=60.0, fore=20.3,
          cone=24.0, tail=(HUB_R, 31.5)),
 ]
 BY_ID = {s["id"]: s for s in STANDS}
@@ -191,15 +205,36 @@ XW_SWEEP_CLR = 0.5          # clearance round the lower BAR where it sweeps
 # The pin is fixed in the LOWER arm and the UPPER arm turns on it, so the
 # two holes are different fits. Small FDM holes print a tenth or two
 # undersize, so the designed numbers carry that:
-# Fits for PETG on the P2S. Small vertical holes print 0.1-0.2 undersize
-# on the diameter and small vertical pins print a few hundredths over, so
-# a hole drawn at the pin's size is a 0.15-0.2 interference -- too hard to
-# press by hand into a 3 mm wall. These are the drawn sizes that print as
-# the fit named:
-XW_HOLE_PRESS_R = XW_PIN_R + 0.05     # lower arm: Ø3.1 drawn, a firm press
-XW_HOLE_RUN_R = XW_PIN_R + 0.2        # upper arm: Ø3.4 drawn, ~0.2 running
+# Fits for PETG on the P2S, calibrated on the first printed set rather
+# than assumed. Measured there: Ø3.1 drawn needed pliers on a Ø3 pin,
+# Ø3.3 drawn would not take it at all, and a Ø3.35 socket let a post fall
+# off. So a hole here prints about 0.15 under its drawn diameter and a
+# small vertical pin prints about nominal. Drawn sizes, Ø3 pin:
+#   +0.15  zero clearance: a firm push, the pin stays
+#   +0.25  about 0.1 clearance: turns, with friction
+#   +0.35  free
+XW_HOLE_SHRINK = 0.15                 # what the printer takes off a hole
+XW_HOLE_PRESS_R = XW_PIN_R + 0.075    # lower arm: Ø3.15 drawn, a push fit
+XW_HOLE_RUN_R = XW_PIN_R + 0.125      # upper arm: Ø3.25 drawn, a friction turn
 XW_HOLE_CHAMFER = 0.3                 # lead-in at the mouth of each hole
-XW_PIN_HEAD = (3.0, 1.5)    # Ø6 head, printed head-down
+# Ø7 head. Both pins lie head-down on the plate: the head's outer face is
+# the one flat surface either pin has, so it is what they stand on and it
+# is sized to hold them there. The first plate brimmed them and only one
+# head came off it usable -- a 5 mm brim at zero gap around a Ø6 disc is
+# cut away through the head. Ø7 is 38 mm^2 under a 12.3 mm pin, a 3.5:1
+# lever that stands unaided, so the pins are the one small body on the
+# plate with no brim. The head is 2.0 thick (was 1.5) so there is
+# material to spare for the squeeze of the first layer, and it still sits
+# inside the Ø9 hub it lands on.
+XW_PIN_HEAD = (3.5, 2.0)
+# A second pin goes on the plate, fatter by this much in RADIUS through the
+# UPPER arm
+# only -- its shank stays Ø3 where it presses into the lower hub, which is
+# already tight. Friction at the pivot is what stops a tooth pushing the
+# scissors open, so if the nominal pin turns too freely this one replaces
+# it. Its head carries a dimple so the two can be told apart.
+XW_PIN_OVER = 0.075
+XW_PIN_MARK = (1.0, 0.6)    # the dimple's radius and depth
 XW_LAND = 3.0               # the connector runs this far onto full-width end
 XW_HUB_T = 5.0              # the upper hub's height: what the arm turns on
 XW_BAR_W = 6.0
@@ -213,7 +248,7 @@ XWINGS = [
     # X-wing cones is the one lever on the swing: 1.2 mm here against
     # 2.5 on the fixed stands, worth about three degrees of closing.
     dict(id="xw_s", name="X-wing S", teeth=(25.0, 55.0), L=16.0, cone=16.0,
-         tip=1.5, alpha=45.0, xwing=True),
+         tip=1.2, alpha=45.0, xwing=True),
     dict(id="xw_m", name="X-wing M", teeth=(50.0, 95.0), L=20.0, cone=20.0,
          alpha=45.0, xwing=True),
     dict(id="xw_l", name="X-wing L", teeth=(90.0, 150.0), L=31.3, cone=24.0,
@@ -258,18 +293,26 @@ def fillet_r(spec=None):
     return min(FILLET, 1.7 * tip_r(spec))
 
 
+def half_deg(spec=None):
+    """The flank's half angle. HALF_DEG for the stands the spec sized;
+    a spec may ask for its own, and the gazebo does -- a slender spike
+    that flexes under the root needs a shallower taper than a cone that
+    is only meant to hold still."""
+    return HALF_DEG if spec is None else float(spec.get("half", HALF_DEG))
+
+
 def cone_base_r(h, spec=None):
-    """The flank is held at HALF_DEG, so the base grows with height."""
-    return tip_r(spec) + h * np.tan(np.radians(HALF_DEG))
+    """The flank is held at half_deg, so the base grows with height."""
+    return tip_r(spec) + h * np.tan(np.radians(half_deg(spec)))
 
 
 def fillet_geom(h, spec=None):
-    """The concave fillet between the flank and the deck: its centre
+    """The concave fillet between the flank and the deck: its center
     (rc, F) above the deck, its foot rc on the deck, and its tangent
-    point (r_t, z_t) on the flank. The centre sits in the AIR, F from
+    point (r_t, z_t) on the flank. The center sits in the AIR, F from
     both surfaces, and the arc between the two tangent points is the
     short way round -- through the point nearest the corner."""
-    t = np.tan(np.radians(HALF_DEG))
+    t = np.tan(np.radians(half_deg(spec)))
     r_b = cone_base_r(h, spec)
     F = fillet_r(spec)
     rc = r_b - F * t + F * np.sqrt(1.0 + t * t)
@@ -282,13 +325,55 @@ def cone_foot_r(h, spec=None):
     return fillet_geom(h, spec)[0]
 
 
+# --- the grip on the flank ---------------------------------------------
+# The smooth flank is a turned cone: circular layer lines, and the
+# printed feel is slick. A ratchet cut into the flank gives the root
+# something to catch on. The barbs point DOWN: four tapered posts
+# squeezing a tapered root push it UP and out of the cradle, so the face
+# that has to do work is the one a rising root runs into.
+#
+# Going up the flank the radius therefore steps OUT by SAW_DEPTH over
+# SAW_STEP_Z -- that is the barb's underside, and the only overhang on
+# the part -- and then eases back in over the rest of the pitch. At 0.35
+# over 0.4 the underside stands 41 degrees off vertical, inside the 45
+# the nozzle wants, and the return is self-supporting by construction.
+# The top of the flank is left smooth so the cup's rim stays a clean
+# circle to bite the wax.
+GRIP = "smooth"                # "saw" cuts the ratchet, set by --grip
+SAW_PITCH = 1.2                # one barb every 1.2 mm of height
+SAW_DEPTH = 0.35               # how far each barb stands proud
+SAW_STEP_Z = 0.4               # two layers: the underside's rise
+SAW_TOP = 1.5                  # smooth band kept under the cup's rim
+
+
+def saw_flank(r0, z0, r1, z1):
+    """The flank from (r0, z0) up to (r1, z1) as a ratchet, barbs down.
+    Returns the points between the ends, exclusive: whole barbs from the
+    bottom, and whatever is left runs out smooth under the cup."""
+    span = (z1 - z0) - SAW_TOP
+    n = int(span // SAW_PITCH)
+    if GRIP != "saw" or n < 2:
+        return []
+    def mean_r(z):                       # the smooth cone this rides on
+        return r0 + (r1 - r0) * (z - z0) / (z1 - z0)
+    pts = []
+    for k in range(n):
+        zb = z0 + k * SAW_PITCH          # the barb's root
+        pts.append((mean_r(zb), zb))
+        zs = zb + SAW_STEP_Z             # out to the point of the barb
+        pts.append((mean_r(zs) + SAW_DEPTH, zs))
+        ze = zb + SAW_PITCH              # and back in to the flank
+        pts.append((mean_r(ze), ze))
+    return pts
+
+
 def cone_profile(h, deck=0.0, spec=None):
     """One cone as an (r, z) profile to revolve: a concave fillet off the
     pad onto a straight flank, and a concave dish for the tac instead of
     a point.
 
     The fillet arc runs from its foot on the deck, straight below its
-    centre, to its tangent point on the flank, and it has to take the
+    center, to its tangent point on the flank, and it has to take the
     SHORT way round: from -90 degrees down through -180, past the point
     nearest the corner. A first cut swept the angle upward instead and
     went the long way through 0 degrees -- three quarters of a circle
@@ -305,11 +390,12 @@ def cone_profile(h, deck=0.0, spec=None):
         a1 -= 2.0 * np.pi                        # go down through -180
     for a in np.linspace(a0, a1, 16)[1:]:
         pts.append((rc + F * np.cos(a), deck + F + F * np.sin(a)))
+    pts += saw_flank(r_t, z_t + deck, R_T, deck + h)
     pts.append((R_T, deck + h))
     # the cup: a spherical bowl D_D deep with its rim at the tip, so the
     # rim is a sharp edge that bites the wax and the bowl holds it
     Rs = (R_T ** 2 + D_D ** 2) / (2.0 * D_D)              # sphere radius
-    zc = deck + h - D_D + Rs                             # its centre, above
+    zc = deck + h - D_D + Rs                             # its center, above
     a_rim = np.arcsin(R_T / Rs)
     for a in np.linspace(a_rim, 0.0, 12)[1:]:
         pts.append((Rs * np.sin(a), zc - Rs * np.cos(a)))
@@ -332,7 +418,7 @@ def arm(x, y, deck, cone_h, spec=None):
     """A tapered arm from the hub out to one cone, flat on the plate,
     ending in a round pad concentric with the cone and wider than the
     fillet's foot -- so the whole blend lands on material. A cone
-    centred on the end of a 4.5 mm arm with an 8 mm foot had half of it
+    centerd on the end of a 4.5 mm arm with an 8 mm foot had half of it
     in the air."""
     from shapely.geometry import Point
     from shapely.ops import unary_union
@@ -383,14 +469,42 @@ XW_POCKET_Z = ARM_T + 0.4   # the pocket under it clears the lower arm by two
 # it would point into the plate; and the cone gets a socket rather than
 # a spigot so it prints standing on its own flat foot. Nominal fits carry
 # the tenth or two that small FDM holes print undersize.
-XW_DOWEL = (1.5, 7.6)       # radius and length
-XW_SOCKET = (1.55, 4.0)     # in the arm: Ø3.1 drawn, a firm press
-XW_CONE_SOCKET = (1.65, 4.0)  # in the cone's base: Ø3.3 drawn, a snug slip
-XW_FOOT_BAND = 0.8          # a loose cone's foot is a vertical band this tall
-                            # under its fillet: the fillet alone thinned to a
-                            # knife edge where it met the plate
+XW_DOWEL_R = 1.5            # Ø3; its length follows the post's socket
+# The first print's dowels would not go fully home and had to be glued. Two
+# reasons: the socket was exactly as deep as the dowel's half, so any blob
+# or first-layer squish at the bottom stopped it short of flush, and Ø3.1
+# drawn is a hard press in PETG. The socket is now deeper than the dowel
+# needs and drawn a fifth over, which a print still makes a firm push.
+# The first print stood its dowels 3.45 proud with only 3.2 of socket to
+# go into, and a post could fall off. The arm now takes less of the dowel
+# and the post takes more, and both holes are drawn for a push rather
+# than a slip.
+XW_SOCKET = (1.575, 3.4)    # in the arm: Ø3.15 drawn, 3.2 of dowel in it --
+                            # less than the post takes, which is the point
+XW_CONE_SOCKET_R = 1.575    # in the post's pedestal: Ø3.15 drawn
+XW_CONE_SOCKET_MAX = 4.0    # as deep as the post's own height allows. It
+                            # sets the riser's height, and the riser was
+                            # taller than it needed to be
+# A loose cone stands on a short pedestal rather than straight on its
+# fillet. It does two jobs: the fillet alone thinned to a knife edge where
+# it met the plate, and the socket has to live somewhere with wall around
+# it -- at 7 degrees included the cone's own flank is thinner than the
+# socket a few millimeters up, and on the S the hole cut out through the
+# side. The pedestal is under the contact plane, so it cannot occlude.
+XW_FOOT_BAND_OVER = 1.2     # riser height over its socket
+XW_PIER_BAND = 4.0          # the lower arm's piers stand on a band this tall,
+                            # so a rubber band can be run round all four feet
 XW_HEAD_GAP = 0.3           # the pin's head stands this far off the upper arm,
                             # so a pin pressed home does not clamp the pivot
+# A foot against tipping back, as the fixed M and L have: a flat parabola
+# on the LOWER arm, square to its bar so it reaches where the pins never
+# do. Smaller than the fixed L's, and short enough to stay under the upper
+# arm's pocket -- it passes beneath the roof at every setting, which the
+# sweep proves rather than assumes. (width at the mouth, reach)
+XW_TAIL = (9.0, 24.0)
+XW_TAIL_AT = 30.0           # the tail is square to the crook of the X at this
+                            # opening, rather than square to the lower bar --
+                            # tipping is across the narrow way of the V
 XW_NECK_HW = 1.5            # the lower bar's half-width where it meets the
                             # hub: a 3 mm neck
 XW_TAPER = 8.0              # and how far out it tapers back to full width.
@@ -404,7 +518,26 @@ XW_CONN_FILLET = 2.5        # concave fillet from the connector down onto
 XW_CONN_EDGE = 0.8          # the connector's top edge at each end, rounded
 
 
-def xw_plan(L, pad_r, hub_r=None):
+def xw_tail_plan(spec=None, angled=True):
+    """The lower arm's stability tail, in the lower arm's own frame: a flat
+    parabola square to the bar, mouth at the pivot, reaching XW_TAIL[1]
+    behind it -- or as far as the upper arm's pocket reaches, whichever is
+    less. On the small X-wing the full 24 mm was longer than the arm and
+    the pocket clearing it ate the upper arm's legs."""
+    w_t, reach = XW_TAIL
+    if spec is not None:
+        reach = min(reach, spec["L"] - xw_pad_r(spec) - 2.0)
+    hw = w_t / 2.0
+    xs = np.linspace(-hw, hw, 33)
+    tail = Polygon([(x, -reach * (1.0 - (x / hw) ** 2)) for x in xs]
+                   + [(hw, 0.5), (-hw, 0.5)])
+    if angled:
+        from shapely import affinity
+        tail = affinity.rotate(tail, XW_TAIL_AT, origin=(0, 0))
+    return tail
+
+
+def xw_plan(L, pad_r, hub_r=None, tail_spec=None):
     """An arm's outline: bar, a pad at each end, optionally the disc at
     the pivot, as ONE polygon with its inside corners rounded. One
     outline extruded once: the disc and bar as two solids met in the same
@@ -423,16 +556,19 @@ def xw_plan(L, pad_r, hub_r=None):
         bar = Polygon([(-L, -w), (L, -w), (L, w), (-L, w)])
     parts = [bar, Point(L, 0.0).buffer(pad_r, quad_segs=36),
              Point(-L, 0.0).buffer(pad_r, quad_segs=36)]
+    if hub_r and XW_TAIL:
+        parts.append(xw_tail_plan(tail_spec))
     if hub_r:
         parts.append(Point(0.0, 0.0).buffer(hub_r, quad_segs=48))
     plan = unary_union(parts)
     return plan.buffer(XW_ROUND, quad_segs=12).buffer(-XW_ROUND, quad_segs=12)
 
 
-def xw_bar(L, pad_r, z0, z1, ang_deg, hub_r=None):
+def xw_bar(L, pad_r, z0, z1, ang_deg, hub_r=None, tail_spec=None):
     """A straight bar through the pivot, pads at both ends, lying z0..z1,
-    optionally with the pivot disc in the same outline."""
-    b = trimesh.creation.extrude_polygon(xw_plan(L, pad_r, hub_r), z1 - z0)
+    optionally with the pivot disc and the tail in the same outline."""
+    b = trimesh.creation.extrude_polygon(
+        xw_plan(L, pad_r, hub_r, tail_spec), z1 - z0)
     b.apply_translation([0, 0, z0])
     b.apply_transform(rot(ang_deg, [0, 0, 1]))
     return b
@@ -461,7 +597,7 @@ def xw_connector(Rc, z0, z1):
     side view and extruded across the bar's width."""
     F, E, w = XW_CONN_FILLET, XW_CONN_EDGE, XW_BAR_W / 2.0
     pts = [(-Rc - F, z0), (Rc + F, z0)]
-    # right end: concave fillet up from the arm's top, centre in the air
+    # right end: concave fillet up from the arm's top, center in the air
     for t in np.linspace(-np.pi / 2, -np.pi, 12)[1:]:
         pts.append((Rc + F + F * np.cos(t), z0 + F + F * np.sin(t)))
     # up the end face, round the top edge, across, round, down
@@ -548,7 +684,7 @@ def xw_pins(spec, beta=None):
 def xw_pocket(spec):
     """The upper arm's underside pocket, in the upper arm's own frame:
     the lower hub's profile plus holdoff, and the channel the lower bar
-    sweeps through between the pads' limits, half a millimetre clear. It
+    sweeps through between the pads' limits, half a millimeter clear. It
     opens downward in use and upward on the plate, so it needs no bridge."""
     from shapely import affinity
     from shapely.geometry import Point
@@ -557,8 +693,14 @@ def xw_pocket(spec):
     hw = XW_BAR_W / 2.0 + XW_SWEEP_CLR
     reach = L - pad - 0.5              # stop short of the upper arm's pads
     strip = Polygon([(-reach, -hw), (reach, -hw), (reach, hw), (-reach, hw)])
-    strips = [affinity.rotate(strip, -2.0 * b, origin=(0, 0))
-              for b in np.linspace(xw_close(spec), xw_open(spec), 72)]
+    betas = np.linspace(xw_close(spec), xw_open(spec), 72)
+    strips = [affinity.rotate(strip, -2.0 * b, origin=(0, 0)) for b in betas]
+    # the lower arm's tail sweeps across the upper arm's own axis (it lies
+    # at 2*beta - 90 to it), so the pocket has to clear that too. It is
+    # only a pocket, not a bridge: the arm prints roof-down
+    if XW_TAIL:
+        tail = xw_tail_plan(spec).buffer(XW_SWEEP_CLR, quad_segs=12)
+        strips += [affinity.rotate(tail, -2.0 * b, origin=(0, 0)) for b in betas]
     shape = unary_union(strips + [Point(0, 0).buffer(
         XW_HUB_R + XW_HOLDOFF, quad_segs=48)]).simplify(0.02)
     return shape.buffer(XW_ROUND, quad_segs=12).buffer(-XW_ROUND, quad_segs=12)
@@ -570,7 +712,7 @@ def xw_arms(spec, lift=0.0):
     XW_UP_T tall with the pocket cut up into it from underneath."""
     L, a = spec["L"], spec["alpha"]
     pad = xw_pad_r(spec)
-    lower = xw_bar(L, pad, 0.0, ARM_T, -a, hub_r=XW_HUB_R)
+    lower = xw_bar(L, pad, 0.0, ARM_T, -a, hub_r=XW_HUB_R, tail_spec=spec)
     block = xw_bar(L, pad, lift, XW_UP_T, a)
     pocket = trimesh.creation.extrude_polygon(xw_pocket(spec), XW_POCKET_Z + 1.0)
     pocket.apply_translation([0, 0, -1.0])
@@ -578,17 +720,58 @@ def xw_arms(spec, lift=0.0):
     return lower, cut(block, [pocket])
 
 
+def xw_pier(spec, x, y):
+    """One of the lower arm's cones, standing on a short band at its foot.
+    The band matches the loose posts' risers, so a rubber band run round
+    the four feet sits on a straight wall rather than a taper."""
+    band = XW_PIER_BAND
+    h = xw_levels(spec)["contact"] - ARM_T - band
+    prof = [(0.0, ARM_T), (cone_foot_r(h, spec), ARM_T),
+            (cone_foot_r(h, spec), ARM_T + band)]
+    for r_, z_ in cone_profile(h, ARM_T + band, spec)[1:]:
+        if abs(r_ - prof[-1][0]) < 1e-6 and abs(z_ - prof[-1][1]) < 1e-6:
+            continue
+        prof.append((r_, z_))
+    m = rev(prof, sections=72)
+    m.apply_translation([x, y, 0.0])
+    return m
+
+
+def xw_cone_socket(spec):
+    """The post's socket: as deep as its own height allows, so the dowel
+    reaches well up into it. (radius, depth, pedestal height)"""
+    H = xw_levels(spec)["contact"] - XW_UP_T
+    depth = min(XW_CONE_SOCKET_MAX, 0.45 * H)
+    return XW_CONE_SOCKET_R, round(depth, 2), round(depth + XW_FOOT_BAND_OVER, 2)
+
+
+def xw_dowel_len(spec):
+    """Into the arm to 0.2 off the bottom, and proud by 0.3 less than the
+    post's socket is deep, so it bottoms in neither."""
+    return round((XW_SOCKET[1] - 0.2) + (xw_cone_socket(spec)[1] - 0.3), 2)
+
+
 def xw_cone_part(spec, x, y):
     """One of the upper arm's cones as its own piece: the cone standing
     on the arm's top at XW_UP_T, reaching the same contact plane as the
     lower arm's cones, with a socket up into its base for the dowel. It
     prints on that flat foot."""
-    band = XW_FOOT_BAND
+    r, d, band = xw_cone_socket(spec)
     h = xw_levels(spec)["contact"] - XW_UP_T - band
-    c = union([a_cone(h, x, y, XW_UP_T + band, spec),
-               cyl(cone_foot_r(h, spec), XW_UP_T, XW_UP_T + band + 0.01,
-                   x, y, sections=72)])
-    r, d = XW_CONE_SOCKET
+    # the foot is the fillet's own radius, or whatever the socket and its
+    # lead-in need plus 2 mm of wall -- a thin tip gives a small fillet, and
+    # on the S the socket's chamfer cut straight out through the side.
+    # Revolved as ONE profile, band and cone together: unioning a cylinder
+    # under a cone whose fillet is tangent to the cylinder's top face left
+    # zero-length edges and a non-manifold 3MF
+    foot = max(cone_foot_r(h, spec), r + 1.5)
+    prof = [(0.0, XW_UP_T), (foot, XW_UP_T), (foot, XW_UP_T + band)]
+    for r_, z_ in cone_profile(h, XW_UP_T + band, spec)[1:]:
+        if abs(r_ - prof[-1][0]) < 1e-6 and abs(z_ - prof[-1][1]) < 1e-6:
+            continue
+        prof.append((r_, z_))
+    c = rev(prof, sections=72)
+    c.apply_translation([x, y, 0.0])
     # the socket opens at the cone's foot with a 0.3 mm lead-in
     sock = rev([(0.0, XW_UP_T - 1.0), (r + 1.3, XW_UP_T - 1.0),
                 (r, XW_UP_T + 0.3), (r, XW_UP_T + d), (0.0, XW_UP_T + d)],
@@ -597,10 +780,36 @@ def xw_cone_part(spec, x, y):
     return cut(c, [sock])
 
 
-def xw_dowel(x, y):
-    """A plain Ø3 dowel, chamfered both ends, standing where it sits: half
-    in the arm, half in the cone."""
-    r, L = XW_DOWEL
+def xw_pin(z1, over=0.0):
+    """The pivot pin: tip flush with the lower arm's underside, head above
+    the upper arm with XW_HEAD_GAP under it, printed head-down. With
+    `over` it is fatter by that much from the top of the lower arm up --
+    the part that runs in the upper arm -- and carries a dimple on its
+    head so it is not mistaken for the nominal one."""
+    hr, hh = XW_PIN_HEAD
+    g, r, R = XW_HEAD_GAP, XW_PIN_R, XW_PIN_R + over
+    top = z1 + g + 0.5
+    prof = [(0.0, 0.0), (r - 0.4, 0.0), (r, 0.4), (r, ARM_T)]
+    if over > 1e-9:
+        # the step sits inside the pocket between the arms, where neither
+        # bore is, with a lead-in so it enters the upper arm's hole
+        prof += [(R, ARM_T + 0.3), (R, top)]
+    else:
+        prof += [(r, top)]
+    prof += [(0.0, top)]
+    pin = union([cyl(hr, z1 + g, z1 + g + hh, sections=64),
+                 rev(prof, sections=64)])
+    if over > 1e-9:
+        mr, md = XW_PIN_MARK
+        pin = cut(pin, [cyl(mr, z1 + g + hh - md, z1 + g + hh + 1.0,
+                            sections=32)])
+    return pin
+
+
+def xw_dowel(spec, x, y):
+    """A plain Ø3 dowel, chamfered both ends, standing where it sits: into
+    the arm, and proud into the post."""
+    r, L = XW_DOWEL_R, xw_dowel_len(spec)
     z0 = XW_UP_T - XW_SOCKET[1] + 0.2
     d = rev([(0.0, z0), (r - 0.3, z0), (r, z0 + 0.3), (r, z0 + L - 0.3),
              (r - 0.3, z0 + L), (0.0, z0 + L)], sections=48)
@@ -616,7 +825,7 @@ def xwing(spec):
     h = spec["cone"]
     lo_pins, hi_pins = xw_pins(spec)
     lower, upper = xw_arms(spec)
-    base = [lower] + [a_cone(h, x, y, ARM_T, spec) for x, y in lo_pins]
+    base = [lower] + [xw_pier(spec, x, y) for x, y in lo_pins]
     base = cut(union(base), [xw_bore(XW_HOLE_PRESS_R, -2.0, ARM_T,
                                      bottom_mouth=0.0)])
     z1 = XW_UP_T
@@ -629,19 +838,14 @@ def xwing(spec):
     kk = spec['id'][3:]
     cones = {f"xwing_{kk}_cone{i}": xw_cone_part(spec, x, y)
              for i, (x, y) in enumerate(hi_pins)}
-    cones.update({f"xwing_{kk}_dowel{i}": xw_dowel(x, y)
+    cones.update({f"xwing_{kk}_dowel{i}": xw_dowel(spec, x, y)
                   for i, (x, y) in enumerate(hi_pins)})
     # the pin: pressed down from above, head on the connector, tip flush
     # with the flat bottom, chamfered so it starts in the hole
-    hr, hh = XW_PIN_HEAD
-    g = XW_HEAD_GAP
-    pin = union([cyl(hr, z1 + g, z1 + g + hh, sections=64),
-                 rev([(0.0, 0.0), (XW_PIN_R - 0.4, 0.0), (XW_PIN_R, 0.4),
-                      (XW_PIN_R, z1 + g + 0.5), (0.0, z1 + g + 0.5)],
-                     sections=64)])
     k = spec['id'][3:]
     return {f"xwing_{k}_base": base, f"xwing_{k}_top": top,
-            f"xwing_{k}_pin": pin, **cones}
+            f"xwing_{k}_pin": xw_pin(z1), f"xwing_{k}_pin2": xw_pin(z1, XW_PIN_OVER),
+            **cones}
 
 
 def xw_hub_range(spec, step=1.0):
@@ -725,10 +929,14 @@ def xw_pin_fit(parts, k):
     pin_d = _shaft_d(pin, z_low)
     press = _bore_d(base, z_low)
     run = _bore_d(top, z_top)
+    tight = parts.get(f"xwing_{k}_pin2")
+    tight_d = None if tight is None else _shaft_d(tight, z_top)
     out = dict(pin_d=round(pin_d, 3), press_hole_d=round(press, 3),
                run_hole_d=round(run, 3),
                press_clearance=round(press - pin_d, 3),
                run_clearance=round(run - pin_d, 3),
+               tight_pin_d=None if tight_d is None else round(tight_d, 3),
+               tight_run_clearance=None if tight_d is None else round(run - tight_d, 3),
                press_engagement=round(ARM_T - XW_HOLE_CHAMFER, 2),
                run_engagement=round(XW_UP_T - XW_POCKET_Z - XW_HOLE_CHAMFER, 2))
     return out
@@ -757,7 +965,7 @@ def xw_cone_fit(parts, k, spec):
     top = parts[f"xwing_{k}_top"].copy().apply_transform(shift)
     cone = parts[f"xwing_{k}_cone0"].copy().apply_transform(shift)
     z_arm = XW_UP_T - XW_SOCKET[1] / 2.0
-    z_cone = XW_UP_T + XW_CONE_SOCKET[1] / 2.0
+    z_cone = XW_UP_T + xw_cone_socket(spec)[1] / 2.0
     d = _shaft_d(dow, z_arm)
     arm_hole, cone_hole = _bore_d(top, z_arm), _bore_d(cone, z_cone)
     c = cone.copy()
@@ -774,7 +982,7 @@ def xw_cone_fit(parts, k, spec):
 
 
 def xw_hold(spec, tooth_g=500.0, offset_mm=None):
-    """Whether the upper arm stays put with a tooth sitting off-centre.
+    """Whether the upper arm stays put with a tooth sitting off-center.
     Both arms stand on the table on their own pads, so a tooth on one cup
     loads that arm's pad, not the pivot; what is left is the strip
     lifting off the disc, which the pressed pin resists. A Ø6 PETG pin
@@ -842,32 +1050,58 @@ def build(which="all"):
 
 
 # --- layout and export -------------------------------------------------
+# A brim is a per-body decision, and on this plate no body earns one.
+# The loose posts stand on a 52 mm2 flat foot and the dowels on 7 mm2 of
+# Ø3 -- both levers just past 4:1, but both flat discs on textured PEI in
+# PETG, which is an ordinary small part and not a part standing on a
+# point. The first plate brimmed everything: it cost 208 mm of brim to
+# cut off, merged the neighboring posts' brims into one raft at 5 mm
+# wide and 6 mm apart, and took a pivot pin's head with it. --brim turns
+# it back on per group if anything ever lifts, and the packer then leaves
+# BRIM_CLEAR of air between one brim and the next.
+BRIM_W = 3.0
+BRIM_CLEAR = 2.0
+BRIM_GROUPS = {"posts": "_cone", "dowels": "_dowel", "pins": "_pin"}
+BRIM_ON = []
+
+
+def takes_brim(name):
+    return any(t in name for t in BRIM_ON)
+
+
 def layout(parts, gap=6.0):
-    """All four on one plate: they are small, and the spec wants them
+    """All of them on one plate: they are small, and the spec wants them
     printed together so the fine tips get their minimum layer time from
     the travel between parts rather than from a slowdown."""
     out, poses = {}, {}
-    x, y, row_h = 0.0, 0.0, 0.0
+    x, y, row_h, prev_pad = 0.0, 0.0, 0.0, 0.0
     for n in sorted(parts):
         m = parts[n].copy()
-        # the X-wing's pin prints head-down: standing on its tip, the head
-        # is a 2 mm overhang all round
-        # the X-wing's upper arm prints upside down too, on Brett's call
-        F = (rot(180.0, [1, 0, 0]) if n.endswith(("_pin", "_top"))
-             else np.eye(4))
+        # Both pivot pins print head-down, on the flat of the head: stood
+        # the other way up they balance on a chamfered Ø3 tip. The spare
+        # printed that way on the first plate because it is named _pin2
+        # and the test here was endswith("_pin") -- one usable head came
+        # back out of two. The upper arm prints upside down too, so its
+        # pocket opens upward and there is no bridge.
+        F = (rot(180.0, [1, 0, 0])
+             if "_pin" in n or n.endswith("_top") else np.eye(4))
         m.apply_transform(F)
         lo, hi = m.bounds
         ext = hi - lo
-        if x + ext[0] > 246.0 and x > 0.0:
-            x, y, row_h = 0.0, y + row_h + gap, 0.0
-        shift = np.array([x - lo[0], y - lo[1], -lo[2]])
+        pad = BRIM_W if takes_brim(n) else 0.0
+        step = 0.0 if x <= 0.0 else max(gap, prev_pad + pad + BRIM_CLEAR)
+        if x + step + ext[0] + pad > 246.0 and x > 0.0:
+            x, y, row_h, prev_pad, step = 0.0, y + row_h + gap, 0.0, 0.0, 0.0
+        x += step
+        shift = np.array([x - lo[0], y + pad - lo[1], -lo[2]])
         m.apply_translation(shift)
         S = np.eye(4)
         S[:3, 3] = shift
         poses[n] = np.linalg.inv(S @ F)
         out[n] = m
-        x += ext[0] + gap
-        row_h = max(row_h, ext[1])
+        x += ext[0]
+        prev_pad = pad
+        row_h = max(row_h, ext[1] + 2.0 * pad)
     return out, poses
 
 
@@ -876,7 +1110,10 @@ def stand_meta(parts, poses):
         "design": "tooth_stand",
         "dock": dict(flat_bottom=True, plat_r=PLAT_R),
         "hub": dict(r=HUB_R, t=HUB_T),
-        "cone": dict(tip_r=TIP_R, half_deg=HALF_DEG, dish_ratio=DISH_RATIO),
+        "cone": dict(tip_r=TIP_R, half_deg=HALF_DEG, dish_ratio=DISH_RATIO,
+                     grip=GRIP, saw=(dict(pitch=SAW_PITCH, depth=SAW_DEPTH,
+                                          step_z=SAW_STEP_Z, top=SAW_TOP)
+                                     if GRIP == "saw" else None)),
         # contact_z travels with each stand so a page can draw the plane
         # the tooth rests on without re-deriving the deck rule in JS
         "stands": [dict(s, tips=tips(s), deck=deck_of(s),
@@ -891,8 +1128,9 @@ def stand_meta(parts, poses):
                         dish_z=dish_z(x), levels=xw_levels(x),
                         pivot=f"plain \u00d8{2 * XW_PIN_R:g} printed pin: pressed into the lower arm, turning in the upper",
                         upper_t=XW_UP_T,
-                        dowel=dict(r=XW_DOWEL[0], length=XW_DOWEL[1],
-                                   proud=round(XW_DOWEL[1] - XW_SOCKET[1] + 0.2, 2)),
+                        dowel=dict(r=XW_DOWEL_R, length=xw_dowel_len(x),
+                                   proud=round(xw_dowel_len(x) - XW_SOCKET[1]
+                                               + 0.2, 2)),
                         disc_r=round(float(xw_disc_r(x)), 2), holdoff=XW_HOLDOFF,
                         span=round(float(xw_span(x)), 2),
                         conn_t=XW_CONN_T, hub_r=XW_HUB_R, bar_t=ARM_T,
@@ -921,9 +1159,18 @@ def export(parts, out):
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     sc.export(out)
     from embed_settings import embed
-    # a brim earns its keep here: four small footprints, and the tallest
-    # is a 24 mm cone on a 20 mm hub
-    embed(out, brim=True)
+    # Nothing is brimmed unless --brim asked for it: see BRIM_ON. When it
+    # does, the setting goes on those bodies alone -- brim_type is
+    # otherwise a plate-wide switch, which is how the first plate came
+    # back with a brim round every part.
+    small = {n: {"brim_type": "outer_only", "brim_width": f"{BRIM_W:g}",
+                 "brim_object_gap": "0"}
+             for n in flat if takes_brim(n)}
+    # brim=False sets the PLATE to no_brim; a body gets one only from its
+    # own record. `brim=not small` looked equivalent and was not: with
+    # nothing to brim it turned the plate-wide brim back on, which is
+    # what put a brim round all four posts and both dowels.
+    embed(out, brim=False, per_object=small)
     meta = stand_meta(parts, poses)
     with zipfile.ZipFile(out, "a", zipfile.ZIP_DEFLATED) as z:
         z.writestr("Metadata/tooth_stand.json",
@@ -1060,14 +1307,14 @@ def occlusion(stand_mesh, spec, n_pts=250, n_az=12):
     spm, what = surrogate(spec)
     pts, fid = trimesh.sample.sample_surface(spm, n_pts)
     nrm = spm.face_normals[fid]
-    centre = np.array(contact_points(spec)).mean(axis=0)
+    center = np.array(contact_points(spec)).mean(axis=0)
     per, tot_seen, tot_blocked = {}, 0, 0
     for p in J.PROTOCOL:
         th = p["elev"]
         seen = blocked = 0
         for i in range(n_az):
             phi = 360.0 * i / n_az
-            cam = centre + J.R * np.array([
+            cam = center + J.R * np.array([
                 np.cos(np.radians(th)) * np.cos(np.radians(phi)),
                 np.cos(np.radians(th)) * np.sin(np.radians(phi)),
                 np.sin(np.radians(th))])
@@ -1150,16 +1397,23 @@ def gates(rep):
         # the loose cones stand on their own feet on the plate, and the
         # dowel presses into the arm and slips into the cone
         ("xwing_cones_print_on_their_feet", all(
-            f["cone_on_plate_mm2"] > 40.0 and f["cone_overhang_mm2"] < 12.0
+            f["cone_on_plate_mm2"] > 25.0 and f["cone_lever"] < 5.0
+            and f["cone_overhang_mm2"] < 12.0
             for f in rep.get("xwing_cone_fit", {}).values())),
         ("xwing_dowel_fits", all(
-            0.05 <= f["arm_clearance"] <= 0.15 and 0.2 <= f["cone_clearance"] <= 0.4
+            0.1 <= f["arm_clearance"] <= 0.2 and 0.1 <= f["cone_clearance"] <= 0.2
             for f in rep.get("xwing_cone_fit", {}).values())),
         # the pin presses into the lower arm and turns in the upper, as
         # designed: nominal clearances that print as a press and a run
+        # and the spare pin is an interference in the same hole: friction
+        # at the pivot is what stops a tooth pushing the scissors open
+        ("xwing_spare_pin_is_tighter", all(
+            f["tight_run_clearance"] is not None
+            and 0.0 <= f["tight_run_clearance"] <= 0.1
+            for f in rep.get("xwing_pin_fit", {}).values())),
         ("xwing_pin_fits", all(
             0.05 <= f["press_clearance"] <= 0.15
-            and 0.3 <= f["run_clearance"] <= 0.5
+            and 0.15 <= f["run_clearance"] <= 0.3
             for f in rep.get("xwing_pin_fit", {}).values())),
         # The gate that carries the optical claim. Nothing below the
         # contact plane can occlude a specimen resting on it from any
@@ -1177,9 +1431,28 @@ def main():
     ap.add_argument("--stand", default="all",
                     help="all, or a comma-separated set of "
                          + ", ".join(ALL_IDS))
+    ap.add_argument("--grip", default="smooth", choices=["smooth", "saw"],
+                    help="flank of the posts: turned smooth, or a "
+                         "down-pointing ratchet for the root to catch on")
+    ap.add_argument("--brim", default="",
+                    help="comma-separated groups to brim, from "
+                         + ", ".join(BRIM_GROUPS) + " (default: none)")
+    ap.add_argument("--both-grips", action="store_true",
+                    help="put both flanks on one plate: a second pair of "
+                         "loose X-wing posts and a second copy of each "
+                         "fixed stand, in the other grip")
     ap.add_argument("--out")
     ap.add_argument("--quick", action="store_true")
     a = ap.parse_args()
+    global GRIP, BRIM_ON
+    GRIP = a.grip
+    groups = [g.strip() for g in a.brim.split(",") if g.strip()]
+    bad_g = [g for g in groups if g not in BRIM_GROUPS]
+    if bad_g:
+        print(json.dumps({"ok": False,
+                          "error": "no such brim group: " + ", ".join(bad_g)}))
+        return 1
+    BRIM_ON = [BRIM_GROUPS[g] for g in groups]
     try:
         parts = build(a.stand)
     except ValueError as e:
@@ -1190,11 +1463,35 @@ def main():
         print(json.dumps({"ok": ok, "bodies": len(parts)}))
         return 0 if ok else 1
     rep = measure(parts)
+    rep["grip"] = GRIP
+    rep["brim"] = groups or None
     failed = [n for n, ok in gates(rep) if not ok]
     ok = not failed
     if failed:
         rep["failed"] = failed
         rep["error"] = "gate failed: " + ", ".join(failed)
+    if a.both_grips:
+        # One flank is unproven, so the plate carries both and nothing is
+        # left to a second print. The loose X-wing posts come off, so a
+        # pair of each swaps onto one arm with the spacing, the arm and
+        # the day's filament held constant. A fixed stand's cones are part
+        # of its body and cannot be swapped, so it gets a whole second
+        # copy -- otherwise the only smooth L to compare against is the
+        # one already printed at the old 24 mm spacing, which is the
+        # other thing being tested.
+        alt = "saw" if a.grip == "smooth" else "smooth"
+        GRIP = alt
+        for i in parse_which(a.stand):
+            if i in XW_BY_ID:
+                spec = XW_BY_ID[i]
+                for k, (px, py) in enumerate(xw_pins(spec)[1]):
+                    parts[f"xwing_{i[3:]}_cone{k}alt"] = xw_cone_part(
+                        spec, px, py)
+            else:
+                parts[f"stand_{i}alt"] = stand(BY_ID[i])
+        GRIP = a.grip
+        rep["alt_grip"] = alt
+        rep["alt_bodies"] = sorted(n for n in parts if n.endswith("alt"))
     if a.out and ok:
         bad, meta = export(parts, a.out)
         rep["defects"] = bad or None

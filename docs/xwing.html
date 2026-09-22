@@ -221,17 +221,17 @@ function pose() {
 document.getElementById('beta').oninput = e => { stopRun(); beta = +e.target.value; pose(); };
 
 /* ---------- steps, as the Knot page does them ---------- */
-const XW = () => ({ dowel_r: (X.dowel && X.dowel.r) || 1.5, dowel_proud: (X.dowel && X.dowel.proud) || 3.6 });
+const XW = () => ({ dowel_r: (X.dowel && X.dowel.r) || 1.5, dowel_proud: (X.dowel && X.dowel.proud) || 2.9 });
 const STEPS = [
-  { title: 'The lower arm', text: () => `A bar on the table with a cone at each end, tapering to a 3 mm neck either side of a Ø${2 * X.hub_r} hub round the pin hole. The notches the taper leaves are where the upper arm's legs swing in.`,
+  { title: 'The lower arm', text: () => `A bar on the table with a cone at each end, tapering to a 3 mm neck either side of a Ø${2 * X.hub_r} hub round the pin hole. The notches the taper leaves are where the upper arm's legs swing in. Its two cones rise off a short straight band, so a rubber band can be run round the lower half without riding up the taper.`,
     set: () => { drop.top = 40; drop.pin = 60; drop.dowel = 30; drop.cone = 55; beta = X.alpha; }, anim: null },
   { title: 'The upper arm comes down over it', text: () => `One flat-topped piece ${X.upper_t} mm tall with a pocket underneath that clears the lower hub and the channel the lower bar swings through. Its two pads stand on the table either side.`,
     set: () => { beta = X.alpha; }, anim: { key: 'top', from: 40, to: 0, rate: 30 } },
-  { title: 'The pin presses down', text: () => `A plain Ø${2 * X.pin.r} pin: a press fit in the lower arm, a running fit in the upper arm's hub, head on top, tip flush underneath.`,
+  { title: 'The pin presses down', text: () => `A plain Ø${2 * X.pin.r} pin: a press fit in the lower arm, a running fit in the upper arm's hub, head on top, tip flush underneath. A second pin on the plate is a tenth fatter through the upper arm alone and carries a dimple on its head, for when the first turns too freely to hold a setting. Both lie head-down on the plate and neither takes a brim.`,
     set: () => {}, anim: { key: 'pin', from: 60, to: 0, rate: 40 } },
-  { title: 'Press the dowels into the upper arm', text: () => `Two plain Ø${2 * XW().dowel_r} dowels, one into each socket in the upper arm's pads. The sockets are drawn a tenth over the dowel, which PETG prints as a firm press; each dowel stands ${XW().dowel_proud} mm proud.`,
+  { title: 'Press the dowels into the upper arm', text: () => `Two plain Ø${2 * XW().dowel_r} dowels, one into each socket in the upper arm's pads. The socket is drawn 0.15 mm over the dowel, which is what this printer takes off a hole that size, and stops short of the dowel's buried end so it seats on friction rather than bottoming out. More of the dowel stands proud — ${XW().dowel_proud} mm — than goes in, because it is the post that has to hold on.`,
     set: () => {}, anim: { key: 'dowel', from: 30, to: 0, rate: 30 } },
-  { title: 'Slide the cones on', text: () => `Each cone has a socket in its flat foot, drawn three tenths over the dowel so it slips on snugly and comes back off for cleaning. The cones print standing on that foot.`,
+  { title: 'Slide the cones on', text: () => `Each cone stands on a short pedestal with a socket up into it, drawn the same 0.15 mm over the dowel: the first set was drawn looser and a post fell off. The pedestal is only as tall as the socket needs plus a band to print on, and the cones stand on it.`,
     set: () => {}, anim: { key: 'cone', from: 55, to: 0, rate: 34 } },
   { title: 'Close it', text: 'The upper arm turns about the pin until its pads meet the lower arm\'s. This is the tightest the pins get.',
     set: () => {}, anim: { key: 'beta', to: () => X.opening.beta[0], rate: 14 } },

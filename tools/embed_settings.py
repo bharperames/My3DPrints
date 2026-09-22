@@ -78,12 +78,17 @@ def base_config():
     return cfg
 
 
-def embed(path, overrides=None, brim=True):
+def embed(path, overrides=None, brim=True, per_object=None):
     """Stamp `path` as a Bambu project carrying the P2S presets.
 
     `brim` is a per-part decision, not a global: an outer brim earns its
     keep on a small or curved footprint, and costs peeling on a part that
     already has hundreds of cm2 on the plate.
+
+    `per_object` carries that decision down to single bodies on a mixed
+    plate: {body name: {key: value}}, written into model_settings.config
+    against the object of that name. A plate of one big arm and six small
+    pieces wants a brim on the pieces only.
     """
     cfg = base_config()
     cfg.update(OVERRIDES)
@@ -146,12 +151,19 @@ def embed(path, overrides=None, brim=True):
     items["Metadata/project_settings.config"] = json.dumps(
         cfg, indent=1).encode("utf-8")
     # object/plate records: the GUI's project loader expects them
-    oids = re.findall(r'<object id="(\d+)"', mdl)
-    obj_xml = "".join(
-        f'  <object id="{o}">\n'
-        f'    <metadata key="name" value="object_{o}"/>\n'
-        f'    <metadata key="extruder" value="1"/>\n'
-        f'  </object>\n' for o in oids)
+    objs = re.findall(r'<object id="(\d+)"[^>]*?name="([^"]*)"', mdl)
+    if not objs:
+        objs = [(o, "") for o in re.findall(r'<object id="(\d+)"', mdl)]
+    oids = [o for o, _ in objs]
+    per_object = per_object or {}
+    obj_xml = ""
+    for o, name in objs:
+        extra = "".join(f'    <metadata key="{k}" value="{v}"/>\n'
+                        for k, v in (per_object.get(name) or {}).items())
+        obj_xml += (f'  <object id="{o}">\n'
+                    f'    <metadata key="name" value="{name or ("object_" + o)}"/>\n'
+                    f'    <metadata key="extruder" value="1"/>\n'
+                    + extra + f'  </object>\n')
     inst_xml = "".join(
         f'    <model_instance>\n'
         f'      <metadata key="object_id" value="{o}"/>\n'

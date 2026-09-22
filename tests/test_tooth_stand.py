@@ -9,6 +9,7 @@ else when something is in the way.
 """
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -32,8 +33,8 @@ class TestStands(unittest.TestCase):
 
     def test_every_body_is_watertight(self):
         # four fixed stands, and two bodies per print-in-place X-wing
-        # four fixed stands; two arms, a pin, two cones and two dowels per X-wing
-        self.assertEqual(len(self.parts), len(T.STANDS) + 7 * len(T.XWINGS))
+        # four fixed stands; per X-wing: two arms, two pins, two cones, two dowels
+        self.assertEqual(len(self.parts), len(T.STANDS) + 8 * len(T.XWINGS))
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate(self):
@@ -147,13 +148,15 @@ class TestStands(unittest.TestCase):
         for n, m in self.parts.items():
             if "_cone" in n or "_dowel" in n:
                 continue                  # the loose cones and dowels stand on the arm
+            if n.endswith("_pin2"):
+                continue                  # the spare pin, same as the pin
             self.assertAlmostEqual(float(m.bounds[0][2]), 0.0, places=6, msg=n)
             low = m.vertices[m.vertices[:, 2] < 1e-6]
             self.assertGreater(len(low), 3, n)
 
     def test_the_hub_sits_on_the_platform(self):
         for n, m in self.parts.items():
-            if n.endswith(('_pin', '_nut')) or '_cone' in n or '_dowel' in n:
+            if ('_pin' in n or n.endswith('_nut')) or '_cone' in n or '_dowel' in n:
                 continue                  # the pivot's parts, not a stand
             lo, hi = m.bounds
             self.assertLessEqual(T.HUB_R * 2, max(hi[0] - lo[0],
@@ -211,30 +214,199 @@ class TestStands(unittest.TestCase):
             # drawn 0.1 over the pin, which PETG prints as a firm press
             self.assertGreaterEqual(f["press_clearance"], 0.05, n)
             self.assertLessEqual(f["press_clearance"], 0.15, n)
-            self.assertGreaterEqual(f["run_clearance"], 0.3, n)
-            self.assertLessEqual(f["run_clearance"], 0.5, n)
+            # tightened after the first print: Ø3.4 turned too freely to
+            # hold a setting
+            self.assertGreaterEqual(f["run_clearance"], 0.15, n)
+            self.assertLessEqual(f["run_clearance"], 0.3, n)
             self.assertGreaterEqual(f["press_engagement"], 4.0, n)
             self.assertGreaterEqual(f["run_engagement"], 4.0, n)
 
     def test_the_loose_cones_print_on_their_feet_and_the_dowels_fit(self):
         for n, f in self.rep["xwing_cone_fit"].items():
-            self.assertGreater(f["cone_on_plate_mm2"], 40.0, n)   # a foot, not a spigot
-            roof = np.pi * T.XW_CONE_SOCKET[0] ** 2
+            self.assertGreater(f["cone_on_plate_mm2"], 25.0, n)   # a foot, not a spigot
+            self.assertLess(f["cone_lever"], 5.0, n)
+            roof = np.pi * T.XW_CONE_SOCKET_R ** 2
             self.assertLess(f["cone_overhang_mm2"], roof * 1.1, n)  # only the socket's roof
             # drawn sizes that PETG prints as a press and a slip
-            self.assertGreaterEqual(f["arm_clearance"], 0.05, n)
-            self.assertLessEqual(f["arm_clearance"], 0.15, n)
-            self.assertGreaterEqual(f["cone_clearance"], 0.2, n)
-            self.assertLessEqual(f["cone_clearance"], 0.4, n)
-        # and a dowel reaches into both sockets
+            # drawn +0.15 on both after the first print: at +0.35 a post
+            # fell off its dowel, and the arm's socket ran too deep
+            self.assertGreaterEqual(f["arm_clearance"], 0.1, n)
+            self.assertLessEqual(f["arm_clearance"], 0.2, n)
+            self.assertGreaterEqual(f["cone_clearance"], 0.1, n)
+            self.assertLessEqual(f["cone_clearance"], 0.2, n)
+        # a dowel reaches well into the arm and into the cone, and bottoms
+        # in neither: the first print's would not seat and had to be glued
         for x in T.XWINGS:
             d = self.parts[f"xwing_{x['id'][3:]}_dowel0"]
-            self.assertLess(float(d.bounds[0][2]), T.XW_UP_T - 3.0)
-            self.assertGreater(float(d.bounds[1][2]), T.XW_UP_T + 3.0)
+            into_arm = T.XW_UP_T - float(d.bounds[0][2])
+            proud = float(d.bounds[1][2]) - T.XW_UP_T
+            # 3.5 before the arm's socket was made shallower: the first
+            # print stood 3.45 of dowel proud with only 3.2 of post socket
+            # to enter, so the split moved the other way
+            self.assertGreaterEqual(into_arm, 3.0, x["id"])
+            self.assertLessEqual(into_arm, T.XW_SOCKET[1] - 0.15, x["id"])
+            # more in the post than in the arm: the first print stood its
+            # dowels 3.45 proud with only 3.2 of socket to go into
+            self.assertGreater(proud, into_arm, x["id"])
+            self.assertLessEqual(proud, T.xw_cone_socket(x)[1] - 0.2, x["id"])
+
+    def test_the_spare_pin_is_fatter_only_where_it_runs(self):
+        # friction at the pivot holds a setting, so a second pin goes on the
+        # plate: the same press into the lower arm, tighter in the upper
+        for n, f in self.rep["xwing_pin_fit"].items():
+            self.assertIsNotNone(f["tight_pin_d"], n)
+            # tighter than the plain pin but still enterable: at Ø3.3 the
+            # first spare would not go in at all
+            self.assertLessEqual(f["tight_run_clearance"], 0.1, n)
+            self.assertGreaterEqual(f["tight_run_clearance"], 0.0, n)
+            self.assertLess(f["tight_run_clearance"], f["run_clearance"], n)
+        for x in T.XWINGS:
+            k = x["id"][3:]
+            spare = self.parts[f"xwing_{k}_pin2"]
+            plain = self.parts[f"xwing_{k}_pin"]
+            # identical where it presses into the lower arm
+            self.assertAlmostEqual(T._shaft_d(spare, T.ARM_T / 2),
+                                   T._shaft_d(plain, T.ARM_T / 2), delta=0.01)
+            # fatter overall, and dimpled on the head so the two are not
+            # mixed up: a point just under the head's top is inside the
+            # plain pin and inside the spare's dimple
+            self.assertGreater(spare.volume, plain.volume)
+            probe = [[0.0, 0.0, float(plain.bounds[1][2]) - T.XW_PIN_MARK[1] / 2]]
+            self.assertTrue(bool(plain.contains(probe)[0]), x["id"])
+            self.assertFalse(bool(spare.contains(probe)[0]), x["id"])
+
+    def test_both_pins_lie_on_their_heads_and_nothing_is_brimmed(self):
+        # the first plate gave back one usable head out of two: a brim at
+        # zero gap around a Ø6 disc is cut off through the head. The head
+        # is the pin's one flat face and carries the whole part, so the
+        # pose is right and it was the brim that was wrong
+        flat, _ = T.layout(self.parts)
+        for n, m in flat.items():
+            if not ("_pin" in n and "_pin_" not in n):
+                continue
+            low = m.triangles_center[:, 2] < 1e-6
+            area = float(m.area_faces[low].sum())
+            self.assertGreater(area, 20.0, n)          # the head, not the tip
+            lever = float(m.bounds[1][2]) / np.sqrt(area / np.pi)
+            self.assertLess(lever, 4.0, n)             # stands up unaided
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "plate.3mf")
+            T.export(self.parts, out)
+            self.assertEqual(self._brimmed(out), [])   # nothing, by default
+            # and when a group is asked for, the brim lands on those bodies
+            # and the PLATE stays off -- brim_type is otherwise plate-wide,
+            # which is how every part came back with one
+            T.BRIM_ON = [T.BRIM_GROUPS["dowels"]]
+            try:
+                out2 = os.path.join(tmp, "brimmed.3mf")
+                T.export(self.parts, out2)
+                got = self._brimmed(out2)
+            finally:
+                T.BRIM_ON = []
+            self.assertTrue(got)
+            for n in got:
+                self.assertIn("_dowel", n)
+            with zipfile.ZipFile(out2) as z:
+                ps = z.read("Metadata/project_settings.config").decode()
+            self.assertIn('"brim_type": "no_brim"', ps)
+
+    @staticmethod
+    def _brimmed(path):
+        """The bodies carrying their own brim record, by name. The names
+        live in a metadata key, not an attribute: reading them as an
+        attribute matched nothing and the check passed on an empty list."""
+        with zipfile.ZipFile(path) as z:
+            ms = z.read("Metadata/model_settings.config").decode()
+        out = []
+        for obj in re.findall(r"<object[^>]*>.*?</object>", ms, re.S):
+            name = re.search(r'key="name" value="([^"]*)"', obj)
+            if name and "brim" in obj:
+                out.append(name.group(1))
+        return sorted(out)
+
+    def test_a_brimmed_plate_leaves_room_between_the_brims(self):
+        # at 5 mm wide and 6 mm apart the posts' brims merged into a raft
+        from shapely.ops import unary_union
+        T.BRIM_ON = [T.BRIM_GROUPS["posts"], T.BRIM_GROUPS["dowels"]]
+        try:
+            flat, _ = T.layout(self.parts)
+            foot = {}
+            for n, m in flat.items():
+                sec = m.section(plane_origin=[0, 0, 0.2],
+                                plane_normal=[0, 0, 1])
+                polys, to3 = sec.to_planar()
+                shape = unary_union([p for p in polys.polygons_full])
+                # to_planar drops the world offset; put it back
+                off = to3[:2, 3]
+                from shapely import affinity
+                shape = affinity.translate(shape, off[0], off[1])
+                if T.takes_brim(n):
+                    shape = shape.buffer(T.BRIM_W)
+                foot[n] = shape
+            names = list(foot)
+            for i, a in enumerate(names):
+                for b in names[i + 1:]:
+                    self.assertFalse(foot[a].intersects(foot[b]),
+                                     f"{a} and {b} touch on the plate")
+            # the control, and the plate in the photo: the packer that
+            # did not know about brims, with the 5 mm brim it was given
+            T.BRIM_ON = []
+            plain, _ = T.layout(self.parts)
+            small = {n: self._foot(m, 5.0) for n, m in plain.items()
+                     if any(t in n for t in ("_cone", "_dowel"))}
+            ns = list(small)
+            merged = [(a, b) for i, a in enumerate(ns) for b in ns[i + 1:]
+                      if small[a].intersects(small[b])]
+            self.assertTrue(merged, "the check cannot see a merged brim")
+        finally:
+            T.BRIM_ON = []
+
+    @staticmethod
+    def _foot(m, grow):
+        from shapely.ops import unary_union
+        from shapely import affinity
+        sec = m.section(plane_origin=[0, 0, 0.2], plane_normal=[0, 0, 1])
+        polys, to3 = sec.to_planar()
+        sh = affinity.translate(unary_union(list(polys.polygons_full)),
+                                to3[0, 3], to3[1, 3])
+        return sh.buffer(grow) if grow else sh
+
+    def test_the_saw_grip_points_its_barbs_down_and_prints_clean(self):
+        # the posts squeeze a tapered root UP and out, so the face that
+        # does the work is the one a rising root runs into: going up the
+        # flank the radius steps OUT, then eases back in
+        spec = T.BY_ID["l"]
+        smooth = T.cone_profile(spec["cone"], 0.0, spec)
+        T.GRIP = "saw"
+        try:
+            saw = T.cone_profile(spec["cone"], 0.0, spec)
+            m = T.stand(spec)
+        finally:
+            T.GRIP = "smooth"
+        self.assertTrue(m.is_watertight)
+        # barbs: segments that go up and OUT, each one a step of about
+        # SAW_DEPTH, and enough of them to be a grip rather than a ridge
+        def out_steps(prof):
+            # everything that goes up and outward; the arc that blends the
+            # flank to the deck is sampled, so ignore rounding-sized ones
+            return [(r1 - r0, z1 - z0) for (r0, z0), (r1, z1)
+                    in zip(prof, prof[1:])
+                    if r1 - r0 > 0.01 and z1 > z0 + 1e-9]
+        steps = out_steps(saw)
+        self.assertGreaterEqual(len(steps), 5)
+        for dr, dz in steps:
+            self.assertAlmostEqual(dr, T.SAW_DEPTH, delta=0.05)
+            # and the underside of the barb stays inside 45 degrees, so it
+            # prints with no support: the slicer is the outside check
+            self.assertLess(np.degrees(np.arctan2(dr, dz)), 45.0)
+        # the smooth profile has no such step at all -- the control
+        self.assertEqual(out_steps(smooth), [])
+        # and the cup is untouched: the grip is on the flank only
+        self.assertAlmostEqual(T.tips_coplanar(spec, m)[0], 0.0, places=3)
 
     def test_the_upper_arm_prints_without_a_bridge(self):
         # roof-down, the only downward faces off the plate are the two
-        # cone sockets' floors, each a few millimetres across
+        # cone sockets' floors, each a few millimeters across
         for n, pr in self.rep["xwing_print"].items():
             sock = 2 * np.pi * T.XW_SOCKET[0] ** 2
             self.assertLessEqual(pr["overhang_mm2"], sock * 1.5, n)
