@@ -371,6 +371,20 @@ FIELD_GRADE = [1.50, 1.65, 1.80, 1.95, 2.10]
 GRADE_ETCH_SCALE = 2.6      # cap height. It cannot go up: the rings are
                             # 3 mm apart radially and a taller label
                             # touches the next ring's bores.
+# Which ring a hole belongs to has to be readable at arm's length, and
+# the field is far too crowded to draw a line through a ring: a polyline
+# joining one ring's holes runs straight over the next ring's, at every
+# width, and a groove between two rings has nowhere to go either -- the
+# closest pair of rings is 3 mm apart and the mouths eat most of that.
+#
+# So the zones are TERRACED instead. Alternate rings sit one layer lower
+# than their neighbors, which needs no clearance at all because the
+# holes simply pass through the step. Each terrace holds one bore size
+# and its own etched label. The bores stay exactly 7 mm deep either way:
+# on a lowered terrace the hole starts a layer lower too, and it is the
+# floor beneath that gives up the 0.2 mm, not the depth under test.
+GRADE_BAND_EDGES = (9.5, 14.0, 18.0, 21.5)
+GRADE_TERRACE = 0.2         # one layer, so the step lands on a layer line
 GRADE_ETCH_BOLD = 0.10      # so the STROKES grow instead. At this cap the
                             # glyph's own strokes are 0.63 mm, thinner
                             # than the 0.82 that the gauge proved cuts;
@@ -681,6 +695,34 @@ def field_grade_holes(spec):
     return [tuple(P[i]) for i in sorted(keep)], label
 
 
+def field_grade_terrace(spec, b):
+    """How far this ring's terrace is sunk below the deck's top face."""
+    return GRADE_TERRACE if b % 2 else 0.0
+
+
+def bore_depth(spec, b):
+    """How deep this ring's bores go. The same on every terrace, which
+    is the point: the step is cosmetic and the depth is the variable."""
+    sunk = field_grade_terrace(spec, b)
+    return (FIELD_T - sunk) - (1.0 - sunk)
+
+
+def field_grade_zones(spec):
+    """The sunk terraces, as cutters. Alternate rings only."""
+    edges = [0.0] + list(GRADE_BAND_EDGES) + [FIELD_R + 1.0]
+    out = []
+    for b in range(len(FIELD_GRADE)):
+        d = field_grade_terrace(spec, b)
+        if d <= 0.0:
+            continue
+        ring = (Point(0.0, 0.0).buffer(edges[b + 1], resolution=96)
+                .difference(Point(0.0, 0.0).buffer(edges[b], resolution=96)))
+        e = trimesh.creation.extrude_polygon(ring, d + 1.0)
+        e.apply_translation([0.0, 0.0, FIELD_T - d])
+        out.append(e)
+    return out
+
+
 def field_grade_etch(spec):
     """Each ring's drawn size, cut where that ring's spare hole was."""
     from shapely import affinity
@@ -697,9 +739,10 @@ def field_grade_etch(spec):
         lo_x, lo_y, hi_x, hi_y = g.bounds
         g = affinity.translate(g, x - (lo_x + hi_x) / 2.0,
                                y - (lo_y + hi_y) / 2.0)
+        sunk = field_grade_terrace(spec, b)
         for q in (list(g.geoms) if g.geom_type == "MultiPolygon" else [g]):
             e = trimesh.creation.extrude_polygon(q, GAUGE_ETCH + 1.0)
-            e.apply_translation([0.0, 0.0, FIELD_T - GAUGE_ETCH])
+            e.apply_translation([0.0, 0.0, FIELD_T - sunk - GAUGE_ETCH])
             out.append(e)
     return out
 
@@ -967,8 +1010,7 @@ def field_bands(spec):
     one ring in the hand, and so are 16.0/16.6, 19.8/20.5, 23.3/23.5."""
     P = np.array(field_holes(spec))
     r = np.hypot(*P.T)
-    edges = [9.5, 14.0, 18.0, 21.5]
-    return np.searchsorted(edges, r)
+    return np.searchsorted(GRADE_BAND_EDGES, r)
 
 
 def field_grade_d(spec, i):
@@ -979,7 +1021,7 @@ def field_grade_d(spec, i):
 def field_grade_d_at(spec, x, y):
     """The drawn bore for the hole at this point, by which ring it is on."""
     r = float(np.hypot(x, y))
-    return FIELD_GRADE[int(np.searchsorted([9.5, 14.0, 18.0, 21.5], r))]
+    return FIELD_GRADE[int(np.searchsorted(GRADE_BAND_EDGES, r))]
 
 
 def field_lead(bore=None):
@@ -1100,9 +1142,17 @@ def stand(spec):
         slab = trimesh.creation.extrude_polygon(base_plan(spec), FIELD_T)
         if spec.get("grade"):
             pts, _ = field_grade_holes(spec)
-            holes = [field_bore(field_grade_d_at(spec, x, y), x, y)
-                     for x, y in pts]
-            return cut(slab, holes + field_grade_etch(spec))
+            holes = []
+            for x, y in pts:
+                b = int(np.searchsorted(GRADE_BAND_EDGES, np.hypot(x, y)))
+                sunk = field_grade_terrace(spec, b)
+                # same 7 mm of hole on a terrace as off one: the mouth
+                # drops with the surface and the floor underneath pays
+                holes.append(field_bore(FIELD_GRADE[b], x, y,
+                                        top=FIELD_T - sunk,
+                                        z0=1.0 - sunk))
+            return cut(slab, holes + field_grade_zones(spec)
+                       + field_grade_etch(spec))
         return cut(slab, [field_bore(spec["rods"], x, y)
                           for x, y in field_holes(spec)])
     if spec.get("probe"):
@@ -1414,7 +1464,7 @@ def measure(parts):
     # slicer refused it
     rep["plate_mm"] = [round(float(hi[0] - lo[0]), 1),
                        round(float(hi[1] - lo[1]), 1)]
-    for key in ("coplanar_mm", "tip_z", "gaps_mm", "min_gap_mm",
+    for key in ("grade", "coplanar_mm", "tip_z", "gaps_mm", "min_gap_mm",
                 "merge_z_mm", "lobe_clear", "ring_mm", "flex", "widths_mm",
                 "socket", "gauge",
                 "occlusion", "field",
@@ -1479,6 +1529,24 @@ def measure(parts):
                 rects=[[float(a), float(b)] for a, b in field_rects(s)],
                 rings=field_rings(s),
                 rod_len_mm=round(contact_z(s) - 1.0, 1))
+            if s.get("grade"):
+                # an instrument, not a stand: the terraces are a layer
+                # apart ON PURPOSE, so coplanarity is not a claim this
+                # plate makes. What IS checked is that terracing never
+                # touched the depth under test. It is still reported as
+                # the field it is -- reporting it as something else left
+                # the export with no field block and the archive
+                # describing 51 spikes on a six-spike ring.
+                rep["grade"][s["id"]] = dict(
+                    sizes=list(FIELD_GRADE), terrace_mm=GRADE_TERRACE,
+                    depths=sorted({round(bore_depth(s, b), 2)
+                                   for b in range(len(FIELD_GRADE))}))
+                # and it withdraws the coplanarity reading rather than
+                # publishing one it does not mean: every other plate
+                # here claims a tooth can rest on it, and this one
+                # claims only to be read.
+                rep["coplanar_mm"].pop(s["id"], None)
+                rep["tip_z"].pop(s["id"], None)
             rep["plate_mm2"][n] = plate_contact(m)
             rep["print"][n] = print_overhang(m)
             continue
@@ -1512,6 +1580,11 @@ def gates(rep):
     out = [("watertight", all(rep["watertight"].values())),
            ("fits_plate", all(rep["fits_plate"].values())),
            ("plate_fits_the_bed", max(rep["plate_mm"]) <= 250.0)]
+    for k, v in rep.get("grade", {}).items():
+        out.append((f"terracing_left_the_depth_alone:{k}",
+                    len(v["depths"]) == 1))
+        out.append((f"grade_is_a_ladder:{k}",
+                    v["sizes"] == sorted(v["sizes"])))
     for k, v in rep["coplanar_mm"].items():
         out.append((f"coplanar:{k}", v is not None and v < 0.05))
     for k, v in rep["above_contact_mm"].items():
