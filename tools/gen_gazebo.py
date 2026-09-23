@@ -1774,6 +1774,11 @@ def main():
     ap.add_argument("--size", default="all",
                     help="all, or a comma-separated set of "
                          + ", ".join(ALL_IDS))
+    ap.add_argument("--grade", default="",
+                    help="five bore sizes for the graded field, smallest "
+                         "first, e.g. 1.53,1.56,1.59,1.62,1.65. The "
+                         "coarse default brackets; a second pass narrows "
+                         "inside whatever the first one bracketed.")
     ap.add_argument("--material", default="pla_basic",
                     help="the filament the rod sockets are drawn for: "
                          + ", ".join(sorted(MATERIALS))
@@ -1792,6 +1797,14 @@ def main():
     ROD_BORE = MATERIALS[a.material]["bore"]
     ROD_FREE = MATERIALS[a.material]["free"]
     ROD_FIELD = MATERIALS[a.material]["field"]
+    if a.grade:
+        vals = [float(v) for v in a.grade.split(",") if v.strip()]
+        if len(vals) != len(FIELD_GRADE) or sorted(vals) != vals:
+            print(json.dumps(dict(ok=False, error=(
+                f"--grade wants {len(FIELD_GRADE)} sizes in increasing "
+                f"order; got {vals}"))))
+            return 1
+        FIELD_GRADE[:] = vals
     ROD_LOSS = MATERIALS[a.material]["loss"]
     for _s in SIZES:
         if _s.get("rods") and not _s.get("gauge") and not _s.get("probe"):

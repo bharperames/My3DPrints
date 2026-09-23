@@ -673,6 +673,20 @@ PARTS = [
             "test coupon petg pla",
        version="1.0.0",
        gen=["gen_gazebo.py", "--size", "gz_rfg"], params=[
+           dict(key="grade", label="ladder", type="select",
+                val="1.53,1.56,1.59,1.62,1.65",
+                hint="Coarse first, to find out roughly where the answer "
+                     "is; then fine, inside whatever the coarse one "
+                     "bracketed. The fine ladder here ends on \u00d81.65 "
+                     "on purpose \u2014 a size already read in the hand, "
+                     "so the plate carries its own reference.",
+                choices=[
+                    dict(value="1.53,1.56,1.59,1.62,1.65",
+                         label="fine, 1.53\u20131.65",
+                         hint="PETG: \u00d81.50 refused, \u00d81.65 loose"),
+                    dict(value="1.50,1.65,1.80,1.95,2.10",
+                         label="coarse, 1.50\u20132.10",
+                         hint="start here on a filament never read")]),
            dict(key="material", label="filament", type="select",
                 val="petg",
                 hint="Only the funnel and the wall follow the filament "
@@ -683,7 +697,7 @@ PARTS = [
                     dict(value="petg", label="PETG Basic"),
                     dict(value="pla_basic", label="PLA Basic"),
                     dict(value="pla_silk", label="PLA Silk")])],
-       out="rod-field-graded-{material}.3mf"),
+       out="rod-field-graded-{material}-{grade}.3mf"),
     _p("rod_gauge", "Rod socket gauge",
        "Designed here", "parametric",
        "A ladder of sockets to read a number off, because two guesses "
