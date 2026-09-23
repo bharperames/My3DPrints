@@ -153,6 +153,7 @@ ROD_D = 1.0
 # material that is not in here has no entry ON PURPOSE: the design
 # refuses rather than interpolating, because the two PLAs sit 0.2 mm
 # apart and nothing about the geometry predicts that gap.
+_MAT = "pla_basic"          # which filament the module is drawing for
 MATERIALS = {
     # bore: what to draw for a 1 mm rod that has to STAND in the socket
     # unglued -- a friction fit, and by definition the tightest size
@@ -1578,8 +1579,18 @@ def measure(parts):
                 chamfer=field_lead(s["rods"])[1],
                 lead_depth=FIELD_LEAD[0],
                 drawn_d=s["rods"],
-                fit="clearance, for a glued rod",
-                printed_d_expected=round(s["rods"] - ROD_LOSS, 2),
+                fit=("snug, read on a graded field"
+                     if MATERIALS[_MAT]["field_read"]
+                     else "inferred from PETG's offset, not yet graded"),
+                # a field loses MORE than the strip the loss came from,
+                # so predicting its holes with the strip's number said
+                # \u00d81.11 for a bore read in the hand as just right on a
+                # \u00d81 rod. The field's own loss is what the graded
+                # plate measured: drawn minus the rod it holds.
+                loss_mm=round(MATERIALS[_MAT]["field"] - ROD_D, 2),
+                strip_loss_mm=ROD_LOSS,
+                printed_d_expected=round(
+                    s["rods"] - (MATERIALS[_MAT]["field"] - ROD_D), 2),
                 rects=[[float(a), float(b)] for a, b in field_rects(s)],
                 rings=field_rings(s),
                 rod_len_mm=round(contact_z(s) - 1.0, 1))
@@ -1844,7 +1855,7 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--quick", action="store_true")
     a = ap.parse_args()
-    global ROD_BORE, ROD_FREE, ROD_FIELD, ROD_LOSS
+    global ROD_BORE, ROD_FREE, ROD_FIELD, ROD_LOSS, _MAT
     if a.material not in MATERIALS:
         print(json.dumps({"ok": False, "error":
                           "no bore measured for " + a.material
@@ -1854,6 +1865,7 @@ def main():
     ROD_BORE = MATERIALS[a.material]["bore"]
     ROD_FREE = MATERIALS[a.material]["free"]
     ROD_FIELD = MATERIALS[a.material]["field"]
+    _MAT = a.material
     if a.grade:
         vals = [float(v) for v in a.grade.split(",") if v.strip()]
         if len(vals) != len(FIELD_GRADE) or sorted(vals) != vals:
