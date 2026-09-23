@@ -170,21 +170,29 @@ MATERIALS = {
     # at the tightest size that works on one coupon has nothing left to
     # give on a different part, and a field asks the same question 56
     # times over.
-    # field: halfway between the two rungs that both HELD the rod -- the
-    # friction fit and the acceptable-but-looser one above it. Falling
-    # out is not the thing to design for here: a rod in the field wants
-    # the tension of the tight one, and the half step is the margin the
-    # tight one does not have.
-    "pla_basic": dict(bore=1.5, free=1.6, field=1.55, loss=0.50,
-                      label="PLA Basic"),
+    # field: READ ON A GRADED FIELD, not derived from the bore. This is
+    # the number two rounds of reasoning failed to find. A 56-bore field
+    # at 3.58 mm centers in a \u00d859 disc prints its holes 0.10-0.15 mm
+    # smaller than a 14-bore strip at 5.0 mm does, with the same drawn
+    # size, the same 7 mm depth and a toolpath the slicer draws the same
+    # to a hundredth. In PETG the strip says \u00d81.45 and the field
+    # wants \u00d81.56.
+    #
+    # field_read says whether that was read or inferred. Only PETG has
+    # been graded; the two PLAs carry PETG's offset of +0.11 over their
+    # own strip reading, which is a guess of exactly the kind that has
+    # already cost two plates. Print the graded field on the spool
+    # before trusting them.
+    "pla_basic": dict(bore=1.5, free=1.6, field=1.61, field_read=False,
+                      loss=0.50, label="PLA Basic"),
     # silk's upper rung is the next line of the gauge rather than a
     # reading: Ø1.7 was measured as the fit, Ø1.8 was never tried
-    "pla_silk": dict(bore=1.7, free=1.8, field=1.75, loss=0.67,
-                     label="PLA Silk"),
+    "pla_silk": dict(bore=1.7, free=1.8, field=1.81, field_read=False,
+                     loss=0.67, label="PLA Silk"),
     # read on the probe: Ø1.45 a perfect fit, Ø1.50 acceptable but
     # looser, Ø1.55 and the rod falls out.
-    "petg": dict(bore=1.45, free=1.55, field=1.475, loss=0.45,
-                 label="PETG Basic"),
+    "petg": dict(bore=1.45, free=1.55, field=1.56, field_read=True,
+                 loss=0.45, label="PETG Basic"),
 }
 ROD_BORES = {k: v["bore"] for k, v in MATERIALS.items()}
 ROD_BORE = MATERIALS["pla_basic"]["bore"]
@@ -669,35 +677,81 @@ def probe_etch(spec):
 
 
 def field_grade_holes(spec):
-    """The graded field's holes, with one dropped per ring to make room
-    for that ring's label.
+    """A graded field keeps ALL its holes.
 
-    The labels went on beside a hole and landed across three others: at
-    3.58 mm centers there is no room between two bores for four digits,
-    and shrinking them to fit put the strokes under a millimeter, which
-    the ruler ticks already proved does not cut at all. So a hole is
-    spent instead -- five of fifty-six -- and the number goes where it
-    was, at a size that prints.
+    The sizes were etched beside one hole a ring, which cost five bores
+    and -- worse -- distorted a neighbor in the print. The geometry said
+    0.81 mm of clearance and that was measured correctly; it simply is
+    not enough, because an etched pocket that close leaves a web the
+    printer cannot hold. Read in the hand: "the font labelling is mostly
+    responsible for distorting one of the holes."
+
+    The terraces already say which ring is which, so the numbers do not
+    need to sit in the rings at all. They go in the middle, where the
+    field has nothing, and the coupon gets back to being the field.
     """
-    P = np.array(field_holes(spec))
-    if not spec.get("grade"):
-        return [tuple(v) for v in P], {}
-    bands, keep, label = field_bands(spec), [], {}
-    for b in range(len(FIELD_GRADE)):
-        idx = np.where(bands == b)[0]
-        if not len(idx):
+    return [tuple(v) for v in np.array(field_holes(spec))], {}
+
+
+def grade_legend():
+    """What the center says: the innermost size, and the step out.
+
+    Two short lines rather than five, because five will not fit in the
+    clear disc and the terraces make the order plain. A ladder with an
+    uneven step says its ends instead.
+    """
+    lo = FIELD_GRADE[0]
+    steps = {round(b - a, 3) for a, b in zip(FIELD_GRADE, FIELD_GRADE[1:])}
+    if len(steps) == 1:
+        return [f"{lo:.2f}", f"+{steps.pop():.2f}".replace("0.", ".")]
+    return [f"{lo:.2f}", f"{FIELD_GRADE[-1]:.2f}"]
+
+
+def field_grade_etch(spec):
+    """The legend, cut into the clear middle of the field."""
+    from shapely import affinity
+    import gen_dice_cage as D
+    out, lines = [], grade_legend()
+    pitch = GRADE_ETCH_SCALE + 1.0
+    for i, txt in enumerate(lines):
+        g = D._raw_glyph(txt)
+        if g is None:
             continue
-        # the hole nearest straight up: every label then reads in the
-        # same orientation, stacked outward like the rings themselves
-        k = idx[int(np.argmax(P[idx][:, 1] - np.abs(P[idx][:, 0]) * 3.0))]
-        label[b] = tuple(P[k])
-        keep += [int(i) for i in idx if i != k]
-    return [tuple(P[i]) for i in sorted(keep)], label
+        g = affinity.scale(g, GRADE_ETCH_SCALE, GRADE_ETCH_SCALE,
+                           origin=(0, 0)).buffer(GRADE_ETCH_BOLD,
+                                                 join_style=2)
+        lo_x, lo_y, hi_x, hi_y = g.bounds
+        y = (len(lines) - 1) / 2.0 * pitch - i * pitch
+        g = affinity.translate(g, -(lo_x + hi_x) / 2.0,
+                               y - (lo_y + hi_y) / 2.0)
+        for q in (list(g.geoms) if g.geom_type == "MultiPolygon" else [g]):
+            e = trimesh.creation.extrude_polygon(q, GAUGE_ETCH + 1.0)
+            e.apply_translation([0.0, 0.0, FIELD_T - GAUGE_ETCH])
+            out.append(e)
+    return out
 
 
 def field_grade_terrace(spec, b):
     """How far this ring's terrace is sunk below the deck's top face."""
     return GRADE_TERRACE if b % 2 else 0.0
+
+
+def field_grade_zones(spec):
+    """The sunk terraces, as cutters. Alternate rings only, so the eye
+    can tell one ring of bores from the next without a line drawn
+    between them -- which will not fit."""
+    edges = [0.0] + list(GRADE_BAND_EDGES) + [FIELD_R + 1.0]
+    out = []
+    for b in range(len(FIELD_GRADE)):
+        d = field_grade_terrace(spec, b)
+        if d <= 0.0:
+            continue
+        ring = (Point(0.0, 0.0).buffer(edges[b + 1], resolution=96)
+                .difference(Point(0.0, 0.0).buffer(edges[b], resolution=96)))
+        e = trimesh.creation.extrude_polygon(ring, d + 1.0)
+        e.apply_translation([0.0, 0.0, FIELD_T - d])
+        out.append(e)
+    return out
 
 
 def bore_depth(spec, b):
@@ -1629,8 +1683,7 @@ def gates(rep):
         # used to insist on the friction size and it was wrong: that is
         # what put Ø1.45 in a PETG field and made 56 bores that would
         # not take a rod.
-        out.append((f"field_bore_is_the_half_step:{k}",
-                    abs(v["drawn_d"] - ROD_FIELD) < 1e-9))
+
         out.append((f"field_holes_clear_each_other:{k}",
                     v["min_spacing"] >= FIELD_MIN_SP - 1e-9))
         # the mouths, not just the bores: a lead-in widens the hole where
@@ -1646,10 +1699,14 @@ def gates(rep):
         # out as nothing; this one is six layers
         out.append((f"field_lead_in_is_printable:{k}",
                     v["lead_depth"] >= 1.0))
-        # and the field is drawn a half step above the friction fit: the
-        # friction size left nothing over for the part it was in
-        out.append((f"field_bore_has_margin:{k}",
-                    0.0 < v["drawn_d"] - ROD_BORE <= 0.06))
+        # the field's bore is READ on a graded field, not derived from
+        # the strip. The gate this replaces allowed at most a half step
+        # over the strip reading, which is the rule that produced two
+        # plates that took no rod at all: the real gap is 0.11.
+        out.append((f"field_bore_is_the_read_one:{k}",
+                    abs(v["drawn_d"] - ROD_FIELD) < 1e-9))
+        out.append((f"field_bore_is_bigger_than_the_strip:{k}",
+                    v["drawn_d"] > ROD_BORE))
         out.append((f"field_offers_rectangles:{k}", len(v["rects"]) >= 10))
         out.append((f"field_offers_rings:{k}", len(v["rings"]) >= 4))
         out.append((f"field_is_deep_enough:{k}", v["depth_mm"] >= 6.0))

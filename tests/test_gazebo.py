@@ -218,10 +218,24 @@ class TestGazebo(unittest.TestCase):
         # would not take a rod, in a filament whose probe said that size
         # was a perfect fit. A rod in a field is glued, so the field is
         # drawn one rung up, where the rod runs free.
+        # the field's bore is read on a graded field, and it is a long
+        # way above the strip's: 0.11 in PETG, where two rounds of
+        # reasoning offered 0.025 and produced plates that took no rod.
         self.assertEqual(self.rep["field"]["gz_rf"]["drawn_d"], G.ROD_FIELD)
-        self.assertGreater(G.ROD_FIELD, G.ROD_BORE)
-        self.assertLess(G.ROD_FIELD, G.ROD_FREE,
-                        "the field holds the rod; it does not drop it")
+        self.assertGreater(G.ROD_FIELD, G.ROD_FREE,
+                           "a crowded field needs more than the strip's "
+                           "loose size, not less")
+        self.assertAlmostEqual(G.MATERIALS["petg"]["field"], 1.56, places=3)
+        self.assertTrue(G.MATERIALS["petg"]["field_read"])
+        # and a filament nobody has graded says so rather than pretending
+        for k, v in G.MATERIALS.items():
+            if not v.get("field_read"):
+                self.assertAlmostEqual(
+                    v["field"] - v["bore"],
+                    G.MATERIALS["petg"]["field"] - G.MATERIALS["petg"]["bore"],
+                    places=3,
+                    msg=f"{k}: an inferred field bore must carry PETG's "
+                        f"offset, not a number of its own")
         # and the funnel has to be tall enough to exist in plastic
         self.assertGreaterEqual(G.FIELD_LEAD[0], 1.0)
         self.assertGreater(G.FIELD_LEAD[0], G.ROD_CHAMFER,
@@ -259,26 +273,32 @@ class TestGazebo(unittest.TestCase):
         self.assertFalse(hasattr(G, "field_chamfer"),
                          "two definitions of one feature is the bug")
 
-    def test_the_graded_field_is_legible_and_its_labels_miss_the_bores(self):
-        # the labels went on beside a hole and landed across three
-        # others, at a size whose strokes would not have cut anyway.
-        # Both halves are gated: clear of every bore, and no thinner
-        # than the stroke the gauge proved readable in the hand.
-        import numpy as np
+    def test_the_graded_field_is_legible_and_keeps_every_hole(self):
+        # the sizes were etched beside one hole a ring. The geometry
+        # said 0.81 mm of clearance, and that was measured right -- it
+        # is simply not enough, because an etched pocket that close
+        # leaves a web the printer cannot hold, and a distorted bore
+        # corrupts the one reading the plate exists to give. The legend
+        # went to the middle, where the field has nothing.
         from shapely import affinity
         from shapely.geometry import Point
         import gen_dice_cage as D
         spec = G.BY_ID["gz_rfg"]
         pts, label = G.field_grade_holes(spec)
-        self.assertEqual(len(label), len(G.FIELD_GRADE))
-        self.assertEqual(len(pts) + len(label), len(G.field_holes(spec)))
-        for b, (x, y) in label.items():
-            g = affinity.scale(D._raw_glyph("%.2f" % G.FIELD_GRADE[b]),
-                               G.GRADE_ETCH_SCALE, G.GRADE_ETCH_SCALE,
-                               origin=(0, 0)).buffer(G.GRADE_ETCH_BOLD,
-                                                     join_style=2)
+        self.assertEqual(label, {}, "no per-ring labels any more")
+        self.assertEqual(len(pts), len(G.field_holes(spec)),
+                         "a graded field spends no holes on its legend")
+        lines = G.grade_legend()
+        self.assertTrue(1 <= len(lines) <= 2)
+        pitch = G.GRADE_ETCH_SCALE + 1.0
+        worst, thinnest = 9e9, 9e9
+        for i, txt in enumerate(lines):
+            g = affinity.scale(D._raw_glyph(txt), G.GRADE_ETCH_SCALE,
+                               G.GRADE_ETCH_SCALE, origin=(0, 0)
+                               ).buffer(G.GRADE_ETCH_BOLD, join_style=2)
             lo_x, lo_y, hi_x, hi_y = g.bounds
-            g = affinity.translate(g, x - (lo_x + hi_x) / 2.0,
+            y = (len(lines) - 1) / 2.0 * pitch - i * pitch
+            g = affinity.translate(g, -(lo_x + hi_x) / 2.0,
                                    y - (lo_y + hi_y) / 2.0)
             lo, hi = 0.0, 2.0
             for _ in range(40):
@@ -287,13 +307,15 @@ class TestGazebo(unittest.TestCase):
                     hi = m
                 else:
                     lo = m
-            self.assertGreaterEqual(lo, 0.82, "thinner than the gauge's "
-                                              "proven stroke")
-            for hx, hy in pts:
-                d = G.field_grade_d_at(spec, hx, hy)
-                mouth = Point(hx, hy).buffer(d / 2.0 + G.field_lead(d)[1])
-                self.assertGreater(g.distance(mouth), 0.4,
-                                   "a label is on top of a bore")
+            thinnest = min(thinnest, lo)
+            for x, yy in pts:
+                d = G.field_grade_d_at(spec, x, yy)
+                mouth = Point(x, yy).buffer(d / 2.0 + G.field_lead(d)[1])
+                worst = min(worst, g.distance(mouth))
+        self.assertGreaterEqual(thinnest, 0.82, "thinner than the stroke "
+                                                "the gauge proved cuts")
+        self.assertGreater(worst, 2.0, "0.81 mm was measured correctly "
+                                       "and still distorted a bore")
 
     def test_the_grade_brackets_the_size_that_failed(self):
         # it exists to answer one question, so it has to reach past the

@@ -612,41 +612,37 @@ PARTS = [
        "10 x 5 to 51 x 26 mm it misses by 17.2 mm at worst where this "
        "pattern misses by 8.1, because a spiral is built so that nothing "
        "ever lines up and a centered rectangle is nothing but lining up. "
-       "PETG is worth it here in particular, since 56 bores leave only "
-       "2.08 mm of wall between them. "
-       "CHOOSE THE FILAMENT, because the socket is drawn to it. A bore "
-       "this small prints about half a millimeter under its drawn size, "
-       "and the loss belongs to the filament rather than to the part: "
-       "read with the rod itself, PETG Basic wants \u00d81.45, PLA Basic "
-       "\u00d81.5 and PLA Silk \u00d81.7. One tenth either way flips "
-       "the fit from refusing the rod to letting it fall out, and a "
-       "filament with no measurement behind it is refused rather than "
-       "guessed.",
+       "CHOOSE THE FILAMENT, because the socket is drawn to it \u2014 and "
+       "on this part the number came the hard way. A bore this small "
+       "prints well under its drawn size, and a crowded field takes off "
+       "0.10 to 0.15 mm MORE than a sparse test strip does: 56 bores at "
+       "3.58 mm centers in a \u00d859 disc simply come out smaller than 14 "
+       "bores at 5 mm in a narrow bar, at the same drawn size, the same "
+       "7 mm depth and a toolpath the slicer draws the same to a "
+       "hundredth. A probe read \u00d81.45 for PETG; this field wants "
+       "\u00d81.56, and two plates drawn to the probe's number took no "
+       "rod at all. \u00d81.56 is read off a graded field in PETG. The "
+       "two PLAs carry the same offset over their own probe readings and "
+       "are marked as inferred, not measured \u2014 print the graded "
+       "field on the spool before trusting them.",
        keys="stand tooth fossil carbon rod socket bore field grid petg pla",
-       # NOT superseding gazebo-r21-rod-field-petg: that plate is the
-       # \u00d81.45 field whose 56 bores refused the rod, and this card
-       # draws \u00d81.475 through a deeper funnel now. It is the
-       # evidence for the change, and nothing here can make it again.
-       version="1.0.0",
+       version="1.1.0",
        pages=[dict(label="Stand the tooth on it, both ways",
                    href="docs/tooth-stand.html")],
        gen=["gen_gazebo.py", "--size", "gz_rf"], params=[
            dict(key="material", label="filament", type="select",
                 val="petg",
-                hint="Choose the filament \u2014 the socket is drawn to it. "
-                     "A \u00d81 mm bore comes out about half a millimeter "
-                     "under its drawn size, and how much it loses is a "
-                     "property of the plastic, not of the part. One tenth "
-                     "either way is the difference between refusing the "
-                     "rod and letting it fall out.",
+                hint="Choose the filament \u2014 the socket is drawn to "
+                     "it, and for this part the size was read on a "
+                     "graded field rather than reasoned from a probe. "
+                     "Only PETG has been graded so far.",
                 choices=[
                     dict(value="petg", label="PETG Basic",
-                         hint="sockets drawn \u00d81.45, measured"),
+                         hint="\u00d81.56, read on a graded field"),
                     dict(value="pla_basic", label="PLA Basic",
-                         hint="sockets drawn \u00d81.5, measured"),
+                         hint="\u00d81.61, inferred \u2014 not yet graded"),
                     dict(value="pla_silk", label="PLA Silk",
-                         hint="sockets drawn \u00d81.7, measured")]),
-       ],
+                         hint="\u00d81.81, inferred \u2014 not yet graded")])],
        out="gazebo-rod-field-{material}.3mf"),
     _p("rod_field_graded", "Rod field \u2014 graded, to find the size",
        "Stands", "parametric",
