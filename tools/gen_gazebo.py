@@ -171,34 +171,49 @@ MATERIALS = {
     # at the tightest size that works on one coupon has nothing left to
     # give on a different part, and a field asks the same question 56
     # times over.
-    # field: READ ON A GRADED FIELD, not derived from the bore. This is
-    # the number two rounds of reasoning failed to find. A 56-bore field
-    # at 3.58 mm centers in a \u00d859 disc prints its holes 0.10-0.15 mm
-    # smaller than a 14-bore strip at 5.0 mm does, with the same drawn
-    # size, the same 7 mm depth and a toolpath the slicer draws the same
-    # to a hundredth. In PETG the strip says \u00d81.45 and the field
-    # wants \u00d81.56.
-    #
-    # field_read says whether that was read or inferred. Only PETG has
-    # been graded; the two PLAs carry PETG's offset of +0.11 over their
-    # own strip reading, which is a guess of exactly the kind that has
-    # already cost two plates. Print the graded field on the spool
-    # before trusting them.
-    "pla_basic": dict(bore=1.5, free=1.6, field=1.61, field_read=False,
-                      loss=0.50, label="PLA Basic"),
+    "pla_basic": dict(bore=1.5, free=1.6, loss=0.50, label="PLA Basic"),
     # silk's upper rung is the next line of the gauge rather than a
     # reading: Ø1.7 was measured as the fit, Ø1.8 was never tried
-    "pla_silk": dict(bore=1.7, free=1.8, field=1.81, field_read=False,
-                     loss=0.67, label="PLA Silk"),
+    "pla_silk": dict(bore=1.7, free=1.8, loss=0.67, label="PLA Silk"),
     # read on the probe: Ø1.45 a perfect fit, Ø1.50 acceptable but
     # looser, Ø1.55 and the rod falls out.
-    "petg": dict(bore=1.45, free=1.55, field=1.56, field_read=True,
-                 loss=0.45, label="PETG Basic"),
+    "petg": dict(bore=1.45, free=1.55, loss=0.45, label="PETG Basic"),
+}
+
+# --- the 56-bore field, and NOTHING ELSE --------------------------------
+# These numbers belong to one part. They are kept out of MATERIALS on
+# purpose, because everything in that table is a reading that transfers
+# between parts and none of this does.
+#
+# A 56-bore field at 3.58 mm centers in a \u00d859 disc prints its holes
+# 0.10-0.15 mm smaller than a 14-bore strip at 5.0 mm does -- same drawn
+# size, same 7 mm depth, and a toolpath the slicer draws the same to a
+# hundredth. The strip says \u00d81.45 for PETG and this field wants
+# \u00d81.56. Why a crowded plate closes its holes further is NOT
+# established; only that it does, on this part, in this filament.
+#
+# So: do not reach for FIELD_BORE from any other design, and do not
+# extend the pattern to a new spacing, thickness or outline without
+# grading that part. Two plates were printed on the belief that a number
+# read on one coupon carries to another, and neither took a rod.
+FIELD_BORE = {
+    # read ring by ring on a graded field: \u00d81.53 very tight,
+    # \u00d81.56 right, \u00d81.59 and up loose
+    "petg": dict(d=1.56, read=True,
+                 note="read on a graded field, PETG Basic, 0.4 nozzle"),
+    # INFERRED, not measured: each carries PETG's +0.11 over its own
+    # strip reading. That is the same species of guess that produced two
+    # unusable plates, so it is labeled everywhere it surfaces -- in the
+    # report, on the card, and in the archive. Grade the spool first.
+    "pla_basic": dict(d=1.61, read=False,
+                      note="inferred from PETG's offset; not graded"),
+    "pla_silk": dict(d=1.81, read=False,
+                     note="inferred from PETG's offset; not graded"),
 }
 ROD_BORES = {k: v["bore"] for k, v in MATERIALS.items()}
 ROD_BORE = MATERIALS["pla_basic"]["bore"]
 ROD_FREE = MATERIALS["pla_basic"]["free"]
-ROD_FIELD = MATERIALS["pla_basic"]["field"]
+ROD_FIELD = FIELD_BORE["pla_basic"]["d"]
 ROD_LOSS = MATERIALS["pla_basic"]["loss"]
 MIN_BORE = 1.2                # under this it is not a hole, it is a dimple
 # foot radius, top radius, height. Widened from (2.6, 1.75): at Ø1.75
@@ -1580,17 +1595,22 @@ def measure(parts):
                 lead_depth=FIELD_LEAD[0],
                 drawn_d=s["rods"],
                 fit=("snug, read on a graded field"
-                     if MATERIALS[_MAT]["field_read"]
+                     if FIELD_BORE[_MAT]["read"]
                      else "inferred from PETG's offset, not yet graded"),
                 # a field loses MORE than the strip the loss came from,
                 # so predicting its holes with the strip's number said
                 # \u00d81.11 for a bore read in the hand as just right on a
                 # \u00d81 rod. The field's own loss is what the graded
                 # plate measured: drawn minus the rod it holds.
-                loss_mm=round(MATERIALS[_MAT]["field"] - ROD_D, 2),
+                bore_source=FIELD_BORE[_MAT]["note"],
+                bore_measured=FIELD_BORE[_MAT]["read"],
+                applies_to="this field only: 56 bores, 3.58 mm centers, "
+                           "8 mm deck. Not transferable to another "
+                           "spacing, thickness or outline.",
+                loss_mm=round(FIELD_BORE[_MAT]["d"] - ROD_D, 2),
                 strip_loss_mm=ROD_LOSS,
                 printed_d_expected=round(
-                    s["rods"] - (MATERIALS[_MAT]["field"] - ROD_D), 2),
+                    s["rods"] - (FIELD_BORE[_MAT]["d"] - ROD_D), 2),
                 rects=[[float(a), float(b)] for a, b in field_rects(s)],
                 rings=field_rings(s),
                 rod_len_mm=round(contact_z(s) - 1.0, 1))
@@ -1638,6 +1658,11 @@ def measure(parts):
                      for n, m in parts.items()}
     rep["volume_cm3"] = round(sum(m.volume for m in parts.values()) / 1000.0, 2)
     rep["est_g"] = round(rep["volume_cm3"] * 1.27, 1)
+    if rep.get("field") and not FIELD_BORE[_MAT]["read"]:
+        rep.setdefault("caveats", []).append(
+            f"the field's bore for {MATERIALS[_MAT]['label']} is "
+            f"inferred from PETG's offset, not read on a graded field. "
+            f"Print the graded field on this spool before trusting it.")
     return rep
 
 
@@ -1864,7 +1889,7 @@ def main():
         return 1
     ROD_BORE = MATERIALS[a.material]["bore"]
     ROD_FREE = MATERIALS[a.material]["free"]
-    ROD_FIELD = MATERIALS[a.material]["field"]
+    ROD_FIELD = FIELD_BORE[a.material]["d"]
     _MAT = a.material
     if a.grade:
         vals = [float(v) for v in a.grade.split(",") if v.strip()]

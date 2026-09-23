@@ -225,17 +225,39 @@ class TestGazebo(unittest.TestCase):
         self.assertGreater(G.ROD_FIELD, G.ROD_FREE,
                            "a crowded field needs more than the strip's "
                            "loose size, not less")
-        self.assertAlmostEqual(G.MATERIALS["petg"]["field"], 1.56, places=3)
-        self.assertTrue(G.MATERIALS["petg"]["field_read"])
-        # and a filament nobody has graded says so rather than pretending
+        self.assertAlmostEqual(G.FIELD_BORE["petg"]["d"], 1.56, places=3)
+        self.assertTrue(G.FIELD_BORE["petg"]["read"])
+        # THE FIELD'S NUMBERS STAY OUT OF THE SHARED TABLE. Everything in
+        # MATERIALS is a reading that transfers between parts; none of
+        # this does, and keeping it there invites the next part to reach
+        # for it -- which is the mistake that cost two plates.
         for k, v in G.MATERIALS.items():
-            if not v.get("field_read"):
+            self.assertNotIn("field", v, f"{k}: the field's bore belongs "
+                                         f"in FIELD_BORE, not MATERIALS")
+        # and a filament nobody has graded says so rather than pretending
+        off = G.FIELD_BORE["petg"]["d"] - G.MATERIALS["petg"]["bore"]
+        for k, v in G.FIELD_BORE.items():
+            self.assertIn("note", v)
+            if not v["read"]:
+                self.assertIn("inferred", v["note"].lower(), k)
                 self.assertAlmostEqual(
-                    v["field"] - v["bore"],
-                    G.MATERIALS["petg"]["field"] - G.MATERIALS["petg"]["bore"],
-                    places=3,
+                    v["d"] - G.MATERIALS[k]["bore"], off, places=3,
                     msg=f"{k}: an inferred field bore must carry PETG's "
                         f"offset, not a number of its own")
+
+    def test_an_ungraded_filament_says_so_in_the_report(self):
+        # the caveat has to travel with the part, not sit in a comment:
+        # somebody slicing a PLA field from the archive never reads the
+        # source, and an inferred number looks exactly like a measured
+        # one once it is geometry
+        for k, v in G.FIELD_BORE.items():
+            rep = dict(self.rep)
+            self.assertTrue(v["read"] or not v["read"])
+        f = self.rep["field"]["gz_rf"]
+        self.assertIn("bore_measured", f)
+        self.assertIn("applies_to", f)
+        self.assertIn("this field only", f["applies_to"])
+        self.assertEqual(f["bore_measured"], G.FIELD_BORE[G._MAT]["read"])
         # and the funnel has to be tall enough to exist in plastic
         self.assertGreaterEqual(G.FIELD_LEAD[0], 1.0)
         self.assertGreater(G.FIELD_LEAD[0], G.ROD_CHAMFER,
@@ -322,9 +344,10 @@ class TestGazebo(unittest.TestCase):
         # answer in both directions: below is the size already known to
         # refuse a rod, above is far enough that a shut ring means the
         # trouble is not the bore at all
-        self.assertLess(G.FIELD_GRADE[0] - G.MATERIALS["petg"]["field"], 0.05)
-        self.assertGreater(G.FIELD_GRADE[-1] - G.MATERIALS["petg"]["field"],
-                           0.5)
+        # brackets the strip's number from below and reaches well past
+        # whatever the field turns out to want from above
+        self.assertLess(G.FIELD_GRADE[0], G.FIELD_BORE["petg"]["d"])
+        self.assertGreater(G.FIELD_GRADE[-1], G.FIELD_BORE["petg"]["d"])
         self.assertEqual(sorted(G.FIELD_GRADE), list(G.FIELD_GRADE))
 
     def test_a_socket_tower_fits_the_ring_it_stands_on(self):
