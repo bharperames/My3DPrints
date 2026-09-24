@@ -496,8 +496,13 @@ class TestGazebo(unittest.TestCase):
         f = self.rep["field"]["gz_rf"]
         self.assertGreaterEqual(f["depth_mm"], 6.0)
         self.assertEqual(f["holes"], len(G.field_holes()))
-        # a rod cut to this length puts its tip on the M's contact plane
-        self.assertGreater(f["rod_len_mm"], 20.0)
+        # and the plate says how deep its sockets are, NOT how long a rod
+        # should be: a flat field constrains nothing above the deck, so
+        # you cut a rod to the specimen. It used to report 29.0 mm,
+        # which was the contact height for the midpoint of a 25-150 mm
+        # tooth range this plate has no opinion about.
+        self.assertNotIn("rod_len_mm", f)
+        self.assertEqual(f["socket_depth_mm"], f["depth_mm"])
 
     def test_the_gauge_reads_a_constant_rather_than_guessing_one(self):
         # Ø1.7 and Ø1.9 were a two-point bracket extrapolated from one

@@ -603,54 +603,45 @@ PARTS = [
     _p("rod_field", "Carbon Rod Field \u2014 56 configurable holes",
        "Stands", "parametric",
        "One part, 56 holes, maximum flexibility for irregular surfaces. "
-       "The holes are laid out as concentric rings whose phase turns "
-       "with the radius, which offers 14 exact rectangles and five "
-       "circles to nest a specimen on \u2014 plant rods where that "
-       "particular root wants them and leave the rest empty. "
-       "A golden-angle spiral was the first idea for the field and the "
-       "scoring says it is the wrong tool: against every rectangle from "
-       "10 x 5 to 51 x 26 mm it misses by 17.2 mm at worst where this "
-       "pattern misses by 8.1, because a spiral is built so that nothing "
-       "ever lines up and a centered rectangle is nothing but lining up. "
-       "CHOOSE THE FILAMENT, because the socket is drawn to it \u2014 and "
-       "on this part the number came the hard way. A bore this small "
-       "prints well under its drawn size, and a crowded field takes off "
-       "0.10 to 0.15 mm MORE than a sparse test strip does: 56 bores at "
-       "3.58 mm centers in a \u00d859 disc simply come out smaller than 14 "
-       "bores at 5 mm in a narrow bar, at the same drawn size, the same "
-       "7 mm depth and a toolpath the slicer draws the same to a "
-       "hundredth. A probe read \u00d81.45 for PETG; this field wants "
-       "\u00d81.56 read ring by ring on a graded field \u2014 and \u00d81.60 "
-       "in the end, because printed as a whole field a few bores were "
-       "still stiff with no pattern to which ones, so the spread between "
-       "one bore and its neighbor is wider than five rings could "
-       "resolve. The toolpath is not the cause: measured off the "
-       "G-code, no infill of any kind comes within 0.8 mm of a bore "
-       "wall, and every one of the 56 has the same two wall loops at "
-       "the same distance. The rods are glued, so the step costs "
-       "nothing. Two plates drawn to the probe's number took no rod at "
-       "all. The "
-       "two PLAs carry the same offset over their own probe readings and "
-       "are marked as inferred, not measured \u2014 print the graded "
-       "field on the spool before trusting them.",
+       "A flat \u00d859 deck, 8 mm thick, with 56 sockets 7 mm deep for "
+       "1 mm carbon fiber rods. Plant rods where a particular root wants "
+       "them and leave the rest empty; cut them to whatever the specimen "
+       "needs, since nothing above the deck is fixed. "
+       "The holes sit on concentric rings whose phase turns with the "
+       "radius, which offers 14 exact rectangles and five circles to "
+       "nest a specimen on. The closest pair is 3.58 mm apart, leaving "
+       "1.28 mm of wall between their mouths, and every socket has a "
+       "funnel 1.2 mm deep so a rod tip can find it. "
+       "Choose the filament, because the socket is drawn to it. A bore "
+       "this small prints well under its drawn size, and how much it "
+       "loses depends on the plastic \u2014 but on this part it also "
+       "depends on the crowding. These holes come out about 0.55 mm "
+       "under their drawn size, where the same bore in a sparse test "
+       "strip loses 0.45. "
+       "Nothing in the slicer accounts for that: the toolpath is "
+       "identical either way, and the small-hole correction is off. So "
+       "the socket is drawn \u00d81.60 for PETG Basic, a size read off a "
+       "graded plate of this same deck rather than calculated. "
+       "PLA Basic and PLA Silk carry the same correction over their own "
+       "readings and are marked inferred rather than measured. Print "
+       "the graded field on the spool before trusting either.",
        keys="stand tooth fossil carbon rod socket bore field grid petg pla",
-       version="1.1.0",
+       version="1.2.0",
        pages=[dict(label="Stand the tooth on it, both ways",
                    href="docs/tooth-stand.html")],
        gen=["gen_gazebo.py", "--size", "gz_rf"], params=[
            dict(key="material", label="filament", type="select",
                 val="petg",
-                hint="Choose the filament \u2014 the socket is drawn to "
-                     "it, and for this part the size was read on a "
-                     "graded field rather than reasoned from a probe. "
-                     "Only PETG has been graded so far.",
+                hint="The socket is drawn to the filament, and for this "
+                     "part the size was read on a graded plate of the "
+                     "same deck. Only PETG has been read so far.",
                 choices=[
                     dict(value="petg", label="PETG Basic",
-                         hint="\u00d81.60, graded then opened a step"),
+                         hint="\u00d81.60, read on a graded plate"),
                     dict(value="pla_basic", label="PLA Basic",
-                         hint="\u00d81.65, inferred \u2014 not yet graded"),
+                         hint="\u00d81.65, inferred \u2014 not yet read"),
                     dict(value="pla_silk", label="PLA Silk",
-                         hint="\u00d81.85, inferred \u2014 not yet graded")])],
+                         hint="\u00d81.85, inferred \u2014 not yet read")])],
        out="gazebo-rod-field-{material}.3mf"),
     _p("rod_field_graded", "Rod field \u2014 graded, to find the size",
        "Stands", "parametric",

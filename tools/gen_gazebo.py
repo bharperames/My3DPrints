@@ -1620,7 +1620,14 @@ def measure(parts):
                     s["rods"] - (FIELD_BORE[_MAT]["d"] - ROD_D), 2),
                 rects=[[float(a), float(b)] for a, b in field_rects(s)],
                 rings=field_rings(s),
-                rod_len_mm=round(contact_z(s) - 1.0, 1))
+                # NO rod length. A ring base stands its rods to one
+                # contact plane and can say how long they are; a flat
+                # field constrains nothing above the deck -- you cut a
+                # rod to the specimen in front of you. The number this
+                # used to print, 29.0, was contact_z for the midpoint of
+                # a 25-150 mm tooth range the plate does not have an
+                # opinion about.
+                socket_depth_mm=round(FIELD_T - 1.0, 1))
             if s.get("grade"):
                 # an instrument, not a stand: the terraces are a layer
                 # apart ON PURPOSE, so coplanarity is not a claim this

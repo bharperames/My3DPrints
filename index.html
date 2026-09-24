@@ -1920,8 +1920,11 @@ renderer.setAnimationLoop(animate);
   // across the front page, cards ran 625 to 1001 px for no reason a reader
   // could see. Whole sentences still, just as many as fit the budget.
   function lede(txt, n){
-    const parts = String(txt).match(/[^.!?]+[.!?]+/g);
-    if (!parts) return String(txt);
+    // same decimal trap as paras(): /[^.!?]+[.!?]+/ cuts "\u00d81.45" in
+    // half, so the lede ended at "A probe read \u00d81." and the details
+    // opened with "45 for PETG and the field refused a rod"
+    const parts = sentences(txt);
+    if (!parts.length) return String(txt);
     const cap = n || 140;
     let out = '';
     for (const s of parts){
@@ -1934,8 +1937,37 @@ renderer.setAnimationLoop(animate);
   // paragraph, which reads as a wall. Sentences are grouped into
   // paragraphs of about three lines, which is where prose becomes
   // readable without anybody having to mark up the source.
+  // Sentence ends, not every full stop. The old pattern was
+  // /[^.!?]+[.!?]+(\s|$)/g, which cannot match a sentence containing a
+  // decimal: at "misses by 8.1," the dot is not followed by a space, the
+  // match fails, and the engine restarts SCANNING FORWARD -- so the
+  // paragraph began "1, because a spiral..." with everything before the
+  // decimal point silently dropped. Every card carrying a measurement
+  // was losing text this way.
+  function sentences(txt){
+    const s = String(txt), out = [];
+    let start = 0;
+    for (let i = 0; i < s.length; i++){
+      if ('.!?'.indexOf(s[i]) < 0) continue;
+      // a dot between two digits is a decimal
+      if (s[i] === '.' && /\d/.test(s[i - 1] || '') && /\d/.test(s[i + 1] || ''))
+        continue;
+      let k = i + 1;
+      while (k < s.length && /["'\u2019)\]]/.test(s[k])) k++;
+      if (k >= s.length) break;
+      if (!/\s/.test(s[k])) continue;          // "Ø1.60" mid-sentence
+      let n = k;
+      while (n < s.length && /\s/.test(s[n])) n++;
+      // a real sentence starts with something that can open one
+      if (n < s.length && !/[A-Z0-9"'\u00d8(\[\u2014]/.test(s[n])) continue;
+      out.push(s.slice(start, n));
+      start = n; i = n - 1;
+    }
+    if (start < s.length) out.push(s.slice(start));
+    return out.filter(t => t.trim());
+  }
   function paras(txt, cap){
-    const parts = String(txt).match(/[^.!?]+[.!?]+(\s|$)/g) || [String(txt)];
+    const parts = sentences(txt);
     const out = []; let cur = '';
     for (const s of parts){
       if (cur && (cur + s).length > (cap || 300)) { out.push(cur.trim()); cur = ''; }
