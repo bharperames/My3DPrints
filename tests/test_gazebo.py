@@ -225,8 +225,16 @@ class TestGazebo(unittest.TestCase):
         self.assertGreater(G.ROD_FIELD, G.ROD_FREE,
                            "a crowded field needs more than the strip's "
                            "loose size, not less")
-        self.assertAlmostEqual(G.FIELD_BORE["petg"]["d"], 1.56, places=3)
+        # Ø1.56 was the graded reading; the field runs Ø1.60 because
+        # whole-field prints still had stiff bores with no pattern to
+        # them, so the spread between bores is wider than a ladder of
+        # five rings could resolve. Still well clear of the strip's
+        # Ø1.45 -- the crowding correction is the point.
+        self.assertAlmostEqual(G.FIELD_BORE["petg"]["d"], 1.60, places=3)
         self.assertTrue(G.FIELD_BORE["petg"]["read"])
+        self.assertGreater(G.FIELD_BORE["petg"]["d"] - G.ROD_D, 0.5,
+                           "a crowded field needs half a millimeter over "
+                           "the rod, not the strip's 0.45")
         # THE FIELD'S NUMBERS STAY OUT OF THE SHARED TABLE. Everything in
         # MATERIALS is a reading that transfers between parts; none of
         # this does, and keeping it there invites the next part to reach

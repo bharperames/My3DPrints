@@ -620,8 +620,16 @@ PARTS = [
        "bores at 5 mm in a narrow bar, at the same drawn size, the same "
        "7 mm depth and a toolpath the slicer draws the same to a "
        "hundredth. A probe read \u00d81.45 for PETG; this field wants "
-       "\u00d81.56, and two plates drawn to the probe's number took no "
-       "rod at all. \u00d81.56 is read off a graded field in PETG. The "
+       "\u00d81.56 read ring by ring on a graded field \u2014 and \u00d81.60 "
+       "in the end, because printed as a whole field a few bores were "
+       "still stiff with no pattern to which ones, so the spread between "
+       "one bore and its neighbor is wider than five rings could "
+       "resolve. The toolpath is not the cause: measured off the "
+       "G-code, no infill of any kind comes within 0.8 mm of a bore "
+       "wall, and every one of the 56 has the same two wall loops at "
+       "the same distance. The rods are glued, so the step costs "
+       "nothing. Two plates drawn to the probe's number took no rod at "
+       "all. The "
        "two PLAs carry the same offset over their own probe readings and "
        "are marked as inferred, not measured \u2014 print the graded "
        "field on the spool before trusting them.",
@@ -638,11 +646,11 @@ PARTS = [
                      "Only PETG has been graded so far.",
                 choices=[
                     dict(value="petg", label="PETG Basic",
-                         hint="\u00d81.56, read on a graded field"),
+                         hint="\u00d81.60, graded then opened a step"),
                     dict(value="pla_basic", label="PLA Basic",
-                         hint="\u00d81.61, inferred \u2014 not yet graded"),
+                         hint="\u00d81.65, inferred \u2014 not yet graded"),
                     dict(value="pla_silk", label="PLA Silk",
-                         hint="\u00d81.81, inferred \u2014 not yet graded")])],
+                         hint="\u00d81.85, inferred \u2014 not yet graded")])],
        out="gazebo-rod-field-{material}.3mf"),
     _p("rod_field_graded", "Rod field \u2014 graded, to find the size",
        "Stands", "parametric",

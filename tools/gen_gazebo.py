@@ -199,15 +199,22 @@ MATERIALS = {
 FIELD_BORE = {
     # read ring by ring on a graded field: \u00d81.53 very tight,
     # \u00d81.56 right, \u00d81.59 and up loose
-    "petg": dict(d=1.56, read=True,
-                 note="read on a graded field, PETG Basic, 0.4 nozzle"),
+    # \u00d81.56 was read ring by ring and is right for most bores, but
+    # printed as a whole field some rods still went in hard, with no
+    # pattern to which -- so the spread between one bore and the next is
+    # wider than the ladder could see. \u00d81.60 trades a little grip for
+    # covering that spread; the rods are glued anyway.
+    "petg": dict(d=1.60, read=True,
+                 note="\u00d81.56 read on a graded field; opened to "
+                      "\u00d81.60 because whole-field prints still had "
+                      "stiff bores with no pattern"),
     # INFERRED, not measured: each carries PETG's +0.11 over its own
     # strip reading. That is the same species of guess that produced two
     # unusable plates, so it is labeled everywhere it surfaces -- in the
     # report, on the card, and in the archive. Grade the spool first.
-    "pla_basic": dict(d=1.61, read=False,
+    "pla_basic": dict(d=1.65, read=False,
                       note="inferred from PETG's offset; not graded"),
-    "pla_silk": dict(d=1.81, read=False,
+    "pla_silk": dict(d=1.85, read=False,
                      note="inferred from PETG's offset; not graded"),
 }
 ROD_BORES = {k: v["bore"] for k, v in MATERIALS.items()}
