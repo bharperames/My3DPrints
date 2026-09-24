@@ -124,10 +124,11 @@ SHELVES = [
 PARTS = [
     _p("wrench", "Nut Wrench", "Montessori", "generated",
        "Combination spanner for the Montessori hex: a six-point box end one "
-       "side, an open jaw the other. One size drives the nuts and both bolt "
-       "heads.",
+       "side, an open jaw the other. Every hex in the set measures the "
+       "same across the flats, so one size drives the nut and all five "
+       "bolt heads.",
        version="1.0.0", gen=["gen_wrench.py"], out="wrench-af50.3mf",
-       proven="Printed perfect. Turns the nuts and both bolt heads; the "
+       proven="Printed perfect. Turns the nut and the bolt heads; the "
               "0.45 mm fit and the 2.67 jaw safety hold up in the hand."),
     _p("dice_orb", "Dice Orb", "Designed here", "generated",
        "A standard d20 captive in a rib-and-ring shaker sphere.",
@@ -181,7 +182,9 @@ PARTS = [
        out="chain-N{links}-L{len:g}-D{dia:g}-F{foot:g}.3mf"),
     _p("sphere_stand", "Sphere Stand", "Stands", "parametric",
        "A ring that cradles a ball on a conformal spherical seat. Set the "
-       "ball; the rest follow it at a 45 degree contact.",
+       "ball and the wall and chamfer follow it; the seat is a flat "
+       "1 mm air gap at every size. Contact lands at 48.3\u00b0 of "
+       "latitude, whatever the ball.",
        keys="stand display sphere ball",
        # the three printed sizes on the shelf are this card at three ball
        # diameters, not three designs. Listing them separately gave four
@@ -263,12 +266,11 @@ PARTS = [
        "bar can. The third sits in a round counterbore and turns "
        "freely. That one is the way in and the way out, and it stands a "
        "single thread lead proud of its face so fingers can reach it. "
-       "The puzzle is to find which of three identical faces is live. "
-       "It does not rattle its way apart: swept along every direction, "
-       "in every combination of two bars moving at once, and again with "
-       "rotation over seven thousand random screw motions, the most any "
-       "part shifts relative to another is 0.9 mm, which is the "
-       "clearance it is built with. "
+       "Two faces show a hex head flush in a hex counterbore; the "
+       "third shows the round one, standing 4 mm proud. "
+       "It does not rattle its way apart: the only way in is to unscrew "
+       "something, and a pull cannot turn a screw. The clearances are "
+       "0.30 mm on the thread and 0.50 mm radial in the plain bore. "
        "58 mm cube. Prints with every threaded bore vertical, and the "
        "plain bores on their sides. PETG, not PLA \u2014 these bolts are "
        "long and take real tension, and a silk PLA bolt snapped under "
@@ -311,7 +313,7 @@ PARTS = [
        "with a phone and with a full-frame body behind each macro, "
        "through 10\u201380\u00b0 against the arc and its leg, and the whole "
        "rotor side through a full turn against the base. The pedestal's "
-       "top 30 mm drafts inward at 15\u00b0, so at 75\u00b0 of elevation the "
+       "top 23 mm drafts inward at 15\u00b0, so at 75\u00b0 of elevation the "
        "camera sees the platform and nothing under it. "
        "PETG, four or five walls, 25\u201330% gyroid; base and pedestal in "
        "matte black so they drop out of feature matching. One dial: how "
@@ -337,7 +339,8 @@ PARTS = [
        "aft \u2014 and never in the notch, which is where the low camera "
        "rings look. "
        "Each cone is one solid of revolution: a 7\u00b0 included flank "
-       "through a 2.5 mm fillet onto a pad, ending in a cup rather than "
+       "through a fillet of up to 2.4 mm onto a pad, ending in a cup "
+       "rather than "
        "a point, \u00d82.8 mm on the M and L and smaller below. The cup "
        "holds a dab of museum wax, which is what stops the tooth "
        "sliding. Four sizes, by the tooth they carry:\n"
@@ -352,10 +355,10 @@ PARTS = [
        "there, and off the jig it sits on a table the same way. Nothing "
        "keys the rotation, so the quadrilateral can be spun onto the "
        "lobes wherever they fall. "
-       "Matte black PETG, solid shells, printed as a plate of four so "
-       "the fine tips get their layer time from the travel between "
-       "parts. The L's pins sit 20.3 mm apart, leaving 15 mm of clear "
-       "air at the feet. "
+       "Matte black PETG, three walls and 15% infill. One body per "
+       "stand; ask for several sizes at once and the travel between "
+       "them gives the fine tips their layer time. The L's cones sit "
+       "20.3 mm apart, leaving 14.6 mm of clear air at their feet. "
        "--grip saw cuts a ratchet into the cones, one barb every "
        "1.2 mm standing 0.35 proud and pointing down, for a root that "
        "wants to climb out. The cones here are part of the body and "
@@ -389,8 +392,9 @@ PARTS = [
        "\u2003M  14\u201338 mm   teeth 50\u201395 mm\n"
        "\u2003L  15\u201361 mm   teeth 90\u2013150 mm\n"
        "Eight pieces per stand: two arms, two cones, two dowels and two "
-       "pins. The cones are loose and slide onto a dowel pressed into "
-       "the arm, so a flank can be swapped without reprinting the "
+       "pins. The lower arm's two cones are part of it; the upper "
+       "arm's two are loose, sliding onto a dowel pressed into the arm, "
+       "so that pair's flank can be swapped without reprinting the "
        "scissors. Both pins fit \u2014 the second is 0.15 mm fatter "
        "through the upper arm and dimpled on the head, for when the "
        "first turns too freely to hold a setting under the weight of a "
@@ -428,16 +432,17 @@ PARTS = [
     _p("gazebo", "Tooth shaped stand with spikes",
        "Stands", "parametric",
        "PLA ONLY. The spikes work as springs and are sized as springs in "
-       "PLA: \u00d81.6 tips on a 1.8\u00b0 flank, which give 0.08 mm at the "
-       "tip under a root's share of a 500 g tooth and yield at 10 N. "
-       "PETG is half as stiff and two thirds as strong, so the same "
+       "PLA: \u00d81.6 tips on a 1.8\u00b0 flank, 1.95\u00b0 on the L. Under a "
+       "root's share of a 500 g tooth they give 0.04 mm at the tip on "
+       "the S and 0.08 on the M and L, and yield between 9 and 13 N. "
+       "PETG is half as stiff and three fifths as strong, so the same "
        "spikes are brittle in it. The filament is stated rather than "
        "offered because the part does not work in the other one. "
        "Six spikes stand on a circle, sized to sit inside the hollow "
        "under a bilobate root. They are spaced three, four and five "
        "twelfths of a half turn, so the ring presents three slot widths "
        "and the tooth can be turned to whichever fits:\n"
-       "\u2003S  3.0 / 4.4 / 5.7 mm   teeth 25\u201355 mm, 20 g\n"
+       "\u2003S  3.0 / 4.4 / 5.7 mm   teeth 25\u201355 mm, 19 g\n"
        "\u2003M  4.5 / 6.4 / 8.1 mm   teeth 50\u201395 mm, 25 g\n"
        "\u2003L  6.8 / 9.4 / 11.8 mm  teeth 90\u2013150 mm, 39 g\n"
        "The deck is a shark tooth in plan, taken from the silhouette of "
@@ -470,10 +475,10 @@ PARTS = [
        "\u2003S  rods 22.5 mm   teeth 25\u201355 mm, 19 g\n"
        "\u2003M  rods 31.5 mm   teeth 50\u201395 mm, 25 g\n"
        "\u2003L  rods 36.5 mm   teeth 90\u2013150 mm, 39 g\n"
-       "A carbon rod is stiffer than the spike it replaces and half the "
-       "diameter at the tip. Nothing here has to flex, so these print in "
-       "either plastic, unlike the spiked stands. PETG holds up better "
-       "to handling. "
+       "A \u00d81 carbon rod is stiffer than the \u00d81.6 printed spike it "
+       "replaces and finer at the tip. Nothing here has to flex, so "
+       "these print in either plastic, unlike the spiked stands. PETG "
+       "holds up better to handling. "
        "Choose the filament, because the socket is drawn to it. A bore "
        "this small comes out about half a millimeter under its drawn "
        "size, against the 0.15 mm a \u00d83 hole loses, and how much it "
@@ -482,7 +487,8 @@ PARTS = [
        "One tenth either way is the difference between refusing the rod "
        "and dropping it. A filament with no reading behind it is "
        "refused rather than guessed; print the gauge and it becomes one "
-       "line.",
+       "line. These are sockets standing in open space; a crowded plate "
+       "wants a wider bore, which is what the rod field is for.",
        keys="stand tooth fossil carbon rod socket bore petg pla",
        supersedes=["gazebo-r21-rod-base-petg.3mf"],
        version="1.0.0",
@@ -518,7 +524,8 @@ PARTS = [
     _p("rod_field", "Carbon Rod Field \u2014 56 configurable holes",
        "Stands", "parametric",
        "One part, 56 holes, maximum flexibility for irregular surfaces. "
-       "A flat round deck 59 mm across and 8 mm thick, with 56 sockets "
+       "A flat octagonal deck, 54.5 mm across the flats and 8 mm "
+       "thick, with 56 sockets "
        "7 mm deep for 1 mm carbon fiber rods. Plant rods where a "
        "particular root wants them and leave the rest empty; cut them "
        "to whatever the specimen needs, since nothing above the deck is "
@@ -531,13 +538,15 @@ PARTS = [
        "Choose the filament, because the socket is drawn to it. A bore "
        "this small prints well under its drawn size, and how much it "
        "loses depends on the plastic \u2014 but on this part it also "
-       "depends on the crowding. These holes come out about 0.55 mm "
-       "under their drawn size, where the same bore in a sparse test "
-       "strip loses 0.45. "
+       "depends on the crowding. These holes come out 0.56 mm under "
+       "their drawn size, where the same bore in a sparse test strip "
+       "loses 0.45. "
        "Nothing in the slicer accounts for that: the toolpath is "
        "identical either way, and the small-hole correction is off. So "
-       "the socket is drawn \u00d81.60 for PETG Basic, a size read off a "
-       "graded plate of this same deck rather than calculated. "
+       "the socket is drawn \u00d81.60 for PETG Basic. A graded plate of "
+       "this same deck read \u00d81.56 as snug; the drawn size is opened "
+       "0.04 past that, because a whole field still had a few stiff "
+       "bores with no pattern to which. "
        "PLA Basic and PLA Silk carry the same correction over their own "
        "readings and are marked inferred rather than measured. Print "
        "the graded field on the spool before trusting either.",
@@ -572,8 +581,8 @@ PARTS = [
        "first ring that takes a rod without force is the number. "
        "Start on the coarse ladder for a filament nobody has read, then "
        "run the fine one inside whatever the coarse plate bracketed. "
-       "The fine ladder ends on a size already read in the hand, so the "
-       "plate carries its own reference. "
+       "The fine ladder ends on a rung the coarse plate already "
+       "printed, so the two can be compared in the hand. "
        "Every bore is 7 mm deep whichever terrace it is on. The plate "
        "is not scrap afterward \u2014 any ring that takes a rod is a "
        "working field.",
@@ -582,19 +591,20 @@ PARTS = [
        version="1.0.0",
        gen=["gen_gazebo.py", "--size", "gz_rfg"], params=[
            dict(key="grade", label="ladder", type="select",
-                val="1.53,1.56,1.59,1.62,1.65",
+                val="1.50,1.65,1.80,1.95,2.10",
                 hint="Coarse first, to find out roughly where the answer "
                      "is; then fine, inside whatever the coarse one "
                      "bracketed. The fine ladder here ends on \u00d81.65 "
                      "on purpose \u2014 a size already read in the hand, "
                      "so the plate carries its own reference.",
                 choices=[
-                    dict(value="1.53,1.56,1.59,1.62,1.65",
-                         label="fine, 1.53\u20131.65",
-                         hint="PETG: \u00d81.50 refused, \u00d81.65 loose"),
                     dict(value="1.50,1.65,1.80,1.95,2.10",
                          label="coarse, 1.50\u20132.10",
-                         hint="start here on a filament never read")]),
+                         hint="start here on a filament never read"),
+                    dict(value="1.53,1.56,1.59,1.62,1.65",
+                         label="fine, 1.53\u20131.65",
+                         hint="what PETG needed: \u00d81.53 very tight, "
+                              "\u00d81.56 snug, \u00d81.59 and up loose")]),
            dict(key="material", label="filament", type="select",
                 val="petg",
                 hint="Only the funnel and the wall follow the filament "
@@ -612,9 +622,10 @@ PARTS = [
        "itself rather than a caliper. Eleven bores from \u00d81.0 to "
        "\u00d82.0 in tenths, three times over: one row up a slim boss, "
        "one straight into a solid plate, and one with every bore "
-       "flanked by two more at the rod field's spacing. A 5 x 5 patch "
-       "of \u00d81.5 bores at that spacing closes it out. Every bore is a "
-       "real socket \u2014 same boss, same depth, same lead-in. "
+       "flanked by two more at the rod field's spacing. The rows are "
+       "deliberately different sockets: the boss row is bored 12 mm up "
+       "a tower with a 0.8 mm chamfer, the flat and crowded rows go "
+       "7 mm straight into the plate through the field's own funnel. "
        "Push the rod along a row from the narrow end. The first bore "
        "that takes it without force is the size to draw from then on, "
        "for that printer, that filament and that nozzle. A wedge and "
@@ -695,7 +706,7 @@ PARTS = [
        "concentric rings as bits. The reader has five plungers, each at "
        "its own radius so the code reads at any rotation, and one sits "
        "on the axis: a \u00d84.75 disk at the center and four rings "
-       "around it, inside \u00d827.88. Bit 1 is the center and bit 5 the "
+       "around it, out to \u00d824.38. Bit 1 is the center and bit 5 the "
        "outermost ring, worth 1, 2, 4, 8 and 16. "
        "That is 32 combinations, but the one with nothing standing "
        "gives the reader no bit to find, so the set runs 1 to 31. Ask "
@@ -709,7 +720,7 @@ PARTS = [
        "only fits that one socket. "
        "Prints face-down with no supports \u2014 every surface is a "
        "vertical extrusion off a flat base. Printed, it seats and "
-       "reads. The cavity is built 0.10 mm wider across than drawn, "
+       "reads. The cavity is built 0.30 mm wider across than drawn, "
        "because the first set bound on the reader and needed a firm "
        "press to talk.",
        # 1.1.0: rim 11.66 -> 11.55 (mean of three readings on rubber) and

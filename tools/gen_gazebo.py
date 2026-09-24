@@ -204,7 +204,7 @@ FIELD_BORE = {
     # pattern to which -- so the spread between one bore and the next is
     # wider than the ladder could see. \u00d81.60 trades a little grip for
     # covering that spread; the rods are glued anyway.
-    "petg": dict(d=1.60, read=True,
+    "petg": dict(d=1.60, snug=1.56, read=True,
                  note="\u00d81.56 read on a graded field; opened to "
                       "\u00d81.60 because whole-field prints still had "
                       "stiff bores with no pattern"),
@@ -212,9 +212,9 @@ FIELD_BORE = {
     # strip reading. That is the same species of guess that produced two
     # unusable plates, so it is labeled everywhere it surfaces -- in the
     # report, on the card, and in the archive. Grade the spool first.
-    "pla_basic": dict(d=1.65, read=False,
+    "pla_basic": dict(d=1.65, snug=1.61, read=False,
                       note="inferred from PETG's offset; not graded"),
-    "pla_silk": dict(d=1.85, read=False,
+    "pla_silk": dict(d=1.85, snug=1.81, read=False,
                      note="inferred from PETG's offset; not graded"),
 }
 ROD_BORES = {k: v["bore"] for k, v in MATERIALS.items()}
@@ -782,46 +782,6 @@ def bore_depth(spec, b):
     is the point: the step is cosmetic and the depth is the variable."""
     sunk = field_grade_terrace(spec, b)
     return (FIELD_T - sunk) - (1.0 - sunk)
-
-
-def field_grade_zones(spec):
-    """The sunk terraces, as cutters. Alternate rings only."""
-    edges = [0.0] + list(GRADE_BAND_EDGES) + [FIELD_R + 1.0]
-    out = []
-    for b in range(len(FIELD_GRADE)):
-        d = field_grade_terrace(spec, b)
-        if d <= 0.0:
-            continue
-        ring = (Point(0.0, 0.0).buffer(edges[b + 1], resolution=96)
-                .difference(Point(0.0, 0.0).buffer(edges[b], resolution=96)))
-        e = trimesh.creation.extrude_polygon(ring, d + 1.0)
-        e.apply_translation([0.0, 0.0, FIELD_T - d])
-        out.append(e)
-    return out
-
-
-def field_grade_etch(spec):
-    """Each ring's drawn size, cut where that ring's spare hole was."""
-    from shapely import affinity
-    import gen_dice_cage as D
-    _, label = field_grade_holes(spec)
-    out = []
-    for b, (x, y) in label.items():
-        g = D._raw_glyph(f"{FIELD_GRADE[b]:.2f}")
-        if g is None:
-            continue
-        g = affinity.scale(g, GRADE_ETCH_SCALE, GRADE_ETCH_SCALE,
-                           origin=(0, 0)).buffer(GRADE_ETCH_BOLD,
-                                                 join_style=2)
-        lo_x, lo_y, hi_x, hi_y = g.bounds
-        g = affinity.translate(g, x - (lo_x + hi_x) / 2.0,
-                               y - (lo_y + hi_y) / 2.0)
-        sunk = field_grade_terrace(spec, b)
-        for q in (list(g.geoms) if g.geom_type == "MultiPolygon" else [g]):
-            e = trimesh.creation.extrude_polygon(q, GAUGE_ETCH + 1.0)
-            e.apply_translation([0.0, 0.0, FIELD_T - sunk - GAUGE_ETCH])
-            out.append(e)
-    return out
 
 
 def gauge_ruler(spec):
@@ -1614,10 +1574,16 @@ def measure(parts):
                 applies_to="this field only: 56 bores, 3.58 mm centers, "
                            "8 mm deck. Not transferable to another "
                            "spacing, thickness or outline.",
-                loss_mm=round(FIELD_BORE[_MAT]["d"] - ROD_D, 2),
+                # the loss is what the SNUG size measured, not what is
+                # drawn: those were one number until the drawn size was
+                # opened past snug to cover the spread between bores,
+                # and computing loss from the drawn size overstates it
+                loss_mm=round(FIELD_BORE[_MAT]["snug"] - ROD_D, 2),
+                opened_mm=round(FIELD_BORE[_MAT]["d"]
+                                - FIELD_BORE[_MAT]["snug"], 2),
                 strip_loss_mm=ROD_LOSS,
                 printed_d_expected=round(
-                    s["rods"] - (FIELD_BORE[_MAT]["d"] - ROD_D), 2),
+                    s["rods"] - (FIELD_BORE[_MAT]["snug"] - ROD_D), 2),
                 rects=[[float(a), float(b)] for a, b in field_rects(s)],
                 rings=field_rings(s),
                 # NO rod length. A ring base stands its rods to one

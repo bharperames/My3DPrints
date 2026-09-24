@@ -347,6 +347,21 @@ class TestGazebo(unittest.TestCase):
         self.assertGreater(worst, 2.0, "0.81 mm was measured correctly "
                                        "and still distorted a bore")
 
+    def test_the_graded_plate_actually_carries_its_legend(self):
+        # field_grade_etch was defined twice for a while, the stale one
+        # shadowing the new, and since it read a label dict that is now
+        # always empty the plate came out with NO numbers on it at all.
+        # Nothing else noticed: it is watertight, every gate passes, and
+        # the only symptom is an instrument you cannot read.
+        self.assertGreater(len(G.field_grade_etch(G.BY_ID["gz_rfg"])), 0,
+                           "the graded plate has no legend")
+        src = open(os.path.join(os.path.dirname(__file__), "..", "tools",
+                                "gen_gazebo.py")).read()
+        for name in ("field_grade_etch", "field_grade_holes",
+                     "field_grade_zones", "field_bore", "grade_legend"):
+            self.assertEqual(src.count("\ndef %s(" % name), 1,
+                             f"{name} is defined more than once")
+
     def test_the_grade_brackets_the_size_that_failed(self):
         # it exists to answer one question, so it has to reach past the
         # answer in both directions: below is the size already known to
