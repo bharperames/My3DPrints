@@ -104,7 +104,9 @@ def build(ball, base=None, wall=None, chamfer=None, seat=None, segments=None):
     chamfer = a["chamfer"] if chamfer is None else chamfer
     seat = a["seat"] if seat is None else seat
     rep = {}
-    if wall < 3 * NOZZLE:
+    # 3 * 0.4 is 1.2000000000000002, so a dial whose minimum IS
+    # 1.2 could never reach it. Compare with a hair of slack.
+    if wall < 3 * NOZZLE - 1e-9:
         raise ValueError(f"wall {wall:.2f} mm is under three nozzle widths "
                          f"({3 * NOZZLE:.1f}) — it prints as a hollow shell")
     mb = max_base(ball, wall)

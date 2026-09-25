@@ -98,7 +98,11 @@ def main():
         return 1
 
     link = tube(stadium_path(cl_l, cl_w), a.dia / 2)
-    foot = max(0.0, min(a.foot, a.dia / 3))     # never bite past a third
+    # never bite past a third of the section. This used to clamp in
+    # silence, so two dial positions produced one mesh under two
+    # filenames -- a file named F0.8 carrying a 0.667 mm cut.
+    foot = max(0.0, min(a.foot, a.dia / 3))
+    foot_clamped = abs(foot - a.foot) > 1e-9
 
     def placed(x, tilt):
         l = link.copy()
@@ -315,6 +319,8 @@ def main():
                       "links": a.links, "pitch": round(float(pitch), 2),
                       "layout": layout, "coil_radius": coil_r,
                       "brim": bool(a.brim), "foot_mm": round(foot, 2),
+                      "foot_asked_mm": round(a.foot, 2),
+                      "foot_clamped": foot_clamped,
                       "straight_len": round(float(straight_len), 1),
                       "clearance": round(float(worst if worst is not None
                                                else clearance), 2),

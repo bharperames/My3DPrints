@@ -235,7 +235,13 @@ def order_items(order):
     items, reports = [], {}
     for line in order:
         part = catalog.find(line["part"])
-        params = line.get("params") or {}
+        # NOT `or {}`: with no params, out_path still fills the name from
+        # the catalog defaults while ensure passes the generator no flags
+        # at all, so the generator's own defaults get written under the
+        # card's canonical filename -- a PLA-Basic rod field served
+        # forever as gazebo-rod-field-petg.3mf. Every route in serve.py
+        # falls back to the card's defaults; this one did not.
+        params = line.get("params") or catalog.defaults(part)
         path, rep = catalog.ensure(part, params)
         m = catalog.measure(path)
         bodies = load_bodies(path)

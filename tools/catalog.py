@@ -155,7 +155,9 @@ PARTS = [
        out="montessori-double-nut.3mf"),
     _p("mont_plate", "Base Plate 2×3", "Montessori", "generated",
        "Six threaded sockets to stand the bolts in.",
-       proven="Printed well at 390 g. Its entry chamfer stops at the "
+       proven="Printed well. 163 g and 3h45m sliced; the 390 g the "
+              "generator estimates is solid volume, not a print. Its "
+              "entry chamfer stops at the "
               "thread root rather than running out to the crest as the "
               "double nut's does, which costs nothing here because the "
               "sockets open upward and were never the face at risk.",
@@ -187,10 +189,12 @@ PARTS = [
        out="chain-N{links}-L{len:g}-D{dia:g}-F{foot:g}.3mf"),
     _p("sphere_stand", "Sphere Stand", "Stands", "parametric",
        "A ring that cradles a ball on a conformal spherical seat. Set the "
-       "ball; the wall, chamfer and seat start from it and can be "
-       "overridden. Left at the sizes shown, contact lands between "
-       "45.6\u00b0 and 55\u00b0 of latitude across the range; let the "
-       "generator derive them and it is 48.3\u00b0 at every ball.",
+       "ball; the wall and chamfer start from it and can be overridden, "
+       "while the seat is a flat 1 mm air gap at every size. Left at the "
+       "sizes shown, contact lands between 45.6\u00b0 and 55\u00b0 of "
+       "latitude across the range; let the generator derive the wall and "
+       "chamfer instead and it is 48.3\u00b0 at every ball it will build, "
+       "which is 12 mm and up.",
        keys="stand display sphere ball",
        # the three printed sizes on the shelf are this card at three ball
        # diameters, not three designs. Listing them separately gave four
@@ -517,12 +521,14 @@ PARTS = [
                          hint="teeth 90\u2013150 mm \u2014 rods cut to 36.5")]),
            dict(key="material", label="filament", type="select",
                 val="petg",
-                hint="Choose the filament \u2014 the socket is drawn to it. "
-                     "A \u00d81 mm bore comes out about half a millimeter "
-                     "under its drawn size, and how much it loses is a "
-                     "property of the plastic, not of the part. One tenth "
-                     "either way is the difference between refusing the "
-                     "rod and letting it fall out.",
+                hint="Choose the filament \u2014 the socket is drawn to "
+                     "it. A bore this small comes out about half a "
+                     "millimeter under its drawn size, and how much it "
+                     "loses depends on the plastic and on the part. These "
+                     "sockets stand in open space; a crowded plate loses "
+                     "more, which is what the rod field is drawn for. One "
+                     "tenth either way is the difference between refusing "
+                     "the rod and letting it fall out.",
                 choices=[
                     dict(value="petg", label="PETG Basic",
                          hint="sockets drawn \u00d81.45, measured"),
@@ -541,9 +547,10 @@ PARTS = [
        "particular root wants them and leave the rest empty; cut them "
        "to whatever the specimen needs, since nothing above the deck is "
        "fixed. "
-       "The holes sit on concentric rings whose phase turns with the "
-       "radius, which offers 14 exact rectangles and five circles to "
-       "nest a specimen on. The closest pair is 3.58 mm apart, leaving "
+       "Forty of the holes sit on five concentric rings whose phase "
+       "turns with the radius, and sixteen more fill in rectangles the "
+       "rings miss. Together they offer 14 exact rectangles and five "
+       "circles to nest a specimen on. The closest pair is 3.58 mm apart, leaving "
        "1.28 mm of wall between their mouths. Each socket is "
        "countersunk 1.2 mm. "
        "Choose the filament, because the socket is drawn to it. A bore "
@@ -697,7 +704,10 @@ PARTS = [
        "it meets the jaw. The feet keep their talons on purpose: they are "
        "what the model stands on.",
        keys="tooth teeth fossil skeleton",
-       version="5.0.0",
+       # a library card's version is taken from the ledger, not from
+       # here -- models/versions.json says 2.0.1 and that is what the
+       # shop shows. This line was never read; it claimed 5.0.0.
+       version="2.0.1",
        path=os.path.join(os.path.dirname(HERE), "models", "custom",
                          "trex-real-teeth-v5.3mf"),
        proven="Skull and body on one plate \u2014 the body being the "

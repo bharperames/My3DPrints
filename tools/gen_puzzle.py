@@ -295,7 +295,14 @@ def main():
     floor = S - p
     shank_len = floor if a.shank is None else a.shank
 
-    bottom, top, land, turns = build_seed(t, S, a.split, p)
+    try:
+        bottom, top, land, turns = build_seed(t, S, a.split, p)
+    except ValueError as e:
+        # build_seed raises for settings that cannot be drawn at all. It
+        # used to escape main(), and the page printed the Python stack.
+        print(json.dumps({"ok": False, "part": "seed-cube",
+                          "error": str(e)}))
+        return 1
     bolt = t.bolt(shank_len=shank_len)
     rep = {"part": "seed-cube", "thread": repr(t), "side_mm": S,
            "seam_mm": round(c, 2), "pocket_depth_mm": p,
@@ -314,7 +321,11 @@ def main():
              ("comes_apart", rep.get("comes_apart", False))]
     failed = [n for n, ok in gates if not ok]
     if failed:
-        print(json.dumps({"ok": False, **rep, "failed": failed}))
+        # every other generator supplies "error"; without it the shop
+        # showed the user the words "generation refused" and nothing else
+        print(json.dumps({"ok": False, **rep, "failed": failed,
+                          "error": "these settings do not come apart: "
+                                   + ", ".join(failed)}))
         return 1
 
     bottom, top, bolt = tidy(bottom), tidy(top), tidy(bolt)

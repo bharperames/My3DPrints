@@ -339,7 +339,9 @@ def main():
         except OSError:
             continue
         old = have.get(pid)
-        if (old and old.get("stamp") == s
+        # a record whose glb is null is a build that failed partway; treat
+        # it as absent rather than joining None onto a path and dying
+        if (old and old.get("stamp") == s and old.get("glb")
                 and os.path.exists(os.path.join(ROOT, old["glb"]))):
             out.append(old)
             kept += 1
