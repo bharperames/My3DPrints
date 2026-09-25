@@ -339,10 +339,15 @@ def main():
         except OSError:
             continue
         old = have.get(pid)
-        # a record whose glb is null is a build that failed partway; treat
-        # it as absent rather than joining None onto a path and dying
-        if (old and old.get("stamp") == s and old.get("glb")
-                and os.path.exists(os.path.join(ROOT, old["glb"]))):
+        # glb is None for every PART -- only a kit needs a composite file,
+        # a part has its own 3MF the browser reads. So a null glb is the
+        # normal case, not a failure: check the file only when there is
+        # one to check. Requiring it outright joined None onto a path and
+        # crashed; requiring it truthy instead rebuilt every part on every
+        # run, which is why a pass reported 76 built and 5 cached.
+        if (old and old.get("stamp") == s
+                and (not old.get("glb")
+                     or os.path.exists(os.path.join(ROOT, old["glb"])))):
             out.append(old)
             kept += 1
             continue
