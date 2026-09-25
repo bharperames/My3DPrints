@@ -13,11 +13,18 @@ certainly what was drawn rather than what was measured:
     R_minor = 2/3 R_major     lead = 2/3 R_major     A = R_major / 6
 
 Those three carry one consequence worth the whole file. The steepest flank
-is dr/dz = 2 pi A / lead = pi / 2, which has no R in it: the flank sits
-32.5 degrees off the axis at every scale. So a bore of this family printed
-upright never presents more than a 32.5 degree overhang, and shrinking the
-toy cannot walk it into a droop. That is the property being kept; the
-diameter is not.
+is dr/dz = 2 pi A / lead = pi / 2, which has no R in it: the flank stands
+32.5 degrees off the RADIAL PLANE at every scale -- equivalently 57.5
+degrees off the axis. Shrinking the toy cannot walk that into a droop,
+and that is the property being kept; the diameter is not.
+
+Do not read 32.5 as an overhang angle. It was labeled "off the axis" here
+and in `flank_deg_off_axis` below, and a card repeated it as "32.5 degrees
+off the axis, so a bore of this family never needs support". Measured on a
+built rod, the downward faces reach 57 degrees from vertical and 29% of
+that area is past 45. These bores do print upright without support, but a
+helix carries each layer round onto the one beneath it -- that is why, not
+a shallow flank.
 
 Clearance does not scale with it. The original runs 0.50 mm radial on a
 35 mm thread; a proportional 0.23 mm at 16 mm is inside the slop of an
@@ -240,8 +247,10 @@ if __name__ == "__main__":
     bolt = t.bolt(shank_len=45.0)
     nut = t.nut()
     shank = t.shank_only(bolt)
-    rep = {"thread": repr(t), "flank_deg_off_axis":
+    rep = {"thread": repr(t), "flank_deg_off_radial":
            round(float(np.degrees(np.arctan(1.0 / (np.pi / 2)))), 2),
+           "flank_deg_off_axis":
+           round(float(np.degrees(np.arctan(np.pi / 2))), 2),
            "hex_af": round(t.hex_af, 2), "head_h": round(t.head_h, 2),
            "nut_h": round(NUT_H * t.major_r, 2),
            "bolt_watertight": bool(bolt.is_watertight),

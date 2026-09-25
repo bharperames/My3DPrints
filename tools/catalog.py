@@ -231,8 +231,9 @@ PARTS = [
        "which is 0.89 mm of descent on this lead, and it lands on the "
        "top face instead. "
        "The thread is the Montessori profile rebuilt: an axial section "
-       "is a pure cosine whose flank sits 32.5\u00b0 off the axis at any "
-       "scale, so a bore of this family never needs support. The "
+       "is a pure cosine whose steepest flank stands 32.5\u00b0 off the "
+       "radial plane at any scale. The bores print upright and take no "
+       "support. The "
        "diameter is not kept, so nothing here fits that set. "
        "Three parts on one plate.",
        version="1.1.0",
@@ -355,10 +356,11 @@ PARTS = [
        "there, and off the jig it sits on a table the same way. Nothing "
        "keys the rotation, so the quadrilateral can be spun onto the "
        "lobes wherever they fall. "
-       "Matte black PETG, three walls and 15% infill. One body per "
+       "Matte black PETG, two walls and 15% infill. One body per "
        "stand; ask for several sizes at once and the travel between "
        "them gives the fine tips their layer time. The L's cones sit "
-       "20.3 mm apart, leaving 14.6 mm of clear air at their feet. "
+       "20.3 mm apart, which leaves 10.1 mm of clear air where they meet "
+       "the deck and about 15 mm once past the fillet. "
        "--grip saw cuts a ratchet into the cones, one barb every "
        "1.2 mm standing 0.35 proud and pointing down, for a root that "
        "wants to climb out. The cones here are part of the body and "
@@ -388,9 +390,9 @@ PARTS = [
        "stands settle one span; this one opens, so you set the scissors "
        "to the tooth in front of you. Three sizes, by the span between "
        "the pins:\n"
-       "\u2003S  12\u201330 mm   teeth 25\u201355 mm\n"
-       "\u2003M  14\u201338 mm   teeth 50\u201395 mm\n"
-       "\u2003L  15\u201361 mm   teeth 90\u2013150 mm\n"
+       "\u2003S  9.9\u201330.4 mm   teeth 25\u201355 mm\n"
+       "\u2003M  11.0\u201338.5 mm   teeth 50\u201395 mm\n"
+       "\u2003L  11.9\u201361.4 mm   teeth 90\u2013150 mm\n"
        "Eight pieces per stand: two arms, two cones, two dowels and two "
        "pins. The lower arm's two cones are part of it; the upper "
        "arm's two are loose, sliding onto a dowel pressed into the arm, "
@@ -403,8 +405,8 @@ PARTS = [
        "this printer takes about 0.15 mm off a small vertical hole, so "
        "a \u00d83 pin runs in \u00d83.15 drawn where it presses and "
        "\u00d83.25 where it turns. Print in PETG; the fits assume it. "
-       "Nothing on the plate is brimmed. The loose posts stand on a "
-       "52 mm\u00b2 foot, the dowels on 7 mm\u00b2, and the pins lie on "
+       "Nothing on the plate is brimmed. A loose post stands on 27 to "
+       "52 mm\u00b2 by size, a dowel on 4.5 mm\u00b2, and the pins lie on "
        "their \u00d87 heads. --brim turns it back on per group if "
        "anything lifts, and --both-grips puts a smooth pair and a sawn "
        "pair on one plate to swap on the same arm.",
@@ -422,11 +424,11 @@ PARTS = [
            dict(key="stand", label="sizes", type="checks", val="xw_m",
                 choices=[
                     dict(value="xw_s", label="X-wing S",
-                         hint="scissors: 12\u201330 mm between the pins"),
+                         hint="opens 9.9\u201330.4 mm between the pins"),
                     dict(value="xw_m", label="X-wing M",
-                         hint="scissors: 14\u201338 mm between the pins"),
+                         hint="opens 11.0\u201338.5 mm between the pins"),
                     dict(value="xw_l", label="X-wing L",
-                         hint="scissors: 15\u201361 mm between the pins")])],
+                         hint="opens 11.9\u201361.4 mm between the pins")])],
        out="movable-xwing-{stand}.3mf"),
 
     _p("gazebo", "Tooth shaped stand with spikes",
@@ -475,8 +477,10 @@ PARTS = [
        "\u2003S  rods 22.5 mm   teeth 25\u201355 mm, 19 g\n"
        "\u2003M  rods 31.5 mm   teeth 50\u201395 mm, 25 g\n"
        "\u2003L  rods 36.5 mm   teeth 90\u2013150 mm, 39 g\n"
-       "A \u00d81 carbon rod is stiffer than the \u00d81.6 printed spike it "
-       "replaces and finer at the tip. Nothing here has to flex, so "
+       "A \u00d81 carbon rod is finer at the tip than the \u00d81.6 printed "
+       "spike it replaces. It is stiffer on the S and softer on the M "
+       "and L, where the rod stands further out of its socket. Nothing "
+       "here has to flex, so "
        "these print in either plastic, unlike the spiked stands. PETG "
        "holds up better to handling. "
        "Choose the filament, because the socket is drawn to it. A bore "
@@ -558,11 +562,12 @@ PARTS = [
            dict(key="material", label="filament", type="select",
                 val="petg",
                 hint="The socket is drawn to the filament, and for this "
-                     "part the size was read on a graded plate of the "
-                     "same deck. Only PETG has been read so far.",
+                     "part the size comes from a graded plate of the "
+                     "same deck rather than a test strip. Only PETG has "
+                     "been read so far.",
                 choices=[
                     dict(value="petg", label="PETG Basic",
-                         hint="\u00d81.60, read on a graded plate"),
+                         hint="\u00d81.60 \u2014 \u00d81.56 read, opened 0.04"),
                     dict(value="pla_basic", label="PLA Basic",
                          hint="\u00d81.65, inferred \u2014 not yet read"),
                     dict(value="pla_silk", label="PLA Silk",
@@ -594,9 +599,9 @@ PARTS = [
                 val="1.50,1.65,1.80,1.95,2.10",
                 hint="Coarse first, to find out roughly where the answer "
                      "is; then fine, inside whatever the coarse one "
-                     "bracketed. The fine ladder here ends on \u00d81.65 "
-                     "on purpose \u2014 a size already read in the hand, "
-                     "so the plate carries its own reference.",
+                     "bracketed. The fine ladder ends on a rung the "
+                     "coarse plate already printed, so the two can be "
+                     "compared in the hand.",
                 choices=[
                     dict(value="1.50,1.65,1.80,1.95,2.10",
                          label="coarse, 1.50\u20132.10",
@@ -607,10 +612,10 @@ PARTS = [
                               "\u00d81.56 snug, \u00d81.59 and up loose")]),
            dict(key="material", label="filament", type="select",
                 val="petg",
-                hint="Only the funnel and the wall follow the filament "
-                     "here \u2014 the five bores are fixed, because "
-                     "finding what they should be is the whole point of "
-                     "the plate.",
+                hint="The filament changes nothing on this plate: "
+                     "the five bores are fixed, because finding what "
+                     "they should be is the whole point of it. Pick it "
+                     "so the file is named for the spool you use.",
                 choices=[
                     dict(value="petg", label="PETG Basic"),
                     dict(value="pla_basic", label="PLA Basic"),
@@ -778,7 +783,8 @@ PARTS = [
        #        builds. Two names read earlier off a ten-disk plate were
        #        wrong and are corrected: 14 is kangaroo, 24 is zebra.
        version="6.0.2",
-       proven="Thirty-one disks printed and heard. Ten in PLA Black first, "
+       proven="Thirty-one disks printed, thirty of them heard. Ten in PLA "
+              "Black first, "
               "and the toy agreed: code 16 built at three rim-seat widths, "
               "silent at 1.25 and speaking at 2.25 and at the shipped 1.75, "
               "which brackets the reader\u2019s rim and pins the seat as the "
