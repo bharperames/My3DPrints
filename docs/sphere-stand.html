@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sphere stand — built while you drag</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚪</text></svg>">
+<style>
+  :root {
+    --bg:#14181A; --surface:#1D2327; --surface-2:#232B2F;
+    --ink:#EAF1EF; --ink-soft:#AFBEBB; --line:#313B40; --edge:#4A5A62;
+    --accent:#5FA893; --accent-ink:#14201C;
+    --good:#7CC287; --warn:#E7B75E; --risk:#E08578;
+    --ring:#4F9A88; --ball:#C9CFD4;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.5 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line);
+    background:var(--surface); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; letter-spacing:-0.01em; }
+  .sub { color:var(--ink-soft); font-size:12.5px; }
+  a.back { margin-left:auto; color:var(--accent); text-decoration:none; font-size:12.5px; }
+  a.back:hover { text-decoration:underline; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 340px;
+    height:calc(100vh - 52px); }
+  #view { position:relative; min-height:320px; }
+  #view canvas { display:block; }
+  #fps { position:absolute; right:12px; top:12px; font:11.5px "IBM Plex Mono",monospace;
+    color:var(--ink-soft); background:color-mix(in srgb,var(--surface) 86%,transparent);
+    padding:4px 8px; border-radius:6px; border:1px solid var(--line); }
+  aside { background:var(--surface); border-left:1px solid var(--line);
+    padding:16px; overflow-y:auto; }
+  h2 { font-size:12.5px; margin:16px 0 8px; color:var(--ink-soft); font-weight:600; }
+  h2:first-child { margin-top:0; }
+  label.d { display:block; margin-bottom:12px; font-size:12.5px; }
+  label.d .row { display:flex; align-items:center; gap:8px; }
+  label.d .nm { color:var(--ink-soft); min-width:74px; }
+  label.d input[type=range] { flex:1; accent-color:var(--accent); }
+  label.d input.num { width:68px; background:var(--surface-2); color:var(--ink);
+    border:1px solid var(--edge); border-radius:6px; padding:3px 6px;
+    font:12.5px "IBM Plex Mono",monospace; text-align:right; }
+  label.d .cap { color:var(--warn); font-size:11.5px; margin-left:82px; }
+  button { background:var(--surface-2); color:var(--ink); border:1px solid var(--edge);
+    border-radius:6px; padding:6px 10px; font:inherit; font-size:12.5px; cursor:pointer; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button.go { border-color:var(--accent); color:var(--accent-ink); background:var(--accent);
+    font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  td { padding:4px 0; border-bottom:1px solid var(--line); }
+  td:first-child { color:var(--ink-soft); }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  .why { font-size:12.5px; padding:8px 10px; border-radius:6px; margin:10px 0; }
+  .why.ok { background:color-mix(in srgb,var(--good) 14%,transparent); color:var(--good); }
+  .why.no { background:color-mix(in srgb,var(--risk) 16%,transparent); color:var(--risk); }
+  .note { font-size:12px; color:var(--ink-soft); margin-top:10px; }
+  .row2 { display:flex; gap:6px; flex-wrap:wrap; }
+  @media (max-width:900px) {
+    main { grid-template-columns:1fr; height:auto; }
+    #view { height:58vh; }
+    aside { border-left:0; border-top:1px solid var(--line); }
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1>Sphere stand — built while you drag</h1>
+  <span class="sub" id="sub">the ring is computed here, not fetched</span>
+  <a class="back" href="../index.html">← the shop</a>
+</header>
+<main>
+  <div id="view"><div id="fps"></div></div>
+  <aside>
+    <h2>The ball</h2>
+    <div id="dials"></div>
+    <div class="row2">
+      <button id="auto">Auto-optimize</button>
+      <button id="inch">1″ ball</button>
+      <button id="showball">Hide ball</button>
+    </div>
+
+    <div id="why" class="why ok"></div>
+
+    <h2>Measured</h2>
+    <table id="facts"></table>
+
+    <h2>Print it</h2>
+    <a id="order" class="go" href="#"><button class="go">Order this from the shop</button></a>
+    <p class="note" id="ordernote"></p>
+  </aside>
+</main>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { auto, maxBase, maxChamfer, profile, refuse, measure, segmentsFor,
+         baseRange, chamferMax, fixed, BALL_MIN, BALL_MAX, NOZZLE }
+  from './sphere-math.js';
+
+/* The whole point of this page: every number below comes from
+   sphere-math.js running here, and tests/test_sphere_parity.py proves that
+   file agrees with tools/gen_sphere_stand.py, which is what actually writes
+   the 3MF you print. So dragging is free, the limits bite while you drag,
+   and the file you order is still the generator's. */
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const view = document.getElementById('view');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(css('--bg'));
+const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 4000);
+const rend = new THREE.WebGLRenderer({ antialias: true });
+rend.setPixelRatio(Math.min(devicePixelRatio, 2));
+view.appendChild(rend.domElement);
+const ctrl = new OrbitControls(cam, rend.domElement);
+ctrl.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x223034, 2.1));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(1, 1.4, 1); scene.add(key);
+
+const grid = new THREE.GridHelper(400, 40, 0x2b3438, 0x222a2e);
+grid.material.transparent = true; grid.material.opacity = 0.6;
+scene.add(grid);
+
+const ringMat = new THREE.MeshStandardMaterial({
+  color: css('--ring'), metalness: 0.0, roughness: 0.55, flatShading: false });
+const ballMat = new THREE.MeshStandardMaterial({
+  color: css('--ball'), metalness: 0.1, roughness: 0.25,
+  transparent: true, opacity: 0.35, depthWrite: false });
+let ringMesh = null, ballMesh = null, showBall = true;
+
+const S = { ball: 25.4, ...auto(25.4) };
+S.wall = 2.5; S.chamfer = 0.8; S.seat = 1.0;
+
+const DIALS = [
+  { k: 'ball',    label: 'ball',        min: BALL_MIN, max: BALL_MAX, step: 0.1 },
+  { k: 'base',    label: 'base radius', min: 2,        max: 150,      step: 0.1 },
+  { k: 'wall',    label: 'wall',        min: 3 * NOZZLE, max: 12,     step: 0.1 },
+  { k: 'chamfer', label: 'rim chamfer', min: 0,        max: 8,        step: 0.1 },
+  { k: 'seat',    label: 'air gap',     min: 0.4,      max: 12,       step: 0.1 },
+];
+
+/* A dial's ceiling moves with the others, exactly as the original did it:
+   the slider stops where the geometry stops, so you feel the limit instead
+   of reading about it after you order. */
+function limitsFor(k) {
+  if (k === 'base') {
+    const { lo, hi } = baseRange(S.ball, S.wall, S.chamfer);
+    return { lo: Math.max(2, lo), hi: Math.min(150, hi) };
+  }
+  if (k === 'chamfer')
+    return { lo: 0, hi: Math.min(8, chamferMax(S.ball, S.base, S.wall, S.seat)) };
+  return null;
+}
+
+const dialsEl = document.getElementById('dials');
+const ui = {};
+for (const d of DIALS) {
+  const l = document.createElement('label'); l.className = 'd';
+  l.innerHTML = `<span class="row"><span class="nm">${d.label}</span>`
+    + `<input type="range"><input class="num" inputmode="decimal">`
+    + `<span style="color:var(--ink-soft)">mm</span></span>`
+    + `<span class="cap"></span>`;
+  const [r, n] = l.querySelectorAll('input');
+  const cap = l.querySelector('.cap');
+  r.min = d.min; r.max = d.max; r.step = 'any';
+  r.oninput = () => { set(d.k, snap(Number(r.value), d.step)); };
+  n.onchange = () => { set(d.k, Number(n.value)); };
+  n.onkeydown = e => { if (e.key === 'Enter') { set(d.k, Number(n.value)); n.blur(); } };
+  ui[d.k] = { r, n, cap, d };
+  dialsEl.appendChild(l);
+}
+const snap = (v, st) => Math.round(v / st) * st;
+
+/* Base and chamfer constrain EACH OTHER: the chamfer's ceiling is computed
+   from the base, and the base's range is computed from the chamfer. One
+   pass of clamping therefore leaves the pair inconsistent -- swept over the
+   whole space, 138 settings in 7,425 came out refused after a single pass.
+   Clamping to a fixed point instead is 0 in 29,700. */
+function settle() {
+  for (let i = 0; i < 8; i++) {
+    const was = S.base + ':' + S.chamfer;
+    for (const kk of ['chamfer', 'base']) {
+      const L = limitsFor(kk); if (!L) continue;
+      // clamp and do NOT round after: rounding 5.34555 to four places gives
+      // 5.3456, which is back over the ceiling the clamp just applied, and
+      // the page then refused a value it had itself chosen. Full precision
+      // is kept here; fixed() rounds for display only.
+      S[kk] = Math.min(L.hi, Math.max(L.lo, S[kk]));
+    }
+    if (was === S.base + ':' + S.chamfer) return;
+  }
+}
+
+function set(k, v) {
+  if (!isFinite(v)) return draw();
+  const d = DIALS.find(x => x.k === k);
+  v = Math.min(d.max, Math.max(d.min, v));
+  S[k] = Math.round(v * 1e4) / 1e4;
+  settle();
+  draw();
+}
+
+function lathe() {
+  const { pts } = profile(S.ball, S.base, S.wall, S.chamfer, S.seat);
+  const seg = segmentsFor(S.base + S.wall / 2);
+  const v2 = pts.map(([r, z]) => new THREE.Vector2(Math.max(1e-4, r), z));
+  const g = new THREE.LatheGeometry(v2, seg);
+  g.computeVertexNormals();
+  return g;
+}
+
+let frames = 0, lastFps = performance.now(), fps = 0;
+function draw() {
+  for (const d of DIALS) {
+    const u = ui[d.k], L = limitsFor(d.k);
+    u.r.value = S[d.k];
+    u.n.value = fixed(S[d.k], 2);
+    if (L) { u.r.min = L.lo; u.r.max = L.hi; }
+    else   { u.r.min = d.min; u.r.max = d.max; }
+    u.cap.textContent = !L ? ''
+      : d.k === 'base'
+        ? `${fixed(L.lo, 1)} to ${fixed(L.hi, 1)} — below, the ball rolls `
+          + `out; above, the ring swallows it`
+        : `up to ${fixed(L.hi, 1)} — past this it eats the wall or dips the `
+          + `rim below the bed`;
+  }
+  const bad = refuse(S.ball, S.base, S.wall, S.chamfer, S.seat);
+  const why = document.getElementById('why');
+  why.className = 'why ' + (bad ? 'no' : 'ok');
+  why.textContent = bad || 'Builds. Every limit below is clear.';
+
+  if (ringMesh) { scene.remove(ringMesh); ringMesh.geometry.dispose(); ringMesh = null; }
+  if (ballMesh) { scene.remove(ballMesh); ballMesh.geometry.dispose(); ballMesh = null; }
+  const m = measure(S.ball, S.base, S.wall, S.chamfer, S.seat);
+
+  if (!bad) {
+    ringMesh = new THREE.Mesh(lathe(), ringMat);
+    scene.add(ringMesh);
+    if (showBall) {
+      ballMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(S.ball / 2, 48, 32), ballMat);
+      ballMesh.position.y = S.ball / 2 + S.seat;
+      scene.add(ballMesh);
+    }
+  }
+  facts(m, bad);
+  frame(m);
+}
+
+function facts(m, bad) {
+  const rows = bad ? [['—', 'nothing to measure']] : [
+    ['inner Ø', m.inner_dia + ' mm'],
+    ['outer Ø', m.outer_dia + ' mm'],
+    ['seat latitude', m.seat_latitude + '°'],
+    ['tip angle', m.tip_deg + '°  (25–75 allowed)'],
+    ['contact arc', m.contact_arc + ' mm'],
+    ['bed contact', m.bed_mm2 + ' mm²'],
+    ['segments', m.segments + '  (facet err ' + m.facet_err + ' mm)'],
+  ];
+  document.getElementById('facts').innerHTML =
+    rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
+  const q = new URLSearchParams({
+    id: 'sphere_stand',
+    params: JSON.stringify({ ball: S.ball, wall: S.wall,
+                             chamfer: S.chamfer, seat: S.seat }),
+  });
+  const a = document.getElementById('order');
+  a.href = bad ? '#' : '../src?' + q;
+  a.style.pointerEvents = bad ? 'none' : '';
+  a.style.opacity = bad ? 0.4 : 1;
+  document.getElementById('ordernote').textContent = bad
+    ? 'Fix the setting above and the file becomes orderable.'
+    : `The shop builds it from gen_sphere_stand.py at these numbers. The base `
+    + `radius is derived there from the ball, so ordering sends ball, wall, `
+    + `chamfer and gap.`;
+}
+
+let fitted = false;
+function frame(m) {
+  const r = (S.base + S.wall / 2), h = S.ball + S.seat;
+  const want = Math.max(r * 2.6, h * 1.9, 30);
+  if (!fitted) {
+    cam.position.set(want * 0.75, want * 0.55, want * 0.95);
+    ctrl.target.set(0, h * 0.35, 0);
+    fitted = true;
+  }
+  ctrl.target.lerp(new THREE.Vector3(0, h * 0.35, 0), 0.25);
+  grid.position.y = 0;
+}
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  rend.setSize(w, h, false);
+  cam.aspect = w / Math.max(1, h); cam.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+document.getElementById('auto').onclick = () => {
+  Object.assign(S, { ball: S.ball, ...auto(S.ball) }); draw();
+};
+document.getElementById('inch').onclick = () => set('ball', 25.4);
+document.getElementById('showball').onclick = (e) => {
+  showBall = !showBall;
+  e.target.textContent = showBall ? 'Hide ball' : 'Show ball';
+  draw();
+};
+
+resize(); draw();
+(function loop() {
+  requestAnimationFrame(loop);
+  ctrl.update(); rend.render(scene, cam);
+  frames++;
+  const now = performance.now();
+  if (now - lastFps > 500) {
+    fps = Math.round(frames * 1000 / (now - lastFps));
+    frames = 0; lastFps = now;
+    document.getElementById('fps').textContent = fps + ' fps';
+  }
+})();
+</script>
+</body>
+</html>
