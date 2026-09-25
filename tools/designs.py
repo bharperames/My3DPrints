@@ -30,6 +30,14 @@ add("sphere2", "sphere_stand_2.0in.3mf", "sphere_stand_2in", "Sphere Stands", UN
     "Sphere Stand 2″", "Same revolved profile scaled for a 50.8 mm sphere — rim Ø36.5 mm, contact ≈46°. Also seats the 39 mm passthrough ball.", ("pass", "Clean"))
 add("sphere3", "sphere_stand_3.0in.3mf", "sphere_stand_3in", "Sphere Stands", UNK, "PLA",
     "Sphere Stand 3″", "Largest of the family — rim Ø57.7 mm for a 76.2 mm sphere. All three share one 2,304-triangle topology.", ("pass", "Clean"))
+add("birdwhistle", "bird-whistle_p2s.3mf", "bird_whistle_p2s", "Downloads",
+    UNK, "PLA or PETG",
+    "Bird Whistle",
+    "A one-piece whistle shaped as a bird, 83 x 45 x 66 mm. One watertight "
+    "body, printed upright with no supports and no brim. Retargeted to the "
+    "P2S with a single filament; the geometry is the designer's, untouched.",
+    ("pass", "Printed \u00b7 works"),
+    proven="Printed in Black PETG and it whistles. PLA Silk on the plate now.")
 add("vortex", "Vortex+v3+project.3mf", "vortex_v3", "Vortex", "Bazzlington · original", "PLA",
     "Vortex v3", "Three nested twisted sleeves (genus-1 tubes, 4-fold symmetry, 50 mm tall) that spin freely inside each other. Slicer estimate 32 g · 2 h 06 m.", ("pass", "Clean"))
 add("fidget", "Mini+Fidget+Ball.3mf", "mini_fidget_ball", "Passthrough series", "RJ Design", "PLA",

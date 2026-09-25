@@ -65,7 +65,7 @@ def _p(pid, name, family, kind, blurb, version="0.1.0", **kw):
 # the clasp's mouth and the jump ring's section, so ordering a chain and a
 # clasp at different diameters is not a choice the shop should offer.
 KITS = [
-    dict(id="chain_set", version="1.1.0", name="Chain Set",
+    dict(id="chain_set", version="1.2.1", name="Chain Set",
          family="Designed here",
          blurb="Chain, clasp and jump rings. One cross-section drives all "
                "three: it sets the link, the clasp's mouth and the ring's "
@@ -181,7 +181,7 @@ PARTS = [
        "each link lands on a pad instead of a tangent line. A chain too "
        "long to lie straight on the plate is coiled instead, at a radius "
        "the joint has been measured to bend through.",
-       version="1.2.0",
+       version="1.2.1",
        gen=["gen_chain.py"],
        proven="48 links coiled, 0.6 mm bed foot, no brim, black PLA at "
               "220/55 — clean first try. The same chain brimless on a "
@@ -201,7 +201,7 @@ PARTS = [
        # cards for one thing and buried the configurable one among them.
        supersedes=["sphere_stand_1.0in.3mf", "sphere_stand_2.0in.3mf",
                    "sphere_stand_3.0in.3mf"],
-       version="1.0.1",
+       version="1.0.2",
        gen=["gen_sphere_stand.py"], params=[
            dict(key="ball", label="ball", unit="mm", min=8, max=120,
                 step=0.5, val=25.4),
@@ -247,7 +247,7 @@ PARTS = [
        "support. The "
        "diameter is not kept, so nothing here fits that set. "
        "Three parts on one plate.",
-       version="1.1.0",
+       version="1.1.1",
        proven="Printed and works: it goes together, turns, and comes apart "
               "the way the sweeps said it would. Printed in PLA Silk the "
               "bolt broke in several places while being turned in the "
