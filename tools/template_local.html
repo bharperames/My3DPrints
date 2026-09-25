@@ -1507,12 +1507,23 @@ renderer.setAnimationLoop(animate);
     // anchored on zero, not on the dial's floor: with min 1.2 and a step
     // of 1 the browser would offer 1.2, 2.2, 3.2 -- a whole-millimeter
     // step landing on nothing whole
-    const relayout = () => {
+    // The range keeps the REAL bounds and a free step, and the ladder is
+    // applied when you drag rather than by the browser. Rounding the
+    // bounds instead left five dials with a thumb that disagreed with
+    // their own number -- the chain's Ø3.25 default showing a thumb at 3,
+    // the sphere's 25.4 showing 25 -- because a range snaps whatever you
+    // assign to it, including the value the card ships with. It also put
+    // 0.35000000000000003 in a min attribute.
+    const snap = v => {
       const st = stepMM();
-      const lo = Math.ceil(Number(p.min) / st - 1e-9) * st;
-      const hi = Math.floor(Number(p.max) / st + 1e-9) * st;
-      r.min = String(lo); r.max = String(hi); r.step = String(st);
-      r.value = String(Math.min(hi, Math.max(lo, cur)));
+      const q = Math.round(v / st) * st;
+      return Math.min(Number(p.max), Math.max(Number(p.min),
+                      Math.round(q * 1e4) / 1e4));
+    };
+    const relayout = () => {
+      r.min = String(p.min); r.max = String(p.max); r.step = 'any';
+      r.value = String(Math.min(Number(p.max),
+                                Math.max(Number(p.min), cur)));
       show();
     };
     r._refresh = relayout;
@@ -1526,7 +1537,10 @@ renderer.setAnimationLoop(animate);
     };
     box.onchange = () => commit(box.value);
     box.onkeydown = e => { if (e.key === 'Enter') { commit(box.value); box.blur(); } };
-    r.oninput = () => { cur = Number(r.value); show(); set(cur); schedule(); };
+    // dragging lands on the ladder; the value it lands on is exact
+    r.oninput = () => { cur = snap(Number(r.value)); show(); set(cur);
+                        schedule(); };
+    r.onchange = () => { r.value = String(cur); };
     relayout();
     l.append(p.label + ' ', r, box, val);
     if (p.derived) l.append(Object.assign(document.createElement('i'),
