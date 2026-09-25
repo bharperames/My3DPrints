@@ -9,9 +9,13 @@ serve: stop
 	@sleep 1
 	@echo "Fidget Shelf -> http://localhost:$(PORT)   (make stop to end, make log to tail)"
 
+# pgrep, not lsof. A wedged server -- one still inside a generator call
+# when its client went away -- holds the port, and lsof can block on it,
+# so `make serve` hung on the very thing it was meant to clear.
 stop:
 	@[ -f $(PID) ] && kill `cat $(PID)` 2>/dev/null; rm -f $(PID)
-	@/usr/sbin/lsof -ti tcp:$(PORT) | xargs kill 2>/dev/null; true
+	@pkill -f "$(PY) serve.py" 2>/dev/null; true
+	@pkill -f "python.*serve\.py" 2>/dev/null; true
 
 open:
 	open http://localhost:$(PORT)
