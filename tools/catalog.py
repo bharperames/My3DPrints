@@ -76,8 +76,12 @@ KITS = [
              dict(part="chain", label="Chain",
                   own=[dict(key="links", label="links", min=2, max=100,
                             step=1, val=5),
+                       # 14 was unbuildable at the default Ø3.25. The
+                       # generator floors the length at 3.5*dia + 3, but
+                       # the binding gate is the sweep: below 18 the
+                       # first and third links touch. Swept, not guessed.
                        dict(key="len", label="link length", unit="mm",
-                            min=14, max=60, step=1, val=19),
+                            min=18, max=60, step=1, val=19),
                        # a round tube meets the bed on a line and the slicer
                        # lays a single bead per link; the flat gives it a pad
                        dict(key="foot", label="bed foot", unit="mm",
@@ -129,7 +133,7 @@ PARTS = [
        "bolt heads.",
        version="1.0.0", gen=["gen_wrench.py"], out="wrench-af50.3mf",
        proven="Printed perfect. Turns the nut and the bolt heads; the "
-              "0.45 mm fit and the 2.67 jaw safety hold up in the hand."),
+              "0.45 mm fit and the 3.56 jaw safety hold up in the hand."),
     _p("dice_orb", "Dice Orb", "Designed here", "generated",
        "A standard d20 captive in a rib-and-ring shaker sphere.",
        version="3.2.0",
@@ -151,9 +155,10 @@ PARTS = [
        out="montessori-double-nut.3mf"),
     _p("mont_plate", "Base Plate 2×3", "Montessori", "generated",
        "Six threaded sockets to stand the bolts in.",
-       proven="Printed well at 390 g. Shares the double nut's entry "
-              "chamfer; its sockets open upward, so they were never the "
-              "face at risk.",
+       proven="Printed well at 390 g. Its entry chamfer stops at the "
+              "thread root rather than running out to the crest as the "
+              "double nut's does, which costs nothing here because the "
+              "sockets open upward and were never the face at risk.",
        # shares the double nut's entry chamfer; its sockets open upward, so
        # the reshape is cosmetic here rather than a printability fix
        version="1.2.2",
@@ -182,9 +187,10 @@ PARTS = [
        out="chain-N{links}-L{len:g}-D{dia:g}-F{foot:g}.3mf"),
     _p("sphere_stand", "Sphere Stand", "Stands", "parametric",
        "A ring that cradles a ball on a conformal spherical seat. Set the "
-       "ball and the wall and chamfer follow it; the seat is a flat "
-       "1 mm air gap at every size. Contact lands at 48.3\u00b0 of "
-       "latitude, whatever the ball.",
+       "ball; the wall, chamfer and seat start from it and can be "
+       "overridden. Left at the sizes shown, contact lands between "
+       "45.6\u00b0 and 55\u00b0 of latitude across the range; let the "
+       "generator derive them and it is 48.3\u00b0 at every ball.",
        keys="stand display sphere ball",
        # the three printed sizes on the shelf are this card at three ball
        # diameters, not three designs. Listing them separately gave four
@@ -202,8 +208,9 @@ PARTS = [
                 step=0.1, val=2.5, derived="ball"),
            dict(key="chamfer", label="rim chamfer", unit="mm", min=0, max=8,
                 step=0.1, val=0.8, derived="ball"),
+           # NOT derived: auto() returns a flat 1.0 at every ball
            dict(key="seat", label="air gap", unit="mm", min=0.4, max=12,
-                step=0.1, val=1.0, derived="ball")],
+                step=0.1, val=1.0)],
        out="sphere-stand"),
     _p("cage", "Geodesic Cage", "Designed here", "parametric",
        "Strut sphere, optionally with a captive ball.",
@@ -693,7 +700,9 @@ PARTS = [
        version="5.0.0",
        path=os.path.join(os.path.dirname(HERE), "models", "custom",
                          "trex-real-teeth-v5.3mf"),
-       proven="Skull and lower jaw on one plate, 2h52m and 58.5 g, no "
+       proven="Skull and body on one plate \u2014 the body being the "
+              "whole rest of the skeleton, 23 pieces including the lower "
+              "jaw \u2014 at 2h52m and 58.5 g, no "
               "support, no brim, no slicer warning. Both watertight; the "
               "skull\u2019s genus matches the untouched model, which is the "
               "only test that catches a socket leaving through a side wall "
