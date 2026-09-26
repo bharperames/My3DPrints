@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble ~/Code/My3DPrints/index.html.
+"""Assemble the shop's index.html at the repository root.
 
 The page used to carry a hand-written card per design alongside a separate
 shop list, which meant two descriptions of the same objects that could drift
@@ -30,6 +30,8 @@ rows = "".join(
 tpl = open(os.path.join(HERE, "template_local.html")).read()
 html = (tpl.replace("{{FIXES}}", fixes).replace("{{COMPAT}}", compat)
         .replace("{{ROWS}}", rows).replace("{{MODELS}}", json.dumps({})))
-out = os.path.expanduser("~/Code/My3DPrints/index.html")
+# relative to this file: a clone anywhere else used to build into
+# whatever happened to sit at ~/Code/My3DPrints instead of itself
+out = os.path.join(os.path.dirname(HERE), "index.html")
 open(out, "w").write(html)
 print("wrote", out, len(html) // 1024, "KB")

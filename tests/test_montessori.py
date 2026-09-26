@@ -12,17 +12,18 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import gen_montessori as GM  # noqa: E402
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CUSTOM = os.path.join(ROOT, "models", "custom")
 HAVE_SRC = os.path.exists(GM.SRC)
 
 
 class TestBedPlacement(unittest.TestCase):
     @unittest.skipUnless(
-        os.path.exists(os.path.expanduser(
-            "~/Code/My3DPrints/models/custom/montessori-double-nut.3mf")),
+        os.path.exists(os.path.join(CUSTOM, "montessori-double-nut.3mf")),
         "generated file not present")
     def test_generated_parts_stand_on_the_bed(self):
         import trimesh
-        base = os.path.expanduser("~/Code/My3DPrints/models/custom")
+        base = CUSTOM
         for fn in ("montessori-double-nut.3mf", "montessori-plate-2x3.3mf"):
             p = os.path.join(base, fn)
             if not os.path.exists(p):
@@ -41,7 +42,7 @@ class TestExportedFilesAreCleanByConstruction(unittest.TestCase):
     gone; these guard the design instead.
     """
 
-    BASE = os.path.expanduser("~/Code/My3DPrints/models/custom")
+    BASE = CUSTOM
 
     def _check(self, fn):
         import meshcheck

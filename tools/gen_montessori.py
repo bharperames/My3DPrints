@@ -31,8 +31,13 @@ import trimesh
 import trimesh.collision as tc
 from shapely.geometry import Polygon
 
-SRC = os.path.expanduser(
-    "~/Code/My3DPrints/models/montessori+nuts+and+bolts.3mf")
+# Paths are relative to this file, not to one checkout. These used to
+# be expanduser("~/Code/My3DPrints/..."), which meant a clone anywhere
+# else built into whatever happened to be at that path instead.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+SRC = os.path.join(_ROOT, "models",
+                   "montessori+nuts+and+bolts.3mf")
 NUT_ID, BOLT_ID = "11", "9"
 LEAD = 11.660                      # mm, right-hand single start
 BORE_ROOT = 18.00                  # female thread root radius

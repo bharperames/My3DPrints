@@ -13,6 +13,7 @@ member at once and matches no single file on disk -- still gets one built.
 """
 import json
 import os
+import re
 import sys
 import unittest
 
@@ -256,14 +257,34 @@ class TestTheEmbeddedAppIsReachable(unittest.TestCase):
             self.assertEqual(r.status, 200)
             self.assertGreater(len(r.read()), 50_000)
 
-    def test_nothing_in_the_shop_points_into_a_home_directory(self):
-        """The fault this replaced, stated directly."""
+    def test_no_code_here_hardcodes_a_path_to_a_checkout(self):
+        """The fault this replaced, stated as the class it belongs to.
+
+        The sphere app was served out of ~/Code/3d_prints, so the card's
+        link worked on one machine. Written down, that generalizes: any
+        module naming an absolute path to a checkout -- this repository's
+        or another's -- only works where that path happens to be right.
+        Seven files did it to THIS repository, so `make build` in a clone
+        at any other path wrote its index.html into ~/Code/My3DPrints.
+
+        ~/Downloads is a different thing and stays: importing what the
+        user downloaded is the feature, and the home directory is the
+        subject, not an assumption about where code was checked out.
+        """
         import subprocess
-        out = subprocess.run(
-            ["git", "grep", "-n", "-I", "-e", "Code/3d_prints",
-             "--", "tools", "serve.py", "docs", "Makefile"],
-            cwd=ROOT, capture_output=True, text=True).stdout.strip()
-        self.assertEqual(out, "")
+        hits = subprocess.run(
+            ["git", "grep", "-n", "-I", "-E",
+             r"(~|/Users/[a-z]+)/(Code|src|dev|repos|Projects)/",
+             "--", "tools", "serve.py", "docs", "Makefile", "apps", "tests",
+             # this file states the rule, so it quotes the paths the rule
+             # forbids; it cannot be in its own search
+             ":(exclude)tests/test_catalog.py"],
+            cwd=ROOT, capture_output=True, text=True).stdout.splitlines()
+        # the comments explaining the fix name the old path on purpose
+        live = [h for h in hits
+                if not re.match(r"[^:]+:\d+:\s*#", h)
+                and "VENDORED.md" not in h]
+        self.assertEqual(live, [])
 
 
 class TestCuration(unittest.TestCase):

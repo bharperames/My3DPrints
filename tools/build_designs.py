@@ -10,7 +10,12 @@ import numpy as np
 import trimesh
 from trimesh.proximity import signed_distance
 
-M = os.path.expanduser("~/Code/My3DPrints/models")
+# Paths are relative to this file, not to one checkout. These used to
+# be expanduser("~/Code/My3DPrints/..."), which meant a clone anywhere
+# else built into whatever happened to be at that path instead.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+M = os.path.join(_ROOT, "models")
 
 # ---------- 1. Held sphere: geodesic strut cage with captive ball ----------
 # 120 struts along subdivided-icosphere edges (fully triangulated = rigid),

@@ -12,7 +12,12 @@ import os
 import numpy as np
 import trimesh
 
-M = os.path.expanduser("~/Code/My3DPrints/models")
+# Paths are relative to this file, not to one checkout. These used to
+# be expanduser("~/Code/My3DPrints/..."), which meant a clone anywhere
+# else built into whatever happened to be at that path instead.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+M = os.path.join(_ROOT, "models")
 BASE, LEAD = 0.05, 0.10
 
 PAIRS = [

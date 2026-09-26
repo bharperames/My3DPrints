@@ -11,7 +11,12 @@ import os
 import re
 import zipfile
 
-MODELS = os.path.expanduser("~/Code/My3DPrints/models")
+# Paths are relative to this file, not to one checkout. These used to
+# be expanduser("~/Code/My3DPrints/..."), which meant a clone anywhere
+# else built into whatever happened to be at that path instead.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+MODELS = os.path.join(_ROOT, "models")
 META = os.path.join(MODELS, "meta")
 
 COVER_PREF = [

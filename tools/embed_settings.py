@@ -18,7 +18,12 @@ import re
 import sys
 import zipfile
 
-M = os.path.expanduser("~/Code/My3DPrints/models")
+# Paths are relative to this file, not to one checkout. These used to
+# be expanduser("~/Code/My3DPrints/..."), which meant a clone anywhere
+# else built into whatever happened to be at that path instead.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+M = os.path.join(_ROOT, "models")
 TEMPLATE = os.path.join(M, "bambu_project_template.json")
 PRESETS = os.path.expanduser(
     "~/Library/Application Support/BambuStudio/system/BBL")

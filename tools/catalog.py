@@ -147,7 +147,7 @@ PARTS = [
        "Joins two Montessori bolts end to end. Both bore entries run out to "
        "the thread crest at 45 degrees, so the face that prints downward "
        "has no ceiling to droop into the hole.",
-       version="1.3.1",
+       version="1.3.2",
        proven="Clean bottom face. The thin first thread is inherent and is "
               "still there; what stopped the strings was taking the "
               "unsupported ceiling under it from 557 to 15 mm2.",
@@ -163,7 +163,7 @@ PARTS = [
               "sockets open upward and were never the face at risk.",
        # shares the double nut's entry chamfer; its sockets open upward, so
        # the reshape is cosmetic here rather than a printability fix
-       version="1.2.2",
+       version="1.2.3",
        gen=["gen_montessori.py", "--part", "plate"],
        out="montessori-plate-2x3.3mf"),
     _p("clasp", "Lobster Clasp", "Designed here", "generated",
