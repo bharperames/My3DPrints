@@ -7,6 +7,7 @@ which runs `open -a BambuStudio <file>` so the real (full-resolution) model
 lands in the slicer — from there: slice, then Print to the P2S.
 """
 import glob
+import html
 import json
 import os
 import subprocess
@@ -119,7 +120,53 @@ def _genus(m):
     return (2 - (len(m.vertices) - len(m.edges_unique) + len(m.faces))) // 2
 
 
+# Whole apps that live outside this repo, mounted under /apps/<name>/.
+#
+# The sphere stand began as its own browser app and it is still the better
+# experience: geometry, text booleans and textures all client side. Porting
+# it piecemeal produced something thin, so it is RUN instead -- served from
+# where it lives, with nothing copied in. Its 46 MB of texture swatches stay
+# out of a public repository, and there is no second copy to drift.
+APPS = {
+    "sphere": os.path.expanduser("~/Code/3d_prints"),
+}
+
+
 class Handler(SimpleHTTPRequestHandler):
+    def _app(self, path):
+        """Serve a mounted app, refusing anything outside its own root."""
+        parts = path.split("/", 3)          # ['', 'apps', name, rest]
+        name = parts[2] if len(parts) > 2 else ""
+        root = APPS.get(name)
+        if root is None:
+            return self._json(404, {"ok": False, "error": f"no app {name!r}"})
+        # A mounted app lives outside this repository, so a checkout on
+        # another machine will not have it. Say which directory is missing,
+        # in a page, rather than answering a clicked link with raw JSON.
+        if not os.path.isdir(root):
+            return self._page(404, f"The {name} app is not on this machine.",
+                              f"It is served from {root}, which does not "
+                              f"exist here.")
+        rest = unquote(parts[3]) if len(parts) > 3 and parts[3] else "index.html"
+        if rest.endswith("/"):
+            rest += "index.html"
+        full = os.path.realpath(os.path.join(root, rest))
+        # containment: a mounted app may not be used to read the disk
+        if not full.startswith(os.path.realpath(root) + os.sep):
+            return self._json(403, {"ok": False, "error": "outside the app"})
+        if not os.path.isfile(full):
+            return self._json(404, {"ok": False, "error": rest})
+        import mimetypes
+        ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
+        data = open(full, "rb").read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(data)
+        return None
+
     # Pages here are edited and reloaded all day, and SimpleHTTPRequestHandler
     # sends no Cache-Control at all -- so a browser falls back to heuristic
     # freshness, 10% of the file's age, and keeps an hours-old copy of a page
@@ -269,6 +316,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path.startswith("/apps/"):
+            return self._app(url.path)
         if url.path == "/socket":
             return self._socket(parse_qs(url.query))
         if url.path == "/diff":
@@ -433,6 +482,22 @@ class Handler(SimpleHTTPRequestHandler):
         body = json.dumps(obj).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _page(self, code, head, body_text):
+        """A readable page for a browser that followed a link here."""
+        body = ("<!doctype html><meta charset=utf-8>"
+                "<title>{h}</title>"
+                "<style>body{{background:#111;color:#ddd;font:16px/1.6 "
+                "system-ui,sans-serif;margin:12vh auto;max-width:34em;"
+                "padding:0 1.5em}}h1{{font-size:1.3em;font-weight:600}}"
+                "code{{color:#9cf}}</style>"
+                "<h1>{h}</h1><p>{b}</p>").format(
+                    h=html.escape(head), b=html.escape(body_text)).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

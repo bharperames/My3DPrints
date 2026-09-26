@@ -203,7 +203,7 @@ PARTS = [
                    "sphere_stand_3.0in.3mf"],
        version="1.0.2",
        pages=[dict(label="Enter the Sphere Simulator",
-                   href="docs/sphere-stand.html")],
+                   href="apps/sphere/")],
        gen=["gen_sphere_stand.py"], params=[
            dict(key="ball", label="ball", unit="mm", min=8, max=120,
                 step=0.5, val=25.4),
