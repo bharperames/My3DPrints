@@ -202,7 +202,7 @@ PARTS = [
        supersedes=["sphere_stand_1.0in.3mf", "sphere_stand_2.0in.3mf",
                    "sphere_stand_3.0in.3mf"],
        version="1.0.2",
-       pages=[dict(label="Build one while you drag",
+       pages=[dict(label="Enter the Sphere Simulator",
                    href="docs/sphere-stand.html")],
        gen=["gen_sphere_stand.py"], params=[
            dict(key="ball", label="ball", unit="mm", min=8, max=120,

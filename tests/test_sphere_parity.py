@@ -156,6 +156,27 @@ console.log(JSON.stringify(out));
                          f"{len(bad)} of {len(cases)} settings the dial "
                          f"offers are refused by the generator")
 
+    def test_volume_matches_the_revolved_mesh(self):
+        """The page quotes a volume from Pappus on the outline; the
+        generator measures the faceted mesh. They converge as the segment
+        count rises, and a gap that does not close means the outline the
+        page draws is not the outline the generator revolves."""
+        src = """
+import { volumeMm3 } from %s;
+console.log(JSON.stringify([25.4, 60, 120].map(
+  b => volumeMm3(b, b / 2 * 0.707, 2.5, 0.8, 1.0))));
+""" % json.dumps(os.path.abspath(JS))
+        r = subprocess.run([node(), "--input-type=module", "-e", src],
+                           capture_output=True, text=True, timeout=120)
+        self.assertFalse(r.returncode, (r.stderr or "")[-400:])
+        js = json.loads(r.stdout)
+        for ball, v_js in zip((25.4, 60, 120), js):
+            m, _ = G.build(ball, None, 2.5, 0.8, 1.0, segments=256)
+            # a 256-gon inscribed in the circle is a hair under the true
+            # revolve, so the mesh may be slightly smaller and never larger
+            self.assertLessEqual(m.volume, v_js * 1.0005, f"ball {ball}")
+            self.assertGreater(m.volume, v_js * 0.999, f"ball {ball}")
+
     def test_the_sweep_exercises_every_refusal(self):
         seen = {p["refuse"].split(" ")[0] for p in self.py if p["refuse"]}
         for word in ("wall", "base", "chamfer", "tip"):

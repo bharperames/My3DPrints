@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sphere stand — built while you drag</title>
+<title>Sphere Simulator</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚪</text></svg>">
 <style>
   :root {
@@ -16,48 +16,63 @@
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink);
     font:14px/1.5 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-  header { padding:14px 20px; border-bottom:1px solid var(--line);
-    background:var(--surface); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  header { padding:12px 20px; border-bottom:1px solid var(--line); background:var(--surface);
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
   h1 { font-size:17px; margin:0; letter-spacing:-0.01em; }
   .sub { color:var(--ink-soft); font-size:12.5px; }
   a.back { margin-left:auto; color:var(--accent); text-decoration:none; font-size:12.5px; }
   a.back:hover { text-decoration:underline; }
-  main { display:grid; grid-template-columns:minmax(0,1fr) 340px;
-    height:calc(100vh - 52px); }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 352px; height:calc(100vh - 53px); }
   #view { position:relative; min-height:320px; }
   #view canvas { display:block; }
-  #fps { position:absolute; right:12px; top:12px; font:11.5px "IBM Plex Mono",monospace;
-    color:var(--ink-soft); background:color-mix(in srgb,var(--surface) 86%,transparent);
-    padding:4px 8px; border-radius:6px; border:1px solid var(--line); }
-  aside { background:var(--surface); border-left:1px solid var(--line);
-    padding:16px; overflow-y:auto; }
-  h2 { font-size:12.5px; margin:16px 0 8px; color:var(--ink-soft); font-weight:600; }
+  .hud { position:absolute; font:11.5px "IBM Plex Mono",monospace; color:var(--ink-soft);
+    background:color-mix(in srgb,var(--surface) 88%,transparent); padding:4px 8px;
+    border-radius:6px; border:1px solid var(--line); }
+  #fps { right:12px; top:12px; }
+  #dims { left:12px; bottom:12px; line-height:1.7; }
+  aside { background:var(--surface); border-left:1px solid var(--line); padding:14px; overflow-y:auto; }
+  h2 { font-size:11.5px; margin:16px 0 8px; color:var(--ink-soft); font-weight:600;
+    letter-spacing:.06em; text-transform:uppercase; }
   h2:first-child { margin-top:0; }
-  label.d { display:block; margin-bottom:12px; font-size:12.5px; }
-  label.d .row { display:flex; align-items:center; gap:8px; }
-  label.d .nm { color:var(--ink-soft); min-width:74px; }
-  label.d input[type=range] { flex:1; accent-color:var(--accent); }
-  label.d input.num { width:68px; background:var(--surface-2); color:var(--ink);
+  label.d { display:block; margin-bottom:10px; font-size:12.5px; }
+  label.d .row { display:flex; align-items:center; gap:7px; }
+  label.d .nm { color:var(--ink-soft); min-width:76px; }
+  label.d input[type=range] { flex:1; accent-color:var(--accent); min-width:40px; }
+  label.d input.num { width:66px; background:var(--surface-2); color:var(--ink);
     border:1px solid var(--edge); border-radius:6px; padding:3px 6px;
     font:12.5px "IBM Plex Mono",monospace; text-align:right; }
-  label.d .cap { color:var(--warn); font-size:11.5px; margin-left:82px; }
-  button { background:var(--surface-2); color:var(--ink); border:1px solid var(--edge);
-    border-radius:6px; padding:6px 10px; font:inherit; font-size:12.5px; cursor:pointer; }
+  label.d .u { color:var(--ink-soft); width:18px; font-size:11.5px; }
+  label.d .cap { color:var(--warn); font-size:11px; margin-left:83px; display:block; }
+  button, select, input.txt { background:var(--surface-2); color:var(--ink);
+    border:1px solid var(--edge); border-radius:6px; padding:5px 9px;
+    font:inherit; font-size:12.5px; cursor:pointer; }
+  select, input.txt { cursor:auto; }
   button:hover { border-color:var(--accent); color:var(--accent); }
+  button.on { border-color:var(--accent); color:var(--accent-ink); background:var(--accent); font-weight:600; }
   button.go { border-color:var(--accent); color:var(--accent-ink); background:var(--accent);
-    font-weight:600; }
+    font-weight:600; width:100%; padding:7px; }
+  .seg { display:inline-flex; border:1px solid var(--edge); border-radius:6px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; border-left:1px solid var(--edge); }
+  .seg button:first-child { border-left:0; }
+  .row2 { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
   table { width:100%; border-collapse:collapse; font-size:12.5px; }
-  td { padding:4px 0; border-bottom:1px solid var(--line); }
+  td { padding:3px 0; border-bottom:1px solid var(--line); }
   td:first-child { color:var(--ink-soft); }
   td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  .gauge { height:6px; background:var(--surface-2); border-radius:3px; position:relative;
+    margin:7px 0 2px; border:1px solid var(--line); }
+  .gauge .band { position:absolute; top:0; bottom:0;
+    background:color-mix(in srgb,var(--good) 34%,transparent); }
+  .gauge .mark { position:absolute; top:-4px; width:2px; height:12px; background:var(--ink); }
+  .gscale { display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-soft); }
   .why { font-size:12.5px; padding:8px 10px; border-radius:6px; margin:10px 0; }
   .why.ok { background:color-mix(in srgb,var(--good) 14%,transparent); color:var(--good); }
+  .why.warn { background:color-mix(in srgb,var(--warn) 16%,transparent); color:var(--warn); }
   .why.no { background:color-mix(in srgb,var(--risk) 16%,transparent); color:var(--risk); }
-  .note { font-size:12px; color:var(--ink-soft); margin-top:10px; }
-  .row2 { display:flex; gap:6px; flex-wrap:wrap; }
+  .note { font-size:11.5px; color:var(--ink-soft); margin:8px 0 0; }
   @media (max-width:900px) {
     main { grid-template-columns:1fr; height:auto; }
-    #view { height:58vh; }
+    #view { height:56vh; }
     aside { border-left:0; border-top:1px solid var(--line); }
   }
 </style>
@@ -68,28 +83,56 @@
 </head>
 <body>
 <header>
-  <h1>Sphere stand — built while you drag</h1>
-  <span class="sub" id="sub">the ring is computed here, not fetched</span>
+  <h1>Sphere Simulator</h1>
+  <span class="sub">the ring is computed here, not fetched</span>
+  <span class="seg" id="units">
+    <button data-u="mm" class="on">mm</button><button data-u="in">in</button>
+  </span>
   <a class="back" href="../index.html">← the shop</a>
 </header>
 <main>
-  <div id="view"><div id="fps"></div></div>
+  <div id="view"><div class="hud" id="fps"></div><div class="hud" id="dims"></div></div>
   <aside>
-    <h2>The ball</h2>
     <div id="dials"></div>
     <div class="row2">
       <button id="auto">Auto-optimize</button>
-      <button id="inch">1″ ball</button>
-      <button id="showball">Hide ball</button>
+      <button id="reset">Reset</button>
     </div>
 
     <div id="why" class="why ok"></div>
 
-    <h2>Measured</h2>
+    <h2>Show</h2>
+    <div class="row2">
+      <span class="seg" id="viz">
+        <button data-v="solid" class="on">Solid</button>
+        <button data-v="tess">Tessellation</button>
+        <button data-v="both">Both</button>
+      </span>
+      <button id="sphereBtn" class="on">Ball</button>
+      <button id="dimBtn" class="on">Dimensions</button>
+    </div>
+
+    <h2>Stability</h2>
+    <div class="gauge"><div class="band" id="band"></div><div class="mark" id="mark"></div></div>
+    <div class="gscale"><span>0°</span><span>25</span><span>75</span><span>90°</span></div>
     <table id="facts"></table>
 
-    <h2>Print it</h2>
-    <a id="order" class="go" href="#"><button class="go">Order this from the shop</button></a>
+    <h2>Price estimate</h2>
+    <div class="row2">
+      <select id="mat">
+        <option>PLA</option><option>PLA+</option><option>PETG</option><option>ABS</option>
+      </select>
+      <label style="font-size:12.5px;color:var(--ink-soft)">qty
+        <input class="txt" id="qty" value="1" style="width:46px;text-align:right"></label>
+      <label style="font-size:12.5px;color:var(--ink-soft)">$/kg
+        <input class="txt" id="kg" value="20" style="width:52px;text-align:right"></label>
+    </div>
+    <table id="price"></table>
+
+    <h2>Take it</h2>
+    <button class="go" id="dl">Download 3MF</button>
+    <p class="note" id="dlnote"></p>
+    <a id="order" href="#"><button class="go" style="margin-top:6px">Order from the shop</button></a>
     <p class="note" id="ordernote"></p>
   </aside>
 </main>
@@ -97,22 +140,29 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { auto, maxBase, maxChamfer, profile, refuse, measure, segmentsFor,
-         baseRange, chamferMax, fixed, BALL_MIN, BALL_MAX, NOZZLE }
-  from './sphere-math.js';
+import { zipSync, strToU8 } from '../vendor/libs/fflate.module.js';
+import { auto, profile, refuse, measure, segmentsFor, baseRange,
+         chamferMax, stability, overhangPercent, volumeMm3, fixed,
+         BALL_MIN, BALL_MAX, NOZZLE } from './sphere-math.js';
+import { calculateAggregatorEstimate, calculateLocalPrintEstimate }
+  from './sphere-pricing.js';
 
-/* The whole point of this page: every number below comes from
-   sphere-math.js running here, and tests/test_sphere_parity.py proves that
-   file agrees with tools/gen_sphere_stand.py, which is what actually writes
-   the 3MF you print. So dragging is free, the limits bite while you drag,
-   and the file you order is still the generator's. */
+/* Everything on this page is computed here. sphere-math.js is held equal to
+   tools/gen_sphere_stand.py by tests/test_sphere_parity.py, so the numbers
+   are the generator's numbers -- and the file you print can come from
+   either: Download writes the 3MF in the browser, Order builds it server
+   side from the same settings. */
 
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const view = document.getElementById('view');
+const MM_IN = 25.4;
+let UNIT = 'mm';
+const uv = (mm) => UNIT === 'in' ? mm / MM_IN : mm;
+const ul = (mm, d) => fixed(uv(mm), d ?? (UNIT === 'in' ? 3 : 2));
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(css('--bg'));
-const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 4000);
+const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 5000);
 const rend = new THREE.WebGLRenderer({ antialias: true });
 rend.setPixelRatio(Math.min(devicePixelRatio, 2));
 view.appendChild(rend.domElement);
@@ -122,32 +172,33 @@ ctrl.enableDamping = true;
 scene.add(new THREE.HemisphereLight(0xffffff, 0x223034, 2.1));
 const key = new THREE.DirectionalLight(0xffffff, 1.5);
 key.position.set(1, 1.4, 1); scene.add(key);
+const grid = new THREE.GridHelper(600, 60, 0x2b3438, 0x222a2e);
+grid.material.transparent = true; grid.material.opacity = 0.55; scene.add(grid);
 
-const grid = new THREE.GridHelper(400, 40, 0x2b3438, 0x222a2e);
-grid.material.transparent = true; grid.material.opacity = 0.6;
-scene.add(grid);
-
-const ringMat = new THREE.MeshStandardMaterial({
-  color: css('--ring'), metalness: 0.0, roughness: 0.55, flatShading: false });
+const solidMat = new THREE.MeshStandardMaterial({
+  color: css('--ring'), roughness: 0.55, metalness: 0.0 });
+const wireMat = new THREE.MeshBasicMaterial({
+  color: css('--accent'), wireframe: true, transparent: true, opacity: 0.55 });
 const ballMat = new THREE.MeshStandardMaterial({
-  color: css('--ball'), metalness: 0.1, roughness: 0.25,
-  transparent: true, opacity: 0.35, depthWrite: false });
-let ringMesh = null, ballMesh = null, showBall = true;
+  color: css('--ball'), roughness: 0.25, metalness: 0.1,
+  transparent: true, opacity: 0.33, depthWrite: false });
 
-const S = { ball: 25.4, ...auto(25.4) };
-S.wall = 2.5; S.chamfer = 0.8; S.seat = 1.0;
+let solidMesh = null, wireMesh = null, ballMesh = null, annot = null;
+let showBall = true, showDims = true, viz = 'solid';
+
+const DEF = () => ({ ball: 25.4, base: auto(25.4).base, wall: 2.5,
+                     chamfer: 0.8, seat: 1.0, segments: 0 });
+let S = DEF();
 
 const DIALS = [
-  { k: 'ball',    label: 'ball',        min: BALL_MIN, max: BALL_MAX, step: 0.1 },
-  { k: 'base',    label: 'base radius', min: 2,        max: 150,      step: 0.1 },
-  { k: 'wall',    label: 'wall',        min: 3 * NOZZLE, max: 12,     step: 0.1 },
-  { k: 'chamfer', label: 'rim chamfer', min: 0,        max: 8,        step: 0.1 },
-  { k: 'seat',    label: 'air gap',     min: 0.4,      max: 12,       step: 0.1 },
+  { k:'ball',    label:'ball',        min:BALL_MIN, max:BALL_MAX, step:0.1, unit:1 },
+  { k:'base',    label:'base radius', min:2,   max:150, step:0.1, unit:1 },
+  { k:'wall',    label:'wall',        min:3*NOZZLE, max:12, step:0.1, unit:1 },
+  { k:'chamfer', label:'rim chamfer', min:0,   max:8,   step:0.1, unit:1 },
+  { k:'seat',    label:'air gap',     min:0.4, max:12,  step:0.1, unit:1 },
+  { k:'segments',label:'tessellation',min:0,   max:256, step:8,   unit:0 },
 ];
 
-/* A dial's ceiling moves with the others, exactly as the original did it:
-   the slider stops where the geometry stops, so you feel the limit instead
-   of reading about it after you order. */
 function limitsFor(k) {
   if (k === 'base') {
     const { lo, hi } = baseRange(S.ball, S.wall, S.chamfer);
@@ -158,142 +209,255 @@ function limitsFor(k) {
   return null;
 }
 
-const dialsEl = document.getElementById('dials');
-const ui = {};
-for (const d of DIALS) {
-  const l = document.createElement('label'); l.className = 'd';
-  l.innerHTML = `<span class="row"><span class="nm">${d.label}</span>`
-    + `<input type="range"><input class="num" inputmode="decimal">`
-    + `<span style="color:var(--ink-soft)">mm</span></span>`
-    + `<span class="cap"></span>`;
-  const [r, n] = l.querySelectorAll('input');
-  const cap = l.querySelector('.cap');
-  r.min = d.min; r.max = d.max; r.step = 'any';
-  r.oninput = () => { set(d.k, snap(Number(r.value), d.step)); };
-  n.onchange = () => { set(d.k, Number(n.value)); };
-  n.onkeydown = e => { if (e.key === 'Enter') { set(d.k, Number(n.value)); n.blur(); } };
-  ui[d.k] = { r, n, cap, d };
-  dialsEl.appendChild(l);
-}
-const snap = (v, st) => Math.round(v / st) * st;
-
-/* Base and chamfer constrain EACH OTHER: the chamfer's ceiling is computed
-   from the base, and the base's range is computed from the chamfer. One
-   pass of clamping therefore leaves the pair inconsistent -- swept over the
-   whole space, 138 settings in 7,425 came out refused after a single pass.
-   Clamping to a fixed point instead is 0 in 29,700. */
+/* Base and chamfer constrain each other, so one pass of clamping leaves the
+   pair inconsistent -- 138 settings in 7,425 came out refused after a single
+   pass. Settling to a fixed point is 0 in 29,700. */
 function settle() {
   for (let i = 0; i < 8; i++) {
     const was = S.base + ':' + S.chamfer;
     for (const kk of ['chamfer', 'base']) {
       const L = limitsFor(kk); if (!L) continue;
-      // clamp and do NOT round after: rounding 5.34555 to four places gives
-      // 5.3456, which is back over the ceiling the clamp just applied, and
-      // the page then refused a value it had itself chosen. Full precision
-      // is kept here; fixed() rounds for display only.
+      // clamp and do NOT round after: rounding puts the value back over the
+      // ceiling the clamp just applied
       S[kk] = Math.min(L.hi, Math.max(L.lo, S[kk]));
     }
     if (was === S.base + ':' + S.chamfer) return;
   }
 }
 
+const dialsEl = document.getElementById('dials');
+const ui = {};
+for (const d of DIALS) {
+  const l = document.createElement('label'); l.className = 'd';
+  l.innerHTML = `<span class="row"><span class="nm">${d.label}</span>`
+    + `<input type="range"><input class="num" inputmode="decimal">`
+    + `<span class="u"></span></span><span class="cap"></span>`;
+  const [r, n] = l.querySelectorAll('input');
+  r.step = 'any';
+  r.oninput = () => set(d.k, d.unit ? Number(r.value)
+                                    : Math.round(Number(r.value) / 8) * 8);
+  const commit = () => {
+    let v = parseFloat(n.value);
+    if (d.unit && UNIT === 'in') v *= MM_IN;
+    set(d.k, v);
+  };
+  n.onchange = commit;
+  n.onkeydown = e => { if (e.key === 'Enter') { commit(); n.blur(); } };
+  ui[d.k] = { r, n, cap: l.querySelector('.cap'), u: l.querySelector('.u'), d };
+  dialsEl.appendChild(l);
+}
+
 function set(k, v) {
   if (!isFinite(v)) return draw();
   const d = DIALS.find(x => x.k === k);
-  v = Math.min(d.max, Math.max(d.min, v));
-  S[k] = Math.round(v * 1e4) / 1e4;
+  S[k] = Math.min(d.max, Math.max(d.min, v));
   settle();
   draw();
 }
 
-function lathe() {
+function segs() { return S.segments ? S.segments : segmentsFor(S.base + S.wall / 2); }
+
+function buildGeo() {
   const { pts } = profile(S.ball, S.base, S.wall, S.chamfer, S.seat);
-  const seg = segmentsFor(S.base + S.wall / 2);
   const v2 = pts.map(([r, z]) => new THREE.Vector2(Math.max(1e-4, r), z));
-  const g = new THREE.LatheGeometry(v2, seg);
+  const g = new THREE.LatheGeometry(v2, segs());
   g.computeVertexNormals();
   return g;
 }
 
-let frames = 0, lastFps = performance.now(), fps = 0;
-function draw() {
-  for (const d of DIALS) {
-    const u = ui[d.k], L = limitsFor(d.k);
-    u.r.value = S[d.k];
-    u.n.value = fixed(S[d.k], 2);
-    if (L) { u.r.min = L.lo; u.r.max = L.hi; }
-    else   { u.r.min = d.min; u.r.max = d.max; }
-    u.cap.textContent = !L ? ''
-      : d.k === 'base'
-        ? `${fixed(L.lo, 1)} to ${fixed(L.hi, 1)} — below, the ball rolls `
-          + `out; above, the ring swallows it`
-        : `up to ${fixed(L.hi, 1)} — past this it eats the wall or dips the `
-          + `rim below the bed`;
-  }
-  const bad = refuse(S.ball, S.base, S.wall, S.chamfer, S.seat);
-  const why = document.getElementById('why');
-  why.className = 'why ' + (bad ? 'no' : 'ok');
-  why.textContent = bad || 'Builds. Every limit below is clear.';
-
-  if (ringMesh) { scene.remove(ringMesh); ringMesh.geometry.dispose(); ringMesh = null; }
-  if (ballMesh) { scene.remove(ballMesh); ballMesh.geometry.dispose(); ballMesh = null; }
-  const m = measure(S.ball, S.base, S.wall, S.chamfer, S.seat);
-
-  if (!bad) {
-    ringMesh = new THREE.Mesh(lathe(), ringMat);
-    scene.add(ringMesh);
-    if (showBall) {
-      ballMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(S.ball / 2, 48, 32), ballMat);
-      ballMesh.position.y = S.ball / 2 + S.seat;
-      scene.add(ballMesh);
-    }
-  }
-  facts(m, bad);
-  frame(m);
+function clearScene() {
+  for (const m of [solidMesh, wireMesh, ballMesh])
+    if (m) { scene.remove(m); m.geometry.dispose(); }
+  solidMesh = wireMesh = ballMesh = null;
+  if (annot) { scene.remove(annot); annot = null; }
 }
 
-function facts(m, bad) {
-  const rows = bad ? [['—', 'nothing to measure']] : [
-    ['inner Ø', m.inner_dia + ' mm'],
-    ['outer Ø', m.outer_dia + ' mm'],
+/* The three numbers you are actually setting, drawn on the object rather
+   than only listed beside it. */
+function annotations(rOut, rIn, h) {
+  const g = new THREE.Group();
+  const line = (a, b, c) => g.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([a, b]),
+    new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0.9 })));
+  const y = -Math.max(2, rOut * 0.12);
+  line(new THREE.Vector3(-rOut, y, 0), new THREE.Vector3(rOut, y, 0), 0x63A6C4);
+  line(new THREE.Vector3(-rIn, y * 0.45, 0), new THREE.Vector3(rIn, y * 0.45, 0), 0x5FA893);
+  line(new THREE.Vector3(rOut * 1.18, 0, 0), new THREE.Vector3(rOut * 1.18, h, 0), 0xD9A84E);
+  return g;
+}
+
+let frames = 0, lastFps = performance.now();
+
+function draw() {
+  const bad = refuse(S.ball, S.base, S.wall, S.chamfer, S.seat);
+  for (const d of DIALS) {
+    const u = ui[d.k], L = limitsFor(d.k);
+    const lo = L ? L.lo : d.min, hi = L ? L.hi : d.max;
+    u.r.min = lo; u.r.max = hi; u.r.value = S[d.k];
+    u.u.textContent = d.unit ? UNIT : '';
+    u.n.value = d.unit ? ul(S[d.k]) : (S[d.k] || segs());
+    const dp = UNIT === 'in' ? 3 : 1;
+    u.cap.textContent = !L
+      ? (d.k === 'segments' && !S.segments ? `auto: ${segs()} for this rim` : '')
+      : d.k === 'base'
+        ? `${ul(L.lo, dp)} to ${ul(L.hi, dp)} ${UNIT} — below, the ball rolls `
+          + `out; above, the ring swallows it`
+        : `up to ${ul(L.hi, dp)} ${UNIT} — past this it eats the wall or dips `
+          + `the rim below the bed`;
+  }
+
+  const why = document.getElementById('why');
+  clearScene();
+  if (bad) {
+    why.className = 'why no'; why.textContent = bad;
+    document.getElementById('facts').innerHTML = '';
+    document.getElementById('price').innerHTML = '';
+    document.getElementById('dims').textContent = '';
+    setTake(null);
+    return;
+  }
+
+  const m = measure(S.ball, S.base, S.wall, S.chamfer, S.seat, segs());
+  const st = stability(m.tip_deg);
+  why.className = 'why ' + st.tone;
+  why.textContent = st.tone === 'ok'
+    ? `Stable. The ball must roll ${m.tip_deg}° before its weight leaves the seat.`
+    : `${st.text[0].toUpperCase() + st.text.slice(1)} — tip angle ${m.tip_deg}°.`;
+
+  const geo = buildGeo();
+  if (viz !== 'tess') { solidMesh = new THREE.Mesh(geo, solidMat); scene.add(solidMesh); }
+  if (viz !== 'solid') {
+    wireMesh = new THREE.Mesh(viz === 'both' ? geo.clone() : geo, wireMat);
+    scene.add(wireMesh);
+  }
+  if (showBall) {
+    ballMesh = new THREE.Mesh(new THREE.SphereGeometry(S.ball / 2, 56, 36), ballMat);
+    ballMesh.position.y = S.ball / 2 + S.seat;
+    scene.add(ballMesh);
+  }
+  const rOut = m.outer_dia / 2, rIn = m.inner_dia / 2;
+  const h = new THREE.Box3().setFromObject(solidMesh || wireMesh).max.y;
+  if (showDims) { annot = annotations(rOut, rIn, h); scene.add(annot); }
+
+  readouts(m, st, h);
+  setTake(m);
+  fit(rOut, h);
+}
+
+function readouts(m, st, h) {
+  const over = overhangPercent(S.ball, S.base, S.wall, S.chamfer, S.seat);
+  const vol = volumeMm3(S.ball, S.base, S.wall, S.chamfer, S.seat);
+  document.getElementById('band').style.cssText =
+    `left:${(25 / 90 * 100).toFixed(1)}%;right:${(100 - 75 / 90 * 100).toFixed(1)}%`;
+  document.getElementById('mark').style.left =
+    `${Math.min(100, m.tip_deg / 90 * 100).toFixed(1)}%`;
+  const rows = [
+    ['tip angle', `${m.tip_deg}° — ${st.text}`],
     ['seat latitude', m.seat_latitude + '°'],
-    ['tip angle', m.tip_deg + '°  (25–75 allowed)'],
-    ['contact arc', m.contact_arc + ' mm'],
+    ['contact arc', ul(m.contact_arc) + ' ' + UNIT],
+    ['inner Ø', ul(m.inner_dia) + ' ' + UNIT],
+    ['outer Ø', ul(m.outer_dia) + ' ' + UNIT],
+    ['height', ul(h) + ' ' + UNIT],
     ['bed contact', m.bed_mm2 + ' mm²'],
-    ['segments', m.segments + '  (facet err ' + m.facet_err + ' mm)'],
+    ['overhang', over.toFixed(1) + '% of the wall'],
+    ['facet error', '±' + m.facet_err + ' mm at ' + m.segments + ' segments'],
+    ['volume', (vol / 1000).toFixed(3) + ' cm³'],
+    ['watertight', 'yes — one revolved profile'],
   ];
   document.getElementById('facts').innerHTML =
     rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
-  const q = new URLSearchParams({
-    id: 'sphere_stand',
-    params: JSON.stringify({ ball: S.ball, wall: S.wall,
-                             chamfer: S.chamfer, seat: S.seat }),
-  });
-  const a = document.getElementById('order');
-  a.href = bad ? '#' : '../src?' + q;
-  a.style.pointerEvents = bad ? 'none' : '';
-  a.style.opacity = bad ? 0.4 : 1;
-  document.getElementById('ordernote').textContent = bad
-    ? 'Fix the setting above and the file becomes orderable.'
-    : `The shop builds it from gen_sphere_stand.py at these numbers. The base `
-    + `radius is derived there from the ball, so ordering sends ball, wall, `
-    + `chamfer and gap.`;
+  document.getElementById('dims').innerHTML =
+    `outer Ø ${ul(m.outer_dia)} ${UNIT}<br>inner Ø ${ul(m.inner_dia)} ${UNIT}`
+    + `<br>height ${ul(h)} ${UNIT}`;
+  price(vol);
 }
+
+function price(vol) {
+  const mat = document.getElementById('mat').value;
+  const qty = Math.max(1, parseInt(document.getElementById('qty').value) || 1);
+  const kg = Math.max(1, parseFloat(document.getElementById('kg').value) || 20);
+  const rows = [];
+  try {
+    const loc = calculateLocalPrintEstimate(mat, vol, qty, kg);
+    rows.push(['print it yourself',
+      `$${loc.estimatedCostUsd.toFixed(2)} · ${loc.totalWeightGrams.toFixed(1)} g · `
+      + `${loc.estimatedTimeHours.toFixed(1)} h`]);
+  } catch (e) {}
+  try {
+    rows.push(['print-on-demand',
+      '$' + calculateAggregatorEstimate(mat, qty, vol).toFixed(2)]);
+  } catch (e) {}
+  document.getElementById('price').innerHTML =
+    rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
+}
+
+function setTake(m) {
+  const dl = document.getElementById('dl'), a = document.getElementById('order');
+  dl.disabled = !m; dl.style.opacity = m ? 1 : 0.4;
+  const q = new URLSearchParams({ id: 'sphere_stand',
+    params: JSON.stringify({ ball: S.ball, wall: S.wall,
+                             chamfer: S.chamfer, seat: S.seat }) });
+  a.href = m ? '../src?' + q : '#';
+  a.style.pointerEvents = m ? '' : 'none';
+  a.style.opacity = m ? 1 : 0.4;
+  document.getElementById('dlnote').textContent = m
+    ? 'Written here from the same profile, in millimeters.'
+    : 'Fix the setting above first.';
+  document.getElementById('ordernote').textContent = m
+    ? 'Same numbers, built by gen_sphere_stand.py. The base radius is derived '
+      + 'there from the ball, so ordering sends ball, wall, chamfer and gap.'
+    : '';
+}
+
+/* A real 3MF, written here. The lathe geometry is indexed and shares its
+   vertices already, so it goes out as-is. Three is Y-up and 3MF is Z-up,
+   so y and z swap and the winding swaps with them. */
+document.getElementById('dl').onclick = () => {
+  const g = buildGeo();
+  const p = g.attributes.position.array, ix = g.index.array;
+  const v = [], t = [];
+  for (let i = 0; i < p.length; i += 3)
+    v.push(`<vertex x="${p[i].toFixed(4)}" y="${p[i + 2].toFixed(4)}" `
+         + `z="${p[i + 1].toFixed(4)}"/>`);
+  for (let i = 0; i < ix.length; i += 3)
+    t.push(`<triangle v1="${ix[i]}" v2="${ix[i + 2]}" v3="${ix[i + 1]}"/>`);
+  const model = `<?xml version="1.0" encoding="UTF-8"?>
+<model unit="millimeter" xml:lang="en-US"
+ xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+ <resources><object id="1" type="model"><mesh>
+  <vertices>${v.join('')}</vertices>
+  <triangles>${t.join('')}</triangles>
+ </mesh></object></resources>
+ <build><item objectid="1"/></build>
+</model>`;
+  const rels = `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
+</Relationships>`;
+  const ct = `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
+</Types>`;
+  const zip = zipSync({
+    '[Content_Types].xml': strToU8(ct),
+    '_rels/.rels': strToU8(rels),
+    '3D/3dmodel.model': strToU8(model),
+  });
+  const url = URL.createObjectURL(new Blob([zip], { type: 'model/3mf' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sphere-stand-ball${fixed(S.ball, 1)}-wall${fixed(S.wall, 1)}.3mf`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 let fitted = false;
-function frame(m) {
-  const r = (S.base + S.wall / 2), h = S.ball + S.seat;
-  const want = Math.max(r * 2.6, h * 1.9, 30);
-  if (!fitted) {
-    cam.position.set(want * 0.75, want * 0.55, want * 0.95);
-    ctrl.target.set(0, h * 0.35, 0);
-    fitted = true;
-  }
-  ctrl.target.lerp(new THREE.Vector3(0, h * 0.35, 0), 0.25);
-  grid.position.y = 0;
+function fit(rOut, h) {
+  const want = Math.max(rOut * 2.8, h * 2.2, 30);
+  if (!fitted) { cam.position.set(want * 0.75, want * 0.55, want * 0.95); fitted = true; }
+  ctrl.target.lerp(new THREE.Vector3(0, h * 0.4, 0), 0.25);
 }
-
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
   rend.setSize(w, h, false);
@@ -302,25 +466,34 @@ function resize() {
 addEventListener('resize', resize);
 
 document.getElementById('auto').onclick = () => {
-  Object.assign(S, { ball: S.ball, ...auto(S.ball) }); draw();
-};
-document.getElementById('inch').onclick = () => set('ball', 25.4);
-document.getElementById('showball').onclick = (e) => {
-  showBall = !showBall;
-  e.target.textContent = showBall ? 'Hide ball' : 'Show ball';
-  draw();
-};
+  Object.assign(S, auto(S.ball)); S.segments = 0; settle(); draw(); };
+document.getElementById('reset').onclick = () => {
+  S = DEF(); fitted = false; settle(); draw(); };
+document.getElementById('sphereBtn').onclick = e => {
+  showBall = !showBall; e.target.classList.toggle('on', showBall); draw(); };
+document.getElementById('dimBtn').onclick = e => {
+  showDims = !showDims; e.target.classList.toggle('on', showDims); draw(); };
+document.querySelectorAll('#viz button').forEach(b => b.onclick = () => {
+  viz = b.dataset.v;
+  document.querySelectorAll('#viz button').forEach(o => o.classList.toggle('on', o === b));
+  draw(); });
+document.querySelectorAll('#units button').forEach(b => b.onclick = () => {
+  UNIT = b.dataset.u;
+  document.querySelectorAll('#units button').forEach(o => o.classList.toggle('on', o === b));
+  draw(); });
+for (const id of ['mat', 'qty', 'kg'])
+  document.getElementById(id).onchange = () => draw();
 
-resize(); draw();
+resize(); settle(); draw();
 (function loop() {
   requestAnimationFrame(loop);
   ctrl.update(); rend.render(scene, cam);
   frames++;
   const now = performance.now();
   if (now - lastFps > 500) {
-    fps = Math.round(frames * 1000 / (now - lastFps));
+    document.getElementById('fps').textContent =
+      Math.round(frames * 1000 / (now - lastFps)) + ' fps';
     frames = 0; lastFps = now;
-    document.getElementById('fps').textContent = fps + ' fps';
   }
 })();
 </script>

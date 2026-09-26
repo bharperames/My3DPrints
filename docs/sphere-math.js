@@ -201,6 +201,52 @@ export function measure(ball, base, wall, chamfer, seat, segments) {
   };
 }
 
+// What the original called Stability: how far the ball must roll before
+// its weight passes outside the contact circle, read as a verdict rather
+// than a number. The bands are the generator's own gates.
+export function stability(tipDeg) {
+  if (tipDeg < TIP_MIN) return { text: 'rolls out', tone: 'no' };
+  if (tipDeg > TIP_MAX) return { text: 'swallowed', tone: 'no' };
+  if (tipDeg < 35) return { text: 'shallow', tone: 'warn' };
+  if (tipDeg > 65) return { text: 'deep', tone: 'warn' };
+  return { text: 'stable', tone: 'ok' };
+}
+
+// The share of the revolved wall that overhangs past 45 degrees. The
+// profile is a surface of revolution, so this is a property of the
+// (r, z) outline alone -- no mesh needed.
+export function overhangPercent(ball, base, wall, chamfer, seat) {
+  const { pts } = profile(ball, base, wall, chamfer, seat);
+  let total = 0, over = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dr = pts[i][0] - pts[i - 1][0], dz = pts[i][1] - pts[i - 1][1];
+    const len = Math.hypot(dr, dz);
+    if (len < 1e-9) continue;
+    total += len;
+    // angle of the surface away from vertical; a wall leaning out past 45
+    // is what a nozzle cannot bridge onto
+    if (Math.abs(dz) < 1e-12 || Math.abs(dr / dz) > 1) over += len;
+  }
+  return total ? (over / total) * 100 : 0;
+}
+
+// Volume of the revolved ring, by Pappus on the closed outline: the
+// signed area of the (r, z) polygon times the path its centroid travels.
+export function volumeMm3(ball, base, wall, chamfer, seat) {
+  const { pts } = profile(ball, base, wall, chamfer, seat);
+  let a2 = 0, cr = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [r0, z0] = pts[i], [r1_, z1] = pts[i + 1];
+    const cross = r0 * z1 - r1_ * z0;
+    a2 += cross;
+    cr += (r0 + r1_) * cross;
+  }
+  const area = a2 / 2;
+  if (Math.abs(area) < 1e-12) return 0;
+  const rBar = cr / (3 * a2);
+  return Math.abs(2 * Math.PI * rBar * area);
+}
+
 const r1 = (v) => Math.round(v * 10) / 10;
 const r2 = (v) => Math.round(v * 100) / 100;
 const r3 = (v) => Math.round(v * 1000) / 1000;
