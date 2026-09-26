@@ -9,6 +9,7 @@ lands in the slicer — from there: slice, then Print to the P2S.
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -143,8 +144,49 @@ class Handler(SimpleHTTPRequestHandler):
             raise ValueError("payload too large")
         return json.loads(self.rfile.read(n) or b"{}")
 
+    # A framed app -- the Sphere Simulator -- builds its geometry in the
+    # browser and hands the bytes over instead of saving a file the shop
+    # would then have to be told about. This is where they land.
+    #
+    # The filename comes from the other side, so it is reduced to a
+    # basename, restricted to characters that cannot mean anything to a
+    # path, and required to be a 3MF or an STL. It is then written under
+    # models/custom/ and the path is CHECKED to still be there, because a
+    # sanitizer one believes is a sanitizer one has not tested.
+    RECEIVE_MAX = 64 * 1024 * 1024
+
+    def _receive(self, url):
+        q = parse_qs(url.query)
+        raw = os.path.basename(unquote(q.get("name", [""])[0]))
+        stem, ext = os.path.splitext(raw)
+        stem = re.sub(r"[^A-Za-z0-9._-]", "_", stem)[:80]
+        if not stem or ext.lower() not in (".3mf", ".stl"):
+            return self._json(400, {"ok": False, "error": "bad filename"})
+        n = int(self.headers.get("Content-Length", 0))
+        if not 0 < n <= self.RECEIVE_MAX:
+            return self._json(413, {"ok": False, "error": "bad length"})
+
+        dest_dir = os.path.join(MODELS, "custom")
+        os.makedirs(dest_dir, exist_ok=True)
+        name = stem + ext.lower()
+        full = os.path.realpath(os.path.join(dest_dir, name))
+        if os.path.dirname(full) != os.path.realpath(dest_dir):
+            return self._json(400, {"ok": False, "error": "bad filename"})
+
+        body = self.rfile.read(n)
+        if len(body) != n:
+            return self._json(400, {"ok": False, "error": "short read"})
+        with open(full, "wb") as fh:
+            fh.write(body)
+        # what /open?f= expects: a path relative to models/
+        return self._json(200, {"ok": True, "file": "custom/" + name,
+                                "bytes": len(body),
+                                "path": full})
+
     def do_POST(self):
         url = urlparse(self.path)
+        if url.path == "/shop/receive":
+            return self._receive(url)
         if url.path in ("/shop/layout", "/shop/build"):
             cat, ps = _shop_modules()
             try:

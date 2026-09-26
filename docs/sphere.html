@@ -35,6 +35,21 @@
   #down h2 { font-size:16px; }
   #down code { color:var(--accent); overflow-wrap:anywhere; }
   #down .why { color:var(--ink-soft); font-size:13px; }
+
+  /* The job tray. Hidden until the app actually sends something, so the
+     page is the app and nothing else until there is news. */
+  #tray { position:fixed; right:14px; bottom:14px; width:min(24em,calc(100vw - 28px));
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:12px 14px; box-shadow:0 6px 24px rgba(0,0,0,.18); display:none; }
+  #tray.on { display:block; }
+  #tray h3 { margin:0 0 6px; font-size:14px; }
+  #tray .f { font-size:13px; color:var(--ink-soft); overflow-wrap:anywhere; }
+  #tray .row { display:flex; gap:8px; margin-top:10px; align-items:center; }
+  #tray button { font:inherit; font-size:13px; padding:6px 11px; border-radius:6px;
+    border:1px solid var(--line); background:var(--surface-2); color:var(--ink); cursor:pointer; }
+  #tray button.go { background:var(--accent); color:#fff; border-color:var(--accent); }
+  #tray .err { color:var(--risk); font-size:13px; }
+  #tray .x { margin-left:auto; border:0; background:none; color:var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -60,6 +75,15 @@
      so it needs a network connection either way.</p>
 </div>
 
+<div id="tray" role="status" aria-live="polite">
+  <h3 id="tray-h">Sent to the print shop</h3>
+  <div class="f" id="tray-f"></div>
+  <div class="row" id="tray-row">
+    <button class="go" id="tray-open">Open in Bambu Studio</button>
+    <button class="x" id="tray-x" aria-label="dismiss">dismiss</button>
+  </div>
+</div>
+
 <script>
 /* A cross-origin frame fires `load` whether it rendered the app or an
    error page, so `onload` cannot tell us anything. GitHub Pages sends
@@ -75,6 +99,85 @@ fetch(SRC, { method:'HEAD', cache:'no-store' })
     document.getElementById('app').remove();
     document.getElementById('down').classList.add('on');
   });
+
+/* ---------------- receiving a print job ------------------------------
+   The app builds the 3MF in the browser. Framed, it hands the bytes over
+   rather than saving a file the shop would then have to be told about.
+
+   Only ORIGIN is trusted, and it is checked on every message rather than
+   once: a frame can navigate, and "it said hello earlier" is not a fact
+   about the message in hand. Nothing from any other origin is read --
+   not even to look at what it claims to be.                            */
+const ORIGIN = new URL(SRC).origin;
+const tray = document.getElementById('tray');
+const trayH = document.getElementById('tray-h');
+const trayF = document.getElementById('tray-f');
+const trayRow = document.getElementById('tray-row');
+const openBtn = document.getElementById('tray-open');
+let received = null;
+
+document.getElementById('tray-x').onclick = () => tray.classList.remove('on');
+
+window.addEventListener('message', (e) => {
+  if (e.origin !== ORIGIN) return;
+  const m = e.data;
+  if (!m || typeof m.type !== 'string') return;
+
+  if (m.type === 'sphere:hello') {
+    // Answering is what tells the app a shop is here; the app posts jobs
+    // only to the origin this reply arrives from, so it never has to know
+    // in advance whether the shop is on localhost or somewhere else.
+    e.source.postMessage({ type: 'sphere:shop-hello', shop: 'my3dprints' }, ORIGIN);
+    return;
+  }
+
+  if (m.type === 'sphere:job') hand(m);
+});
+
+async function hand(job) {
+  const name = String(job.filename || 'sphere_stand.3mf');
+  tray.classList.add('on');
+  trayH.textContent = 'Saving to the shop\u2026';
+  trayF.textContent = name;
+  trayRow.style.display = 'none';
+  try {
+    const r = await fetch('/shop/receive?name=' + encodeURIComponent(name), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: job.bytes,
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || r.status);
+    received = d;
+    trayH.textContent = 'In the shop';
+    trayF.textContent = d.file + '  \u00b7  ' + (d.bytes / 1024).toFixed(0) + ' KB';
+    trayRow.style.display = 'flex';
+  } catch (err) {
+    // The shop server is what writes the file, and this page also runs
+    // from a static host where there is no server to write it. Say which
+    // it is instead of reporting a failure that is really an absence.
+    trayH.textContent = 'Not saved';
+    trayF.innerHTML = '<span class="err">' + String(err.message || err) +
+      '</span><br>The shop server writes the file; a statically hosted ' +
+      'copy of this page has nothing to write it.';
+    trayRow.style.display = 'none';
+  }
+}
+
+/* Handing over the path, not launching the slicer, is the shop's own
+   convention -- /open is a deliberate click, never automatic. */
+openBtn.onclick = async () => {
+  if (!received) return;
+  openBtn.disabled = true;
+  try {
+    const r = await fetch('/open?f=' + encodeURIComponent(received.file));
+    const d = await r.json();
+    trayF.textContent = d.ok ? 'Opened in ' + d.app
+                             : (d.error || 'could not open');
+  } finally {
+    openBtn.disabled = false;
+  }
+};
 </script>
 </body>
 </html>
