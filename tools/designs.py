@@ -24,12 +24,10 @@ def add(cid, file, glb, family, designer, mat, title, blurb, v, mate=None,
                   proven=proven))
 
 UNK = "(unattributed export)"
-add("sphere1", "sphere_stand_1.0in.3mf", "sphere_stand_1in", "Sphere Stands", UNK, "PLA",
-    "Sphere Stand 1″", "Ring stand for a 25.4 mm sphere — knife-edge rim Ø19.2 mm holds it at ≈49°. Genus-1, watertight. Also seats the 27 mm passthrough ball.", ("pass", "Clean"))
-add("sphere2", "sphere_stand_2.0in.3mf", "sphere_stand_2in", "Sphere Stands", UNK, "PLA",
-    "Sphere Stand 2″", "Same revolved profile scaled for a 50.8 mm sphere — rim Ø36.5 mm, contact ≈46°. Also seats the 39 mm passthrough ball.", ("pass", "Clean"))
-add("sphere3", "sphere_stand_3.0in.3mf", "sphere_stand_3in", "Sphere Stands", UNK, "PLA",
-    "Sphere Stand 3″", "Largest of the family — rim Ø57.7 mm for a 76.2 mm sphere. All three share one 2,304-triangle topology.", ("pass", "Clean"))
+# The three saved sphere stands (1", 2", 3") were curated here as separate
+# designs. They are three ball diameters of one parametric card, which now
+# supersedes them, so no card can reach this write-up -- and a curation
+# entry no card can reach is a write-up that silently does nothing.
 add("birdwhistle", "bird-whistle_p2s.3mf", "bird_whistle_p2s", "Downloads",
     UNK, "PLA or PETG",
     "Bird Whistle",
@@ -191,7 +189,6 @@ add("voro_f", "voro_sphere_2-fixed.stl", "voro_fixed", "One-off Experiments", LO
     "Voronoi Sphere — fixed Ø60", "Repaired here: normals flipped (volume now positive, 28.8 cm³) and scaled 30× to Ø60 mm — mean strut ≈2.9 mm, comfortably printable. Watertight, genus 56. Slicer flags floating regions where lattice arcs start mid-air: enable tree supports or accept some rough undersides.", ("pass", "Repaired · ready"), reveals="voro", reveal_label="original (Ø2 mm)")
 
 SLICE = {
- "sphere1": "2 m · 0.8 g", "sphere2": "7 m · 3.4 g", "sphere3": "14 m · 8.8 g",
  "vortex": "1 h 24 m · 27.9 g (via STL re-slice — the project file mis-slices in the CLI)",
  "fidget": "44 m · 8.0 g", "stackable": "5 h 32 m · 48.6 g",
  "top": "28 m · 11.4 g", "skull": "1 h 02 m · 36.7 g",

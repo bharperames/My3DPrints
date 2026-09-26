@@ -114,9 +114,18 @@ class TestOneList(unittest.TestCase):
             self.assertEqual(len(p["also"]), p["copies"] - 1)
 
     def test_the_generators_own_output_is_not_listed_twice(self):
-        # custom/ holds what the generators wrote; those are already parts
+        # custom/ is where the generators write, so anything the library
+        # walk finds there is a card for a file that is already a part.
+        # A card that NAMES a path in custom/ is a different thing: the
+        # trex jaw is a frozen file, deliberately pinned there because its
+        # geometry was measured and approved and must not be rebuilt on
+        # order. So the rule is about what the walk picked up, not about
+        # the folder -- checking the folder alone failed a card that
+        # appears exactly once.
+        declared = {q["id"] for q in catalog.PARTS}
         dup = [p["id"] for p in self.parts
-               if "/custom/" in p.get("path", "")]
+               if "/custom/" in p.get("path", "")
+               and p["id"] not in declared]
         self.assertEqual(dup, [])
 
     def test_an_experimental_plate_is_one_card_not_two(self):
@@ -336,10 +345,15 @@ class TestEveryPartIsVersioned(unittest.TestCase):
         t = {k: dict(v) for k, v in led.items()}
         before = t[lib["id"]]["version"]
         t[lib["id"]].update(fingerprint="0" * 16, stamp="stale")
+        was = t[lib["id"]].get("revisions", 0)
         after, faults = self.V.reconcile(self.parts, led=t, write=False)
         self.assertEqual(faults, [])
         self.assertNotEqual(after[lib["id"]]["version"], before)
-        self.assertEqual(after[lib["id"]]["revisions"], 1)
+        # one MORE, not one: this takes whichever library part comes first
+        # and that part has a history. Asserting 1 was asserting that the
+        # ledger had never seen it before, which stops being true the day
+        # the file is re-saved.
+        self.assertEqual(after[lib["id"]]["revisions"], was + 1)
 
     def test_the_shipped_catalog_has_no_version_faults(self):
         self.assertEqual(self.cat["version_faults"], [])
