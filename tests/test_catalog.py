@@ -189,6 +189,83 @@ class TestDefaults(unittest.TestCase):
         self.assertIn("dia", d)            # the kit's
 
 
+class TestEveryCardLinkLandsSomewhere(unittest.TestCase):
+    """A card's "pages" link must resolve to a file in this repository.
+
+    The Sphere Simulator link used to be served out of a checkout in one
+    developer's home directory. It worked there and nowhere else: a clone
+    of this repository had a card whose only link went nowhere, and
+    nothing said so, because the link is a string and no one was reading
+    it. The app is vendored now, and this is what keeps it that way.
+    """
+
+    def test_every_page_link_resolves_to_a_file(self):
+        broken = []
+        for p in catalog.catalog()["parts"]:
+            for page in p.get("pages", []):
+                href = page.get("href", "").split("?")[0].split("#")[0]
+                if not href or href.startswith(("http://", "https://")):
+                    continue
+                full = os.path.join(ROOT, href)
+                if os.path.isdir(full):
+                    full = os.path.join(full, "index.html")
+                if not os.path.isfile(full):
+                    broken.append(f"{p['id']}: {page.get('href')}")
+        self.assertEqual(broken, [])
+
+
+class TestTheEmbeddedAppIsReachable(unittest.TestCase):
+    """The Sphere Simulator is framed from its own GitHub Pages site.
+
+    It was vendored into apps/sphere for a while -- 22 MB of textures for
+    an app that loads three.js from unpkg and so never ran offline
+    anyway. Framing the published site instead means one deployment
+    serves both its own visitors and this shop, and there is no copy to
+    go stale. The cost is that the card now depends on something outside
+    this repository, so these say what that dependency is.
+    """
+
+    PAGE = os.path.join(ROOT, "docs", "sphere.html")
+    ORIGIN = "https://bharperames.github.io"
+
+    def test_the_page_frames_the_published_app(self):
+        with open(self.PAGE) as fh:
+            html = fh.read()
+        self.assertIn(self.ORIGIN + "/StandMaker/", html)
+        self.assertIn("<iframe", html)
+        # a frame with no fallback is a blank page when Pages is off
+        self.assertIn("did not load", html)
+
+    def test_nothing_still_points_at_the_vendored_copy(self):
+        import subprocess
+        out = subprocess.run(
+            ["git", "grep", "-n", "-I", "-e", "apps/sphere",
+             "--", "tools", "serve.py", "docs", "Makefile", "tests",
+             ":(exclude)tests/test_catalog.py"],
+            cwd=ROOT, capture_output=True, text=True).stdout.strip()
+        self.assertEqual(out, "")
+        self.assertFalse(os.path.exists(os.path.join(ROOT, "apps")))
+
+    @unittest.skipUnless(os.environ.get("NET_TESTS"),
+                         "set NET_TESTS=1 to reach the network")
+    def test_the_published_app_answers(self):
+        """Opt-in: the suite must not fail because a network is absent."""
+        import urllib.request
+        url = self.ORIGIN + "/StandMaker/"
+        with urllib.request.urlopen(url, timeout=20) as r:
+            self.assertEqual(r.status, 200)
+            self.assertGreater(len(r.read()), 50_000)
+
+    def test_nothing_in_the_shop_points_into_a_home_directory(self):
+        """The fault this replaced, stated directly."""
+        import subprocess
+        out = subprocess.run(
+            ["git", "grep", "-n", "-I", "-e", "Code/3d_prints",
+             "--", "tools", "serve.py", "docs", "Makefile"],
+            cwd=ROOT, capture_output=True, text=True).stdout.strip()
+        self.assertEqual(out, "")
+
+
 class TestCuration(unittest.TestCase):
     def test_curation_is_found_by_filename(self):
         self.assertIsNotNone(designs.curation("Vortex+v3+project.3mf"))

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Sphere stand: a ring that cradles a ball on a conformal spherical seat.
 
-Ported from the Sphere Stand Generator (~/Code/3d_prints), which builds the
-ring by hand as interleaved Three.js vertex rings. The shape is a surface of
-revolution, so here it is one revolved profile instead — same geometry, a
-tenth of the code, and watertight by construction.
+Ported from the Sphere Stand Generator (github.com/bharperames/StandMaker,
+framed into the shop by docs/sphere.html), which builds the ring by hand as
+interleaved Three.js vertex rings. The shape is a surface of revolution, so here it is
+one revolved profile instead — same geometry, a tenth of the code, and
+watertight by construction.
 
 Profile, in (radius, height), with the ball's center at z_off above the bed:
 
