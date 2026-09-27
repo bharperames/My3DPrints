@@ -274,6 +274,25 @@ class TestTheEmbeddedAppIsReachable(unittest.TestCase):
         self.assertIn("_commit = setNative", t)
         self.assertNotIn("_commit = commit", t)
 
+    def test_the_plate_orders_what_the_card_currently_says(self):
+        """A structural guard on behavior the Python suite cannot run.
+
+        Adding a part to the plate used to COPY its parameters, and the
+        order sent the copy ever after: type 33 into the ball and the card
+        read 33 while the plate went on building 25.4, with nothing on
+        screen admitting it. Verified in a browser before and after the
+        fix -- card and order now agree at 25.4, 33 and 88 -- and this
+        keeps the snapshot from coming back. There is one card per part, so
+        a part cannot be on the plate at two settings and a snapshot can
+        never be right.
+        """
+        tpl = os.path.join(ROOT, "tools", "template_local.html")
+        with open(tpl) as fh:
+            t = fh.read()
+        self.assertIn("params: paramVals(byId[id])", t)
+        for dead in ("picked.get", "picked.set", "picked.delete"):
+            self.assertNotIn(dead, t, "the parameter snapshot is back")
+
     @unittest.skipUnless(os.environ.get("NET_TESTS"),
                          "set NET_TESTS=1 to reach the network")
     def test_the_published_app_answers(self):

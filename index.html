@@ -1422,11 +1422,21 @@ renderer.setAnimationLoop(animate);
   const $ = id => document.getElementById(id);
   if (!$('cat-grid')) return;
   const qty = new Map(), shared = new Map(), own = new Map();
+  // There is no snapshot of a part's dials. There used to be: adding a
+  // part to the plate copied its parameters, and the order sent the COPY
+  // ever after. So the card and the plate quietly disagreed -- type 33
+  // into the ball and the card said 33 while the plate went on building
+  // 25.4, with nothing on screen admitting it. The Sphere Simulator made
+  // it obvious, handing back a whole configuration that the plate ignored,
+  // but a dragged slider had always been ignored the same way.
+  //
+  // A snapshot could only earn its place if one part could be on the plate
+  // at two different settings. There is one card per part, so it cannot.
+  // The card's dials are the configuration; the order reads them live.
   // What the dials said when a part went on the plate. The order used to
   // read them at BUILD time, so setting a quantity at codes 10 and then
   // moving the dials to 1-31 quietly put the whole set on the plate. What
   // you added is what you get.
-  const picked = new Map();
   let cat = null, plates = [], byId = {};
 
   const num = v => (Math.round(v*100)/100).toString();
@@ -1440,7 +1450,7 @@ renderer.setAnimationLoop(animate);
   }
   const order = () => [...qty].filter(([,n]) => n > 0).map(([id,n]) =>
     ({part: id, qty: n,
-      params: picked.get(id) || paramVals(byId[id])}));
+      params: paramVals(byId[id])}));
 
   const badge = (v, d, built, p) => {
     const stale = d && v !== '\u2014' && (!built || built < d);
@@ -1473,8 +1483,7 @@ renderer.setAnimationLoop(animate);
                    : 'collect it, then Build plates when you have everything';
     };
     b.onclick = () => {
-      if ((qty.get(p.id) || 0) > 0){ qty.set(p.id, 0); picked.delete(p.id); }
-      else { qty.set(p.id, 1); picked.set(p.id, paramVals(p)); }
+      qty.set(p.id, (qty.get(p.id) || 0) > 0 ? 0 : 1);
       paint(); renderBom(); markCards(); schedule();
     };
     paint();
@@ -1951,15 +1960,19 @@ renderer.setAnimationLoop(animate);
     };
     window.addEventListener('message', onMsg);
 
+    // Escape is registered before close() so close() can remove it. The
+    // first version removed it only on the Escape path, so closing any
+    // other way left the listener attached holding a stale close(), one
+    // more on every open.
+    const esc = e => { if (e.key === 'Escape') close(); };
     function close(){
       window.removeEventListener('message', onMsg);
+      window.removeEventListener('keydown', esc);
       back.remove();
       document.body.style.overflow = '';
       embedOpen = null;
     }
     shut.onclick = close;
-    const esc = e => { if (e.key === 'Escape'){ close();
-                                                window.removeEventListener('keydown', esc); } };
     window.addEventListener('keydown', esc);
     embedOpen = close;
   }
