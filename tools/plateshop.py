@@ -35,6 +35,11 @@ MARGIN = 5.0        # inset from every plate edge -> 246 x 246 usable
 # a part carrying its own `gap` uses that instead, which is how thirty-two
 # ø39 discs make one plate (six 41 mm cells across the 246) rather than two.
 GAP = 3.0
+# The brim a single piece gets when its card asks for one on that piece
+# alone (`brim_bodies`): a tall part in a set of short ones. Plate-wide
+# brims stay the default; this rides on the plate as a per-object setting.
+PIECE_BRIM = {"brim_type": "outer_only", "brim_width": "5",
+              "brim_object_gap": "0"}
 
 
 class MaxRects:
@@ -277,6 +282,11 @@ def order_items(order):
                     name=(part["name"] if one
                           else f"{part['name']} ({j + 1}/{len(groups)})"),
                     assembly=one, brim=brim, gap=part.get("gap"),
+                    # a piece that asks for its own brim, on a plate that
+                    # has none: `brim_bodies` names body prefixes
+                    piece_brim=any(k.startswith(tuple(part.get(
+                        "brim_bodies") or ())) for k in keys)
+                    if part.get("brim_bodies") else False,
                     group=("brim" if brim == "on" else ""),
                     **_extent(bodies, set(keys))))
     return items, reports
@@ -394,6 +404,7 @@ def write_plate(p, path, brim=False):
     from embed_settings import embed
     sc = trimesh.Scene()
     used, cm3 = {}, 0.0
+    per_object = {}
     for it in p["items"]:
         keys = set(it.get("bodies") or [])
         bodies = [(gk, g) for gk, g in load_bodies(it["path"])
@@ -421,8 +432,10 @@ def write_plate(p, path, brim=False):
         else:
             for gk, g in bodies:
                 sc.add_geometry(g, geom_name=f"{it['key']}_{n}_{gk}")
+                if it.get("piece_brim") and not brim:
+                    per_object[f"{it['key']}_{n}_{gk}"] = dict(PIECE_BRIM)
     sc.export(path)
-    embed(path, brim=brim)
+    embed(path, brim=brim, per_object=per_object)
     stamp = _stamp_parts(p)
     # written into the project itself, so the answer travels with the file
     with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as z:
