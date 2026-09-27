@@ -202,8 +202,10 @@ PARTS = [
        supersedes=["sphere_stand_1.0in.3mf", "sphere_stand_2.0in.3mf",
                    "sphere_stand_3.0in.3mf"],
        version="1.0.2",
+       # embed: opened over the shop rather than navigated to, so the card
+       # is still there when a configuration comes back from it
        pages=[dict(label="Enter the Sphere Simulator",
-                   href="docs/sphere.html")],
+                   href="docs/sphere.html", embed=True)],
        gen=["gen_sphere_stand.py"], params=[
            dict(key="ball", label="ball", unit="mm", min=8, max=120,
                 step=0.5, val=25.4),

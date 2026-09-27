@@ -463,6 +463,28 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
   border-radius:99px;padding:4px 11px;white-space:nowrap;
   font:500 11px "IBM Plex Mono",monospace;color:var(--accent-ink)}
 .view .status.live.bad{color:var(--warn);border-color:var(--warn)}
+
+  /* An app opened over the shop. Fixed and full-bleed: the card behind it
+     keeps its scroll position, which is the entire point -- navigating to
+     the page instead came back to the top of the full list. */
+  .embedwrap { position:fixed; inset:0; z-index:90; background:var(--ground);
+    display:flex; flex-direction:column; }
+  .embedbar { display:flex; align-items:center; gap:12px; padding:8px 14px;
+    background:var(--panel); border-bottom:1px solid var(--line); }
+  .embedbar b { font-size:14px; }
+  .embedbar .embednote { color:var(--muted); font-size:12.5px; margin-right:auto; }
+  .embedbar a { color:var(--accent-ink); font-size:12.5px; }
+  .embedbar button { font:inherit; font-size:13px; padding:5px 12px;
+    border-radius:6px; border:1px solid var(--edge); background:var(--panel-2);
+    color:var(--ink); cursor:pointer; }
+  .embedframe { border:0; flex:1; width:100%; background:var(--ground); }
+  /* What the simulator handed back, on the card it belongs to. */
+  .landed { margin:8px 0 0; padding:8px 10px; border-radius:6px;
+    background:var(--pass-bg); color:var(--ink); font-size:12.5px;
+    border:1px solid var(--line); }
+  .landed button { font:inherit; font-size:12px; margin-left:6px;
+    padding:3px 9px; border-radius:5px; border:1px solid var(--edge);
+    background:var(--panel-2); color:var(--ink); cursor:pointer; }
 </style>
 </head>
 <body>
@@ -1527,13 +1549,21 @@ renderer.setAnimationLoop(animate);
       show();
     };
     r._refresh = relayout;
+    // Takes the dial's OWN unit -- millimeters for a length, whatever the
+    // shop happens to be displaying. Everything under the shop is mm; only
+    // what is displayed converts.
+    const setNative = v => {
+      if (!isFinite(v)) { show(); return; }
+      v = Math.min(Number(p.max), Math.max(Number(p.min), v));
+      cur = Math.round(v * 1e4) / 1e4;
+      r.value = String(cur); show(); set(cur); schedule();
+    };
+    // Takes what a person typed, which is in the unit on screen.
     const commit = txt => {
       let v = parseFloat(String(txt).replace(/[^0-9.\-]/g, ''));
       if (!isFinite(v)) { show(); return; }
       if (isLen && UNITS === 'in') v *= MM_IN;
-      v = Math.min(Number(p.max), Math.max(Number(p.min), v));
-      cur = Math.round(v * 1e4) / 1e4;
-      r.value = String(cur); show(); set(cur); schedule();
+      setNative(v);
     };
     box.onchange = () => commit(box.value);
     box.onkeydown = e => { if (e.key === 'Enter') { commit(box.value); box.blur(); } };
@@ -1542,6 +1572,13 @@ renderer.setAnimationLoop(animate);
                         schedule(); };
     r.onchange = () => { r.value = String(cur); };
     relayout();
+    // Settable from outside the card, in millimeters. Deliberately NOT
+    // commit(): that takes what a person typed, so it converts from the
+    // unit on screen, and a framed app sends mm. Wired to commit() this
+    // would have been right in mm and 25.4x too large in inches -- the
+    // kind of bug that only appears when someone has the other unit
+    // selected.
+    l._commit = setNative;
     l.append(p.label + ' ', r, box, val);
     if (p.derived) l.append(Object.assign(document.createElement('i'),
       {className: 'follows', textContent: 'follows ' + p.derived}));
@@ -1825,12 +1862,141 @@ renderer.setAnimationLoop(animate);
         ? 'no answer \u2014 restart the server (make serve)' : e.message, true);
     }
   }
+  // key -> the dial's commit(), per part. A card built twice replaces its
+  // own entry, so this cannot accumulate stale controls.
+  const dialsOf = new Map();
+
   function optionBox(part, defs){
     const sh = document.createElement('div'); sh.className = 'shared';
     const store = own.get(part.id) || {}; own.set(part.id, store);
+    const reg = {}; dialsOf.set(part.id, reg);
     defs.forEach(p => { if (store[p.key] === undefined) store[p.key] = p.val;
-      sh.append(dial(p, () => store[p.key], v => { store[p.key] = v; })); });
+      const el = dial(p, () => store[p.key], v => { store[p.key] = v; });
+      if (el._commit) reg[p.key] = el._commit;
+      sh.append(el); });
     return sh;
+  }
+
+  /* Values coming back from a framed app. Only keys the card actually has
+     are applied: the simulator knows dials this card does not (tessellation,
+     text on the base), and silently inventing parameters for a generator
+     that never declared them is how a card starts describing something it
+     cannot build. Returns the keys that took. */
+  function applyDials(partId, params){
+    const reg = dialsOf.get(partId);
+    const took = [], left = [];
+    if (!reg || !params) return {took, left};
+    for (const [k, v] of Object.entries(params)){
+      if (typeof v !== 'number' || !isFinite(v)) continue;
+      if (typeof reg[k] === 'function'){
+        reg[k](v);                    // clamps, stores, repaints, rebuilds
+        took.push(k);
+      } else {
+        left.push(k);                 // the card has no such dial
+      }
+    }
+    return {took, left};
+  }
+
+  /* ---------------- an app, opened over the shop ----------------------
+     The card stays where it was: same scroll, same filter, same dials,
+     and when the overlay closes the configuration that came back has
+     already been applied to the card underneath it.
+
+     The page in the overlay is same-origin, so it is trusted to relay --
+     it is this repository's own file. What it relays came from another
+     origin, and that page checked the origin; what arrives here is
+     checked again for shape, because "a trusted messenger" says nothing
+     about the message.                                                */
+  let embedOpen = null;
+
+  function openEmbedded(part, page){
+    if (embedOpen) return;
+    const back = document.createElement('div');
+    back.className = 'embedwrap';
+    const bar = document.createElement('div');
+    bar.className = 'embedbar';
+    const t = document.createElement('b'); t.textContent = page.label;
+    const note = document.createElement('span'); note.className = 'embednote';
+    const shut = document.createElement('button');
+    shut.textContent = 'Close';
+    const full = document.createElement('a');
+    full.href = page.href; full.target = '_blank'; full.rel = 'noopener';
+    full.textContent = 'open in a tab';
+    bar.append(t, note, full, shut);
+    const fr = document.createElement('iframe');
+    fr.className = 'embedframe';
+    // ?app= on the shop carries through to the embedded page, which is
+    // the only way to try a change to a framed app before publishing it:
+    // the page frames a remote URL, so running the shop locally does not
+    // make the framed app local. The embedded page decides whether to
+    // honour it -- it refuses anything but a loopback address -- so this
+    // passes it along rather than keeping a second copy of that rule.
+    const dev = new URLSearchParams(location.search).get('app');
+    fr.src = page.href + (dev ? (page.href.includes('?') ? '&' : '?')
+                                + 'app=' + encodeURIComponent(dev) : '');
+    fr.title = page.label;
+    if (dev) note.textContent = 'framing ' + dev;
+    back.append(bar, fr);
+    document.body.append(back);
+    document.body.style.overflow = 'hidden';
+
+    const onMsg = (e) => {
+      if (e.origin !== location.origin) return;
+      const m = e.data;
+      if (!m || m.type !== 'sphere:landed') return;
+      if (typeof m.file !== 'string') return;
+      landed(part, m, applyDials(part.id, m.params));
+      close();
+    };
+    window.addEventListener('message', onMsg);
+
+    function close(){
+      window.removeEventListener('message', onMsg);
+      back.remove();
+      document.body.style.overflow = '';
+      embedOpen = null;
+    }
+    shut.onclick = close;
+    const esc = e => { if (e.key === 'Escape'){ close();
+                                                window.removeEventListener('keydown', esc); } };
+    window.addEventListener('keydown', esc);
+    embedOpen = close;
+  }
+
+  /* What came back, said on the card. The dials have already moved; this
+     is the file itself, which the shop can hand to the slicer. */
+  function landed(part, m, applied){
+    const card = document.querySelector(
+      '.card[data-id="' + part.id.replace(/"/g, '\\"') + '"]');
+    const line = document.createElement('div');
+    line.className = 'landed';
+    const kb = Math.round((m.bytes || 0) / 1024);
+    const {took, left} = applied;
+    line.textContent = `built in the simulator \u2014 ${m.file} \u00b7 ${kb} KB`
+      + (took.length ? `  \u00b7  ${took.join(', ')} set from it` : '')
+      // Saying which values did NOT carry is the difference between "the
+      // configuration came back" and a claim you cannot check. This card
+      // does not offer every dial the simulator does.
+      + (left.length ? `  \u00b7  no dial here for ${left.join(', ')}` : '');
+    const go = document.createElement('button');
+    go.textContent = 'Open in Bambu Studio';
+    go.onclick = async () => {
+      go.disabled = true;
+      try {
+        const r = await fetch('/open?f=' + encodeURIComponent(m.file));
+        const d = await r.json();
+        line.append(' \u2014 ' + (d.ok ? 'opened in ' + d.app
+                                        : (d.error || 'could not open')));
+        go.remove();
+      } finally { go.disabled = false; }
+    };
+    line.append(' ', go);
+    if (card) {
+      const old = card.querySelector('.landed'); if (old) old.remove();
+      (card.querySelector('.cardfoot') || card).after(line);
+      card.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+    }
   }
 
   cat = await (await fetch('/shop/catalog')).json();
@@ -2105,6 +2271,15 @@ renderer.setAnimationLoop(animate);
     for (const u of (p.pages || [])){
       const a = document.createElement('a');
       a.className = 'pagelink'; a.href = u.href; a.textContent = u.label + ' \u2192';
+      // An embedded page opens OVER the shop rather than replacing it.
+      // Navigating away lost which cards were showing and came back to the
+      // full list, and a configuration handed back from the page had
+      // nothing left on screen to land on. The href stays real so
+      // cmd-click and "open in new tab" still work.
+      if (u.embed) a.onclick = e => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+        e.preventDefault(); openEmbedded(p, u);
+      };
       foot.append(a);
     }
     foot.append(plateButton(p));

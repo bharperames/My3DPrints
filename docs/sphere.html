@@ -44,12 +44,20 @@
   #tray.on { display:block; }
   #tray h3 { margin:0 0 6px; font-size:14px; }
   #tray .f { font-size:13px; color:var(--ink-soft); overflow-wrap:anywhere; }
+  #tray .dials { font-size:12.5px; color:var(--ink-soft); margin-top:5px;
+    font-variant-numeric:tabular-nums; }
   #tray .row { display:flex; gap:8px; margin-top:10px; align-items:center; }
   #tray button { font:inherit; font-size:13px; padding:6px 11px; border-radius:6px;
     border:1px solid var(--line); background:var(--surface-2); color:var(--ink); cursor:pointer; }
   #tray button.go { background:var(--accent); color:#fff; border-color:var(--accent); }
   #tray .err { color:var(--risk); font-size:13px; }
   #tray .x { margin-left:auto; border:0; background:none; color:var(--ink-soft); }
+
+  /* Inside the shop's overlay the app is the whole point: this page's own
+     header and its "back to the shop" link would be a second set of
+     chrome around something already framed. */
+  .in-shop header { display:none; }
+  .in-shop #app { height:100vh; }
 </style>
 </head>
 <body>
@@ -62,7 +70,7 @@
 </header>
 
 <iframe id="app" title="Sphere Stand Generator"
-        src="https://bharperames.github.io/StandMaker/"></iframe>
+        data-src="https://bharperames.github.io/StandMaker/"></iframe>
 
 <div id="down">
   <h2>The Sphere Simulator did not load.</h2>
@@ -78,6 +86,7 @@
 <div id="tray" role="status" aria-live="polite">
   <h3 id="tray-h">Sent to the print shop</h3>
   <div class="f" id="tray-f"></div>
+  <div class="dials" id="tray-d"></div>
   <div class="row" id="tray-row">
     <button class="go" id="tray-open">Open in Bambu Studio</button>
     <button class="x" id="tray-x" aria-label="dismiss">dismiss</button>
@@ -85,20 +94,85 @@
 </div>
 
 <script>
+/* ---------------- which copy of the app to frame ---------------------
+   Normally the published one. ?app=<origin> frames a local copy instead,
+   which is the only way to try a change to the app before pushing it --
+   the shop frames a remote URL, so running the shop locally does not
+   make the framed app local.
+
+   Local ONLY, and deliberately so. This page answers a hello with a
+   message the app treats as permission to send geometry, and it POSTs
+   whatever comes back to the shop's own /shop/receive. A link that could
+   aim that at any origin would be a link that makes this page fetch a
+   stranger's file and write it into models/. A loopback host cannot be
+   handed to someone else in a URL and mean anything on their machine. */
+const PUBLISHED = document.getElementById('app').dataset.src;
+
+function framed() {
+  const want = new URLSearchParams(location.search).get('app');
+  if (!want) return { url: PUBLISHED, local: false };
+  let u;
+  try { u = new URL(want, location.href); } catch { return { url: PUBLISHED, local: false, bad: want }; }
+  const local = (u.hostname === 'localhost' || u.hostname === '127.0.0.1'
+                 || u.hostname === '[::1]' || u.hostname === '::1'
+                 || u.hostname.endsWith('.localhost'));
+  if (!local || !/^https?:$/.test(u.protocol)) {
+    return { url: PUBLISHED, local: false, bad: want };
+  }
+  return { url: u.href, local: true };
+}
+
+const pick = framed();
+document.getElementById('app').src = pick.url;
+if (pick.local) {
+  const n = document.createElement('span');
+  n.className = 'sub';
+  n.textContent = '\u00b7 framing a local copy: ' + pick.url;
+  document.querySelector('header .sub').after(n);
+} else if (pick.bad) {
+  const n = document.createElement('span');
+  n.className = 'sub';
+  n.style.color = 'var(--risk)';
+  n.textContent = '\u00b7 ignored ?app=' + pick.bad + ' \u2014 only a local address may be framed';
+  document.querySelector('header .sub').after(n);
+}
+
 /* A cross-origin frame fires `load` whether it rendered the app or an
    error page, so `onload` cannot tell us anything. GitHub Pages sends
    access-control-allow-origin: *, which means the page itself can be
    fetched and checked. If that fails, the frame would be showing a blank
    or an error, so the explanation replaces it rather than sitting under
    it where nobody scrolls. */
-const SRC = document.getElementById('app').src;
+const SRC = pick.url;
 document.getElementById('url').textContent = SRC;
-fetch(SRC, { method:'HEAD', cache:'no-store' })
-  .then(r => { if (!r.ok) throw new Error(r.status); })
-  .catch(() => {
-    document.getElementById('app').remove();
-    document.getElementById('down').classList.add('on');
-  });
+/* Only the published URL is probed. GitHub Pages sends
+   access-control-allow-origin: *, which is what makes the probe possible;
+   a local dev server sends no CORS header at all, so probing a ?app=
+   override rejects on principle and would report a working app as down --
+   which is exactly what it did the first time it was tried. */
+if (!pick.local) {
+  fetch(SRC, { method:'HEAD', cache:'no-store' })
+    .then(r => { if (!r.ok) throw new Error(r.status); })
+    .catch(() => {
+      document.getElementById('app')?.remove();
+      document.getElementById('down').classList.add('on');
+    });
+}
+
+/* ---------------- framed by the shop itself --------------------------
+   The shop opens this page in an overlay so the card never leaves the
+   screen. In that case the result belongs on the card, not in a tray
+   floating over it, and the shop is same-origin -- so the job is relayed
+   up and the tray stays out of the way.
+
+   This keeps ONE place naming the app's URL and ONE implementation of
+   the handshake, instead of the shop growing a second copy of both. */
+const inShop = (() => {
+  try { return window.parent !== window
+           && window.parent.location.origin === location.origin; }
+  catch (e) { return false; }      // a cross-origin parent is not the shop
+})();
+if (inShop) document.documentElement.classList.add('in-shop');
 
 /* ---------------- receiving a print job ------------------------------
    The app builds the 3MF in the browser. Framed, it hands the bytes over
@@ -114,6 +188,7 @@ const trayH = document.getElementById('tray-h');
 const trayF = document.getElementById('tray-f');
 const trayRow = document.getElementById('tray-row');
 const openBtn = document.getElementById('tray-open');
+const trayD = document.getElementById('tray-d');
 let received = null;
 
 document.getElementById('tray-x').onclick = () => tray.classList.remove('on');
@@ -134,8 +209,21 @@ window.addEventListener('message', (e) => {
   if (m.type === 'sphere:job') hand(m);
 });
 
+/* The app sends the dials it built with. Showing them is the difference
+   between a file appearing in the shop and knowing what it is -- the
+   filename carries only the ball size. Values are millimeters: the app
+   keeps its geometry in mm whatever unit it is displaying. */
+function dials(p) {
+  if (!p) return '';
+  const mm = v => (typeof v === 'number' ? (+v.toFixed(2)) + '' : '?');
+  return ['ball \u00d8' + mm(p.ball), 'base \u00d8' + mm(p.base),
+          'wall ' + mm(p.wall), 'chamfer ' + mm(p.chamfer),
+          'seat ' + mm(p.seat)].join('  \u00b7  ') + '  mm';
+}
+
 async function hand(job) {
   const name = String(job.filename || 'sphere_stand.3mf');
+  trayD.textContent = dials(job.params);
   tray.classList.add('on');
   trayH.textContent = 'Saving to the shop\u2026';
   trayF.textContent = name;
@@ -149,6 +237,12 @@ async function hand(job) {
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || r.status);
     received = d;
+    if (inShop) {
+      // the card is behind this overlay and is the right place for it
+      window.parent.postMessage({ type: 'sphere:landed', file: d.file,
+        bytes: d.bytes, params: job.params || null }, location.origin);
+      return;
+    }
     trayH.textContent = 'In the shop';
     trayF.textContent = d.file + '  \u00b7  ' + (d.bytes / 1024).toFixed(0) + ' KB';
     trayRow.style.display = 'flex';

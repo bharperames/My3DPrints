@@ -247,6 +247,33 @@ class TestTheEmbeddedAppIsReachable(unittest.TestCase):
         self.assertEqual(out, "")
         self.assertFalse(os.path.exists(os.path.join(ROOT, "apps")))
 
+    def test_the_simulator_opens_over_the_shop_not_instead_of_it(self):
+        """Navigating away lost the card. The page is opened in an overlay,
+        which only happens if the catalog marks it and the template reads
+        the mark."""
+        page = next(pg for p in catalog.PARTS if p["id"] == "sphere_stand"
+                    for pg in p["pages"])
+        self.assertTrue(page.get("embed"), "the page is no longer embedded")
+        tpl = os.path.join(ROOT, "tools", "template_local.html")
+        with open(tpl) as fh:
+            t = fh.read()
+        self.assertIn("u.embed", t)
+        self.assertIn("openEmbedded", t)
+
+    def test_a_dial_set_from_a_framed_app_is_set_in_millimeters(self):
+        """The one bug here that mm testing cannot see.
+
+        commit() takes what a PERSON typed, so it converts from the unit on
+        screen. A framed app sends millimeters. Wired to commit(), a
+        returned ball of 50 mm lands as 50 mm with the shop in mm and as
+        1270 mm -- clamped to the dial's ceiling -- with it in inches.
+        """
+        tpl = os.path.join(ROOT, "tools", "template_local.html")
+        with open(tpl) as fh:
+            t = fh.read()
+        self.assertIn("_commit = setNative", t)
+        self.assertNotIn("_commit = commit", t)
+
     @unittest.skipUnless(os.environ.get("NET_TESTS"),
                          "set NET_TESTS=1 to reach the network")
     def test_the_published_app_answers(self):
