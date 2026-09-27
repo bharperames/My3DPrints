@@ -672,8 +672,27 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(500, {"ok": False, "error": f"{type(e).__name__}: {e}"})
 
     def log_message(self, fmt, *args):
-        if "/open" in (args[0] if args else ""):
-            sys.stderr.write(fmt % args + "\n")
+        """Quiet by default: the slicer handoff, and real failures.
+
+        This used to test `"/open" in args[0]`, and log_error() calls it
+        with an HTTPStatus there rather than a string -- so `in` raised
+        TypeError, from inside send_error(), before the response was
+        written. The connection was dropped instead. EVERY missing file on
+        this server answered like a server that had gone away, which the
+        card's own error handler reports as "no answer -- restart the
+        server": a 404 reading as a dead shop.
+
+        So: format first (HTTPStatus is an int, so %d is fine), then
+        decide, and never let logging be the thing that fails a request.
+        Errors are logged now too -- a silent 404 is what made this
+        invisible for a month.
+        """
+        try:
+            line = fmt % args if args else str(fmt)
+        except Exception:                                   # noqa: BLE001
+            line = str(fmt)
+        if "/open" in line or line.startswith("code "):
+            sys.stderr.write(line + "\n")
 
 
 if __name__ == "__main__":

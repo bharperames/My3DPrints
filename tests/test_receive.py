@@ -148,6 +148,43 @@ class TestReceiveWritesOnlyWhereItShould(unittest.TestCase):
         self.assertEqual(code, 200, d)
         self.assertEqual(d["file"], "custom/ball.stl")
 
+    # ---- a missing file must answer, not drop the connection ----------
+    #
+    # log_message was overridden to print only the slicer handoff, and it
+    # tested `"/open" in args[0]` -- but log_error() passes an HTTPStatus
+    # there, so `in` raised TypeError from inside send_error(), before the
+    # response was written. The socket closed instead. Every missing file
+    # on this server answered like a server that had gone away, and the
+    # card's own error handler reads that as "no answer -- restart the
+    # server": a 404 reading as a dead shop.
+
+    def test_a_missing_path_gets_a_status_not_a_closed_socket(self):
+        import http.client
+        # deliberately absent paths of a few shapes: a bare file, one
+        # under a directory that DOES exist, one under docs/, one nested
+        for path in ("/nope.txt", "/assets/not-a-real-texture.jpeg",
+                     "/docs/nothing.html", "/models/glb/nope/x.glb"):
+            c = http.client.HTTPConnection("127.0.0.1", PORT, timeout=20)
+            try:
+                c.request("GET", path)
+                self.assertEqual(c.getresponse().status, 404, path)
+            except (http.client.RemoteDisconnected, ConnectionResetError) as e:
+                self.fail(f"{path}: connection dropped instead of 404 ({e})")
+            finally:
+                c.close()
+
+    def test_a_path_that_exists_is_still_served(self):
+        """The control: proving 404s answer is worthless if nothing does."""
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", PORT, timeout=20)
+        try:
+            c.request("GET", "/docs/sphere.html")
+            r = c.getresponse()
+            self.assertEqual(r.status, 200)
+            self.assertIn(b"StandMaker", r.read())
+        finally:
+            c.close()
+
 
 if __name__ == "__main__":
     unittest.main()
