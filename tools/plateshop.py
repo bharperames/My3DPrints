@@ -6,10 +6,12 @@ disk; the packer measures its footprint, lays the copies out on as many
 plates as it takes, and writes each plate as its own Bambu project, zipped
 together.
 
-Packing is MaxRects best-short-side-fit, ported from KlipKlopMaker's
-js/plate_pack.js: largest area first, 0/90 rotation, one fresh bin per
-plate with leftovers rolling onto the next. It is deterministic, so the
-same order always produces the same layout.
+Packing is by footprint, not bounding box: each piece's outline, seen
+from above, is rasterized and slid to the lowest free spot on the plate,
+largest first, one fresh plate at a time with leftovers rolling onto the
+next. Outlines keep GAP between them, so hexes nest into a honeycomb and a
+nut can sit in the notch beside a bracket. It is deterministic, so the same
+order always produces the same layout.
 
 Nothing is packed that has not been measured, and a part that cannot fit
 the bed in either orientation is refused by name rather than silently
@@ -25,16 +27,22 @@ import trimesh
 
 import catalog
 
-# Packing constants and algorithm are ported from KlipKlopMaker's
-# js/plate_pack.js, which is field-tested on this same printer: MaxRects with
-# best-short-side-fit, largest-area-first, 0/90 rotation. Shelf packing was
-# the first cut here and wastes noticeably more on mixed part sizes.
-MARGIN = 5.0        # inset from every plate edge -> 246 x 246 usable
-# Between parts; items are inflated by it, then deflated. 3 mm suits a plate
-# of mixed shapes, some of them brimmed. A design that knows better says so:
-# a part carrying its own `gap` uses that instead, which is how thirty-two
-# ø39 discs make one plate (six 41 mm cells across the 246) rather than two.
-GAP = 3.0
+# Measured off a plate Brett arranged in Bambu Studio 2.08 (22 Tinker Set
+# pieces, 2026-09-29): Studio packs by OUTLINE -- hex heads sat in a
+# honeycomb, flat to flat, their bounding boxes overlapping by 5 mm -- with
+# 2.0 mm between outlines everywhere (hex to hex, 1x4 to 1x4, bracket to
+# bracket) and about 3 mm to the bed edge. It rotated nothing, and its own
+# auto-rotate packs worse (Brett). The shop's MaxRects on bounding boxes,
+# ported from KlipKlopMaker, needed a card's gap cut to fit 20 of those 22.
+MARGIN = 3.0        # outline to bed edge
+GAP = 2.0           # outline to outline. A design that knows better says
+                    # so: a part carrying its own `gap` uses that instead.
+RES = 0.5           # mm per raster cell. Outlines are rasterized
+                    # conservatively, so gaps come out at GAP or a little
+                    # over, never under.
+HULL_ABOVE = 300_000  # faces: past this the true outline costs seconds
+                      # (6.5 s on an 870k-face library body), so the
+                      # convex hull stands in for it
 # The brim a single piece gets when its card asks for one on that piece
 # alone (`brim_bodies`): a tall part in a set of short ones. Plate-wide
 # brims stay the default; this rides on the plate as a per-object setting.
@@ -42,55 +50,36 @@ PIECE_BRIM = {"brim_type": "outer_only", "brim_width": "5",
               "brim_object_gap": "0"}
 
 
-class MaxRects:
-    """Free-rectangle bin. Splits on place, prunes contained rects."""
+def _shape(it):
+    """The piece's outline, centered on its bounding-box center.
 
-    def __init__(self, w, d):
-        self.free = [dict(x=0.0, y=0.0, w=w, d=d)]
+    Items from an order carry their real outline; anything else -- a test,
+    an older caller -- is packed as the rectangle its w and d describe.
+    """
+    from shapely.geometry import box
+    o = it.get("outline")
+    if o is None:
+        return box(-it["w"] / 2, -it["d"] / 2, it["w"] / 2, it["d"] / 2)
+    return o
 
-    def find(self, w, d, rotate=True):
-        best = None
-        for f in self.free:
-            for pw, pd, rot in ((w, d, 0), (d, w, 90)) if rotate else ((w, d, 0),):
-                if pw > f["w"] + 1e-9 or pd > f["d"] + 1e-9:
-                    continue
-                short = min(f["w"] - pw, f["d"] - pd)
-                long_ = max(f["w"] - pw, f["d"] - pd)
-                if best is None or (short, long_) < (best["short"], best["long"]):
-                    best = dict(x=f["x"], y=f["y"], w=pw, d=pd, rot=rot,
-                                short=short, long=long_)
-        return best
 
-    def place(self, r):
-        out = []
-        for f in self.free:
-            if (r["x"] >= f["x"] + f["w"] - 1e-9
-                    or r["x"] + r["w"] <= f["x"] + 1e-9
-                    or r["y"] >= f["y"] + f["d"] - 1e-9
-                    or r["y"] + r["d"] <= f["y"] + 1e-9):
-                out.append(f)
-                continue
-            if r["x"] > f["x"]:
-                out.append(dict(f, w=r["x"] - f["x"]))
-            if r["x"] + r["w"] < f["x"] + f["w"]:
-                out.append(dict(f, x=r["x"] + r["w"],
-                                w=f["x"] + f["w"] - (r["x"] + r["w"])))
-            if r["y"] > f["y"]:
-                out.append(dict(f, d=r["y"] - f["y"]))
-            if r["y"] + r["d"] < f["y"] + f["d"]:
-                out.append(dict(f, y=r["y"] + r["d"],
-                                d=f["y"] + f["d"] - (r["y"] + r["d"])))
-        # prune: without this the free list grows without bound
-        keep = []
-        for i, a in enumerate(out):
-            if not any(i != j and a["x"] >= b["x"] - 1e-9
-                       and a["y"] >= b["y"] - 1e-9
-                       and a["x"] + a["w"] <= b["x"] + b["w"] + 1e-9
-                       and a["y"] + a["d"] <= b["y"] + b["d"] + 1e-9
-                       for j, b in enumerate(out)):
-                keep.append(a)
-        self.free = keep
-        return r
+def _raster(shape, rot, grow):
+    """Cells a rotated, grown outline touches, and where its center lands.
+
+    Conservative: a cell counts if the outline reaches any part of it, so
+    two rasters that do not overlap are at least `grow` apart for real.
+    """
+    import shapely
+    from shapely import affinity
+    g = affinity.rotate(shape, rot, origin=(0, 0)) if rot else shape
+    g = g.buffer(grow + RES * 0.7072, join_style=1)
+    x0, y0, x1, y1 = g.bounds
+    x0, y0 = np.floor(x0 / RES) * RES, np.floor(y0 / RES) * RES
+    nx, ny = int(np.ceil((x1 - x0) / RES)), int(np.ceil((y1 - y0) / RES))
+    X, Y = np.meshgrid(x0 + (np.arange(nx) + 0.5) * RES,
+                       y0 + (np.arange(ny) + 0.5) * RES)
+    mask = shapely.contains_xy(g, X, Y)
+    return mask, (-x0 / RES, -y0 / RES)
 
 
 def pack(items, bed=(256.0, 256.0), height=256.0, margin=MARGIN, gap=GAP,
@@ -98,23 +87,37 @@ def pack(items, bed=(256.0, 256.0), height=256.0, margin=MARGIN, gap=GAP,
     """Pack per-copy items onto plates.
 
     Returns (plates, oversized). Coordinates are plate-centered, which is
-    what a 3MF build item wants. Oversized parts are refused by name and
-    reason rather than dropped off the edge.
+    what a 3MF build item wants, and name the center of the piece's
+    bounding box. Oversized parts are refused by name and reason rather
+    than dropped off the edge.
+
+    A piece is placed as it was drawn. It is turned 90 degrees only when
+    that is the only way it fits the bed at all.
     """
-    uw, ud = bed[0] - 2 * margin, bed[1] - 2 * margin
+    from scipy.signal import fftconvolve
+    bw, bd = bed
+    # the raster spans the bed less the margin, plus the half-gap every
+    # outline is grown by: an outline then stays `margin` from the edge
+    inset = max(0.0, margin - gap / 2)
+    W = int(np.floor((bw - 2 * inset) / RES))
+    D = int(np.floor((bd - 2 * inset) / RES))
     queue, oversized = [], []
     for it in items:
         g = gap if it.get("gap") is None else float(it["gap"])
-        w, d = it["w"] + g, it["d"] + g
-        fits = (w <= uw + 1e-9 and d <= ud + 1e-9) or (
-            rotate and d <= uw + 1e-9 and w <= ud + 1e-9)
-        if not fits:
+        shape = _shape(it)
+        opts = []
+        for rot in ((0, 90) if rotate else (0,)):
+            mask, off = _raster(shape, rot, g / 2)
+            if mask.shape[0] <= D and mask.shape[1] <= W:
+                opts.append((rot, mask, off))
+                break           # drawn orientation first; 90 only to rescue
+        if not opts:
             oversized.append(dict(it, reason="footprint"))
         elif it.get("h", 0) > height + 1e-9:
             oversized.append(dict(it, reason="height"))
         else:
-            queue.append(dict(it, w=w, d=d, gap=g))
-    queue.sort(key=lambda i: (-(i["w"] * i["d"]), -max(i["w"], i["d"]),
+            queue.append(dict(it, gap=g, _opts=opts, _area=shape.area))
+    queue.sort(key=lambda i: (-i["_area"], -max(i["w"], i["d"]),
                               str(i["key"])))
     groups, order = {}, []
     for it in queue:
@@ -123,33 +126,41 @@ def pack(items, bed=(256.0, 256.0), height=256.0, margin=MARGIN, gap=GAP,
             groups[g] = []
             order.append(g)
         groups[g].append(it)
+    usable = (bw - 2 * margin) * (bd - 2 * margin)
     plates = []
     for g in order:
         remaining = groups[g]
         while remaining:
-            bin_ = MaxRects(uw, ud)
+            occ = np.zeros((D, W), np.float32)
             placed, leftover = [], []
             for it in remaining:
-                spot = bin_.find(it["w"], it["d"], rotate)
-                if spot is None:
+                rot, mask, (ox, oy) = it["_opts"][0]
+                mh, mw = mask.shape
+                if occ.any():
+                    hit = fftconvolve(occ, mask[::-1, ::-1].astype(
+                        np.float32), mode="valid")
+                    free = np.argwhere(hit < 0.5)
+                else:
+                    free = np.array([[0, 0]])
+                if not len(free):
                     leftover.append(it)
                     continue
-                bin_.place(spot)
-                # pw/pd are the footprint AS PLACED, so they swap with a
-                # 90 deg rotation. Reporting the unrotated pair (which the
-                # reference implementation does) leaves x/y describing one
-                # box and w/d another, and any preview drawn from them puts
-                # rotated parts through their neighbors.
+                # lowest row, then leftmost: argwhere is row-major already
+                r, c = (int(v) for v in free[0])
+                occ[r:r + mh, c:c + mw] = np.maximum(
+                    occ[r:r + mh, c:c + mw], mask)
+                pw, pd = ((it["d"], it["w"]) if rot == 90
+                          else (it["w"], it["d"]))
+                out = {k: v for k, v in it.items() if not k.startswith("_")}
                 placed.append(dict(
-                    it, rot=spot["rot"], pw=spot["w"] - it["gap"],
-                    pd=spot["d"] - it["gap"],
-                    x=spot["x"] + spot["w"] / 2 - uw / 2,
-                    y=spot["y"] + spot["d"] / 2 - ud / 2))
+                    out, rot=rot, pw=pw, pd=pd,
+                    x=inset + (c + ox) * RES - bw / 2,
+                    y=inset + (r + oy) * RES - bd / 2))
             if not placed:
                 break
-            used = sum(p["pw"] * p["pd"] for p in placed)
+            used = sum(_shape(p).area for p in placed)
             plates.append(dict(index=len(plates) + 1, group=g, items=placed,
-                               used=used, util=used / (uw * ud)))
+                               used=used, util=used / usable))
             remaining = leftover
     return plates, oversized
 
@@ -224,6 +235,50 @@ def pieces(path):
     return [[gk] for gk, _ in bodies]
 
 
+_FOOT = {}
+
+
+def footprint(path, keys):
+    """A piece's outline from above, holes filled, in world XY.
+
+    Holes are filled because nothing should be packed inside a plate's
+    bolt hole. Cached like the bodies, on the file's size and mtime.
+    """
+    from shapely.geometry import MultiPoint, Polygon
+    from shapely.ops import unary_union
+    from trimesh.path.polygons import projected
+    try:
+        st = os.stat(path)
+        key = (path, st.st_size, int(st.st_mtime), tuple(sorted(keys)))
+    except OSError:
+        key = None
+    if key in _FOOT:
+        return _FOOT[key]
+    polys = []
+    for gk, g in load_bodies(path):
+        if keys and gk not in keys:
+            continue
+        p = None
+        if len(g.faces) <= HULL_ABOVE:
+            try:
+                # precise: the default traces a raster, and on the double
+                # bolt it lost the collar entirely -- a 40 x 34 outline
+                # off-center on a 38 x 33 hex, which let a nut into its brim
+                p = projected(g, normal=[0, 0, 1], precise=True)
+            except Exception:                              # noqa: BLE001
+                p = None
+        if p is None or p.is_empty:
+            p = MultiPoint(g.vertices[:, :2]).convex_hull
+        polys.append(p)
+    u = unary_union(polys)
+    out = unary_union([Polygon(q.exterior)
+                       for q in getattr(u, "geoms", [u])
+                       if q.geom_type == "Polygon"])
+    if key is not None:
+        _FOOT[key] = out
+    return out
+
+
 def _extent(bodies, keys):
     sel = [g for gk, g in bodies if gk in keys]
     lo = np.min([g.bounds[0] for g in sel], axis=0)
@@ -277,6 +332,24 @@ def order_items(order):
                     else "off")
         for i in range(int(line.get("qty", 1))):
             for j, keys in enumerate(groups):
+                pb = (any(k.startswith(tuple(part["brim_bodies"]))
+                          for k in keys) if part.get("brim_bodies")
+                      else False)
+                ext = _extent(bodies, set(keys))
+                from shapely import affinity
+                fp = footprint(path, set(keys))
+                lo = np.min([g.bounds[0] for gk, g in bodies
+                             if gk in set(keys)], axis=0)
+                hi = np.max([g.bounds[1] for gk, g in bodies
+                             if gk in set(keys)], axis=0)
+                fp = affinity.translate(fp, -(lo[0] + hi[0]) / 2,
+                                        -(lo[1] + hi[1]) / 2)
+                if pb:
+                    # a piece's own brim is part of its footprint: packed
+                    # at the bare body, a 5 mm brim runs into neighbors a
+                    # 2 mm gap away
+                    fp = fp.buffer(float(PIECE_BRIM["brim_width"]),
+                                   join_style=1)
                 items.append(dict(
                     key=part["id"], path=path, copy=i, bodies=keys,
                     name=(part["name"] if one
@@ -284,11 +357,9 @@ def order_items(order):
                     assembly=one, brim=brim, gap=part.get("gap"),
                     # a piece that asks for its own brim, on a plate that
                     # has none: `brim_bodies` names body prefixes
-                    piece_brim=any(k.startswith(tuple(part.get(
-                        "brim_bodies") or ())) for k in keys)
-                    if part.get("brim_bodies") else False,
+                    piece_brim=pb, outline=fp,
                     group=("brim" if brim == "on" else ""),
-                    **_extent(bodies, set(keys))))
+                    **ext))
     return items, reports
 
 

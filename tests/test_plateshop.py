@@ -4,6 +4,8 @@ import os
 import sys
 import unittest
 
+import numpy as np
+
 TOOLS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools")
 PY = sys.executable
 sys.path.insert(0, TOOLS)
@@ -75,6 +77,31 @@ class TestPacker(unittest.TestCase):
         two = PS.pack(items(*spec))[0]
         self.assertEqual(json.dumps(one, sort_keys=True, default=str),
                          json.dumps(two, sort_keys=True, default=str))
+
+    def test_outlines_nest_where_boxes_would_not(self):
+        """Hexagons pack as a honeycomb: some neighbors' bounding boxes
+        overlap while their outlines keep the gap -- which a bounding-box
+        packer can never produce."""
+        from shapely import affinity
+        from shapely.geometry import Polygon
+        a = np.radians(np.arange(6) * 60.0)
+        hexagon = Polygon(np.column_stack([19.0 * np.cos(a),
+                                           19.0 * np.sin(a)]))
+        its = items(*[("hex", 38.0, 32.9)] * 24)
+        for it in its:
+            it["outline"] = hexagon
+        plates, over = PS.pack(its)
+        self.assertEqual((len(plates), over), (1, []))
+        placed = [affinity.translate(hexagon, i["x"], i["y"])
+                  for i in plates[0]["items"]]
+        closest = min(p.distance(q) for n, p in enumerate(placed)
+                      for q in placed[n + 1:])
+        self.assertGreaterEqual(closest, PS.GAP - 1e-6)
+        boxes_overlap = any(
+            p.bounds[0] < q.bounds[2] and q.bounds[0] < p.bounds[2]
+            and p.bounds[1] < q.bounds[3] and q.bounds[1] < p.bounds[3]
+            for n, p in enumerate(placed) for q in placed[n + 1:])
+        self.assertTrue(boxes_overlap, "nothing nested: packed as boxes")
 
     def test_groups_do_not_share_a_plate(self):
         its = items(("a", 40, 40), ("b", 40, 40))
