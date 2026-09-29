@@ -309,47 +309,58 @@ PARTS = [
                 max=20, step=1, val=12)],
        out="knot-bolted-T{thread:g}.3mf"),
     _p("tinker_set", "Tinker Set", "Designed here", "parametric",
-       "A construction set on the Knot's thread: bolts, nuts and plates to "
-       "build with, about a third the size of the Montessori set. Plates "
-       "are 8 mm thick with holes on a 20 mm grid, and a bolt head and a "
-       "nut are each one plate tall. A bolt is named for what it grips: "
-       "B2 holds two plates and a nut, B4 holds four. "
+       "A construction set of bolts, nuts and plates, sized so that no "
+       "piece is a small part: every piece is wider than the 31.7 mm "
+       "small-parts test cylinder whichever way it is turned. The nut sets "
+       "that size, at 37 mm across its narrowest view, which makes this "
+       "two thirds of the Montessori set. Plates are 16 mm thick with holes "
+       "on a 40 mm grid, and a bolt head and a nut are each one plate "
+       "tall. A bolt is named for what it grips: B2 holds two plates and a "
+       "nut, B4 holds four. "
        "The plate holes are plain, never threaded, so plates stack in any "
        "orientation and either side up; the thread lives only in the "
        "nuts, couplers and wing nuts that clamp them. Two nuts on "
-       "neighboring holes both turn. "
-       "Ø12 thread, 4 mm lead, 0.30 mm on the thread and 0.50 mm in the "
-       "holes -- the clearances the Knot proved. Every nut's bed-side "
-       "mouth is a true 45° cone, so no ceiling hangs across the hole. "
-       "Set the count of each piece; the generator packs them onto one "
-       "plate and says so if they do not fit. PETG: these are threads "
-       "turned by hand.",
-       version="0.1.0",
+       "neighboring holes both turn. The double bolt's collar seats in a "
+       "plate hole like a countersunk head. "
+       "Ø24 thread on an 8 mm lead, 0.30 mm on the thread and 0.50 mm in "
+       "the holes. Every nut's bed-side mouth is a true 45° cone, so no "
+       "ceiling hangs across the hole. "
+       "Set the count of each piece; the shop packs them onto as many "
+       "plates as they take; the defaults are one plate. PETG: these are "
+       "threads turned by hand. Designed against the small-parts test, "
+       "not certified to it.",
+       proven="Printed in PETG at this size and the parts work well: the "
+              "thread, the nuts, the plain holes and the bracket.",
+       # 1.0.0: twice the size, so no piece is a small part. Nothing fits
+       # the 0.x pieces, which is what a major version says.
+       version="1.0.0",
        # the shop splits the set into pieces and packs them itself; only
-       # the double bolt, 40 mm tall on the end of its thread, is brimmed
+       # the double bolt, 80 mm tall on the end of its thread, is brimmed
        brim="off", brim_bodies=["double_bolt"],
        gen=["gen_tinker.py"], params=[
            # keys and defaults mirror gen_tinker.SET; tests/test_tinker.py
            # holds the two lists together
-           dict(key="p2x4", label="2×4 plate", min=0, max=12, step=1, val=2),
-           dict(key="p2x2", label="2×2 plate", min=0, max=20, step=1, val=2),
-           dict(key="p1x4", label="1×4 plate", min=0, max=20, step=1, val=3),
-           dict(key="p1x2", label="1×2 plate", min=0, max=30, step=1, val=4),
+           dict(key="p2x4", label="2×4 plate", min=0, max=12, step=1, val=0),
+           dict(key="p2x2", label="2×2 plate", min=0, max=20, step=1, val=0),
+           dict(key="p1x4", label="1×4 plate", min=0, max=20, step=1, val=2),
+           dict(key="p1x2", label="1×2 plate", min=0, max=30, step=1, val=2),
            dict(key="bracket", label="L-bracket", min=0, max=20, step=1,
                 val=2),
-           dict(key="wheel", label="wheel", min=0, max=20, step=1, val=2),
-           dict(key="b1", label="B1 bolt", min=0, max=40, step=1, val=2),
-           dict(key="b2", label="B2 bolt", min=0, max=40, step=1, val=10),
-           dict(key="b3", label="B3 bolt", min=0, max=40, step=1, val=5),
-           dict(key="b4", label="B4 bolt", min=0, max=40, step=1, val=5),
+           dict(key="wheel", label="wheel", min=0, max=20, step=1, val=0),
+           dict(key="b1", label="B1 bolt", min=0, max=40, step=1, val=1),
+           dict(key="b2", label="B2 bolt", min=0, max=40, step=1, val=4),
+           dict(key="b3", label="B3 bolt", min=0, max=40, step=1, val=1),
+           dict(key="b4", label="B4 bolt", min=0, max=40, step=1, val=1),
            dict(key="double", label="double bolt", min=0, max=30, step=1,
-                val=3),
+                val=0),
            dict(key="coupler", label="coupler", min=0, max=40, step=1,
-                val=3),
-           dict(key="wing", label="wing nut", min=0, max=40, step=1, val=4),
-           dict(key="nut", label="hex nut", min=0, max=60, step=1, val=24)],
+                val=1),
+           dict(key="wing", label="wing nut", min=0, max=40, step=1, val=1),
+           dict(key="nut", label="hex nut", min=0, max=60, step=1, val=5),
+           dict(key="wrench", label="wrench", min=0, max=6, step=1, val=0)],
        out="tinker-P{p2x4}-{p2x2}-{p1x4}-{p1x2}-L{bracket}-W{wheel}"
-           "-B{b1}-{b2}-{b3}-{b4}-D{double}-C{coupler}-N{wing}-{nut}.3mf"),
+           "-B{b1}-{b2}-{b3}-{b4}-D{double}-C{coupler}-N{wing}-{nut}"
+           "-X{wrench}.3mf"),
     _p("orbital_jig", "Orbital scanning jig", "Designed here", "parametric",
        "A photogrammetry rig that holds the specimen still and moves the "
        "camera. Azimuth on a 242 mm rotor ring riding three 608 "

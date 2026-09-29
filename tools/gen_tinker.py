@@ -1,29 +1,42 @@
 #!/usr/bin/env python3
-"""Tinker set: a construction kit on the Knot's Ø12 thread.
+"""Tinker set: a construction kit on the Montessori thread, sized so that
+no piece is a small part.
 
-About a third the size of the Montessori nuts-and-bolts set, and the same
-thread as the bolted Knot -- Ø12, 4 mm lead, 0.30 mm running clearance --
-because that thread is already printed and proven in PETG. The heads are
-the Knot's 16.6 mm across the flats, so one wrench fits both.
+THE SIZE IS SET BY THE SMALL-PARTS CYLINDER
+
+A part is a small part (16 CFR 1501) if it fits wholly inside a cylinder
+31.7 mm across. So every piece here has to be wider than that in every
+direction it could be turned -- its narrowest shadow, over every view,
+must not fit a 31.7 mm circle. The nut is the piece that sets the size: it
+needs 1.71x the set as first drawn on the Knot's Ø12 thread. SCALE = 2
+gives it 37 mm against 31.7, margin for the printer and for a test that
+samples its views, and round numbers: a Ø24 thread on an 8 mm lead, 16 mm
+plates, a 40 mm grid -- two thirds of the Montessori original.
+tests/test_tinker.py measures every piece against the cylinder.
+
+Everything geometric scales with SCALE except what a printer sets: the
+running clearances (0.30 mm on the thread, 0.50 in a plain hole, as
+proven on the Knot) and the mouth eases and thread fade that exist for
+the first layer.
 
 THE SYSTEM
 
-    U = 8 mm        plate thickness, head height, nut height. Two leads.
-    PITCH = 20 mm   hole grid. A 16.6 hex is 19.2 across the corners, so
-                    two nuts on neighboring holes can both turn.
+    U = 16 mm       plate thickness, head height, nut height. Two leads.
+    PITCH = 40 mm   hole grid. A head is 38.3 across the corners, so two
+                    nuts on neighboring holes can both turn.
     Bn              a bolt that grips n plates plus a nut: shank (n+1)·U.
 
 THE THREAD LIVES ONLY IN WHAT THE TIP REACHES
 
-Plates carry plain Ø13 clearance holes, never thread. Turning a helix about
+Plates carry plain clearance holes, never thread. Turning a helix about
 its axis is the same as sliding it along the axis, so a threaded plate
-turned 90° is a millimeter out of phase with the one under it -- three
+turned 90° is a quarter lead out of phase with the one under it -- many
 times the clearance. Two threaded plates would stack square in only one of
 four orientations and a crossed beam would never go together. With plain
 holes, any stack in any orientation either side up passes a bolt, and the
 nut (hex, wing, or coupler) clamps it.
 
-Usage: gen_tinker.py [--out FILE.3mf]
+Usage: gen_tinker.py [--KEY N ...] [--out FILE.3mf]
 """
 import argparse
 import json
@@ -38,19 +51,30 @@ from shapely.ops import unary_union
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from thread import Thread                                   # noqa: E402
 
-U = 8.0
-PITCH = 20.0
-HEX_AF = 16.6          # the Knot's head: 2 (R + clearance + 2 mm bearing)
-CLEAR_RADIAL = 0.50    # plain bore, as proven in the Knot
+SCALE = 2.0            # see the module docstring: set by the nut
+SMALL_PART_D = 31.7    # mm, the 16 CFR 1501 test cylinder
+U = 8.0 * SCALE
+PITCH = 20.0 * SCALE
+HEX_AF = 16.6 * SCALE  # the Knot's head proportions: 2 (R + 2.3) at 1x
+CLEAR_RADIAL = 0.50    # plain bore, as proven in the Knot; absolute
+HEAD_CHAM = 0.8 * SCALE
+WRENCH_THICK = U - 2 * HEAD_CHAM - 0.4   # inside a head's flat band
+# gen_wrench.build() arguments for this hex; see wrench(). The fit is
+# absolute; the shape scales, and the wall floor with it.
+WRENCH = dict(clr=0.6, box_wall=4.5 * SCALE, jaw_arm=12.5 * SCALE,
+              dims=dict(NUT_CR=HEX_AF / np.sqrt(3), THROAT_FWD=4.0 * SCALE,
+                        JAW_DEPTH=10.0 * SCALE, TIP_CHAM=1.2 * SCALE,
+                        FILLET=3.0 * SCALE, MIN_WALL=2.5 * SCALE,
+                        GRIP_W=16.0 * SCALE))
 RUNOUT = 1.6         # thread fade at each nut face; see threaded_hex
 MOUTH = 0.6            # 45° ease on each hole mouth; the first layer squeezes
-CORNER_R = 3.0
-EDGE_CHAM = 0.8        # top edges; the bottom gets an elephant-foot 0.4
+CORNER_R = 3.0 * SCALE
+EDGE_CHAM = 0.8 * SCALE  # top edges; the bottom gets an elephant-foot 0.4
 BED = 256.0
 GAP = 3.0             # between parts on the plate; Bambu arranges at ~2-3
 BRIM = {"brim_type": "outer_only", "brim_width": "5", "brim_object_gap": "0"}
 
-T = Thread(major_r=6.0, hex_af=HEX_AF, head_h=U, head_cham=0.8)
+T = Thread(major_r=6.0 * SCALE, hex_af=HEX_AF, head_h=U, head_cham=HEAD_CHAM)
 HOLE_R = T.major_r + CLEAR_RADIAL
 
 
@@ -140,7 +164,7 @@ def l_bracket():
                            engine="manifold")
 
 
-def wheel(d=40.0, groove=1.5):
+def wheel(d=40.0 * SCALE, groove=1.5 * SCALE):
     """A disc on a clearance bore, with a V groove for a band tire and four
     windows so it reads as a wheel."""
     h, r = U, d / 2
@@ -152,8 +176,10 @@ def wheel(d=40.0, groove=1.5):
     cuts = [clearance_hole(0, 0, h)]
     for k in range(4):
         a = np.radians(45 + 90 * k)
-        w = trimesh.creation.cylinder(radius=4.0, height=h + 2, sections=48)
-        w.apply_translation([11.5 * np.cos(a), 11.5 * np.sin(a), h / 2])
+        w = trimesh.creation.cylinder(radius=4.0 * SCALE, height=h + 2,
+                                      sections=64)
+        rw = 11.5 * SCALE
+        w.apply_translation([rw * np.cos(a), rw * np.sin(a), h / 2])
         cuts.append(w)
     return solid.difference(trimesh.boolean.union(cuts, engine="manifold"),
                             engine="manifold")
@@ -168,10 +194,12 @@ def threaded_hex(h):
     as the mouth chamfer needs.
 
     Thread.nut() fades over a whole lead at each end. On the Knot's long
-    bores that costs nothing; on an 8 mm nut the two fades meet in the
-    middle and the thread reaches full depth only at the midplane --
-    0.91 turns of effective engagement. Fading over RUNOUT instead gives
-    1.35 turns -- 1.18 once the bed mouth is a true cone (bed_mouth).
+    bores that costs nothing; on a nut two leads tall the two fades meet
+    in the middle and the thread reaches full depth only at the midplane.
+    Measured at 1x: 0.91 turns of effective engagement with the whole-lead
+    fade, 1.35 fading over RUNOUT, 1.18 once the bed mouth is a true cone
+    (bed_mouth). RUNOUT is absolute -- it only has to clear the mouth
+    ease -- so at 2x the same nut measures 1.46 of its 2 turns.
     """
     body = T.head(height=h)
     return body.difference(nut_cutter(h), engine="manifold")
@@ -191,7 +219,7 @@ def bed_mouth():
     across the opening -- and the shorter run-out made it four times worse
     by putting more crest above the roof. Carried in to the crest, the
     cone meets the thread at 45° everywhere: that layer slices with no
-    bridge at all, and grip drops only from 1.35 to 1.18 turns.
+    bridge at all, and grip drops only from 1.35 to 1.18 turns (at 1x).
     """
     outer = T.major_r + T.clearance + 1.0
     to_r = T.minor_r + T.clearance
@@ -218,7 +246,7 @@ def coupler():
     return threaded_hex(2 * U)
 
 
-def wing_nut(span=16.0, wing_t=3.6, wing_h=11.0):
+def wing_nut(span=16.0 * SCALE, wing_t=3.6 * SCALE, wing_h=11.0 * SCALE):
     """A round boss with two upright wings, turned by fingers.
 
     Printed as it stands: the wings are vertical fins rooted on the bed.
@@ -227,14 +255,15 @@ def wing_nut(span=16.0, wing_t=3.6, wing_h=11.0):
     boss = trimesh.creation.cylinder(radius=boss_r, height=U, sections=96)
     boss.apply_translation([0, 0, U / 2])
     # a wing in the x-z plane: rooted inside the boss, rising to a rounded top
-    top = Point(span - 3.5, wing_h - 3.5).buffer(3.5, resolution=24)
-    prof = unary_union([Polygon([(boss_r - 2, 0), (span, 0),
-                                 (span, wing_h - 3.5), (span - 3.5, wing_h),
+    rr, root = 3.5 * SCALE, boss_r - 2.0 * SCALE
+    top = Point(span - rr, wing_h - rr).buffer(rr, resolution=24)
+    prof = unary_union([Polygon([(root, 0), (span, 0),
+                                 (span, wing_h - rr), (span - rr, wing_h),
                                  # the slope lands on the boss's rim, not
                                  # inside it: inside, the wing stood above
                                  # the boss top as a blade beside the bore
-                                 (boss_r, U), (boss_r - 2, U)]), top])
-    prof = prof.intersection(box(boss_r - 2, 0, span, wing_h))
+                                 (boss_r, U), (root, U)]), top])
+    prof = prof.intersection(box(root, 0, span, wing_h))
     parts = [boss]
     for s in (1, -1):
         w = trimesh.creation.extrude_polygon(prof, wing_t)
@@ -253,15 +282,22 @@ def double_bolt(side=2 * U):
     """A stud: thread both ends, a hex collar between them.
 
     Printed standing on one end, so the lower thread is the part's only
-    footprint and the collar's underside is a ceiling. That underside bears
-    on a plate, so it cannot simply be coned away: it keeps a flat ring out
-    to BEAR_R -- past the plate's mouth ease -- and runs out at 45° beyond.
+    footprint and the collar's underside faces the bed. Nothing on that
+    underside is flat. The lower thread fades to a plain cylinder as it
+    reaches the collar, so no crest hangs over a groove, and the collar
+    runs out of that cylinder as one 45° cone. The cone passes through the
+    plate's own mouth ease, which is 45° as well, so it seats in the hole
+    like a countersunk head: it centers itself and bears on the ease.
+
+    A flat bearing ring was the first version. At twice the size it hung
+    up to 7 mm over the thread grooves and the slicer called it a floating
+    cantilever.
+
     The lower end is cut square, not eased, because it is what the part
     stands on.
     """
-    BEAR_R = HOLE_R + MOUTH + 1.0
-    h0 = side                                  # collar bottom
-    lower = T.rod(side + 0.01, z0=0.0)
+    h0 = side                                  # collar bottom: a plate's top
+    seat_r = HOLE_R + MOUTH                    # where the plate's ease opens
     upper = T.rod(side + 0.01, z0=h0 + U - 0.01)
     tip = h0 + U + side
     ease = T.amp * 2.0
@@ -270,37 +306,83 @@ def double_bolt(side=2 * U):
                      (0.5, tip), (0.5, h0 + U - 1)])
     upper = upper.intersection(trimesh.creation.revolve(prof, sections=192),
                                engine="manifold")
-    collar = T.head(z0=h0, height=U)
+    # one 45° cone through (seat_r, h0): r - seat_r = z - h0. It starts
+    # half a millimeter inside the plain shank so the two overlap.
     cr = T.hex_cr + 1.0
-    under = np.array([(0.5, h0 - 0.01), (BEAR_R, h0 - 0.01),
-                      (cr, h0 + (cr - BEAR_R)), (cr, h0 + U + 1),
-                      (0.5, h0 + U + 1), (0.5, h0 - 0.01)])
-    collar = collar.intersection(trimesh.creation.revolve(under, sections=192),
-                                 engine="manifold")
+    r0 = T.major_r - 0.5
+    z0 = h0 + (r0 - seat_r)
+    # The fade is centered a quarter millimeter above the cone's foot, so
+    # the foot sits inside the shank. Centered on the collar it left a
+    # 0.3 mm ring of the foot over a groove; centered on the foot, the foot
+    # lay exactly on the crest; centered where the cone crosses the full
+    # cylinder, the fade's kink lay on that crossing. Each of the last two
+    # exported as non-manifold edges.
+    lower = T.rod(side + 0.01, z0=0.0, runout=[(z0 + 0.25, T.lead)])
+    cone = trimesh.creation.revolve(np.array([
+        (0.5, z0), (r0, z0), (cr, h0 + (cr - seat_r)), (cr, h0 + U + 1),
+        (0.5, h0 + U + 1), (0.5, z0)]), sections=181)
+    # 181, not the head's 192: with the same count the two revolves share
+    # vertices at the hex corners and the cut there comes out degenerate
+    collar = trimesh.boolean.union(
+        [T.head(z0=h0, height=U),
+         # filler under the hex for the cone to cut. Its rim must not lie
+         # on the cone: at (seat_r + 0.5, h0 + 0.5) it did, exactly, and
+         # the export came back non-manifold round that circle
+         trimesh.creation.cylinder(radius=seat_r + 1.5, height=h0 - z0 + 0.2,
+                                   sections=192).apply_translation(
+             [0, 0, (z0 + h0 + 0.2) / 2])],
+        engine="manifold").intersection(cone, engine="manifold")
     return trimesh.boolean.union([lower, collar, upper], engine="manifold")
 
 
-# name, builder, count, brim
-# name, dial key, builder, default count, brim. The dial key is what the
+def wrench():
+    """The Montessori wrench's shape, drawn for this hex.
+
+    Box end one side, 15° open jaw the other, flat on the bed. Its shape
+    constants are drawn for a 50 mm hex, so the ones that do not scale are
+    set here, drawn at the first size and scaled with the set. It sits
+    inside the flat band between a head's chamfers, and the jaw arms are
+    12.5 mm at 1x because the wrench's own gate -- jaw stress under half
+    of yield with 40 N on the handle -- failed at 10.5. At 2x that gate
+    passes elevenfold. 0.6 mm on the flats is absolute and measures 0.30
+    mm a side on the real nut at either size.
+    """
+    import gen_wrench
+    prof, _, _ = gen_wrench.build(HEX_AF, WRENCH_THICK, **WRENCH)
+    # At this size the outline carries near-coincident points (one edge is
+    # 21 nm long) and its triangulation comes out as four bodies joined at
+    # non-manifold edges. Snapping to a 1 um grid closes it into one solid;
+    # nothing moves by more than a micron. Dropping the repeated points
+    # alone did not: that left the same four bodies.
+    import shapely
+    prof = shapely.set_precision(prof, 1e-3)
+    return trimesh.creation.extrude_polygon(prof, WRENCH_THICK)
+
+
+# name, dial key, builder, default count, brim. The defaults are the one
+# plate Brett printed first at 2x: joining pieces and paired brackets over
+# one-offs -- no 2x2, wheel or double bolt, and no wrench until its
+# redesign. The dial key is what the
 # shop card passes as --KEY N; the card's own list is checked against this
 # one by tests/test_tinker.py, so the two cannot drift. Only the double
 # bolt takes a brim: it stands 40 mm tall on the end of its own thread.
 # Every bolt stands on its hex head and needs none.
 SET = [
-    ("plate_2x4", "p2x4", lambda: plate(2, 4), 2, False),
-    ("plate_2x2", "p2x2", lambda: plate(2, 2), 2, False),
-    ("plate_1x4", "p1x4", lambda: plate(1, 4), 3, False),
-    ("plate_1x2", "p1x2", lambda: plate(1, 2), 4, False),
+    ("plate_2x4", "p2x4", lambda: plate(2, 4), 0, False),
+    ("plate_2x2", "p2x2", lambda: plate(2, 2), 0, False),
+    ("plate_1x4", "p1x4", lambda: plate(1, 4), 2, False),
+    ("plate_1x2", "p1x2", lambda: plate(1, 2), 2, False),
     ("bracket_L", "bracket", l_bracket, 2, False),
-    ("wheel", "wheel", wheel, 2, False),
-    ("bolt_B1", "b1", lambda: bolt(1), 2, False),
-    ("bolt_B2", "b2", lambda: bolt(2), 10, False),
-    ("bolt_B3", "b3", lambda: bolt(3), 5, False),
-    ("bolt_B4", "b4", lambda: bolt(4), 5, False),
-    ("double_bolt", "double", double_bolt, 3, True),
-    ("coupler", "coupler", coupler, 3, False),
-    ("wing_nut", "wing", wing_nut, 4, False),
-    ("nut", "nut", nut, 24, False),
+    ("wheel", "wheel", wheel, 0, False),
+    ("bolt_B1", "b1", lambda: bolt(1), 1, False),
+    ("bolt_B2", "b2", lambda: bolt(2), 4, False),
+    ("bolt_B3", "b3", lambda: bolt(3), 1, False),
+    ("bolt_B4", "b4", lambda: bolt(4), 1, False),
+    ("double_bolt", "double", double_bolt, 0, True),
+    ("coupler", "coupler", coupler, 1, False),
+    ("wing_nut", "wing", wing_nut, 1, False),
+    ("nut", "nut", nut, 5, False),
+    ("wrench", "wrench", wrench, 0, False),
 ]
 
 
@@ -316,7 +398,8 @@ def pack(items, bed=BED, gap=GAP, margin=6.0, res=1.0):
     occ = np.zeros((n, n), bool)
     lo, hi = int(margin / res), int((bed - margin) / res)
     out = []
-    order = sorted(items, key=lambda it: -(it[1].extents[0] * it[1].extents[1]))
+    order = sorted(items,
+                   key=lambda it: -(it[1].extents[0] * it[1].extents[1]))
     for name, m, pad in order:
         w = int(np.ceil((m.extents[0] + 2 * pad) / res))
         d = int(np.ceil((m.extents[1] + 2 * pad) / res))
