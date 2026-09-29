@@ -70,7 +70,7 @@ def hexagon(across_flats, rot=0.0, cx=0.0, cy=0.0):
 
 
 def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
-          jaw_arm=JAW_ARM):
+          jaw_arm=JAW_ARM, dims=None):
     """The flat silhouette of a combination spanner, as a shapely polygon.
 
     Built the way the real tool is shaped rather than as a set of overlapping
@@ -78,7 +78,20 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     short parallel jaws, and a flat paddle handle blended into both with a
     fillet. The first version unioned circles and a thin taper, and it came
     out looking like a tuning fork on a rod.
+
+    `dims` overrides the module's shape constants by name, for a hex of
+    another size: they are drawn for the Montessori's 50 mm hex, and at a
+    third of that the jaw depth, throat, grip and wall floors are all
+    wrong. With no `dims` this is the proven wrench, unchanged.
     """
+    D = dict(NUT_CR=NUT_CR, JAW_DEG=JAW_DEG, THROAT_FWD=THROAT_FWD,
+             JAW_DEPTH=JAW_DEPTH, JAW_TAPER=JAW_TAPER, TIP_CHAM=TIP_CHAM,
+             GRIP_W=GRIP_W, WAIST=WAIST, FILLET=FILLET, MIN_WALL=MIN_WALL,
+             PLA_YIELD=PLA_YIELD, HAND_N=HAND_N)
+    unknown = set(dims or ()) - set(D)
+    if unknown:
+        raise ValueError(f"no such wrench dimension: {sorted(unknown)}")
+    D.update(dims or {})
     rep = {}
     bore_af = af + clr
     bore_cr = bore_af / np.sqrt(3)
@@ -91,13 +104,13 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
                                            # read as a crowbar next to the nut
     r_open = bore_af / 2 + jaw_arm
 
-    ang = np.radians(JAW_DEG)
+    ang = np.radians(D["JAW_DEG"])
     d = np.array([np.cos(ang), np.sin(ang)])      # down the jaw
     n = np.array([-d[1], d[0]])                   # across it
     center = np.array([span, 0.0])
-    throat = center + d * THROAT_FWD
-    tip = throat + d * JAW_DEPTH
-    seat = throat + d * (NUT_CR / 2 + 1.0)
+    throat = center + d * D["THROAT_FWD"]
+    tip = throat + d * D["JAW_DEPTH"]
+    seat = throat + d * (D["NUT_CR"] / 2 + 1.0)
 
     box = Point(0, 0).buffer(r_box, 96)
     # The open head is a boss with a squared jaw block on the front, not a
@@ -108,7 +121,7 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     # block that starts forward of the center overhangs the circle by a
     # couple of millimeters and leaves a step on each arm that no fillet of
     # a sensible radius will take out.
-    r_tip = bore_af / 2 + jaw_arm * JAW_TAPER
+    r_tip = bore_af / 2 + jaw_arm * D["JAW_TAPER"]
     jaw_block = Polygon([center + n * r_open, tip + n * r_tip,
                          tip - n * r_tip, center - n * r_open])
     # tips chamfered back on their outer corners, as a real jaw is. Cut as
@@ -117,17 +130,18 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     for sgn in (1, -1):
         c = tip + n * r_tip * sgn
         jaw_block = jaw_block.difference(
-            Polygon([c, c - n * TIP_CHAM * sgn, c - d * TIP_CHAM]))
+            Polygon([c, c - n * D["TIP_CHAM"] * sgn, c - d * D["TIP_CHAM"]]))
     head = unary_union([boss, jaw_block])
 
     # handle: a flat paddle with a slight waist, shoulder to shoulder
-    hw, mw = GRIP_W / 2, GRIP_W / 2 * WAIST
+    hw, mw = D["GRIP_W"] / 2, D["GRIP_W"] / 2 * D["WAIST"]
     handle = Polygon([(0, hw), (span * 0.45, mw), (span, hw),
                       (span, -hw), (span * 0.45, -mw), (0, -hw)])
     # closing the union fillets the concave shoulders where the handle meets
     # each head — the join is a stress riser as well as an eyesore
     body = unary_union([box, head, handle])
-    body = body.buffer(FILLET, join_style=1).buffer(-FILLET, join_style=1)
+    body = body.buffer(D["FILLET"], join_style=1).buffer(
+        -D["FILLET"], join_style=1)
     if body.geom_type != "Polygon":
         raise ValueError("the body did not close into one outline")
 
@@ -151,13 +165,14 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
     ring = min(Point(bore_cr * np.cos(t), bore_cr * np.sin(t)).distance(
         body.exterior) for t in np.radians(np.arange(0, 360, 2)))
     rep["box_wall_mm"] = round(float(ring), 2)
-    if ring < MIN_WALL:
-        raise ValueError(f"box wall thins to {ring:.1f} mm (min {MIN_WALL})")
+    if ring < D["MIN_WALL"]:
+        raise ValueError(f"box wall thins to {ring:.1f} mm "
+                         f"(min {D['MIN_WALL']})")
     # Arms measured by sectioning the finished part across the jaw, not
     # assumed from the parameter: the tip chamfer and the fillet both move
     # this, and the parameter would keep reporting the number we asked for.
     arm, arm_root = 9e9, None
-    for t in np.linspace(0.5, JAW_DEPTH - 0.5, 24):
+    for t in np.linspace(0.5, D["JAW_DEPTH"] - 0.5, 24):
         p = throat + d * t
         cut = wrench.intersection(LineString([p - n * (r_open + 10),
                                               p + n * (r_open + 10)]))
@@ -173,44 +188,48 @@ def build(af=AF, thick=THICK, clr=CLR, box_wall=BOX_WALL,
             arm_root = here          # the section that actually carries the
                                      # bending moment; the tip carries none
     rep["jaw_arm_mm"] = round(float(arm_root), 2)
-    rep["jaw_taper"] = JAW_TAPER
+    rep["jaw_taper"] = D["JAW_TAPER"]
     rep["jaw_tip_mm"] = round(float(arm), 2)
-    if arm < MIN_WALL:
-        raise ValueError(f"jaw arms thin to {arm:.1f} mm (min {MIN_WALL})")
+    if arm < D["MIN_WALL"]:
+        raise ValueError(f"jaw arms thin to {arm:.1f} mm "
+                         f"(min {D['MIN_WALL']})")
 
     # bending at the jaw root: the arm is a cantilever taking half the load
     lever = span + r_open
-    torque = HAND_N * lever                       # N*mm
+    torque = D["HAND_N"] * lever                  # N*mm
     force_at_flat = torque / (af / 2)             # N on one flat
     Z = thick * arm_root ** 2 / 6                 # mm^3, at the jaw root
     stress = force_at_flat * (bore_af * 0.6) / Z  # MPa
     rep.update(lever_mm=round(lever, 1), torque_Nmm=round(torque),
                jaw_stress_MPa=round(float(stress), 1),
-               safety=round(PLA_YIELD / max(stress, 1e-6), 2))
-    if stress > PLA_YIELD / 2:
-        raise ValueError(f"jaw stress {stress:.0f} MPa at {HAND_N:.0f} N "
-                         f"— under half of PLA's {PLA_YIELD:.0f} MPa yield "
+               safety=round(D["PLA_YIELD"] / max(stress, 1e-6), 2))
+    if stress > D["PLA_YIELD"] / 2:
+        raise ValueError(f"jaw stress {stress:.0f} MPa at {D['HAND_N']:.0f} N "
+                         f"— under half of PLA's {D['PLA_YIELD']:.0f} MPa "
+                         f"yield "
                          f"is the bar; thicken the arms")
     rep.update(across_flats=af, bore_af=round(bore_af, 2),
                length_mm=round(float(wrench.bounds[2] - wrench.bounds[0]), 1),
                width_mm=round(float(wrench.bounds[3] - wrench.bounds[1]), 1),
                thick_mm=thick, bed_mm2=round(wrench.area),
-               jaw_depth_mm=round(float(JAW_DEPTH), 1),
-               grip_past_nut_mm=round(float(JAW_DEPTH - NUT_CR / 2 - 1.0), 1))
+               jaw_depth_mm=round(float(D["JAW_DEPTH"]), 1),
+               grip_past_nut_mm=round(
+                   float(D["JAW_DEPTH"] - D["NUT_CR"] / 2 - 1.0), 1))
     if rep["grip_past_nut_mm"] < 3.0:
         raise ValueError(f"the jaw closes only "
                          f"{rep['grip_past_nut_mm']:.1f} mm past the nut — "
                          f"it would slip off under load")
-    behind = r_open - THROAT_FWD
+    behind = r_open - D["THROAT_FWD"]
     rep["behind_throat_mm"] = round(float(behind), 1)
-    if behind < MIN_WALL:
+    if behind < D["MIN_WALL"]:
         raise ValueError(f"only {behind:.1f} mm of head behind the throat "
-                         f"(min {MIN_WALL}) — the slot would cut it off")
+                         f"(min {D['MIN_WALL']}) — the slot would cut it "
+                         f"off")
     return wrench, rep, dict(span=span, bore_af=bore_af, r_open=r_open,
                              throat=throat, seat=seat, ang=ang)
 
 
-def fit_test(mesh, nut, at, thick, sweep=1.0):
+def fit_test(mesh, nut, at, thick, sweep=1.0, nut_mid=15.0):
     """Seat the designer's nut in a hole and measure the gap when clocked.
 
     A hex seats one way (every 60 deg). Sweeping and taking the smallest
@@ -224,7 +243,7 @@ def fit_test(mesh, nut, at, thick, sweep=1.0):
     def probe(deg):
         T = trimesh.transformations.rotation_matrix(np.radians(deg), [0, 0, 1])
         T[0, 3], T[1, 3] = at[0], at[1]
-        T[2, 3] = thick / 2 - 15.0            # center the hex band on the jaw
+        T[2, 3] = thick / 2 - nut_mid         # center the hex band on the jaw
         if cm.in_collision_single(nut, transform=T):
             return None
         return float(cm.min_distance_single(nut, transform=T))
