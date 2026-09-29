@@ -103,12 +103,20 @@ class TestWhatIsDownloadedCanBeIdentified(unittest.TestCase):
         self.assertTrue(got["fingerprint"])
         shutil.rmtree(out, ignore_errors=True)
 
-    def test_the_fingerprint_matches_the_generator_on_disk(self):
+    def test_the_ledger_records_the_shape_that_is_on_disk(self):
+        """A generated part is identified by the solid it builds, not by
+        the text that built it."""
         import versions
         part = catalog.find("mont_double")
-        fp, _ = versions.fingerprint(part)
+        built = versions.canonical(part)
+        self.assertTrue(built and os.path.exists(built),
+                        "the canonical build is missing; run make build")
+        sig = versions.shape_of(built)
         led, _ = versions.reconcile([part], write=False)
-        self.assertEqual(led["mont_double"]["fingerprint"], fp)
+        self.assertEqual(led["mont_double"]["shape"], sig["shape"])
+        self.assertEqual(led["mont_double"]["fit"], sig["fit"])
+        # and the source text is not what is recorded
+        self.assertEqual(versions.fingerprint(part), (None, None))
 
 
 class TestPreviewsCannotGoStaleInTheBrowser(unittest.TestCase):

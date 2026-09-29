@@ -471,17 +471,69 @@ class TestEveryPartIsVersioned(unittest.TestCase):
         missing = [p["id"] for p in self.parts if not p.get("fingerprint")]
         self.assertEqual(missing, [])
 
-    def test_a_generator_that_changes_without_a_bump_is_a_fault(self):
+    def test_a_shape_that_moved_without_a_bump_is_a_fault(self):
+        """The ledger compares the built SOLID, not the source text."""
         led, _ = self.V.reconcile(self.parts, write=False)
-        tampered = {k: dict(v) for k, v in led.items()}
-        tampered["wrench"]["fingerprint"] = "0" * 16
-        _, faults = self.V.reconcile(self.parts, led=tampered, write=False)
-        self.assertTrue(faults)
-        self.assertIn("wrench", faults[0]["id"])
-        # bumping the declared version settles it
-        tampered["wrench"]["version"] = "0.0.1"
-        _, ok = self.V.reconcile(self.parts, led=tampered, write=False)
-        self.assertEqual(ok, [])
+        t = {k: dict(v) for k, v in led.items()}
+        t["wrench"].update(shape="0" * 16, gstamp="stale")  # same fit
+        _, faults = self.V.reconcile(self.parts, led=t, write=False)
+        # scoped to the part under test: another part's genuine fault is
+        # not this test's business, and asserting on the whole list made
+        # an unrelated design in progress fail four tests at once
+        mine = [f for f in faults if f["id"] == "wrench"]
+        self.assertTrue(mine, "no fault for the part whose shape moved")
+        self.assertEqual(mine[0]["level"], "minor")
+
+    def test_a_change_to_what_a_part_FITS_demands_a_major(self):
+        """Size, volume or topology moving means it may not fit any more.
+
+        This is the case the shop actually cares about: the puzzles and
+        anything with a thread or a bore mate with something, and a part
+        that quietly stops fitting under the same version is the failure
+        the ledger exists to prevent.
+        """
+        led, _ = self.V.reconcile(self.parts, write=False)
+        t = {k: dict(v) for k, v in led.items()}
+        t["wrench"].update(shape="0" * 16, fit="0" * 16, gstamp="stale")
+        _, faults = self.V.reconcile(self.parts, led=t, write=False)
+        mine = [f for f in faults if f["id"] == "wrench"]
+        self.assertTrue(mine)
+        self.assertEqual(mine[0]["level"], "major")
+        # a minor does NOT settle a fit change
+        minor = [dict(p, version="0.9.0") if p["id"] == "wrench" else p
+                 for p in self.parts]
+        t2 = {k: dict(v) for k, v in t.items()}
+        t2["wrench"]["version"] = "0.1.0"
+        _, still = self.V.reconcile(minor, led=t2, write=False)
+        self.assertTrue([f for f in still if f["id"] == "wrench"],
+                        "a minor bump cleared a fit change")
+        # a major does
+        major = [dict(p, version="1.0.0") if p["id"] == "wrench" else p
+                 for p in self.parts]
+        _, ok = self.V.reconcile(major, led=t2, write=False)
+        self.assertEqual([f for f in ok if f["id"] == "wrench"], [])
+
+    def test_a_part_marked_cosmetic_is_exempt(self):
+        led, _ = self.V.reconcile(self.parts, write=False)
+        t = {k: dict(v) for k, v in led.items()}
+        t["wrench"].update(shape="0" * 16, fit="0" * 16, gstamp="stale")
+        cos = [dict(p, cosmetic=True) if p["id"] == "wrench" else p
+               for p in self.parts]
+        _, faults = self.V.reconcile(cos, led=t, write=False)
+        self.assertEqual([f for f in faults if f["id"] == "wrench"], [])
+
+    def test_the_bump_rule(self):
+        """A patch never satisfies either level -- a patch says nothing
+        anybody can measure moved."""
+        for was, now, level, want in (
+                ("1.0.2", "1.0.3", "major", False),
+                ("1.0.2", "1.1.0", "major", False),
+                ("1.0.2", "2.0.0", "major", True),
+                ("1.0.2", "1.0.9", "minor", False),
+                ("1.0.2", "1.1.0", "minor", True),
+                ("1.0.2", "2.0.0", "minor", True)):
+            self.assertEqual(self.V.bump_needed(was, now, level), want,
+                             f"{was} -> {now} for a {level}")
 
     def test_a_redownloaded_file_bumps_its_patch(self):
         led, _ = self.V.reconcile(self.parts, write=False)
@@ -491,7 +543,7 @@ class TestEveryPartIsVersioned(unittest.TestCase):
         t[lib["id"]].update(fingerprint="0" * 16, stamp="stale")
         was = t[lib["id"]].get("revisions", 0)
         after, faults = self.V.reconcile(self.parts, led=t, write=False)
-        self.assertEqual(faults, [])
+        self.assertEqual([f for f in faults if f["id"] == lib["id"]], [])
         self.assertNotEqual(after[lib["id"]]["version"], before)
         # one MORE, not one: this takes whichever library part comes first
         # and that part has a history. Asserting 1 was asserting that the
@@ -519,21 +571,21 @@ class TestAVersionFaultDoesNotForgetItself(unittest.TestCase):
 
     def test_the_fault_survives_a_second_pass(self):
         t = {k: dict(v) for k, v in self.led.items()}
-        t["wrench"]["fingerprint"] = "0" * 16
+        t["wrench"].update(shape="0" * 16, gstamp="stale")
         first, f1 = self.V.reconcile(self.parts, led=t, write=False)
-        self.assertTrue(f1)
+        self.assertTrue([f for f in f1 if f["id"] == "wrench"])
         second, f2 = self.V.reconcile(self.parts, led=first, write=False)
-        self.assertTrue(f2, "the fault cleared itself without a version bump")
-        self.assertEqual(f1[0]["id"], f2[0]["id"])
+        self.assertTrue([f for f in f2 if f["id"] == "wrench"],
+                        "the fault cleared itself without a version bump")
 
     def test_a_bump_is_what_clears_it(self):
         t = {k: dict(v) for k, v in self.led.items()}
-        t["wrench"]["fingerprint"] = "0" * 16
+        t["wrench"].update(shape="0" * 16, gstamp="stale")
         after, _ = self.V.reconcile(self.parts, led=t, write=False)
         bumped = [dict(p, version="9.9.9") if p["id"] == "wrench" else p
                   for p in self.parts]
         _, clean = self.V.reconcile(bumped, led=after, write=False)
-        self.assertEqual(clean, [])
+        self.assertEqual([f for f in clean if f["id"] == "wrench"], [])
 
 
 class TestPrintabilityAdviceIsTrustworthy(unittest.TestCase):
