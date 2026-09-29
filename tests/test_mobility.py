@@ -1,6 +1,6 @@
 """The depth search, on shapes small enough to reason about by hand.
 
-The seed cube is the real calibration and it costs half a minute a run, so
+The puzzle cube is the real calibration and it costs half a minute a run, so
 it lives in `gen_puzzle.py`'s gates. What is held down here is the part that
 would fail silently: the generalisation of the sweep off the z axis, and the
 direction the coarse search is allowed to be wrong in.
@@ -32,7 +32,7 @@ def box(sx, sy, sz, at=(0, 0, 0)):
 
 class TestHelix(unittest.TestCase):
     def test_z_case_is_unchanged(self):
-        """The general helix has to reproduce the seed cube's z-axis path.
+        """The general helix has to reproduce the puzzle cube's z-axis path.
 
         `screw_path` is now a wrapper, so if these ever differ every gate in
         gen_puzzle.py is measuring something other than what it measured

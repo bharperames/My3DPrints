@@ -97,7 +97,7 @@ KEY_DEPTH = 5.0        # hex engagement inside the counterbore
 # engagement. One lead of grip is enough to pinch a 16.6 mm hex.
 PROUD_LEADS = 1
 # The plain through bore is NOT the running fit. 0.30 mm radial is what the
-# thread wants and what the printed seed cube proved, but a hole the bolt
+# thread wants and what the printed puzzle cube proved, but a hole the bolt
 # only has to pass through wants more: it is printed horizontally, where the
 # crown of a 12 mm hole droops, and any binding there fights every joint.
 # So the clearance bore is opened to 0.5 mm radial -- a whole millimeter on

@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Puzzle blocks on the Montessori thread family, at puzzle scale.
 
-  seed-cube   a cube split across the bolt axis into two threaded halves,
-              plus the bolt that holds them
+  puzzle-cube   a cube split across the bolt axis into two threaded halves,
+                plus the bolt that holds them
+
+This was called the "seed cube" for three weeks, meaning the first of the
+family -- the Knot and the Tinker Set both grew from it, and its printed
+results set the thread ratios and the clearances they use. Nothing wrote
+that down, and "seed" in a generator reads as a random seed, which is the
+opposite of what this is: the design is rigid and fully deterministic, and
+two builds of the same dials are identical vertex for vertex.
 
 Inspired by the toddler set, not compatible with it: the thread comes from
 `thread.py`, which keeps the original's cosine profile and its three exact
@@ -90,7 +97,7 @@ def block_profile(side, fillet):
     return sq.buffer(-fillet).buffer(fillet, resolution=24)
 
 
-def build_seed(t, side, split_frac, pocket_d, thread_through=False):
+def build_cube(t, side, split_frac, pocket_d, thread_through=False):
     """Thread below the seam, plain bore above it, hex pocket in the top.
 
     The thread stops at the seam because the block above it has to swallow a
@@ -296,15 +303,15 @@ def main():
     shank_len = floor if a.shank is None else a.shank
 
     try:
-        bottom, top, land, turns = build_seed(t, S, a.split, p)
+        bottom, top, land, turns = build_cube(t, S, a.split, p)
     except ValueError as e:
-        # build_seed raises for settings that cannot be drawn at all. It
+        # build_cube raises for settings that cannot be drawn at all. It
         # used to escape main(), and the page printed the Python stack.
-        print(json.dumps({"ok": False, "part": "seed-cube",
+        print(json.dumps({"ok": False, "part": "puzzle-cube",
                           "error": str(e)}))
         return 1
     bolt = t.bolt(shank_len=shank_len)
-    rep = {"part": "seed-cube", "thread": repr(t), "side_mm": S,
+    rep = {"part": "puzzle-cube", "thread": repr(t), "side_mm": S,
            "seam_mm": round(c, 2), "pocket_depth_mm": p,
            "shank_mm": round(shank_len, 2),
            "head_proud_mm": round(t.head_h - p, 2),
@@ -335,7 +342,7 @@ def main():
     bottom.apply_translation([-pitch, 0, 0])
     bolt.apply_translation([pitch, 0, 0])
 
-    parts = {"seed_lower": bottom, "seed_upper": top, "seed_bolt": bolt}
+    parts = {"cube_lower": bottom, "cube_upper": top, "cube_bolt": bolt}
     rep["bodies"] = sum(len(m.split(only_watertight=False))
                         for m in parts.values())
     vol = sum(float(m.volume) for m in parts.values()) / 1000

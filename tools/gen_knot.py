@@ -55,7 +55,7 @@ so the section is capped by the spacing. Two things then have to fit in it,
 and neither is a shank.
 
 ACROSS the block, a hex head: the pocket's corner radius is 1.642 R_major,
-so a >= 2 (1.642 R_major + slop + wall + gap), which for the seed's 16 mm
+so a >= 2 (1.642 R_major + slop + wall + gap), which for the puzzle cube's 16 mm
 thread is 36, not 22. The head, not the shank, is the widest thing a block
 has to contain.
 
@@ -434,7 +434,7 @@ def layout(t, a, entry="slot", slot=0.0):
     to match so it is not a choice that could be made differently.
 
     Bolts stand on their heads, thread up, for the same reason, and with no
-    brim. The seed cube's bolt printed the same way without one, at nearly
+    brim. The puzzle cube's bolt printed the same way without one, at nearly
     the same slenderness, and a brim is not free here: it attaches to the
     chamfered rim of the head's underside, which is the bearing face -- on
     the key bolt, the only thing stopping the bolt sliding through its own
@@ -469,7 +469,7 @@ def layout(t, a, entry="slot", slot=0.0):
 def head_descends(t, a, parts):
     """The law, as a motion: bolt 0 drops into block 1's pocket unturned.
 
-    The seed cube's first build had thread under the pocket and could never
+    The puzzle cube's first build had thread under the pocket and could never
     have been assembled, and nothing in a disassembly argument catches it --
     the head arrives at its keyway rotating, presents the right sixth of a
     turn once every 60 degrees, and lands on the face and grinds.

@@ -233,7 +233,7 @@ PARTS = [
                 max=40, step=1, val=19)],
        out="cage-D{dia:g}-F{freq}-T{strut:g}-B{ball:g}.3mf",
        brim="on"),      # same thin first layer as the dice orb
-    _p("puzzle_seed", "Puzzle Seed Cube", "Designed here", "parametric",
+    _p("puzzle_cube", "Screw Puzzle Cube", "Designed here", "parametric",
        "A cube split across the bolt rather than along it. Only the "
        "lower half is threaded; the upper half takes a plain clearance "
        "bore, so the bolt drops through it, seats its head, and is then "
@@ -270,7 +270,7 @@ PARTS = [
            # costs it nothing and buys the lower half engagement
            dict(key="split", label="seam height", min=0.35, max=0.65,
                 step=0.01, val=0.5, derived="block")],
-       out="puzzle-seed-S{side:g}-T{thread:g}-P{pocket:g}-X{split:g}.3mf"),
+       out="puzzle-cube-S{side:g}-T{thread:g}-P{pocket:g}-X{split:g}.3mf"),
     _p("knot_bolted", "The Knot", "Designed here", "parametric",
        "Three bars, three bolts, and every bolt in tension. Each bolt "
        "passes right THROUGH the bar whose counterbore holds its head "
