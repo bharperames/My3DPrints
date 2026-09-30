@@ -158,9 +158,24 @@ def hexagon(cr, rot=0.0):
 
 
 def screw_test(part, shank, depths, step_deg=3, at=(0.0, 0.0)):
-    """Screw the real bolt in: a free rotation window must exist at depth."""
+    """Screw the real bolt in: a free rotation window must exist at depth.
+
+    The bolt is added to the manager once and only its transform moves.
+    `in_collision_single(shank, transform=T)` builds a BVH for the mesh it
+    is handed, every call -- and at these sizes that costs far more than
+    the query it is preparing for: 21.7 of this generator's 26.6 seconds
+    went into 601 rebuilds of the same bolt. Two objects in the manager
+    and nothing else, so an internal check is the same question asked once
+    per pose instead of once per pose plus a BVH.
+
+    The trap scales with the mesh: at a thousand faces it is worth 1.3x
+    and easy to dismiss, at sixteen thousand it is worth 189x. These are
+    13k-64k. `assembly.py` has carried a comment about this since it was
+    written; this is the same lesson arriving where it had not been read.
+    """
     cm = tc.CollisionManager()
     cm.add_object("part", part)
+    cm.add_object("shank", shank)
     out = []
     for dz in depths:
         free = []
@@ -168,7 +183,8 @@ def screw_test(part, shank, depths, step_deg=3, at=(0.0, 0.0)):
             T = trimesh.transformations.rotation_matrix(
                 np.radians(adeg), [0, 0, 1])
             T[0, 3], T[1, 3], T[2, 3] = at[0], at[1], dz
-            if not cm.in_collision_single(shank, transform=T):
+            cm.set_transform("shank", T)
+            if not cm.in_collision_internal():
                 free.append(adeg)
         if not free:
             return None, out

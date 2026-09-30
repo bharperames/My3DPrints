@@ -240,14 +240,20 @@ def fit_test(mesh, nut, at, thick, sweep=1.0, nut_mid=15.0):
     import trimesh.collision as tc
     cm = tc.CollisionManager()
     cm.add_object("wrench", mesh)
+    # The nut goes in once and only its transform moves. The _single calls
+    # build a BVH for the mesh handed to them on every call, which at this
+    # size costs far more than the query; there are two objects in the
+    # manager and nothing else, so the internal pair is the same question.
+    cm.add_object("nut", nut)
 
     def probe(deg):
         T = trimesh.transformations.rotation_matrix(np.radians(deg), [0, 0, 1])
         T[0, 3], T[1, 3] = at[0], at[1]
         T[2, 3] = thick / 2 - nut_mid         # center the hex band on the jaw
-        if cm.in_collision_single(nut, transform=T):
+        cm.set_transform("nut", T)
+        if cm.in_collision_internal():
             return None
-        return float(cm.min_distance_single(nut, transform=T))
+        return float(cm.min_distance_internal())
 
     best, free = None, 0
     for deg in np.arange(0, 60, sweep):

@@ -52,6 +52,29 @@ instead.
 `cosmetic=True` on a card exempts it. Reviewing all 22 generated parts,
 none qualified — so reach for it only when a part genuinely fits nothing.
 
+## Collision sweeps: add the mover once
+
+`CollisionManager.in_collision_single(mesh, transform=T)` and
+`min_distance_single` build a BVH for the mesh they are handed, **on every
+call**. In a loop that costs far more than the query it is preparing for.
+Add the mover to the manager once and move it instead:
+
+    cm.add_object("static", part)
+    cm.add_object("mover", bolt)          # once
+    for T in poses:
+        cm.set_transform("mover", T)      # not in_collision_single(bolt, T)
+        if cm.in_collision_internal():
+            ...
+
+With two objects in the manager the internal check asks exactly the same
+question. `assembly.Sweep` already does this; use it where it fits.
+
+The trap scales with the mesh and is easy to dismiss from a small test:
+worth 1.3x at 1k faces, 85x at 4k, 189x at 16k, 273x at 64k. Real parts
+here are 13k-64k. It has now been found three times -- assembly.py and
+mobility.py both carry comments about it, and gen_montessori and
+gen_wrench were still paying it, 18.4x and 8.7x respectively.
+
 ## The ledger is local
 
 `models/versions.json` is gitignored, like everything under `models/`. It
