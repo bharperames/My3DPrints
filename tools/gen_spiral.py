@@ -2,6 +2,7 @@
 """Parametric hourglass screw-pair generator (spiral towers).
 
 Replaces the 8 canonical Idea2Item hourglass STLs with one model, measured
+import genapi
 from the originals: the solid is `starts` helical blades with a constant
 inner radius, outer edge following an hourglass envelope, tied together by
 thin end rims; the spiral is one star-section rod (core + lobes) sharing
@@ -248,7 +249,7 @@ DEFAULTS = dict(profile="circle", base_r=21.3, waist_frac=0.485,
                 cell_h=90.0, cells=1, starts=7, twist=2.88, rim_t=1.8)
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out")
     ap.add_argument("--profile", choices=["circle", "square"],
@@ -262,7 +263,16 @@ def main():
     ap.add_argument("--twist", type=float, default=DEFAULTS["twist"])
     ap.add_argument("--rim-t", type=float, default=DEFAULTS["rim_t"])
     ap.add_argument("--audit-only", action="store_true")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     p = dict(profile=a.profile, base_r=a.base_r, waist_frac=a.waist_frac,
              cell_h=a.cell_h, cells=a.cells, starts=a.starts, twist=a.twist,
              rim_t=a.rim_t)
@@ -270,8 +280,7 @@ def main():
         solid, spiral, rep = build(p)
         rep = audit(solid, spiral, p, rep)
     except ValueError as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return 1
+        return {"ok": False, "error": str(e)}
     ok = (rep["threads"] and rep["solid_watertight"]
           and rep["spiral_watertight"] and rep["solid_wobble"] <= 8
           and rep["spiral_wobble"] <= 8)
@@ -288,8 +297,13 @@ def main():
         from embed_settings import embed
         embed(a.out)
         rep["file"] = os.path.basename(a.out)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

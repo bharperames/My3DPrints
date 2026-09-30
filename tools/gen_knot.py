@@ -132,6 +132,7 @@ six.
 Usage: gen_knot.py [--a MM] [--thread MM] [--entry none|slot]
                    [--float MM] [--measure] [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -524,7 +525,7 @@ def measure(t, a, parts, budget=3000):
     return r
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--a", type=float, default=None,
                     help="axis spacing; default is the derived minimum")
@@ -539,7 +540,16 @@ def main():
                     help="run the depth search; it costs minutes")
     ap.add_argument("--budget", type=int, default=600)
     ap.add_argument("--out")
-    a_ = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a_ = genapi.namespace(_parser(), out=out, **kw)
 
     t = thread_for(a_.thread)
     if a_.entry != "slot":
@@ -560,8 +570,7 @@ def main():
         why = (f"spacing {a} below the derived minimum {need:.2f} — a "
                f"{slot:.1f} mm slot and {WALL_MIN} mm of wall do not both "
                f"fit in a block {a - FACE_GAP:.1f} mm long")
-        print(json.dumps({"ok": False, **rep, "error": why, "failed": [why]}))
-        return 1
+        return {"ok": False, **rep, "error": why, "failed": [why]}
 
     rep["max_slot_mm"] = round(max_slot(t, a), 2)
     rep["release_needed_mm"] = round(release(t), 2)
@@ -641,8 +650,13 @@ def main():
             rep["defects"] = bad
             ok = False
         rep["file"] = os.path.basename(a_.out)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

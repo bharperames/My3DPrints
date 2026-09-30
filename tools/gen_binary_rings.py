@@ -233,6 +233,7 @@ Usage: gen_binary_rings.py --codes 7 [--out FILE.3mf]
        gen_binary_rings.py --codes 1-31 --out SET.3mf
        gen_binary_rings.py --all --outdir DIR
 """
+import genapi
 import argparse
 import json
 import os
@@ -828,7 +829,7 @@ def emit(m, rep, out):
     return rep["watertight"]
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--codes", help="which codes to make: one (7), a range "
                                     "(1-31), a list (1,2,4,8,16), or a "
@@ -869,7 +870,16 @@ def main():
                          "would be the only thing touching it")
     ap.add_argument("--out")
     ap.add_argument("--outdir")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
 
     kw = dict(floor=a.floor, relief=a.relief, rim=a.rim, kerf=a.kerf,
               slack=a.slack, segments=a.segments,
@@ -884,15 +894,13 @@ def main():
         str(a.code) if a.code is not None else
         (f"0-{2 ** BANDS - 1}" if a.plate else None))
     if spec is None and not a.all:
-        print(json.dumps({"ok": False,
-                          "error": "need --codes, --code, --all or --plate"}))
-        return 1
+        return {"ok": False,
+                          "error": "need --codes, --code, --all or --plate"}
     try:
         codes = (list(range(2 ** BANDS)) if a.all and spec is None
                  else parse_codes(spec))
     except ValueError as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return 1
+        return {"ok": False, "error": str(e)}
 
     # A set is one plate. One code is one disc: a lone part on a plate is
     # the same file with a scene wrapped round it, and the shop packs its
@@ -901,22 +909,19 @@ def main():
         try:
             sc, reps, span, grid = plate(codes, **kw)
         except ValueError as e:
-            print(json.dumps({"ok": False, "error": str(e)}))
-            return 1
+            return {"ok": False, "error": str(e)}
         out = a.out or (os.path.join(a.outdir,
                                      f"binary-ring-set-{len(codes)}.3mf")
                         if a.outdir else None)
         rep = emit_plate(sc, reps, span, grid, out)
-        print(json.dumps({"ok": rep["watertight"], **rep}))
-        return 0 if rep["watertight"] else 1
+        return {"ok": rep["watertight"], **rep}
 
     reps, ok = [], True
     for c in codes:
         try:
             m, rep = build(c, **kw)
         except ValueError as e:
-            print(json.dumps({"ok": False, "error": str(e)}))
-            return 1
+            return {"ok": False, "error": str(e)}
         out = a.out if a.out and len(codes) == 1 else (
             os.path.join(a.outdir, f"binary-ring-{c:02d}"
                          f"-R{a.rim:g}-B{a.relief:g}"
@@ -924,9 +929,14 @@ def main():
         ok &= emit(m, rep, out)
         reps.append(rep)
 
-    print(json.dumps({"ok": ok, **(reps[0] if len(reps) == 1
-                                  else {"count": len(reps), "parts": reps})}))
+    return {"ok": ok, **(reps[0] if len(reps) == 1
+                                  else {"count": len(reps), "parts": reps})}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

@@ -58,6 +58,7 @@ the next.
 Usage: gen_puzzle.py [--side MM] [--thread MM] [--split F] [--pocket MM]
                      [--shank MM] [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -285,7 +286,7 @@ def _seated(t, bolt, floor):
     return m
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--side", type=float, default=40.0)
     ap.add_argument("--thread", type=float, default=16.0,
@@ -295,7 +296,16 @@ def main():
     ap.add_argument("--shank", type=float, default=None,
                     help="default: flush with the underside")
     ap.add_argument("--out")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
 
     t = Thread(major_r=a.thread / 2.0)
     S, c, p = a.side, a.side * a.split, a.pocket
@@ -307,9 +317,8 @@ def main():
     except ValueError as e:
         # build_cube raises for settings that cannot be drawn at all. It
         # used to escape main(), and the page printed the Python stack.
-        print(json.dumps({"ok": False, "part": "puzzle-cube",
-                          "error": str(e)}))
-        return 1
+        return {"ok": False, "part": "puzzle-cube",
+                          "error": str(e)}
     bolt = t.bolt(shank_len=shank_len)
     rep = {"part": "puzzle-cube", "thread": repr(t), "side_mm": S,
            "seam_mm": round(c, 2), "pocket_depth_mm": p,
@@ -330,10 +339,9 @@ def main():
     if failed:
         # every other generator supplies "error"; without it the shop
         # showed the user the words "generation refused" and nothing else
-        print(json.dumps({"ok": False, **rep, "failed": failed,
+        return {"ok": False, **rep, "failed": failed,
                           "error": "these settings do not come apart: "
-                                   + ", ".join(failed)}))
-        return 1
+                                   + ", ".join(failed)}
 
     bottom, top, bolt = tidy(bottom), tidy(top), tidy(bolt)
     for m in (top, bolt):
@@ -371,8 +379,13 @@ def main():
         rep["file"] = os.path.basename(a.out)
     else:
         rep["watertight"] = all(m.is_watertight for m in parts.values())
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

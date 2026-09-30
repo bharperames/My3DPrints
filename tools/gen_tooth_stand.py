@@ -81,6 +81,7 @@ its quadrilateral up with the root's lobes is worth more than an index.
 
 Usage: gen_tooth_stand.py [--stand xs|s|m|l|all] [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -1429,7 +1430,7 @@ def gates(rep):
     ]
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--stand", default="all",
                     help="all, or a comma-separated set of "
@@ -1446,25 +1447,31 @@ def main():
                          "fixed stand, in the other grip")
     ap.add_argument("--out")
     ap.add_argument("--quick", action="store_true")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     global GRIP, BRIM_ON
     GRIP = a.grip
     groups = [g.strip() for g in a.brim.split(",") if g.strip()]
     bad_g = [g for g in groups if g not in BRIM_GROUPS]
     if bad_g:
-        print(json.dumps({"ok": False,
-                          "error": "no such brim group: " + ", ".join(bad_g)}))
-        return 1
+        return {"ok": False,
+                          "error": "no such brim group: " + ", ".join(bad_g)}
     BRIM_ON = [BRIM_GROUPS[g] for g in groups]
     try:
         parts = build(a.stand)
     except ValueError as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return 1
+        return {"ok": False, "error": str(e)}
     if a.quick:
         ok = all(m.is_watertight for m in parts.values())
-        print(json.dumps({"ok": ok, "bodies": len(parts)}))
-        return 0 if ok else 1
+        return {"ok": ok, "bodies": len(parts)}
     rep = measure(parts)
     rep["grip"] = GRIP
     rep["brim"] = groups or None
@@ -1500,8 +1507,13 @@ def main():
         rep["defects"] = bad or None
         ok = not bad
         rep["file"] = os.path.basename(a.out)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

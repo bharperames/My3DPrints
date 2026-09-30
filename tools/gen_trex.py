@@ -45,6 +45,7 @@ them for real ones buys little. The paint marks them, so they are easy to
 find again if that ever changes; the reason not to is mechanical, not
 technical.
 """
+import genapi
 import argparse
 import json
 import os
@@ -391,7 +392,7 @@ def layout(items, gap=4.0):
     return sc
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--parts", default="skull,body",
                     help="comma-separated: " + ", ".join(PARTS))
@@ -410,13 +411,21 @@ def main():
     ap.add_argument("--ling-wall", type=float, default=None,
                     help="lip left in front of the trough (mm)")
     ap.add_argument("--out")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     names = [p.strip() for p in a.parts.split(",") if p.strip()]
     bad = [n for n in names if n not in PARTS]
     if bad:
-        print(json.dumps({"ok": False, "error": f"unknown part(s): {bad}. "
-                                                f"choose from {list(PARTS)}"}))
-        return 1
+        return {"ok": False, "error": f"unknown part(s): {bad}. "
+                                                f"choose from {list(PARTS)}"}
     # scrub (deburr) is OFF. It is a morphological opening, so where the
     # wall is thin it removes the material outright rather than smoothing it
     # -- measured, ten new tunnels through a file that was clean before it
@@ -438,11 +447,15 @@ def main():
     os.makedirs(os.path.dirname(out), exist_ok=True)
     sc.export(out)
     ext = sc.extents
-    print(json.dumps({"ok": True, "parts": names, "file": os.path.basename(out),
+    return {"ok": True, "parts": names, "file": os.path.basename(out),
                       "span": [round(float(ext[0]), 1), round(float(ext[1]), 1)],
                       "height": round(float(ext[2]), 1),
-                      "single_color": True, "detail": rep}))
-    return 0
+                      "single_color": True, "detail": rep}
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

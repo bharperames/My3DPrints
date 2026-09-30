@@ -16,6 +16,7 @@ the tightest radius that passes sets the coil. Every pair of links in the
 finished layout is then checked, neighbors and rings alike, so a coil that
 laps back onto itself is refused rather than shipped.
 """
+import genapi
 import argparse
 import json
 import os
@@ -65,7 +66,7 @@ NO_BRIM_WHY = ("a brim follows each link's plan-view outline, and "
                "into one sheet welded across the joints")
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--links", type=int, required=True)
     ap.add_argument("--len", dest="length", type=float, required=True)
@@ -82,7 +83,16 @@ def main():
     ap.add_argument("--brim", action="store_true",
                     help="force a brim. Measured on a 40-link coil it fuses "
                          "all 40 links into one sheet: " + NO_BRIM_WHY)
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     err = None
     if not 2 <= a.links <= 120:
         err = "links must be 2-120"
@@ -94,8 +104,7 @@ def main():
         err = (f"link too short for its width: length must be ≥ "
                f"{cl_w + 2 + a.dia:.1f} mm at Ø{a.dia:g}")
     if err:
-        print(json.dumps({"ok": False, "error": err}))
-        return 1
+        return {"ok": False, "error": err}
 
     link = tube(stadium_path(cl_l, cl_w), a.dia / 2)
     # never bite past a third of the section. This used to clamp in
@@ -132,8 +141,7 @@ def main():
         result = (pitch, d)
         break
     if result is None:
-        print(json.dumps({"ok": False, "error": "no valid pitch found for these parameters"}))
-        return 1
+        return {"ok": False, "error": "no valid pitch found for these parameters"}
     pitch, clearance = result
     min_gap = max(0.4, 0.12 * a.dia)
 
@@ -269,10 +277,9 @@ def main():
                 seed = float(r)
                 break
         if seed is None:
-            print(json.dumps({"ok": False, "error":
+            return {"ok": False, "error":
                   "the joint will not bend: no coil radius passes the "
-                  "clearance and threading tests"}))
-            return 1
+                  "clearance and threading tests"}
         placed_links = None
         r0 = seed
         for _ in range(14):
@@ -284,10 +291,9 @@ def main():
                     break
             r0 *= 1.12
         if placed_links is None:
-            print(json.dumps({"ok": False, "error":
+            return {"ok": False, "error":
                   f"no coil fits a {usable:g} mm plate for {a.links} links"
-                  + (f" — {why}" if why else "")}))
-            return 1
+                  + (f" — {why}" if why else "")}
     else:
         placed_links = [place(i * pitch, 0.0, 0.0,
                               np.pi / 4 if i % 2 == 0 else -np.pi / 4)
@@ -295,8 +301,7 @@ def main():
         worst, why = check(placed_links,
                            [((i * pitch, 0.0), 0.0) for i in range(a.links)])
         if why is not None:
-            print(json.dumps({"ok": False, "error": why}))
-            return 1
+            return {"ok": False, "error": why}
 
     # One object, not one per link. A scene of 40 geometries arrives in
     # Studio as 40 draggable objects, and dragging one link out of a chain
@@ -315,7 +320,7 @@ def main():
     ext = sc.bounds[1] - sc.bounds[0]
     per = 2 * (cl_l - cl_w) + np.pi * cl_w
     vol = per * np.pi * (a.dia / 2) ** 2 * a.links / 1000.0
-    print(json.dumps({"ok": True, "file": os.path.basename(a.out),
+    return {"ok": True, "file": os.path.basename(a.out),
                       "links": a.links, "pitch": round(float(pitch), 2),
                       "layout": layout, "coil_radius": coil_r,
                       "brim": bool(a.brim), "foot_mm": round(foot, 2),
@@ -326,8 +331,12 @@ def main():
                                                else clearance), 2),
                       "dims": [round(float(x), 1) for x in ext],
                       "volume_cm3": round(float(vol), 1),
-                      "est_g": round(float(vol) * 1.24, 1)}))
-    return 0
+                      "est_g": round(float(vol) * 1.24, 1)}
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

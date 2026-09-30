@@ -22,6 +22,7 @@ part clearance, watertightness, and threading of the chain's own opening.
 
 Usage: gen_clasp.py --dia D [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -282,7 +283,7 @@ def build(D, T=None):
     return clasp, ring_mesh, rep, th
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dia", type=float, default=3.25,
                     help="chain cross-section this clasp mates with")
@@ -291,15 +292,22 @@ def main():
                     help="the ring threads the clasp's eye and the chain's "
                          "link bore, so both are sized from the same --dia")
     ap.add_argument("--out")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     if not 2.0 <= a.dia <= 8.0:
-        print(json.dumps({"ok": False, "error": "dia must be 2-8 mm"}))
-        return 1
+        return {"ok": False, "error": "dia must be 2-8 mm"}
     try:
         clasp, ring_mesh, rep, th = build(a.dia)
     except ValueError as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return 1
+        return {"ok": False, "error": str(e)}
     # the crown costs the gate beam some of its section, so the flexure is
     # checked against what is left, not against the full slab
     cm = crown(clasp, th, min(CROWN, 0.28 * th))
@@ -327,8 +335,13 @@ def main():
         from embed_settings import embed
         embed(a.out)
         rep["file"] = os.path.basename(a.out)
-    print(json.dumps({"ok": ok, "dia": a.dia, **rep}))
+    return {"ok": ok, "dia": a.dia, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

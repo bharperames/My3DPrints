@@ -21,6 +21,7 @@ reports no collision, and that window must advance by one turn per lead.
 
 Usage: gen_montessori.py --part double-nut|plate [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -275,11 +276,20 @@ def build_plate(nut, cols=2, rows=3, pitch=64.0, base=6.0, boss=15.0 + LEAD,
             (w, d, base + boss), round(land, 2))
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--part", choices=["double-nut", "plate"], required=True)
     ap.add_argument("--out")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     nut, shank = source_parts()
     rep = {"part": a.part, "lead_mm": LEAD}
     if a.part == "double-nut":
@@ -310,16 +320,14 @@ def main():
     rep["bodies"] = int(len(m.split(only_watertight=False)))
     lead, windows = screw_test(probe, shank, depths, at=at)
     if lead is None:
-        print(json.dumps({"ok": False, "error":
+        return {"ok": False, "error":
               "the designer's own bolt will not screw into this thread",
-              **rep}))
-        return 1
+              **rep}
     rep["screw_lead_mm"] = round(float(lead), 2)
     rep["free_window_deg"] = [w[2] for w in windows]
     if abs(lead - LEAD) > 0.6:
-        print(json.dumps({"ok": False, "error":
-              f"thread advances {lead:.2f} mm/turn, not {LEAD}", **rep}))
-        return 1
+        return {"ok": False, "error":
+              f"thread advances {lead:.2f} mm/turn, not {LEAD}", **rep}
     sec = m.section(plane_origin=[0, 0, m.bounds[0][2] + 0.15],
                     plane_normal=[0, 0, 1])
     if sec is not None:
@@ -349,8 +357,13 @@ def main():
         rep["file"] = os.path.basename(a.out)
     else:
         rep["watertight"] = bool(m.is_watertight)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

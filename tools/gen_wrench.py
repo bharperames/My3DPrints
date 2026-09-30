@@ -18,6 +18,7 @@ toy wrench rounds the corners it is supposed to turn.
 
 Usage: gen_wrench.py [--af MM] [--thick MM] [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -270,17 +271,25 @@ def fit_test(mesh, nut, at, thick, sweep=1.0, nut_mid=15.0):
     return (best[0], best[1], free)
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--af", type=float, default=AF)
     ap.add_argument("--thick", type=float, default=THICK)
     ap.add_argument("--out")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     try:
         prof, rep, geo = build(a.af, a.thick)
     except ValueError as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return 1
+        return {"ok": False, "error": str(e)}
     m = trimesh.creation.extrude_polygon(prof, a.thick)
     rep["watertight_mesh"] = bool(m.is_watertight)
 
@@ -300,14 +309,12 @@ def main():
                                  for f in (box_fit, jaw_fit)]
         for tag, f in (("box", box_fit), ("jaw", jaw_fit)):
             if f is None:
-                print(json.dumps({"ok": False, **rep, "error":
-                      f"the designer's nut does not go into the {tag} end"}))
-                return 1
+                return {"ok": False, **rep, "error":
+                      f"the designer's nut does not go into the {tag} end"}
             if not FIT_MIN <= f[0] <= FIT_MAX:
-                print(json.dumps({"ok": False, **rep, "error":
+                return {"ok": False, **rep, "error":
                       f"{tag} fit {f[0]:.2f} mm outside "
-                      f"{FIT_MIN}-{FIT_MAX} — it will bind or round the hex"}))
-                return 1
+                      f"{FIT_MIN}-{FIT_MAX} — it will bind or round the hex"}
     except FileNotFoundError:
         rep["box_fit_mm"] = rep["jaw_fit_mm"] = None
 
@@ -326,8 +333,13 @@ def main():
         ok = not bad
         rep["file"] = os.path.basename(a.out)
     rep["volume_cm3"] = round(float(m.volume) / 1000, 1)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

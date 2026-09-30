@@ -27,6 +27,7 @@ the die is twisted off.
 
 Usage: gen_dice_cage.py --out FILE.3mf
 """
+import genapi
 import argparse
 import json
 import os
@@ -236,10 +237,19 @@ def diamond_bar(p, q, hw):
     return bar
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     R, sr = DIA / 2, STRUT / 2
     jr = sr * 1.42
 
@@ -255,18 +265,15 @@ def main():
     seat_in = face_in - SEAT_LEDGE              # top seat triangle inradius
     top_r = 2 * seat_in                         # north rim centerline radius
     if die_f2f < win_open + 1.0:
-        print(json.dumps({"ok": False, "error":
+        return {"ok": False, "error":
               f"die (min width {die_f2f:.1f}) escapes the polar window "
-              f"(Ø{win_open:.1f})"}))
-        return 1
+              f"(Ø{win_open:.1f})"}
     if die_f2f < 2 * (top_r - sr) + 1.0:
-        print(json.dumps({"ok": False, "error":
-              f"die escapes the top aperture (Ø{2*(top_r-sr):.1f})"}))
-        return 1
+        return {"ok": False, "error":
+              f"die escapes the top aperture (Ø{2*(top_r-sr):.1f})"}
     if extract_r > win_r - sr - 0.5:
-        print(json.dumps({"ok": False, "error":
-              "support sleeve cannot drop out through the polar window"}))
-        return 1
+        return {"ok": False, "error":
+              "support sleeve cannot drop out through the polar window"}
 
     # --- graticule -------------------------------------------------------
     lat_s = -np.degrees(np.arccos(win_r / R))
@@ -277,14 +284,12 @@ def main():
     ring_arc = 2 * np.pi * R / RIBS
     span = max(rib_arc, ring_arc)
     if span > SPAN_LIMIT + 0.05:
-        print(json.dumps({"ok": False, "error":
-              f"unsupported arc {span:.1f} mm over the proven span"}))
-        return 1
+        return {"ok": False, "error":
+              f"unsupported arc {span:.1f} mm over the proven span"}
     slot_w = ring_arc - STRUT
     slot_h = np.radians(ring_lats[1] - ring_lats[0]) * R - STRUT
     if die_f2f < max(slot_w, slot_h) + 1.0:
-        print(json.dumps({"ok": False, "error": "die escapes a window"}))
-        return 1
+        return {"ok": False, "error": "die escapes a window"}
 
     parts = []
     for lat in ring_lats:
@@ -373,15 +378,13 @@ def main():
     strokes = [plan[str(i)][1] for i in range(1, 21)]
     counters = [plan[str(i)][2] for i in range(1, 21)]
     if min(strokes) < MIN_STROKE:
-        print(json.dumps({"ok": False, "error":
+        return {"ok": False, "error":
               f"numeral strokes down to {min(strokes):.2f} mm "
-              f"(<{MIN_STROKE}): larger die or heavier font"}))
-        return 1
+              f"(<{MIN_STROKE}): larger die or heavier font"}
     if min(counters) < MIN_COUNTER:
-        print(json.dumps({"ok": False, "error":
+        return {"ok": False, "error":
               f"numeral counters down to {min(counters):.2f} mm "
-              f"(<{MIN_COUNTER}): less dilation"}))
-        return 1
+              f"(<{MIN_COUNTER}): less dilation"}
     try:
         cutters = []
         for fi in range(20):
@@ -449,23 +452,20 @@ def main():
         r = SAff.translate(r, *(u * anchor_r))
         clr = min(clr, land.distance(r))
     if clr < 0.6:
-        print(json.dumps({"ok": False, "error":
-              f"anchors land {clr:.2f} mm from the numeral (<0.6)"}))
-        return 1
+        return {"ok": False, "error":
+              f"anchors land {clr:.2f} mm from the numeral (<0.6)"}
     held = trimesh.boolean.union([engraved, wall, base] + anchors,
                                  engine="manifold")
 
     from mech_audit import wobble_index
     wob, wz = wobble_index(held)
     if wob > 8.0:
-        print(json.dumps({"ok": False, "error":
-              f"die too heavy for its anchors while printing (wobble {wob})"}))
-        return 1
+        return {"ok": False, "error":
+              f"die too heavy for its anchors while printing (wobble {wob})"}
     d = float((-signed_distance(cage, held.vertices[::7])).min())
     if d < 0.8:
-        print(json.dumps({"ok": False, "error":
-              f"die/sleeve too close to cage: {d:.2f} mm (needs ≥ 0.8)"}))
-        return 1
+        return {"ok": False, "error":
+              f"die/sleeve too close to cage: {d:.2f} mm (needs ≥ 0.8)"}
 
     cage.apply_translation([0, 0, -zbed])
     held.apply_translation([0, 0, -zbed])
@@ -482,7 +482,7 @@ def main():
     chk = trimesh.load(a.out, force="scene")
     ext = chk.bounds[1] - chk.bounds[0]
     vol = (cage.volume + held.volume) / 1000.0
-    print(json.dumps({"ok": True, "file": os.path.basename(a.out),
+    return {"ok": True, "file": os.path.basename(a.out),
                       "dia": DIA, "ribs": RIBS, "strut": STRUT,
                       "rings": len(ring_lats), "span_mm": round(span, 1),
                       "die_edge": round(A_D, 1),
@@ -502,8 +502,12 @@ def main():
                       "watertight": wt, "defects": defects or None, "engraving": engrave_note,
                       "dims": [round(float(x), 1) for x in ext],
                       "volume_cm3": round(float(vol), 1),
-                      "est_g": round(float(vol) * 1.24, 1)}))
-    return 0
+                      "est_g": round(float(vol) * 1.24, 1)}
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

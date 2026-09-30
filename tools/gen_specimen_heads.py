@@ -44,6 +44,7 @@ trades occlusion in pass two for coverage that pass one cannot get.
 
 Usage: gen_specimen_heads.py [--head NAME|all] [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -352,21 +353,28 @@ def export(parts, out):
     return export_defects(out), meta
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--head", default="all")
     ap.add_argument("--out")
     ap.add_argument("--quick", action="store_true")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     try:
         parts = build(a.head)
     except ValueError as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return 1
+        return {"ok": False, "error": str(e)}
     if a.quick:
         ok = all(m.is_watertight for m in parts.values())
-        print(json.dumps({"ok": ok, "bodies": len(parts)}))
-        return 0 if ok else 1
+        return {"ok": ok, "bodies": len(parts)}
     rep = measure(parts)
     failed = [n for n, ok in gates(rep) if not ok]
     ok = not failed
@@ -378,8 +386,13 @@ def main():
         rep["defects"] = bad or None
         ok = not bad
         rep["file"] = os.path.basename(a.out)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

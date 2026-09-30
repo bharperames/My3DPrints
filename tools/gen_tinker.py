@@ -38,6 +38,7 @@ nut (hex, wing, or coupler) clamps it.
 
 Usage: gen_tinker.py [--KEY N ...] [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -422,13 +423,22 @@ def pack(items, bed=BED, gap=GAP, margin=6.0, res=1.0):
     return out
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     for name, key, _, count, _ in SET:
         ap.add_argument(f"--{key}", type=int, default=count,
                         help=f"how many {name}")
     ap.add_argument("--out")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     counts = {name: max(0, getattr(a, key)) for name, key, _, _, _ in SET}
     if not sum(counts.values()):
         return _answer(False, error="every count is zero: nothing to print")
@@ -493,11 +503,20 @@ def main():
     return _answer(ok, **rep)
 
 
+def main():
+    return genapi.cli(_parser(), generate)
+
+
+
 def _answer(ok, **rep):
-    """One line of JSON: the shop reads the last line of stdout as the
-    report, so an indented dump would be read as a lone closing brace."""
-    print(json.dumps({"ok": ok, **rep}))
-    return 0 if ok else 1
+    """The report, as the shop wants it.
+
+    This used to print it: the shop read the last line of stdout, so an
+    indented dump would have been read as a lone closing brace. The shop
+    calls generate() directly now, so the report is returned and main()
+    does the printing -- one JSON line, same as before, for whoever runs
+    this from a shell."""
+    return {"ok": ok, **rep}
 
 
 if __name__ == "__main__":

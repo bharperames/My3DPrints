@@ -36,6 +36,7 @@ before its centroid passes the deck's edge.
 
 Usage: gen_gazebo.py [--size gz_s|gz_m|all] [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -1842,7 +1843,7 @@ def export(parts, out, rep):
     return export_defects(out)
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--size", default="all",
                     help="all, or a comma-separated set of "
@@ -1859,14 +1860,22 @@ def main():
                            "guessed: print the gauge and add it.")
     ap.add_argument("--out")
     ap.add_argument("--quick", action="store_true")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     global ROD_BORE, ROD_FREE, ROD_FIELD, ROD_LOSS, _MAT
     if a.material not in MATERIALS:
-        print(json.dumps({"ok": False, "error":
+        return {"ok": False, "error":
                           "no bore measured for " + a.material
                           + "; the gauge reads one. Known: "
-                          + ", ".join(sorted(MATERIALS))}))
-        return 1
+                          + ", ".join(sorted(MATERIALS))}
     ROD_BORE = MATERIALS[a.material]["bore"]
     ROD_FREE = MATERIALS[a.material]["free"]
     ROD_FIELD = FIELD_BORE[a.material]["d"]
@@ -1874,10 +1883,9 @@ def main():
     if a.grade:
         vals = [float(v) for v in a.grade.split(",") if v.strip()]
         if len(vals) != len(FIELD_GRADE) or sorted(vals) != vals:
-            print(json.dumps(dict(ok=False, error=(
+            return dict(ok=False, error=(
                 f"--grade wants {len(FIELD_GRADE)} sizes in increasing "
-                f"order; got {vals}"))))
-            return 1
+                f"order; got {vals}"))
         FIELD_GRADE[:] = vals
     ROD_LOSS = MATERIALS[a.material]["loss"]
     for _s in SIZES:
@@ -1889,12 +1897,10 @@ def main():
     try:
         parts = build(a.size)
     except ValueError as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return 1
+        return {"ok": False, "error": str(e)}
     if a.quick:
         ok = all(m.is_watertight for m in parts.values())
-        print(json.dumps({"ok": ok, "bodies": len(parts)}))
-        return 0 if ok else 1
+        return {"ok": ok, "bodies": len(parts)}
     rep = measure(parts)
     rep["material"] = a.material
     rep["rod_bore"] = ROD_BORE
@@ -1908,8 +1914,13 @@ def main():
         rep["defects"] = bad or None
         ok = not bad
         rep["file"] = os.path.basename(a.out)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

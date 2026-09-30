@@ -53,6 +53,7 @@ rotor through a full turn against the base.
 
 Usage: gen_orbital_jig.py [--specimen MM] [--out FILE.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -1038,25 +1039,32 @@ def export(parts, specimen, out):
     return export_defects(out), meta
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--specimen", type=float, default=SPECIMEN,
                     help="focal point above the platform, mm")
     ap.add_argument("--out")
     ap.add_argument("--quick", action="store_true",
                     help="skip the sweeps (geometry only)")
-    a = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    a = genapi.namespace(_parser(), out=out, **kw)
     if not SPECIMEN_RANGE[0] <= a.specimen <= SPECIMEN_RANGE[1]:
-        print(json.dumps({"ok": False, "error": "specimen height must be "
-                          f"{SPECIMEN_RANGE[0]:g}-{SPECIMEN_RANGE[1]:g} mm"}))
-        return 1
+        return {"ok": False, "error": "specimen height must be "
+                          f"{SPECIMEN_RANGE[0]:g}-{SPECIMEN_RANGE[1]:g} mm"}
     parts = assemble(a.specimen)
     if a.quick:
         rep = {"watertight": {n: bool(m.is_watertight)
                               for n, m in parts.items()}}
         rep["ok"] = all(rep["watertight"].values())
-        print(json.dumps(rep))
-        return 0 if rep["ok"] else 1
+        return rep
     rep = measure(parts, a.specimen)
     failed = [n for n, ok in gates(rep) if not ok]
     ok = not failed
@@ -1070,8 +1078,13 @@ def main():
         ok = not bad
         rep["file"] = os.path.basename(a.out)
     rep["bodies"] = len(parts)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":

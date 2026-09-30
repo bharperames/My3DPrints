@@ -57,6 +57,7 @@ design, because it decides what the puzzle is.
 
 Usage: gen_bolted.py [--a MM] [--thread MM] [--entry none|free] [--out F.3mf]
 """
+import genapi
 import argparse
 import json
 import os
@@ -300,13 +301,22 @@ def layout(t, a, entry="free", gap=FACE_GAP):
     return out
 
 
-def main():
+def _parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--thread", type=float, default=12.0)
     ap.add_argument("--a", type=float, default=None)
     ap.add_argument("--entry", choices=("none", "free"), default="free")
     ap.add_argument("--out")
-    A = ap.parse_args()
+    return ap
+
+
+def generate(out=None, **kw):
+    """Build the part and, given `out`, write it. Returns the report.
+
+    This is the generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it.
+    """
+    A = genapi.namespace(_parser(), out=out, **kw)
     t = thread_for(A.thread)
     need = min_spacing(t)
     a = float(np.ceil(need)) if A.a is None else A.a
@@ -323,8 +333,7 @@ def main():
     if a < need:
         why = (f"spacing {a} below the derived minimum {need:.2f} — the "
                f"counterbore would leave under {WALL_MIN} mm of wall")
-        print(json.dumps({"ok": False, **rep, "error": why}))
-        return 1
+        return {"ok": False, **rep, "error": why}
     parts = assemble(t, a, entry=A.entry, gap=FACE_GAP,
                      rounds=() if A.entry == "none" else (0,))
     rep["watertight"] = all(m.is_watertight for m in parts.values())
@@ -370,8 +379,13 @@ def main():
             rep["defects"] = bad
             ok = False
         rep["file"] = os.path.basename(A.out)
-    print(json.dumps({"ok": ok, **rep}))
+    return {"ok": ok, **rep}
     return 0 if ok else 1
+
+
+def main():
+    return genapi.cli(_parser(), generate)
+
 
 
 if __name__ == "__main__":
