@@ -1139,6 +1139,68 @@ def out_path(part, params=None):
     return os.path.join(CUSTOM, name)
 
 
+_GEN_MODULES = {}
+
+
+def _flag_kwargs(args):
+    """`["--part", "double-nut"]` as `{"part": "double-nut"}`.
+
+    A card's `gen` list carries the fixed arguments that used to be handed
+    to a command line. Called in process they are keywords instead.
+    """
+    out, i = {}, 0
+    while i < len(args):
+        a = args[i]
+        if not a.startswith("--"):
+            i += 1
+            continue
+        key = a[2:].replace("-", "_")
+        if i + 1 < len(args) and not args[i + 1].startswith("--"):
+            out[key] = args[i + 1]
+            i += 2
+        else:
+            out[key] = True
+            i += 1
+    return out
+
+
+def _gen_module(script):
+    """A generator module, reloaded if it or a module beside it has moved.
+
+    This is the one thing a subprocess got for free. A long-lived process
+    holds whatever it imported, so a generator could be fixed on disk and
+    every order still come back with the old geometry -- the exact fault
+    serve.py already carries a comment about, arriving by a new route.
+    The files watched are the same ones `stale()` watches, so what counts
+    as a change for rebuilding counts as a change for reloading.
+    """
+    import importlib
+    name = os.path.splitext(os.path.basename(script))[0]
+    src = os.path.join(HERE, script)
+    watch = [src] + _local_imports(src)
+    try:
+        now = tuple(os.path.getmtime(f) for f in watch if os.path.exists(f))
+    except OSError:
+        return None
+    mod, was = _GEN_MODULES.get(name, (None, None))
+    try:
+        if mod is None:
+            mod = importlib.import_module(name)
+        elif was != now:
+            # dependencies first: reloading the generator alone would keep
+            # the old cutter bound to the new script
+            for f in watch[1:]:
+                dep = sys.modules.get(
+                    os.path.splitext(os.path.basename(f))[0])
+                if dep is not None:
+                    importlib.reload(dep)
+            mod = importlib.reload(mod)
+    except Exception:                                       # noqa: BLE001
+        return None
+    _GEN_MODULES[name] = (mod, now)
+    return mod
+
+
 def ensure(part, params=None, timeout=600):
     """Generate the part's file if it is not on disk, or is out of date.
 
@@ -1150,6 +1212,23 @@ def ensure(part, params=None, timeout=600):
     path = out_path(part, params)
     if not stale(part, path):
         return path, {"cached": True}
+    # In process where the generator offers it. Nobody runs these from a
+    # shell, and spawning a Python to parse a string we just finished
+    # formatting costs 0.45s of interpreter and trimesh startup per build
+    # -- which is 99% of the wall time for a part whose geometry takes two
+    # milliseconds. A generator opts in by exposing generate(out, **params);
+    # the rest still go through the command line, so this migrates one at a
+    # time and never leaves the shop half-working.
+    mod = _gen_module(part["gen"][0])
+    fn = getattr(mod, "generate", None) if mod is not None else None
+    if fn is not None:
+        kw = _flag_kwargs(part["gen"][1:])
+        kw.update(params or {})
+        rep = fn(out=path, **kw)
+        if not rep.get("ok"):
+            raise RuntimeError(rep.get("error", "generation refused"))
+        return path, rep
+
     cmd = [PY, os.path.join(HERE, part["gen"][0])] + part["gen"][1:]
     for k, v in (params or {}).items():
         cmd += [f"--{k}", str(v)]

@@ -17,28 +17,28 @@ import trimesh
 from trimesh.proximity import signed_distance
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dia", type=float, required=True)
-    ap.add_argument("--freq", type=int, required=True)
-    ap.add_argument("--strut", type=float, required=True)
-    ap.add_argument("--ball", type=float, required=True)
-    ap.add_argument("--out", required=True)
-    a = ap.parse_args()
-    R = a.dia / 2
-    sr = a.strut / 2
-    br = a.ball / 2
+def generate(out=None, dia=None, freq=None, strut=None, ball=None):
+    """Build the cage and, given `out`, write it. Returns the report.
+
+    This is the whole generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it rather than
+    spawning a Python to re-parse arguments it just formatted.
+    """
+    dia, strut, ball = float(dia), float(strut), float(ball)
+    freq = int(freq)
+    R = dia / 2
+    sr = strut / 2
+    br = ball / 2
     jr = sr * 1.35
     err = None
-    if not 30 <= a.dia <= 90:
+    if not 30 <= dia <= 90:
         err = "cage Ø must be 30-90 mm"
-    elif not 1 <= a.freq <= 6:
+    elif not 1 <= freq <= 6:
         err = "lattice frequency must be 1-6"
-    elif not 1.4 <= a.strut <= 4.5:
+    elif not 1.4 <= strut <= 4.5:
         err = "strut Ø must be 1.4-4.5 mm"
     if err:
-        print(json.dumps({"ok": False, "error": err}))
-        return 1
+        return {"ok": False, "error": err}
 
     # class-I geodesic tessellation: 30*freq^2 struts (30/120/270/480/750/1080)
     ico = trimesh.creation.icosahedron()
@@ -53,7 +53,7 @@ def main():
             verts.append(p)
         return index[key]
 
-    nu = a.freq
+    nu = freq
     edges, F = set(), []
     for fa in ico.faces:
         A, B, C = IV[fa[0]], IV[fa[1]], IV[fa[2]]
@@ -77,20 +77,18 @@ def main():
     V = trimesh.transform_points(
         V, trimesh.geometry.align_vectors(n0 / np.linalg.norm(n0), [0, 0, -1]))
     e_len = float(max(np.linalg.norm(V[p] - V[q]) for p, q in edges))
-    cage_only = a.ball == 0
+    cage_only = ball == 0
     # stability envelope, bracketed by field prints (13 mm good / 22 mm fail):
     if e_len > 16.0:
-        print(json.dumps({"ok": False, "error":
+        return {"ok": False, "error":
               f"unstable: lattice spans {e_len:.0f} mm (shallow-strut edges droop "
               f"and strand above 16 — field-proven). Use a finer lattice or a "
-              f"smaller Ø"}))
-        return 1
-    if e_len / a.strut > 8.0:
-        print(json.dumps({"ok": False, "error":
-              f"unstable: Ø{a.strut:g} struts over {e_len:.0f} mm spans flex under "
-              f"nozzle drag (ratio {e_len/a.strut:.0f}, limit 8). Thicken the "
-              f"struts to ≥ {e_len/8:.1f} mm"}))
-        return 1
+              f"smaller Ø"}
+    if e_len / strut > 8.0:
+        return {"ok": False, "error":
+              f"unstable: Ø{strut:g} struts over {e_len:.0f} mm spans flex under "
+              f"nozzle drag (ratio {e_len/strut:.0f}, limit 8). Thicken the "
+              f"struts to ≥ {e_len/8:.1f} mm"}
     if cage_only:
         # pure geodesic sphere: no ball, no pedestal, no window
         parts = []
@@ -110,18 +108,17 @@ def main():
         cage.apply_translation([0, 0, -cage.bounds[0][2]])
         sc = trimesh.Scene()
         sc.add_geometry(cage, geom_name="cage")
-        os.makedirs(os.path.dirname(a.out), exist_ok=True)
-        sc.export(a.out)
-        chk = trimesh.load(a.out, force="scene")
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        sc.export(out)
+        chk = trimesh.load(out, force="scene")
         ext = chk.bounds[1] - chk.bounds[0]
         vol = cage.volume / 1000.0
-        print(json.dumps({"ok": True, "file": os.path.basename(a.out),
+        return {"ok": True, "file": os.path.basename(out),
                           "span_mm": round(e_len, 1), "struts": len(edges),
                           "watertight": all(g.is_watertight for g in chk.geometry.values()),
                           "dims": [round(float(x), 1) for x in ext],
                           "volume_cm3": round(float(vol), 1),
-                          "est_g": round(float(vol) * 1.24, 1)}))
-        return 0
+                          "est_g": round(float(vol) * 1.24, 1)}
     # bottom window: clear the central bottom struts so a wide, stiff pedestal
     # can rise from the bed. A O2.4 pip cannot brace a growing ball against
     # nozzle drag (field-proven, twice) — foundation stiffness scales as d^4.
@@ -129,9 +126,8 @@ def main():
     # claim the central bottom region, never grow with the ball
     ped_r = min(7.0, 0.34 * R - 3.5, br - 3.5, max(4.0, br * 0.45))
     if ped_r < 3.0:
-        print(json.dumps({"ok": False, "error":
-              f"ball Ø{a.ball:g} too small for a stable pedestal (needs ≥ 13 mm)"}))
-        return 1
+        return {"ok": False, "error":
+              f"ball Ø{ball:g} too small for a stable pedestal (needs ≥ 13 mm)"}
     win_r = ped_r + 3.5
     zlow = V[:, 2].min() + R * 0.4
 
@@ -149,22 +145,19 @@ def main():
     low_d = [seg_axis_dist(p, q) for (p, q) in edges
              if max(V[p][2], V[q][2]) < zlow + 4]
     win_open = 2 * (min(low_d) - sr) if low_d else 2 * win_r
-    if a.ball < win_open + 1.0:
-        print(json.dumps({"ok": False, "error":
-              f"ball Ø{a.ball:g} could escape through the pedestal window "
-              f"(Ø{win_open:.1f}) — ball needs ≥ {win_open + 1:.0f} mm at this size"}))
-        return 1
+    if ball < win_open + 1.0:
+        return {"ok": False, "error":
+              f"ball Ø{ball:g} could escape through the pedestal window "
+              f"(Ø{win_open:.1f}) — ball needs ≥ {win_open + 1:.0f} mm at this size"}
     opening = 2 * (e_len / (2 * np.sqrt(3)) - sr)
-    if a.ball <= opening + 1.0:
-        print(json.dumps({"ok": False, "error":
-              f"ball Ø{a.ball:g} escapes: openings are Ø{opening:.1f} — "
-              f"needs ≥ {opening + 1.0:.1f} mm"}))
-        return 1
+    if ball <= opening + 1.0:
+        return {"ok": False, "error":
+              f"ball Ø{ball:g} escapes: openings are Ø{opening:.1f} — "
+              f"needs ≥ {opening + 1.0:.1f} mm"}
     if br > R - sr - 2.0:
-        print(json.dumps({"ok": False, "error":
-              f"ball Ø{a.ball:g} won't fit: max ≈ {2 * (R - sr - 2.0):.0f} mm "
-              f"inside a Ø{a.dia:g} cage"}))
-        return 1
+        return {"ok": False, "error":
+              f"ball Ø{ball:g} won't fit: max ≈ {2 * (R - sr - 2.0):.0f} mm "
+              f"inside a Ø{dia:g} cage"}
 
     parts = []
     for p, q in edges:
@@ -203,37 +196,48 @@ def main():
     from mech_audit import wobble_index
     wob, wz = wobble_index(held)
     if wob > 8.0:
-        print(json.dumps({"ok": False, "error":
+        return {"ok": False, "error":
               f"unstable while printing: wobble index {wob} at z={wz:.0f} "
               f"(a survived print measured 8.9, a failed one 28) — the ball is "
-              f"too heavy for its neck at this size"}))
-        return 1
+              f"too heavy for its neck at this size"}
     d = float((-signed_distance(cage, held.vertices[::11])).min())
     if d < 0.8:
-        print(json.dumps({"ok": False, "error":
-              f"ball/pedestal too close to the cage: {d:.2f} mm (needs ≥ 0.8)"}))
-        return 1
+        return {"ok": False, "error":
+              f"ball/pedestal too close to the cage: {d:.2f} mm (needs ≥ 0.8)"}
     cage.apply_translation([0, 0, -zbed])
     held.apply_translation([0, 0, -zbed])
     sc = trimesh.Scene()
     sc.add_geometry(cage, geom_name="cage")
     sc.add_geometry(held, geom_name="ball")
-    os.makedirs(os.path.dirname(a.out), exist_ok=True)
-    sc.export(a.out)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    sc.export(out)
     from embed_settings import embed
-    embed(a.out)                       # P2S presets + outer brim baked in
-    chk = trimesh.load(a.out, force="scene")
+    embed(out)                       # P2S presets + outer brim baked in
+    chk = trimesh.load(out, force="scene")
     wt = all(g.is_watertight for g in chk.geometry.values())
     ext = chk.bounds[1] - chk.bounds[0]
     vol = (cage.volume + held.volume) / 1000.0
-    print(json.dumps({"ok": True, "file": os.path.basename(a.out),
+    return {"ok": True, "file": os.path.basename(out),
                       "span_mm": round(e_len, 1), "wobble": wob,
                       "struts": len(edges), "opening": round(opening, 1),
                       "clearance": round(d, 2), "watertight": wt,
                       "dims": [round(float(x), 1) for x in ext],
                       "volume_cm3": round(float(vol), 1),
-                      "est_g": round(float(vol) * 1.24, 1)}))
-    return 0
+                      "est_g": round(float(vol) * 1.24, 1)}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dia", type=float, required=True)
+    ap.add_argument("--freq", type=int, required=True)
+    ap.add_argument("--strut", type=float, required=True)
+    ap.add_argument("--ball", type=float, required=True)
+    ap.add_argument("--out", required=True)
+    a = ap.parse_args()
+    rep = generate(out=a.out, dia=a.dia, freq=a.freq, strut=a.strut,
+                   ball=a.ball)
+    print(json.dumps(rep))
+    return 0 if rep.get("ok") else 1
 
 
 if __name__ == "__main__":

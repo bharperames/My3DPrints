@@ -146,6 +146,47 @@ def build(ball, base=None, wall=None, chamfer=None, seat=None, segments=None):
     return m, rep
 
 
+def generate(out=None, ball=None, base=None, wall=None, chamfer=None,
+             seat=None, segments=None):
+    """Build the stand and, given `out`, write it. Returns the report.
+
+    This is the whole generator. `main` below is a command line around it
+    and nothing else -- the shop imports this and calls it, rather than
+    spawning a Python to parse a string it just finished formatting.
+    """
+    ball = float(ball)
+    if not 8 <= ball <= 200:
+        return {"ok": False, "error": "ball must be 8-200 mm"}
+    try:
+        m, rep = build(ball,
+                       None if base is None else float(base),
+                       None if wall is None else float(wall),
+                       None if chamfer is None else float(chamfer),
+                       None if seat is None else float(seat),
+                       None if segments is None else int(segments))
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
+    m.merge_vertices()
+    m.update_faces(m.nondegenerate_faces())
+    m.process(validate=True)
+    m.apply_translation([0, 0, -m.bounds[0][2]])
+    rep["watertight"] = bool(m.is_watertight)
+    rep["volume_cm3"] = round(float(m.volume) / 1000, 2)
+    rep["est_g"] = round(float(m.volume) / 1000 * 1.24, 1)
+    ok = rep["watertight"]
+    if out and ok:
+        d = os.path.dirname(out)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        sc = trimesh.Scene()
+        sc.add_geometry(m, geom_name="sphere_stand")
+        sc.export(out)
+        from embed_settings import embed
+        embed(out, brim=False)
+        rep["file"] = os.path.basename(out)
+    return {"ok": ok, **rep}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ball", type=float, required=True,
@@ -157,32 +198,10 @@ def main():
     ap.add_argument("--segments", type=int)
     ap.add_argument("--out")
     a = ap.parse_args()
-    if not 8 <= a.ball <= 200:
-        print(json.dumps({"ok": False, "error": "ball must be 8-200 mm"}))
-        return 1
-    try:
-        m, rep = build(a.ball, a.base, a.wall, a.chamfer, a.seat, a.segments)
-    except ValueError as e:
-        print(json.dumps({"ok": False, "error": str(e)}))
-        return 1
-    m.merge_vertices()
-    m.update_faces(m.nondegenerate_faces())
-    m.process(validate=True)
-    m.apply_translation([0, 0, -m.bounds[0][2]])
-    rep["watertight"] = bool(m.is_watertight)
-    rep["volume_cm3"] = round(float(m.volume) / 1000, 2)
-    rep["est_g"] = round(float(m.volume) / 1000 * 1.24, 1)
-    ok = rep["watertight"]
-    if a.out and ok:
-        os.makedirs(os.path.dirname(a.out), exist_ok=True)
-        sc = trimesh.Scene()
-        sc.add_geometry(m, geom_name="sphere_stand")
-        sc.export(a.out)
-        from embed_settings import embed
-        embed(a.out, brim=False)
-        rep["file"] = os.path.basename(a.out)
-    print(json.dumps({"ok": ok, **rep}))
-    return 0 if ok else 1
+    rep = generate(out=a.out, ball=a.ball, base=a.base, wall=a.wall,
+                   chamfer=a.chamfer, seat=a.seat, segments=a.segments)
+    print(json.dumps(rep))
+    return 0 if rep.get("ok") else 1
 
 
 if __name__ == "__main__":
