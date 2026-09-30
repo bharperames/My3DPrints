@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Puzzle blocks on the Montessori thread family, at puzzle scale.
+"""The screw cube: a bolt, and a block split across it.
 
-  puzzle-cube   a cube split across the bolt axis into two threaded halves,
-                plus the bolt that holds them
+  screw-cube   a cube split across the bolt axis into two halves, plus the
+               bolt that holds them. The bolt drops through the upper
+               half's plain bore, seats its head, and the upper half is
+               then the wrench that drives it into the threaded lower
+               half. Pull on it and nothing happens -- the upper half is
+               capped by the head above and floored by the lower below.
 
-This was called the "seed cube" for three weeks, meaning the first of the
-family -- the Knot and the Tinker Set both grew from it, and its printed
+It is not a puzzle, and it has been called one twice. The Knot is the
+puzzle: three bars and three bolts in tension, two of them keyed. This is
+the thing that proved the thread would work at all.
+
+It was also called the "seed cube" for three weeks, meaning the first of
+the family -- the Knot and the Tinker Set both grew from it, and its printed
 results set the thread ratios and the clearances they use. Nothing wrote
 that down, and "seed" in a generator reads as a random seed, which is the
 opposite of what this is: the design is rigid and fully deterministic, and
@@ -317,10 +325,10 @@ def generate(out=None, **kw):
     except ValueError as e:
         # build_cube raises for settings that cannot be drawn at all. It
         # used to escape main(), and the page printed the Python stack.
-        return {"ok": False, "part": "puzzle-cube",
+        return {"ok": False, "part": "screw-cube",
                           "error": str(e)}
     bolt = t.bolt(shank_len=shank_len)
-    rep = {"part": "puzzle-cube", "thread": repr(t), "side_mm": S,
+    rep = {"part": "screw-cube", "thread": repr(t), "side_mm": S,
            "seam_mm": round(c, 2), "pocket_depth_mm": p,
            "shank_mm": round(shank_len, 2),
            "head_proud_mm": round(t.head_h - p, 2),

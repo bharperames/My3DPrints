@@ -4,7 +4,7 @@
 A fit test asks whether two parts overlap in a pose. That is not the
 question. The question is whether a continuous motion exists that carries
 one part from apart to assembled without ever overlapping, and a pose test
-cannot see the difference — the puzzle cube's first build passed every pose
+cannot see the difference — the screw cube's first build passed every pose
 test and could not have been assembled at all, because its keyed head had
 to arrive at its keyway while rotating and can only align once in sixty
 degrees.
@@ -39,7 +39,7 @@ def helix(s0, s1, direction=(0, 0, 1), origin=(0, 0, 0), lead=None,
     """Transforms sampling a screw along an arbitrary line, or a pure slide.
 
     The line is (origin, direction); travel and rotation share it, which is
-    what a screw is. The puzzle cube only ever needed the z axis, but the Knot
+    what a screw is. The screw cube only ever needed the z axis, but the Knot
     has three mutually skew ones, and a search that can only sweep along z
     cannot report on it at all — it would call every body welded, and that
     is exactly the failure this project has already paid for once.
@@ -67,7 +67,7 @@ def helix(s0, s1, direction=(0, 0, 1), origin=(0, 0, 0), lead=None,
 
 def screw_path(z0, z1, lead=None, theta0=0.0, max_r=1.0, delta=None,
                clearance=0.30, axis=2):
-    """`helix` down a coordinate axis, which is what the puzzle cube uses."""
+    """`helix` down a coordinate axis, which is what the screw cube uses."""
     d = np.zeros(3)
     d[axis] = 1.0
     return helix(z0, z1, d, (0, 0, 0), lead, theta0, max_r, delta, clearance)
@@ -228,7 +228,7 @@ def escapes(rest, mover, lead, axes=(Z_AXIS,), span=None, clearance=0.30):
 
     Each result is (axis index, direction, coupling): coupling None is a
     pure slide, +1 and -1 the two handednesses of a screw at this lead.
-    `axes` is a sequence of (direction, origin) lines — the puzzle cube has
+    `axes` is a sequence of (direction, origin) lines — the screw cube has
     one, the Knot has three, and a body is only asked about the lines it
     could actually travel on. Sweeps stop the moment the two bodies are
     clear along the axis, so a successful escape costs only the travel it
@@ -283,7 +283,7 @@ def escapes(rest, mover, lead, axes=(Z_AXIS,), span=None, clearance=0.30):
 def disassemble(parts, lead, axes=(Z_AXIS,), clearance=0.30, max_group=2):
     """Take the assembly apart, or report what stays stuck.
 
-    Bodies are tried alone and in groups, because the puzzle cube only comes
+    Bodies are tried alone and in groups, because the screw cube only comes
     apart if the bolt and the upper half leave together — no single part is
     free at the start. A group is moved as one rigid body, which is what a
     hand does when it lifts two parts that are locked to each other.

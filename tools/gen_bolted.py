@@ -278,7 +278,7 @@ def layout(t, a, entry="free", gap=FACE_GAP):
     horizontal hole whose crown droops onto the crest the bolt turns on.
     The clearance bore and its counterbore then lie on their sides, which
     they can afford to: nothing threads in them."""
-    from gen_puzzle import tidy
+    from gen_screw_cube import tidy
     up = trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0])
     out, pitch = {}, a + 10.0
     bars = [bar(t, a, keyed=(entry == "none"), gap=gap),

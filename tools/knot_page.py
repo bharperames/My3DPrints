@@ -256,7 +256,7 @@ def build(thread=12.0, design="burr", entry=None):
         d["members"].update({f"bolt{i}": [f"bolt{i}"] for i in range(3)})
         d["hold"] = [f"bar{i}" for i in range(3)]
         # The order the object has to be built in, and every step of it is
-        # forced by one law the puzzle cube paid for twice: a head sunk in a
+        # forced by one law the screw cube paid for twice: a head sunk in a
         # hex counterbore CANNOT TURN, so the bolt is never what you turn.
         # You drop the bolt into the block that keys it, and then you turn
         # the block it threads into -- or the block carrying it. The block

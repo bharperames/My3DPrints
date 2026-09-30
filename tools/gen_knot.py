@@ -3,7 +3,7 @@
 
 WHY THE SEED CUBE IS NOT THE PUZZLE
 
-`gen_puzzle.py` builds the primitive: one bolt, two halves. It is naive on
+`gen_screw_cube.py` builds the primitive: one bolt, two halves. It is naive on
 purpose -- one affordance, and that affordance is visible. The depth search
 scores it in two moves with one legal first move and no retrograde, which is
 exactly what it was built to be. Six of those in a row is still six obvious
@@ -55,7 +55,7 @@ so the section is capped by the spacing. Two things then have to fit in it,
 and neither is a shank.
 
 ACROSS the block, a hex head: the pocket's corner radius is 1.642 R_major,
-so a >= 2 (1.642 R_major + slop + wall + gap), which for the puzzle cube's 16 mm
+so a >= 2 (1.642 R_major + slop + wall + gap), which for the screw cube's 16 mm
 thread is 36, not 22. The head, not the shank, is the widest thing a block
 has to contain.
 
@@ -89,7 +89,7 @@ equal spacing did that, not a decision.
 
 THE LAW THAT CONSTRAINS THE LAYOUT
 
-From `gen_puzzle.py`, paid for twice:
+From `gen_screw_cube.py`, paid for twice:
 
     A keyed head cannot be screwed into its own keyway.
 
@@ -435,7 +435,7 @@ def layout(t, a, entry="slot", slot=0.0):
     to match so it is not a choice that could be made differently.
 
     Bolts stand on their heads, thread up, for the same reason, and with no
-    brim. The puzzle cube's bolt printed the same way without one, at nearly
+    brim. The screw cube's bolt printed the same way without one, at nearly
     the same slenderness, and a brim is not free here: it attaches to the
     chamfered rim of the head's underside, which is the bearing face -- on
     the key bolt, the only thing stopping the bolt sliding through its own
@@ -443,7 +443,7 @@ def layout(t, a, entry="slot", slot=0.0):
     nozzle, and this bolt has no edge to curl: the flank is 32.5 degrees at
     every layer and the head is chamfered.
     """
-    from gen_puzzle import tidy
+    from gen_screw_cube import tidy
     up = trimesh.transformations.rotation_matrix(-np.pi / 2, [0, 1, 0])
     keyed = entry == "slot"
     blocks = [block(t, a, slot=slot if keyed else 0.0), block(t, a),
@@ -470,7 +470,7 @@ def layout(t, a, entry="slot", slot=0.0):
 def head_descends(t, a, parts):
     """The law, as a motion: bolt 0 drops into block 1's pocket unturned.
 
-    The puzzle cube's first build had thread under the pocket and could never
+    The screw cube's first build had thread under the pocket and could never
     have been assembled, and nothing in a disassembly argument catches it --
     the head arrives at its keyway rotating, presents the right sixth of a
     turn once every 60 degrees, and lands on the face and grinds.

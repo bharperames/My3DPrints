@@ -233,7 +233,7 @@ PARTS = [
                 max=40, step=1, val=19)],
        out="cage-D{dia:g}-F{freq}-T{strut:g}-B{ball:g}.3mf",
        brim="on"),      # same thin first layer as the dice orb
-    _p("puzzle_cube", "Screw Puzzle Cube", "Designed here", "parametric",
+    _p("screw_cube", "Screw Cube", "Designed here", "generated",
        "A cube split across the bolt rather than along it. Only the "
        "lower half is threaded; the upper half takes a plain clearance "
        "bore, so the bolt drops through it, seats its head, and is then "
@@ -259,19 +259,17 @@ PARTS = [
               "was. Silk PLA is the most brittle thing on the shelf and a "
               "thread in torsion is the worst thing to ask of it. PETG "
               "next.",
-       gen=["gen_puzzle.py"], params=[
-           dict(key="side", label="block", unit="mm", min=32, max=64,
-                step=1, val=40),
-           dict(key="thread", label="thread \u00d8", unit="mm", min=10,
-                max=26, step=1, val=16),
-           dict(key="pocket", label="head pocket", unit="mm", min=3, max=12,
-                step=0.5, val=5, derived="thread"),
-           # the upper half carries no thread now, so moving the seam up
-           # costs it nothing and buys the lower half engagement
-           dict(key="split", label="seam height", min=0.35, max=0.65,
-                step=0.01, val=0.5, derived="block")],
-       out="puzzle-cube-S{side:g}-T{thread:g}-P{pocket:g}-X{split:g}.3mf"),
-    _p("knot_bolted", "The Knot", "Designed here", "parametric",
+       # No dials. This is one proven object, not a family: it was printed
+       # at 40 mm on a 16 mm thread and that is the geometry the Knot and
+       # the Tinker Set took their ratios and their 0.30 mm clearance from.
+       # The dials it used to carry offered ranges it could not keep --
+       # sweeping the block alone, 32 fouls the hex pocket, 48 and 64 build
+       # but will not come apart, and 2 of 5 values gave a working cube. A
+       # dial that mostly refuses is a promise the part cannot meet. The
+       # generator still takes the arguments for experimenting with.
+       gen=["gen_screw_cube.py"],
+       out="screw-cube.3mf"),
+    _p("knot_bolted", "The Knot Puzzle", "Designed here", "parametric",
        "Three bars, three bolts, and every bolt in tension. Each bolt "
        "passes right THROUGH the bar whose counterbore holds its head "
        "and threads into the next bar along, so the three are clamped "
