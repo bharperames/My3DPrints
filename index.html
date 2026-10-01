@@ -167,7 +167,12 @@ h1 .tld{color:var(--accent)}
   border-radius:99px;padding:4px 10px;font:500 11px "IBM Plex Sans",sans-serif;cursor:pointer}
 .chips button.on{color:var(--accent);border-color:var(--accent)}
 .dimtag{position:absolute;left:12px;top:14px;z-index:6;pointer-events:none;
-  font:400 11px "IBM Plex Mono",monospace;color:var(--muted)}
+  font:400 11px "IBM Plex Mono",monospace;color:var(--muted);transition:top .12s}
+/* The expand and graph buttons appear on hover at top-left, exactly where
+   the dimensions are already sitting, and landed on top of them. The
+   buttons are 28px tall from top:12, so the text drops below them rather
+   than being hidden: it is wanted most while the pointer is in the box. */
+.photo:hover .dimtag,.platewrap:hover .dimtag{top:48px}
 .body{padding:18px 20px 16px;display:flex;flex-direction:column;gap:12px;flex:1}
 .card h3{font:600 19px/1.2 "Chakra Petch",sans-serif}
 .eyebrow{font:600 10.5px/1 "IBM Plex Sans",sans-serif;text-transform:uppercase;
@@ -702,7 +707,7 @@ function tint(obj){
 // an STL is a wall of triangles; both load fine in the browser, and doing
 // so retires three hundred and fifty megabytes of derived GLB that had to
 // be rebuilt whenever its source moved.
-function loadReal(url, ext){
+function loadRealUncached(url, ext){
   const kind = (ext || '').toLowerCase();
   if (kind === 'glb' || kind === 'gltf')
     return new Promise((ok, no) => loader.load(url, g => ok(g.scene), undefined, no));
@@ -710,6 +715,44 @@ function loadReal(url, ext){
     return new Promise((ok, no) => stlLoader.load(url,
       g => ok(new THREE.Mesh(g, new THREE.MeshStandardMaterial())), undefined, no));
   return new Promise((ok, no) => mf3Loader.load(url, ok, undefined, no));
+}
+
+/* Parsed geometry, kept.
+
+   Typing in the search box re-renders the card list on every keystroke,
+   and each render mounted a fresh viewer that fetched and parsed the part
+   again from nothing. Typing "knot" paid for the Knot four times. The
+   bytes were never the problem -- the browser had them cached, 14 ms --
+   it was the work after: parsing 8 MB of 3MF XML into 530,672 triangles
+   is 1.5 s, and creasing their normals is more. So the finished object is
+   what is kept, with its normals already computed.
+
+   Callers get a clone. three.js clones share the underlying geometry
+   buffers, so a second card costs a few objects rather than another copy
+   of half a million triangles, and tinting a clone cannot reach back and
+   recolor the cached one.
+
+   The promise goes in the map, not the object, so two cards asking for
+   the same part while it is still parsing wait on one parse instead of
+   starting a second. */
+const realCache = new Map();
+const REAL_CACHE_MAX = 8;
+
+function loadReal(url, ext){
+  let hit = realCache.get(url);
+  if (hit) {                               // refresh its place in the LRU
+    realCache.delete(url);
+  } else {
+    hit = loadRealUncached(url, ext).then(fixNormals);
+    hit.catch(() => realCache.delete(url));   // a failure must not stick
+  }
+  realCache.set(url, hit);
+  // Evicted entries are dropped, not disposed: a clone still on screen is
+  // sharing those buffers, and disposing them would empty a live card.
+  while (realCache.size > REAL_CACHE_MAX) {
+    realCache.delete(realCache.keys().next().value);
+  }
+  return hit.then(o => o.clone(true));
 }
 const views = [];   // {el, scene, camera, controls, entries, idx, loaded:{} , visible}
 
@@ -877,7 +920,7 @@ function setModel(v, i, keep){
   status.className = 'status'; status.textContent = 'loading…';
   v.el.appendChild(status);
   const got = entry.src
-    ? loadReal(entry.src, entry.ext).then(o => tint(fixNormals(o)))
+    ? loadReal(entry.src, entry.ext).then(tint)   // normals done in the cache
     : new Promise((ok, no) => loader.load(
         entry.glb || ('models/glb/' + entry.slug + '.glb'),
         g => ok(fixNormals(g.scene)), undefined, no))

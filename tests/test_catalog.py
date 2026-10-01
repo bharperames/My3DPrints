@@ -333,6 +333,49 @@ class TestTheEmbeddedAppIsReachable(unittest.TestCase):
         self.assertEqual(live, [])
 
 
+class TestTheAnimationShowsTheRealPart(unittest.TestCase):
+    """The Knot Puzzle is drawn twice and nothing kept the two in step.
+
+    The card renders the printed 3MF. The assembly page renders a GLB that
+    `knot_page.py` writes, posed into the assembled ring with a sequence to
+    animate -- which is the right answer for that object, and the reason it
+    writes no `to_world` into its archive like the gazebo does.
+
+    But `knot_page.py` is not run by `make build`. Change the Knot and the
+    3MF rebuilds while the GLB does not, and the page would then animate a
+    part nobody can print, convincingly, because it still looks like a Knot.
+    This repo has been bitten by two descriptions of one object more than
+    once; this is the cheapest possible guard on the newest pair.
+
+    Compared pose-invariantly -- face count and volume per body, sorted --
+    because the GLB is assembled and the 3MF is laid out flat, so the
+    vertices are in different places by design. What must match is the
+    bodies, not where they are standing.
+    """
+
+    GLB = os.path.join(ROOT, "models", "glb", "knot_bolted_assembly.glb")
+
+    def test_the_assembly_glb_is_the_part_the_card_prints(self):
+        import trimesh
+        if not os.path.exists(self.GLB):
+            self.skipTest("models/ is gitignored; run knot_page.py to build it")
+        part = catalog.find("knot_bolted")
+        src = catalog.out_path(part, catalog.defaults(part))
+        if not os.path.exists(src):
+            self.skipTest("the Knot is not built here; run make build")
+
+        def bodies(path):
+            sc = trimesh.load(path, force="scene")
+            return sorted((len(m.faces), round(float(m.volume), 3))
+                          for m in sc.geometry.values())
+
+        printed, animated = bodies(src), bodies(self.GLB)
+        self.assertEqual(
+            printed, animated,
+            "the assembly page animates geometry the shop does not print -- "
+            "re-run tools/knot_page.py")
+
+
 class TestCuration(unittest.TestCase):
     def test_curation_is_found_by_filename(self):
         self.assertIsNotNone(designs.curation("Vortex+v3+project.3mf"))
