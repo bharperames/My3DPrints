@@ -269,7 +269,7 @@ PARTS = [
        # generator still takes the arguments for experimenting with.
        gen=["gen_screw_cube.py"],
        out="screw-cube.3mf"),
-    _p("knot_bolted", "The Knot Puzzle", "Designed here", "parametric",
+    _p("knot_bolted", "The Knot Puzzle", "Designed here", "generated",
        "Three bars, three bolts, and every bolt in tension. Each bolt "
        "passes right THROUGH the bar whose counterbore holds its head "
        "and threads into the next bar along, so the three are clamped "
@@ -302,10 +302,15 @@ PARTS = [
        stills=[dict(src="assets/knot/xray.png", label="X-ray",
                     alt="X-ray view of the assembled knot: three bars in a "
                         "pinwheel with three hex bolts threaded through them")],
-       gen=["gen_bolted.py"], params=[
-           dict(key="thread", label="thread \u00d8", unit="mm", min=10,
-                max=20, step=1, val=12)],
-       out="knot-bolted-T{thread:g}.3mf"),
+       # No dials. The assembly page animates ONE geometry: knot_page.py
+       # writes a single knot_bolted_assembly.glb with no thread in its
+       # name, so a dial let anyone order a Ø20 Knot and then watch a Ø12
+       # one go together -- convincingly, because it still looks like a
+       # Knot. Altering this design means altering its animation with it,
+       # which is a code change, not a slider. The generator still takes
+       # --thread for anyone doing that work.
+       gen=["gen_bolted.py"],
+       out="knot-bolted.3mf"),
     _p("tinker_set", "Tinker Set", "Designed here", "parametric",
        "A construction set of bolts, nuts and plates, sized so that no "
        "piece is a small part: every piece is wider than the 31.7 mm "

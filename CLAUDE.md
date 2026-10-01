@@ -75,6 +75,24 @@ here are 13k-64k. It has now been found three times -- assembly.py and
 mobility.py both carry comments about it, and gen_montessori and
 gen_wrench were still paying it, 18.4x and 8.7x respectively.
 
+## The UI is how this repo is used
+
+Brett works through the shop, not a shell. A command-line tool is fine as a
+way in for someone editing the code, but nothing the UI reads may depend on
+a person remembering to run something.
+
+If a page or a card reads a file, `make build` must produce that file.
+`knot_page.py` was the counter-example: the assembly page animates the GLB
+it writes, it was never in `make build`, and so changing the Knot rebuilt
+the printed 3MF and left the page animating the previous design --
+convincingly, because it still looked like a Knot.
+
+The same thought applies to dials. A card offering a parameter is a promise
+that every value of it works and that everything downstream follows. Where
+it does not -- the Knot's animation is one fixed geometry, the Screw Cube
+came apart at 2 of 5 block sizes -- the dial comes off and the design
+changes in code instead.
+
 ## The ledger is local
 
 `models/versions.json` is gitignored, like everything under `models/`. It
