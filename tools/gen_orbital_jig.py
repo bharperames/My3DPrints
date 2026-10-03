@@ -65,18 +65,63 @@ import trimesh
 import trimesh.collision as tc
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
+from thread import Thread
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # --- the numbers -------------------------------------------------------
 R = 150.0               # working radius: entrance pupil to specimen
-SPECIMEN = 12.0         # focal point above the platform (a small tooth's
-                        # centroid); the one dial
-SPECIMEN_RANGE = (6.0, 70.0)    # a 129 mm tooth's centroid is 52 up
+SPECIMEN = 78.0         # focal point above the platform; the one dial.
+                        # 78 is the scanned Meherrin on the mount: 8 mm
+                        # of plate, 13 of rod standing proud, and the
+                        # tooth's own centroid 57 above its base.
+# 70 was enough when the tooth stood on the platform. It does not reach
+# any more: the rod field plate is 8 mm and the rods stand 15.5 to 29.5
+# proud of it, so a tooth's centroid starts 23.5 to 37.5 mm up before the
+# tooth itself is counted. BigMeherrin's centroid is 57 above its base,
+# which lands at 80.5 on the short rods and 94.5 on the long ones -- both
+# past the old stop, so the specimen this jig was built for could not
+# have been brought to the focal point. 110 clears it; every gate holds
+# there, and the dial is still absorbed the same way, by the pad.
+# The floor is the mount, not a preference: the plate is 8 mm and a
+# 20 mm rod stands 13 proud, so nothing can sit lower than 21 mm above
+# the platform, and 25 leaves the pad 7 mm at that end.
+SPECIMEN_RANGE = (25.0, 110.0)
 ELEV = (10.0, 80.0)     # elevation range the carriage is asked for
-PED_H = 95.0            # base top to platform top
+# The pedestal was 95 mm and nothing asked for it. The height is not
+# optical: the phone at the lowest ring clears the base by 113 mm, with
+# the jig at a third of its original pedestal. (This read 83 mm against
+# a full-frame body behind a 90 mm macro, which was the worst case while
+# that camera was carried; it is not carried now.) What ties PED_H down
+# is the arc's leg, through the pad that bridges them:
+#
+#     pad_t = LEG_BOTTOM + PAD_SLOT_D + PED_H + specimen - RING_GAP - RING_T
+#
+# so the pedestal and the leg trade one for one. Lower PED_H alone and
+# the pad thins to nothing at 83; lower both together and every gate
+# holds to a 50 mm drop. 45 is taken rather than 50 because at 54 the
+# arc_concentric gate stops measuring the arc -- `arc_radii` counts every
+# vertex above z = 0.05, so once the leg rises past zero the leg is
+# counted too and r_min reads 66 instead of 140. Nothing collides there;
+# the instrument just goes blind, and the design should not sit 4 mm from
+# where its own gate stops seeing.
+#
+# The arc is what this buys: 243 mm tall was 7 mm under the build height.
+# 32, not 50. The mount lifts the specimen before the specimen starts,
+# and the rotor's pad takes up whatever is left over:
+#
+#     pad_t = PED_H + specimen - 50
+#
+# so the pedestal and the pad trade directly. With 20 mm rods the dial
+# can never ask for less than 25, which leaves 7 mm of pad at the floor
+# of its range, and 60 at the big tooth -- against 98 before. The camera
+# still clears the base by 111.6 mm at the lowest ring, so none of this
+# height was optical. 32 rather than 30 keeps a 2 mm column above the
+# draft, which needs CONE_H + CHAM_H = 30 to itself.
+PED_H = 32.0            # base top to platform top
 PED_R = 11.0            # Ø22 column
-PLAT_R = 10.0           # Ø20 platform
+PLAT_R = 15.0           # Ø30 platform: the mount bore needs the material,
+                        # and the draft recuts itself off PLAT_R below
 CONE_DEG = 15.0         # draft under the platform, from vertical
 CONE_H = 23.0           # over which the draft runs; with the chamfer below
 CHAM_H = 7.0            # it, the spec's "upper 30 mm"
@@ -118,7 +163,8 @@ FLANGE = 5.0
 CHAM = 4.0              # 45 degree web roots, so the underside prints
 SLOT_W = 5.2
 SLOT_DEG = (4.0, 86.0)
-LEG_BOTTOM = -73.0      # the arc's leg ends here, whatever the specimen
+LEG_BOTTOM = -28.0      # the arc's leg ends here, whatever the specimen;
+                        # moves with PED_H, one for one -- see PED_H above
 BAR_T, BAR_X0 = 20.0, 66.0            # the bar in to the ring; its inner end
                                       # stays over the annulus (r 96 at y -70)
 BOLTS_X = (72.0, 86.0, 100.0)         # three M4s down through the bar
@@ -127,7 +173,26 @@ FIDUCIALS = (15.0, 30.0, 45.0, 60.0, 75.0)
 TICK_W, TICK_D = 1.2, 1.0
 
 PAD_PHI, PAD_R, PAD_SLOT_D = (-58.0, -14.0), (92.0, 121.0), 4.0
-BALLAST_PHI, BALLAST_R, BALLAST_D, BALLAST_DEPTH = 160.0, 107.0, 26.0, 6.0
+
+# There were two ballasts, both sized against a 1.34 kg Sony a1. Measured
+# against 0.25 kg of phone and clamp, neither survives:
+#
+# The CARRIAGE pocket balanced the camera about the thumbscrew. With the
+# a1 the carriage's centre of mass sat 116 mm past the clamp -- 1.76 N.m,
+# which the 16 mm tongue took as a 110 N couple. With the phone, and the
+# platform no longer stretched to reach an a1's tripod socket, it is
+# 26.5 mm and 0.102 N.m: 6.3 N on the tongue. An M5 through two PETG
+# faces does not need help with that.
+#
+# The ROTOR socket was never the counterweight it was called. The arc and
+# everything on it put the rotor side's centre of mass 114 mm off the
+# axis at the lowest ring -- 82 g.m of imbalance -- and a Ø26 x 6 pocket
+# holds about 25 g of washers, 2.7 g.m, three percent of it. Balancing it
+# honestly would take 770 g of steel, a pocket 183 mm deep. So the rotor
+# does lift off one of its three bearings, by 1.6 N at the lowest ring,
+# and what holds it is the race flanks -- which are already drawn for
+# axial hold. A pocket that offsets three percent only reads as though
+# the problem were solved.
 
 # carriage, in the arc frame: u radial, v tangential (up-arc), h = y-Y_ARC
 SADDLE_DEG = 7.5        # half-span of the shoes along the arc (40 mm)
@@ -140,44 +205,98 @@ NUB_R, NUB_POS = 2.0, ((142.5, -15.0), (142.5, 15.0),
                        (167.5, -15.0), (167.5, 15.0))
 SCREW_R = 2.7           # M5 clearance
 NUT = (8.4, 4.4)        # M5 square nut trap, across and thick
-# The platform is longer than the spec's 40 mm channel wanted, because
-# the cameras it has to carry are not one camera: a phone's lens plane
-# is 4 mm behind the pupil and its clamp's foot lands at u = 232, while a
-# Sony a1 behind a 90 mm macro has its tripod socket 320 mm out. The
-# channel runs 208-318 so either sits with its pupil on the sphere, and
-# the ballast moves to a pocket in the platform's underside, where a body
-# of any length cannot be in its way. The receiver's top is at v = -45 so
-# a full-frame body's axis, 45 mm above its base, lands on v = 0.
+# The platform ran to u = 350 and the channel 208-318 -- 110 mm of travel
+# -- because it had to seat two cameras whose sockets are 90 mm apart: a
+# phone's clamp foot at u = 232, and a Sony a1 behind a 90 mm macro with
+# its tripod socket at 320. There is one camera now, and its foot is at
+# 232 for both of its lenses: the phone's three lens rings differ in y
+# and v, not in u, so changing lens does not move the receiver at all.
+#
+# So the travel is no longer a fit problem, only an adjustment: 40 mm,
+# 215-255, which is 20 either side of where the clamp actually lands.
+# The receiver is 40 long, so at the ends of its travel it reaches
+# u = 195 and 275, and that is the platform.
+#
+# The receiver's top stays at v = -45. That number came from the a1's
+# axis height, but the phone's L-bridge was drawn to meet it and the
+# bridge is the part we do not control; moving the deck would move the
+# pupil off the sphere for the sake of a few millimetres.
 ARM_U, ARM_V = (178.0, 200.0), (-73.0, 20.0)
-PLATFORM_U, PLATFORM_V = (195.0, 350.0), (-73.0, -57.0)
+PLATFORM_U, PLATFORM_V = (195.0, 275.0), (-73.0, -57.0)
 CAM_Y = 0.0
 PLATFORM_HW = 49.2      # platform half-width about the camera's y
-CHANNEL = (208.3, 318.0, 3.4, 12.0)   # fore/aft slots: u0, u1, width, ±y
-CB_POCKET = (335.0, 13.0, 8.0)        # underside ballast pocket: u, r, depth
+CHANNEL = (215.0, 255.0, 3.4, 12.0)   # fore/aft slots: u0, u1, width, ±y
 RECV = (40.0, 50.0, 12.0)             # receiver: u, y, v
 RECV_U = 232.0          # where the generator poses it; a camera moves it
 ARCA = (38.5, 4.0)      # dovetail mouth and depth, 45 degree flanks
 QTR_R, QTR_CB = 3.3, (7.0, 4.0)       # 1/4"-20 clearance; D-ring head
 
+# --- the specimen mount: a printed screw and wing nut -------------------
+# The rod field plate is the specimen mount, so the only thing the jig
+# owes it is a way to clamp it down. Nothing is bought: the thread is the
+# Montessori cosine family in thread.py, the same one the Knot and the
+# Tinker set print in PETG, taken down to Ø8.
+#
+# Ø8 and not the Tinker's Ø24, for two measured reasons. A nut on top of
+# the plate sits where the specimen does, so its footprint is the cost:
+# at Ø8 the wing nut covers none of the field's 56 sockets, at Ø12 it
+# covers 8, at Ø24 it covers 44. And the bore has to pass the pedestal's
+# waist, where Ø8 leaves 4.58 mm of wall against 3.58 at Ø10.
+#
+# It cannot occlude the tooth either way: the Ø1 carbon rods are cut
+# about 40 mm and seat 7 mm, so they stand the specimen 33 mm above the
+# plate, and the Ø8 wing nut is 8.0 tall.
+# Ø6, the smallest this family holds up at. Its clearance is absolute --
+# 0.30 mm radial at every size -- so it eats a growing share of the
+# thread as the thread shrinks: 92% of the depth still engages at Ø24,
+# 85% at Ø12, 77% at Ø8 and 70% at Ø6. Below that it is more clearance
+# than thread. Ø6 also leaves 5.34 mm of wall where the bore crosses the
+# pedestal's waist, against 4.34 at Ø8.
+MOUNT_D = 6.0                         # thread major diameter
+MOUNT_CLEAR = 0.50                    # plain bore, radial; as the Knot proved
+MOUNT_BORE_R = MOUNT_D / 2.0 + MOUNT_CLEAR
+MOUNT_AF = 2.844 * (MOUNT_D / 2.0)    # head across flats, the family's ratio
+MOUNT_HEAD_CR = MOUNT_AF / np.sqrt(3.0) + 0.3     # pocket, with a little slack
+# The family's own head is 1.617 R tall -- 6.47 mm here -- which will not
+# sink into an 8 mm base and still leave anything above it to carry the
+# clamp. The head is cut to 4.0 instead: it is only resisting rotation in
+# its pocket, it is never wrenched, and at 4.0 it recesses flush with
+# 3.6 mm of base left over it.
+MOUNT_HEAD_H = 4.0
+MOUNT_POCKET = MOUNT_HEAD_H + 0.4     # how far the head sinks into the base
+# Proportions, not millimetres: the fins were drawn for Ø8 and have to
+# follow the thread if the thread changes.
+MOUNT_WING_SPAN = 2.675               # fin half-span, in major radii
+MOUNT_WING_T = 0.60                   # fin thickness, likewise
+PLATE_T = 8.0                         # the rod field plate it clamps down
+
 # The cameras the sweeps are checked against, and the page draws. Boxes
 # are (lo, hi) in the arc frame at theta = 0: x = u radial, y across the
 # meridian, z = v up-arc; the pupil is at (150, 0, 0) for every one.
 #
-# A phone (an iPhone 15-class body, 147.6 x 71.6 x 7.8) held landscape in
-# a spring clamp with its main lens at the pupil: the clamp grips the
-# phone's long edges near its middle, 60 mm out along y from the lens,
-# and an L-bridge brings its 1/4-20 foot back to the receiver's socket.
+# A phone (147.6 x 71.6 x 7.8) held landscape in a spring clamp with its
+# main lens at the pupil: the clamp grips the phone's long edges near its
+# middle, 60 mm out along y from the lens, and an L-bridge brings its
+# 1/4-20 foot back to the receiver's socket.
 #
-# A Sony a1 (128.9 x 96.9 x 80.8, axis 45 above the base) on an Arca
-# plate, behind whichever lens: the body starts at the lens's length
-# behind the pupil and the receiver slides out under its socket.
+# This is the only camera. A Sony a1 on an Arca plate was carried here
+# too, and it was what the carriage was sized for -- a 1.34 kg body and
+# macro whose tripod socket sits 320 mm out, against 0.25 kg of phone and
+# clamp at 166. It drove the platform's length, the ballast at both ends,
+# and the clearance reasoning. None of that is wanted for a phone, so it
+# is gone rather than left as an option nobody takes.
 #
 # Fields of view are horizontal. The spec wrote one frustum, 32 degrees
 # at 3:2 -- a 63 mm-equivalent lens -- which frames 86 x 57 mm at 150 mm
-# and cannot hold a 129 mm tooth. Each camera carries the lenses it has.
+# and cannot hold a 129 mm tooth.
 CAMERAS = {
     "iphone": dict(
         name="iPhone in a spring clamp", receiver_u=232.0,
+        # phone and clamp together. It is here rather than in a test
+        # because it is what decides whether the carriage needs ballast,
+        # and `carriage_moment` below turns that into something the
+        # suite can fail on.
+        mass_g=250.0,
         boxes=dict(phone=[((154.2, -14.0, -57.6), (162.0, 133.6, 14.0)),
                           ((150.0, -7.0, -25.0), (154.2, 27.0, 9.0))],
                    clamp=[((152.0, 40.0, -66.0), (172.0, 80.0, -57.6)),
@@ -192,41 +311,9 @@ CAMERAS = {
                 dict(id="tele", name="2\u00d7 crop, 48 mm eq.",
                      fov_deg=39.8, aspect=4.0 / 3.0)],
         default_lens="wide"),
-    "a1": dict(
-        name="Sony \u03b11 on an Arca plate",
-        body=dict(w=128.9, h=96.9, d=80.8, axis_h=45.0, socket_back=40.0,
-                  evf=(20.0, 60.0, 40.0, 12.0)),
-        plate=dict(u=70.0, y=38.0, t=4.0),
-        lenses=[dict(id="fe90", name="FE 90 mm f/2.8 macro", fov_deg=22.6,
-                     aspect=1.5, length=130.5, dia=79.0),
-                dict(id="fe50", name="FE 50 mm f/2.8 macro", fov_deg=39.6,
-                     aspect=1.5, length=71.0, dia=70.8),
-                dict(id="spec", name="spec macro, 32\u00b0 (63 mm eq.)",
-                     fov_deg=32.0, aspect=1.5, length=90.0, dia=72.0)],
-        default_lens="fe90"),
 }
 CAMERA_DEFAULT = "iphone"
 FRUSTUM = dict(near=20.0, far=200.0)
-
-
-def a1_boxes(lens):
-    """The a1 behind one lens: lens barrel as a box (the sweep asks for
-    touching, and a box round a cylinder errs the safe way), body, EVF
-    hump, Arca plate. Also where the receiver has to be."""
-    b, pl = CAMERAS["a1"]["body"], CAMERAS["a1"]["plate"]
-    u0 = R + 2.0 + lens["length"]                 # mount flange
-    r_ = lens["dia"] / 2.0
-    base = -b["axis_h"]
-    socket = u0 + b["socket_back"]
-    ev = b["evf"]
-    boxes = dict(
-        lens=[((R, -r_, -r_), (u0, r_, r_))],
-        body=[((u0, -b["w"] / 2, base), (u0 + b["d"], b["w"] / 2, base + b["h"])),
-              ((u0 + ev[0], -ev[2] / 2, base + b["h"] - 0.5),
-               (u0 + ev[1], ev[2] / 2, base + b["h"] + ev[3]))],
-        plate=[((socket - pl["u"] / 2, -pl["y"] / 2, base - pl["t"]),
-                (socket + pl["u"] / 2, pl["y"] / 2, base))])
-    return boxes, socket
 
 
 def camera_config(kind, lens_id=None):
@@ -235,9 +322,6 @@ def camera_config(kind, lens_id=None):
     c = CAMERAS[kind]
     lens = next(l for l in c["lenses"]
                 if l["id"] == (lens_id or c["default_lens"]))
-    if kind == "a1":
-        boxes, socket = a1_boxes(lens)
-        return dict(boxes=boxes, receiver_u=socket, lens=lens)
     return dict(boxes=c["boxes"], receiver_u=c["receiver_u"], lens=lens)
 
 
@@ -250,13 +334,14 @@ PROTOCOL = [dict(ring=1, name="Horizon", elev=15.0, step=10.0),
 # mm, which a 129 mm tooth overfills from every angle. The camera is a
 # phone now, so the default is its main camera: 24 mm equivalent on a 4:3
 # sensor, 84 degrees across the diagonal, 71.5 across the width, framing
-# 216 x 162 mm at R. The 2x crop and the spec's macro stay selectable.
+# 216 x 162 mm at R. The spec's own macro used to stay selectable beside
+# them; it is gone with the body that could have carried it, because a
+# frustum no camera on this jig can produce is not a choice, it is a
+# drawing of somebody else's camera.
 LENSES = [dict(id="wide", name="iPhone 1\u00d7 main (24 mm eq.)",
                fov_deg=71.5, aspect=4.0 / 3.0),
           dict(id="tele", name="iPhone 2\u00d7 crop (48 mm eq.)",
-               fov_deg=39.8, aspect=4.0 / 3.0),
-          dict(id="macro", name="spec macro, 32\u00b0 3:2",
-               fov_deg=32.0, aspect=1.5)]
+               fov_deg=39.8, aspect=4.0 / 3.0)]
 FRUSTUM = dict(near=20.0, far=200.0, **{k: LENSES[0][k]
                                          for k in ("fov_deg", "aspect")})
 
@@ -401,8 +486,19 @@ def stator(specimen=SPECIMEN):
     for r_ in pawl_screws():
         x, y, _ = polar(r_, PAWL_PHI)
         tools.append(cyl(INS_M3[0], -INS_M3[1], 1.0, x, y, 48))
-    # a shallow dimple in the platform for a pea of museum putty
-    tools.append(cyl(5.0, PED_H - 1.0, PED_H + 1, 0, 0, 64))
+    # The specimen mount: a plain bore straight through the pedestal and
+    # the base, for the printed screw that clamps the rod field plate on
+    # top. Neither the platform nor the plate is threaded -- the thread
+    # lives only on the screw and the wing nut, which are the two parts
+    # that can be printed standing up and replaced on their own.
+    tools.append(cyl(MOUNT_BORE_R, -BASE_T - 1.0, PED_H + 1.0, 0, 0, 48))
+    # and a HEX pocket in the base's underside. Hexagonal rather than
+    # round because it is what keeps the screw still: the head cannot
+    # turn in it, so the wing nut tightens against a captive screw and
+    # nothing has to be held from underneath. Under the base it is hidden
+    # from every camera on the sphere.
+    tools.append(cyl(MOUNT_HEAD_CR, -BASE_T - 1.0, -BASE_T + MOUNT_POCKET,
+                     0, 0, 6))
     s = cut(s, tools)
     s.apply_translation([0, 0, L["base_top"]])
     return s
@@ -491,11 +587,6 @@ def rotor(specimen=SPECIMEN):
                          zp - PAD_SLOT_D + 0.5, x, Y_ARC, 48))
         tools.append(cyl(BOLT_R, zp - PAD_SLOT_D - INS_M4[1] - 4.0,
                          zp - PAD_SLOT_D, x, Y_ARC, 48))
-    # ballast socket opposite the load: a stack of washers on an M4
-    bx, by, _ = polar(BALLAST_R, BALLAST_PHI)
-    tools.append(cyl(BALLAST_D / 2.0, zt - BALLAST_DEPTH, zt + 1, bx, by))
-    tools.append(cyl(INS_M4[0], zt - BALLAST_DEPTH - INS_M4[1],
-                     zt - BALLAST_DEPTH + 0.5, bx, by, 48))
     return cut(r_, tools)
 
 
@@ -594,17 +685,6 @@ def saddle():
         slot.apply_transform(np.array([[1, 0, 0, 0], [0, 0, 1, PLATFORM_V[0] - 1],
                                        [0, 1, 0, 0], [0, 0, 0, 1]], float))
         tools.append(slot)
-    # ballast pocket up into the platform's underside, insert at its roof:
-    # a stack of washers on an M4, hanging under the platform behind the
-    # camera, which is where the counterweight wants to be anyway
-    bu, br, bd = CB_POCKET
-    for r_, v0, v1 in ((br, PLATFORM_V[0] - 1.0, PLATFORM_V[0] + bd),
-                       (INS_M4[0], PLATFORM_V[0] + bd - 0.5,
-                        PLATFORM_V[0] + bd + 6.5)):
-        c = trimesh.creation.cylinder(radius=r_, height=v1 - v0, sections=64)
-        c.apply_transform(rot(90.0, [1, 0, 0]))
-        c.apply_translation([bu, (v0 + v1) / 2.0, hy])
-        tools.append(c)
     s = cut(s, tools)
     s.apply_transform(M_ARC)
     return s
@@ -670,6 +750,73 @@ def bearing_proxies(specimen=SPECIMEN):
     return out
 
 
+def mount_thread():
+    """The Montessori cosine thread at Ø8 -- thread.py's family, which is
+    what the Knot and the Tinker set already print in PETG."""
+    return Thread(major_r=MOUNT_D / 2.0)
+
+
+def mount_nut_h():
+    """Wing nut height: three turns of engagement."""
+    return 3.0 * mount_thread().lead
+
+
+def mount_shank_len():
+    """Head top to tip: the base left over the pocket, the pedestal, the
+    plate, and enough past it for the wing nut to run down. Derived, not
+    typed, so that lowering the pedestal cannot leave a screw that no
+    longer reaches."""
+    # The last term is what stands proud once the nut is down, and it was
+    # 4.0 -- two whole leads of thread sticking up in the middle of the
+    # plate, directly under the specimen. It buys nothing: the nut is
+    # started at the top of the thread and wound down, so all the tail
+    # has to do is not end short of the nut's last thread. 1.0 is half a
+    # lead, enough to see it start and little enough to disappear.
+    return ((BASE_T - MOUNT_POCKET) + PED_H + PLATE_T
+            + mount_nut_h() + 1.0)
+
+
+def mount_screw():
+    """Hex head, shank up. The head is captive in the base's pocket."""
+    T = mount_thread()
+    return T.bolt(mount_shank_len(), head_h=MOUNT_HEAD_H)
+
+
+def mount_hex_nut():
+    """A plain hex nut on the same thread, for a driver or the wrench.
+
+    Printed beside the wing nut rather than instead of it: the wings are
+    for fingers and are the wider thing on the plate, and a hex is what
+    you reach for when the wings are in the way of a rod.
+    """
+    return mount_thread().nut(height=mount_nut_h())
+
+
+def mount_wing_nut():
+    """A threaded boss with two upright fins, turned by fingers.
+
+    The fins are vertical and rooted on the bed, so it prints as it
+    stands with no support -- the same way the Tinker set's wing nut
+    does, which is where the shape comes from.
+    """
+    T = mount_thread()
+    h = mount_nut_h()
+    span = MOUNT_WING_SPAN * T.major_r
+    fin_t = MOUNT_WING_T * T.major_r
+    boss = cyl(T.hex_cr, 0.0, h, 0, 0, 96)
+    fins = []
+    for k in (0, 1):
+        f = box((-span, -fin_t / 2.0, 0.0), (span, fin_t / 2.0, h))
+        if k:
+            f.apply_transform(rot(90.0, [0, 0, 1]))
+        fins.append(f)
+    body = union([boss] + fins)
+    cuts = [T.cutter(h + 2 * T.lead, z0=-T.lead,
+                     runout=[(0.0, T.lead), (h, T.lead)]),
+            T.mouth_chamfer(h, True), T.mouth_chamfer(0.0, False)]
+    return cut(body, cuts)
+
+
 def camera_proxy(kind=CAMERA_DEFAULT, lens_id=None):
     """One camera behind one lens, in world coordinates at theta = 0.
     Concatenated, not unioned: the sweep only asks whether anything
@@ -677,6 +824,49 @@ def camera_proxy(kind=CAMERA_DEFAULT, lens_id=None):
     cfg = camera_config(kind, lens_id)
     return trimesh.util.concatenate(
         [box(lo, hi) for group in cfg["boxes"].values() for lo, hi in group])
+
+
+CLAMP_U = 155.0         # the thumbscrew's axis, where the carriage hangs
+INFILL = 0.50           # 4-5 walls at 25-30% gyroid, as a share of solid
+# What the tongue can take as a couple before the joint wants help. The
+# a1 asked 110 N of it, which is what the ballast was for; the phone asks
+# 6. 25 N is the line: above it, the ballast comes back.
+TONGUE_COUPLE_N = 25.0
+
+
+def carriage_moment(parts, kind=CAMERA_DEFAULT, lens_id=None,
+                    cam_g=None, cam_u=None):
+    """Gravity's moment about the thumbscrew, and the couple the tongue
+    carries because of it.
+
+    This is the whole argument for having no ballast, written so it can
+    be checked rather than believed. If a heavier camera is added, or the
+    platform grows again, this is what notices.
+    """
+    tot_m = tot_mu = 0.0
+    for n in CARRIAGE:
+        m = parts[n]
+        g = m.volume / 1000.0 * PETG_G_PER_CM3 * INFILL
+        tot_m += g
+        tot_mu += g * float(m.center_mass[0])
+    cfg = camera_config(kind, lens_id)
+    bx = [b for grp in cfg["boxes"].values() for b in grp]
+    vol = [float(np.prod(np.array(hi) - np.array(lo))) for lo, hi in bx]
+    # overridable so a test can ask what a different camera would do.
+    # Both together: the a1's trouble was never its mass alone, it was
+    # 1.34 kg sitting 110 mm further out than a phone's clamp.
+    if cam_u is None:
+        cam_u = float(np.average([(lo[0] + hi[0]) / 2.0 for lo, hi in bx],
+                                 weights=vol))
+    if cam_g is None:
+        cam_g = CAMERAS[kind]["mass_g"]
+    M = tot_m + cam_g
+    com = (tot_mu + cam_g * cam_u) / M
+    moment = M / 1000.0 * 9.81 * (com - CLAMP_U) / 1000.0
+    tongue = TONGUE[1] - TONGUE[0]
+    return dict(mass_g=round(M, 1), com_u=round(com, 1),
+                arm_mm=round(com - CLAMP_U, 1), moment_nm=round(moment, 3),
+                tongue_couple_n=round(abs(moment) / (tongue / 1000.0), 1))
 
 
 def camera_cases():
@@ -693,7 +883,11 @@ def receiver_for(parts, kind, lens_id=None):
 
 
 # --- assembly and layout -----------------------------------------------
-STATOR_SIDE = ("stator", "pawl", "sleeve_a", "sleeve_b", "sleeve_ecc")
+# The mount does not turn, so it belongs on the stator side -- and
+# being listed is what puts it in the azimuth sweep at all. A body
+# in neither list is simply never checked against anything.
+STATOR_SIDE = ("stator", "pawl", "sleeve_a", "sleeve_b", "sleeve_ecc",
+               "mount_screw", "mount_wing_nut", "mount_hex_nut")
 ROTOR_SIDE = ("rotor", "arc")
 CARRIAGE = ("saddle", "shoe", "receiver")
 
@@ -709,6 +903,26 @@ def assemble(specimen=SPECIMEN):
     parts["saddle"] = saddle()
     parts["shoe"] = shoe()
     parts["receiver"] = receiver()
+    # Placed, not just built. Everything else assemble() returns is in
+    # the world frame, and these two were left in the frame they are
+    # drawn in -- which put the screw standing at the focal point, up
+    # through the specimen, and the wing nut in the air beside it. The
+    # page draws what this returns, and the sweeps check it, so the
+    # mount was being collision-checked somewhere it never sits.
+    L = levels(specimen)
+    screw = mount_screw()
+    screw.apply_translation([0, 0, L["base_top"] - BASE_T])
+    parts["mount_screw"] = screw
+    nut = mount_wing_nut()
+    nut.apply_translation([0, 0, L["plat"] + PLATE_T])
+    parts["mount_wing_nut"] = nut
+    hexn = mount_hex_nut()
+    # On the axis, where the wing nut also is. Both are printed and only
+    # one is ever fitted, so the assembly carries them in the same place
+    # and whatever is showing the assembly picks. Drawn off to one side
+    # instead, the spare nut reads as part of the jig.
+    hexn.apply_translation([0, 0, L["plat"] + PLATE_T])
+    parts["mount_hex_nut"] = hexn
     return parts
 
 
@@ -732,6 +946,14 @@ def layout(parts, gap=6.0, pitch=300.0):
     plates = [["stator"], ["rotor"],
               ["arc", "saddle", "shoe", "receiver", "pawl",
                "sleeve_a", "sleeve_b", "sleeve_ecc"]]
+    # Anything assemble() makes that is not named above joins the last
+    # plate rather than being dropped. These lists were written when
+    # there were ten bodies; adding the mount's screw and wing nut to
+    # assemble() left them passing every gate and absent from the file,
+    # because layout() is also what the export and the poses are built
+    # from. A body that is not laid out does not get written.
+    named = {n for pl in plates for n in pl}
+    plates[-1].extend(n for n in parts if n not in named)
     out, poses = {}, {}
     for pi, names in enumerate(plates):
         x, y, row_h = pi * pitch, 0.0, 0.0
@@ -777,11 +999,6 @@ def assembly_meta(specimen, poses, parts):
                                         for l in c["lenses"]})
                     for k, c in CAMERAS.items()},
         "camera_default": CAMERA_DEFAULT, "pupil": [R, CAM_Y, 0.0],
-        "ballast": dict(phi=BALLAST_PHI, r=BALLAST_R, d=BALLAST_D,
-                        z_floor=L["ring_top"] - BALLAST_DEPTH),
-        "cb_pocket": dict(u=CB_POCKET[0], r=CB_POCKET[1],
-                          v_roof=PLATFORM_V[0] + CB_POCKET[2],
-                          v_mouth=PLATFORM_V[0]),
         "receiver_u": RECV_U,
         "receiver": dict(u=RECV_U, v=PLATFORM_V[1], size=list(RECV)),
         "protocol": PROTOCOL, "frustum": FRUSTUM, "lenses": LENSES,
@@ -961,11 +1178,42 @@ def fits_plate(m, bed=246.0, height=250.0):
     return (e[2] <= height) and ((e[0] <= bed and e[1] <= bed))
 
 
+# Every threaded joint, as a stack: how much printed part the bolt has to
+# cross before it reaches the insert, how deep the insert is, and how much
+# relief is bored under it. The length follows from those three, so it
+# cannot drift away from the geometry the way a typed list did.
+#
+# It had. The BOM said M4x16 for all eight M4 bolts, and at the arc bar
+# that crosses 12 mm of bar and leaves 4 mm in a 7 mm insert -- four
+# threads, on the joint that carries the arc and the whole carriage
+# through a 90 degree sweep. The pawl was the same story in M3. Measured
+# on the built rotor: 11.00 mm of hole on each bolt axis, 0.00 beside it.
+JOINTS = (
+    # name, crosses, insert depth, relief, count
+    ("arc bar to rotor pad", BAR_T - CBORE[1], INS_M4[1], 4.0, 3, "M4"),
+    ("bearing axle to tower", SLEEVE_H + SLEEVE_FL_H, INS_M4[1], 4.0, 3, "M4"),
+    ("pawl to stator", PAWL_BLOCK[3], INS_M3[1], 4.0, 2, "M3"),
+)
+_STOCK = (6, 8, 10, 12, 16, 20, 25, 30, 35)
+
+
+def bolt_len(crosses, insert, relief):
+    """Shortest stock length that fills the insert without bottoming."""
+    lo, hi = crosses + insert, crosses + insert + relief
+    for L in _STOCK:
+        if lo <= L <= hi:
+            return L
+    return None
+
+
 def inserts():
-    return {"M4": 3 + 3 + 1 + 1, "M3": 2 + 2,
-            "M4x16": 3 + 3 + 2, "M3x10": 2 + 2, "608-2RS": 3,
-            "M5x25 thumbscrew + square nut": 1, "1/4-20 D-ring": 1,
-            "silicone feet": 3}
+    out = {"M4": 3 + 3, "M3": 2 + 2, "608-2RS": 3,
+           "M5x25 thumbscrew + square nut": 1, "1/4-20 D-ring": 1,
+           "silicone feet": 3}
+    for _, crosses, ins, relief, n, gauge in JOINTS:
+        key = f"{gauge}x{bolt_len(crosses, ins, relief)}"
+        out[key] = out.get(key, 0) + n
+    return out
 
 
 def measure(parts, specimen):
@@ -993,6 +1241,7 @@ def measure(parts, specimen):
     rep["volume_cm3"] = round(vol, 1)
     rep["est_g"] = round(vol * PETG_G_PER_CM3, 0)
     rep["hardware"] = inserts()
+    rep["carriage_balance"] = carriage_moment(parts)
     rep["bearing_pitch_r"] = BRG_PITCH
     rep["preload_travel_mm"] = 2 * ECC
     return rep
@@ -1015,7 +1264,10 @@ def gates(rep):
              and rep["bar_seats"]["pressed_collides"]
              and rep["bar_seats"]["shoved_collides"]),
             ("elevation_clear", not rep["elevation_fouls"]),
-            ("azimuth_clear", not rep["azimuth_fouls"])]
+            ("azimuth_clear", not rep["azimuth_fouls"]),
+            # no ballast, and this is why: see carriage_moment
+            ("carriage_balanced_enough",
+             rep["carriage_balance"]["tongue_couple_n"] <= TONGUE_COUPLE_N)]
 
 
 # --- export ------------------------------------------------------------

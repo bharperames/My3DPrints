@@ -18,6 +18,9 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import gen_orbital_jig as J  # noqa: E402
 
+# Ø1 carbon rod stock, as cut for the field; one place, not three
+ROD_NOMINAL = 20.0
+
 
 class TestJig(unittest.TestCase):
     @classmethod
@@ -29,8 +32,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_ten_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 10)
+    def test_thirteen_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 13)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -119,12 +122,24 @@ class TestJig(unittest.TestCase):
         self.assertAlmostEqual(self.rep["slot_mm"], J.SLOT_W, delta=0.15)
 
     def test_the_dial_moves_the_pad_and_not_the_arc(self):
-        a12 = self.parts["arc"]
-        a20 = J.arc()
-        self.assertLess(np.abs(a12.vertices - a20.vertices).max(), 1e-9)
-        self.assertAlmostEqual(J.levels(20.0)["pad_t"], 20.0)
-        self.assertAlmostEqual(J.levels(20.0)["pad_top"] - J.PAD_SLOT_D,
-                               J.LEG_BOTTOM)
+        """Stated as a rate, not an identity.
+
+        This asserted pad_t == specimen, which was only ever true because
+        PED_H happened to be 50. Shortening the pedestal to 32 broke the
+        test without breaking anything it was there to protect: what
+        matters is that a millimetre of dial is a millimetre of pad and
+        nothing else moves, whatever the pedestal is.
+        """
+        self.assertLess(np.abs(self.parts["arc"].vertices
+                               - J.arc().vertices).max(), 1e-9)
+        lo, hi = J.SPECIMEN_RANGE
+        a, b = lo + 5.0, lo + 25.0
+        self.assertAlmostEqual(J.levels(b)["pad_t"] - J.levels(a)["pad_t"],
+                               b - a)
+        # and the arc's bar still lands on the pad's slot floor at any dial
+        for sp in (a, b, hi):
+            self.assertAlmostEqual(J.levels(sp)["pad_top"] - J.PAD_SLOT_D,
+                                   J.LEG_BOTTOM)
 
     def test_export_carries_the_assembly_inside_the_archive(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -150,6 +165,261 @@ class TestJig(unittest.TestCase):
                 back.apply_transform(M)
                 self.assertLess(np.abs(back.bounds - self.parts[n].bounds)
                                 .max(), 0.01, n)
+
+
+class TestFasteners(unittest.TestCase):
+    """Every bolt the BOM names must fill its insert and not bottom out.
+
+    The list used to be typed. It said M4x16 for all eight M4 bolts, and
+    at the arc bar -- which crosses 12 mm before it reaches a 7 mm insert
+    -- that is four threads holding the arc and the whole carriage
+    through a 90 degree sweep.
+    """
+
+    def test_every_joint_gets_a_length_that_fills_its_insert(self):
+        for name, crosses, ins, relief, n, gauge in J.JOINTS:
+            L = J.bolt_len(crosses, ins, relief)
+            self.assertIsNotNone(L, f"{name}: no stock length fits")
+            self.assertGreaterEqual(L - crosses, ins,
+                                    f"{name}: {gauge}x{L} leaves threads unused")
+            self.assertLessEqual(L - crosses, ins + relief,
+                                 f"{name}: {gauge}x{L} bottoms out")
+
+    def test_the_rotor_really_has_the_relief_the_table_claims(self):
+        """The table is only right if the part agrees with it."""
+        r = J.rotor(J.SPECIMEN)
+        floor = J.levels(J.SPECIMEN)["pad_top"] - J.PAD_SLOT_D
+        claimed = J.INS_M4[1] + 4.0
+        for x in J.BOLTS_X:
+            on = r.ray.intersects_location([[x, J.Y_ARC, floor + 0.5]],
+                                           [[0, 0, -1.0]], multiple_hits=True)[0]
+            self.assertTrue(len(on), f"no hole at x={x}")
+            self.assertAlmostEqual(floor - max(v[2] for v in on), claimed,
+                                   delta=0.2, msg=f"hole depth at x={x}")
+        # beside the axis there must be solid pad, or the probe proves nothing
+        beside = r.ray.intersects_location(
+            [[J.BOLTS_X[0] + 3.5, J.Y_ARC, floor + 0.5]],
+            [[0, 0, -1.0]], multiple_hits=True)[0]
+        self.assertAlmostEqual(floor - max(v[2] for v in beside), 0.0, delta=0.2)
+
+
+class TestOneCameraNoBallast(unittest.TestCase):
+    """The jig carries a phone and nothing else, and has no ballast.
+
+    Those two facts are the same fact. The ballast at both ends was sized
+    against a 1.34 kg Sony a1 whose tripod socket sat 320 mm out; with
+    0.25 kg of phone at 167 it offsets a moment the tongue barely feels.
+    If a heavy camera is ever added back, the balance test below is what
+    should fail first -- not a printed part.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parts = J.assemble(J.SPECIMEN)
+
+    def test_the_phone_is_the_only_camera(self):
+        self.assertEqual(list(J.CAMERAS), ["iphone"])
+        self.assertEqual([k for k, _ in J.camera_cases()], ["iphone"] * 2)
+
+    def test_no_lens_is_offered_that_no_camera_has(self):
+        have = {l["id"] for c in J.CAMERAS.values() for l in c["lenses"]}
+        self.assertEqual({l["id"] for l in J.LENSES}, have)
+
+    def test_nothing_is_left_of_the_ballast(self):
+        for gone in ("BALLAST_PHI", "BALLAST_R", "BALLAST_D",
+                     "BALLAST_DEPTH", "CB_POCKET"):
+            self.assertFalse(hasattr(J, gone), f"{gone} is still here")
+        self.assertNotIn("ballast", json.dumps(J.inserts()).lower())
+
+    def test_the_carriage_balances_well_enough_to_need_none(self):
+        b = J.carriage_moment(self.parts)
+        self.assertLessEqual(b["tongue_couple_n"], J.TONGUE_COUPLE_N)
+
+    def test_and_a_heavy_camera_would_say_so(self):
+        """Negative control: the gate has to be able to ask for ballast.
+
+        Without this the test above passes on a jig that could not hold a
+        camera at all, and the reasoning for removing the ballast would
+        be recorded as a number nothing could ever contradict.
+        """
+        # the a1 as it actually sat: 1.34 kg with its mass at u = 276,
+        # not the phone's 250 g at 167. Mass alone is not the test --
+        # 1.34 kg at the phone's position is only 14 N on the tongue,
+        # which is how the first version of this control passed while
+        # proving nothing.
+        heavy = J.carriage_moment(self.parts, cam_g=1340.0, cam_u=275.7)
+        self.assertGreater(heavy["tongue_couple_n"], J.TONGUE_COUPLE_N)
+        near = J.carriage_moment(self.parts, cam_g=1340.0, cam_u=166.5)
+        self.assertLess(near["tongue_couple_n"], J.TONGUE_COUPLE_N)
+
+    def test_the_platform_is_only_as_long_as_the_phone_needs(self):
+        """The receiver, at either end of its travel, must sit on deck."""
+        lo, hi = J.CHANNEL[0], J.CHANNEL[1]
+        half = J.RECV[0] / 2.0
+        self.assertGreaterEqual(lo - half, J.PLATFORM_U[0] - 1e-6)
+        self.assertLessEqual(hi + half, J.PLATFORM_U[1] + 1e-6)
+        # and no longer: deck past the receiver's reach is carried for nothing
+        self.assertLess(J.PLATFORM_U[1] - (hi + half), 2.0)
+
+
+class TestSpecimenMount(unittest.TestCase):
+    """The rod field plate on the platform, held by a printed screw and
+    a wing nut. The specimen stands on rods in that plate, so what these
+    hold down is that it goes together, that it stays together, and that
+    none of it can reach into a frame.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        import gen_gazebo as G
+        cls.G = G
+        cls.L = J.levels(J.SPECIMEN)
+        cls.stator = J.stator(J.SPECIMEN)
+        cls.screw = J.mount_screw()
+        cls.nut = J.mount_wing_nut()
+        cls.plate = G.build("gz_rfj")["gazebo_rfj"]
+
+    def _seated(self):
+        """The three parts put where they sit in use."""
+        screw = self.screw.copy()
+        screw.apply_translation([0, 0, self.L["base_top"] - J.BASE_T])
+        plate = self.plate.copy()
+        plate.apply_translation([0, 0, self.L["plat"]])
+        nut = self.nut.copy()
+        nut.apply_translation([0, 0, self.L["plat"] + self.G.FIELD_T])
+        return screw, plate, nut
+
+    def test_screw_and_nut_are_printable_solids(self):
+        for n, m in (("screw", self.screw), ("wing nut", self.nut)):
+            self.assertTrue(m.is_watertight, n)
+            self.assertGreater(m.volume, 0.0, n)
+
+    def test_the_screw_is_long_enough_to_catch_the_nut(self):
+        screw, _, nut = self._seated()
+        self.assertGreater(screw.bounds[1][2], nut.bounds[1][2],
+                           "screw tip must stand past the top of the nut")
+
+    def test_the_screw_passes_the_pedestal_without_touching(self):
+        screw, _, _ = self._seated()
+        self.assertEqual(
+            float(self.stator.intersection(screw, engine="manifold").volume),
+            0.0)
+
+    def test_a_fatter_screw_would_not_pass(self):
+        """Negative control: the bore is a fit, not a hole in open air."""
+        fat = self.screw.copy()
+        fat.apply_scale([1.3, 1.3, 1.0])
+        fat.apply_translation([0, 0, self.L["base_top"] - J.BASE_T])
+        self.assertGreater(
+            float(self.stator.intersection(fat, engine="manifold").volume),
+            1.0)
+
+    def test_the_plate_rests_on_the_platform_and_does_not_sink_into_it(self):
+        _, plate, _ = self._seated()
+        self.assertLess(
+            float(self.stator.intersection(plate, engine="manifold").volume),
+            1.0)
+
+    def test_the_probe_can_see_the_plate_pressed_in(self):
+        """Negative control for the test above."""
+        _, plate, _ = self._seated()
+        plate.apply_translation([0, 0, -0.3])
+        self.assertGreater(
+            float(self.stator.intersection(plate, engine="manifold").volume),
+            50.0)
+
+    def test_the_head_cannot_turn_in_its_pocket(self):
+        """A hex head in a hex pocket is what makes the screw captive, so
+        the wing nut can be tightened without holding anything below.
+
+        Asked as a behaviour rather than by counting the head's corners:
+        seated it is free, and turned half a flat it jams. Counting
+        vertices would pass just as well on a head that fitted a round
+        hole, which is the thing this has to rule out.
+        """
+        screw, _, _ = self._seated()
+        self.assertEqual(
+            float(self.stator.intersection(screw, engine="manifold").volume),
+            0.0, "seated, it should turn freely enough to drop in")
+        turned = self.screw.copy()
+        turned.apply_transform(J.rot(30.0, [0, 0, 1]))     # half a hex flat
+        turned.apply_translation([0, 0, self.L["base_top"] - J.BASE_T])
+        self.assertGreater(
+            float(self.stator.intersection(turned, engine="manifold").volume),
+            1.0, "turned 30 degrees the head must foul its pocket")
+
+    def test_the_mount_hole_is_the_jigs_number_not_a_copy(self):
+        self.assertEqual(self.G.J.MOUNT_BORE_R, J.MOUNT_BORE_R)
+
+    def test_every_one_of_the_56_sockets_survives_the_mount_hole(self):
+        P = np.array(self.G.field_holes(self.G.BY_ID["gz_rfj"]))
+        self.assertEqual(len(P), 56)
+        r = np.hypot(P[:, 0], P[:, 1])
+        reach = J.MOUNT_BORE_R + self.G.JIG_BORE_CHAMFER
+        self.assertGreater(r.min() - self.G.ROD_FIELD / 2.0 - reach, 1.0)
+
+    def test_the_nut_cannot_reach_into_a_frame(self):
+        """Nothing may rise above the plane the specimen rests on. The
+        rods lift the tooth; the nut has to stay under the shortest of
+        them, or it occludes the specimen from every camera above it."""
+        rod_proud = ROD_NOMINAL - 7.0            # Ø1 carbon, cut and seated
+        self.assertLess(self.nut.extents[2], rod_proud)
+
+    def _nut_overlap(self, z, extra_deg=0.0):
+        T = J.mount_thread()
+        n = self.nut.copy()
+        n.apply_transform(J.rot(360.0 * z / T.lead + extra_deg, [0, 0, 1]))
+        n.apply_translation([0, 0, z])
+        return float(self.screw.intersection(n, engine="manifold").volume)
+
+    def test_the_wing_nut_runs_the_length_of_the_shank(self):
+        """Turned with the helix it must not jam anywhere."""
+        for z in np.arange(10.0, 60.0, 4.0):
+            self.assertLess(self._nut_overlap(z), 1.0, f"jams at z={z}")
+
+    def test_a_nut_out_of_phase_jams(self):
+        """Negative control, and it has to be a real error to be one.
+
+        30 degrees off is 0.22 mm of axial error against 0.30 mm of
+        radial clearance, so it still fits -- that is the thread working,
+        not the probe failing. 60 degrees is 0.44 mm and does jam, which
+        is what makes the test above mean anything.
+        """
+        near = self._nut_overlap(30.0, 30.0)
+        off = self._nut_overlap(30.0, 60.0)
+        far = self._nut_overlap(30.0, 180.0)
+        self.assertLess(near, 1.0)
+        self.assertGreater(off, 1.0)
+        # half a lead out must be far worse than a sixth of one. Stated as
+        # a ratio, not a millimetre figure: the absolute overlap scales
+        # with the thread, and a fixed threshold quietly became a test of
+        # the thread's diameter when it went from Ø8 to Ø6.
+        self.assertGreater(far, 3.0 * off)
+
+    def test_the_dial_still_reaches_the_tooth_this_jig_was_built_for(self):
+        """The mount lifts the specimen before the specimen starts, so
+        the focal-height dial has to cover the lift as well as the tooth.
+        BigMeherrin's centroid is 57 mm above its own base; on the long
+        rods that is 94.5 mm above the platform. At the old 70 mm stop
+        the one tooth this jig exists for could not be brought to the
+        focal point, and nothing said so.
+        """
+        lift = self.G.FIELD_T + (ROD_NOMINAL - 7.0)   # plate + rods proud
+        self.assertLessEqual(lift + 57.0, J.SPECIMEN_RANGE[1])
+
+    def test_every_height_the_dial_offers_actually_builds(self):
+        """A dial is a promise that every value of it works."""
+        for sp in (J.SPECIMEN_RANGE[0], J.SPECIMEN_RANGE[1]):
+            parts = J.assemble(sp)
+            self.assertTrue(all(m.is_watertight for m in parts.values()), sp)
+            self.assertGreater(J.levels(sp)["pad_t"], 0.0, sp)
+
+    def test_the_nut_covers_no_socket(self):
+        _, _, nut = self._seated()
+        P = np.array(self.G.field_holes(self.G.BY_ID["gz_rfj"]))
+        z = self.L["plat"] + self.G.FIELD_T + self.nut.extents[2] / 2.0
+        pts = np.column_stack([P, np.full(len(P), z)])
+        self.assertEqual(int(nut.contains(pts).sum()), 0)
 
 
 if __name__ == "__main__":

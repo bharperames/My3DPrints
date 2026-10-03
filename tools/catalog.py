@@ -371,34 +371,80 @@ PARTS = [
        "and the camera's entrance pupil on a 150 mm sphere about the "
        "specimen at every setting. The lights, the backdrop and the "
        "tooth never move. "
-       "Ten printed bodies: a stator plate with pedestal and bearing "
+       "Thirteen printed bodies: a stator plate with pedestal and bearing "
        "towers; the rotor ring, with 36 detent dimples every 10\u00b0 and "
        "a slotted pad; the arc, with its own leg down to that pad; a "
        "two-piece carriage clamped through the arc's 5.2 mm slot by an "
-       "M5 thumbscrew; a receiver with 110 mm of fore/aft travel taking "
-       "an Arca plate or a phone clamp on its 1/4-20; a detent pawl; "
-       "and three bearing sleeves. "
+       "M5 thumbscrew; a receiver with 40 mm of fore/aft travel carrying "
+       "the phone's clamp on its 1/4-20; a detent pawl; three bearing "
+       "sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
+       "wing nut and a hex nut, all printed in the same cosine thread "
+       "the Knot uses. "
        "Hardware: three 608 bearings on M4 axles, each riding a printed "
        "sleeve, one of which is bored a millimeter off-center to give "
        "2.0 mm of preload travel. "
+       "One camera: an iPhone held landscape in a spring clamp, behind "
+       "either of its two lenses. A Sony \u03b11 on an Arca plate was "
+       "carried here too and was what the carriage was sized for \u2014 "
+       "1.34 kg with its tripod socket 320 mm out, against 0.25 kg of "
+       "phone and clamp at 167. Dropping it took 75 mm off the platform, "
+       "70 mm off the channel, and both ballasts: the carriage's centre "
+       "of mass now sits 27 mm past the thumbscrew, which the tongue "
+       "takes as 6.5 N where the \u03b11 asked 110. The rotor's ballast "
+       "pocket went too \u2014 it only ever offset 3% of the rotor's own "
+       "imbalance, and what actually holds that is the race flanks. "
+       "What is lost with it is depth of field, not geometry: a phone at "
+       "f/1.8 holds about 5 mm of a 31 mm specimen, so pass one is a "
+       "focus stack. "
        "Every clearance is swept rather than assumed \u2014 the carriage "
-       "with a phone and with a full-frame body behind each macro, "
-       "through 10\u201380\u00b0 against the arc and its leg, and the whole "
-       "rotor side through a full turn against the base. The pedestal's "
+       "behind both lenses, through 10\u201380\u00b0 against the arc and "
+       "its leg, and the whole rotor side through a full turn against "
+       "the base. The pedestal's "
        "top 23 mm drafts inward at 15\u00b0, so at 75\u00b0 of elevation the "
        "camera sees the platform and nothing under it. "
+       "The specimen stands on the rod field plate, which drops over the "
+       "\u00d830 platform and is clamped by a wing nut turned with the "
+       "fingers. The screw runs right through the pedestal and its hex "
+       "head is captive in a pocket under the base, so nothing has to be "
+       "held from underneath and nothing metal sits near the enamel. At "
+       "\u00d86 the nut covers none of the field's 56 sockets and stands "
+       "6 mm proud, against the 13 mm a 20 mm rod lifts the tooth, so it "
+       "cannot appear in a frame. "
+       "The jig sits a long way lower than it did, and none of that "
+       "height was optical: the worst camera at the lowest ring still "
+       "clears the base by 112 mm. The arc's leg trades against the "
+       "pedestal one for one, and the rotor's pad takes up whatever the "
+       "mount lifts, so the three move together. The arc came down from "
+       "243 mm to 198 \u2014 off the edge of the build height \u2014 the "
+       "pedestal from 95 to 32, and the focal point from 152 mm above "
+       "the base to 108. "
        "PETG, four or five walls, 25\u201330% gyroid; base and pedestal in "
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
-       version="0.1.0",
+       # major, twice over. 1.0.0: the platform went \u00d820 to \u00d830
+       # and the pedestal lost 45 mm. 2.0.0 carries three changes that
+       # landed before anything was printed from it -- the pedestal at 32
+       # rather than 50, the mount thread \u00d86 rather than \u00d88 with
+       # the pedestal's bore following it, and the Sony \u03b11 dropped,
+       # which took 75 mm off the camera platform, 70 off its channel and
+       # both ballast pockets. Nothing cut for any earlier shape meets
+       # this one.
+       version="2.0.0",
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
               dict(label="Drives, mounts and the app: the study",
                    href="docs/orbital-jig-plan.html")],
        gen=["gen_orbital_jig.py"], params=[
-           dict(key="specimen", label="focal height", unit="mm", min=6,
-                max=70, step=1, val=12)],
+           dict(key="specimen", label="focal height", unit="mm", min=25,
+                max=110, step=1, val=78,
+                hint="How far the specimen's centre sits above the "
+                     "platform. The rod field plate is 8 mm and a 20 mm "
+                     "\u00d81 carbon rod stands 13 proud of it, so a "
+                     "tooth starts 21 mm up before its own centroid is "
+                     "counted \u2014 which is why the dial starts at 25. "
+                     "The pad on the rotor thickens to match, so a tall "
+                     "setting is a taller rotor.")],
        # ten flat-bottomed bodies on broad faces; a brim on the ring's
        # underside would scar the detent dimples
        brim="off",
@@ -647,6 +693,49 @@ PARTS = [
                     dict(value="pla_silk", label="PLA Silk",
                          hint="\u00d81.85, inferred \u2014 not yet read")])],
        out="gazebo-rod-field-{material}.3mf"),
+    _p("rod_field_jig", "Carbon Rod Field \u2014 jig mount",
+       "Stands", "parametric",
+       "The 56-hole field with one more hole: \u00d87 straight through "
+       "the middle, for the orbital jig's printed screw. Everything else "
+       "is the plate you already know \u2014 same octagon, same 8 mm "
+       "deck, same 56 sockets at the same depth and the same bore, so "
+       "the \u00d81.60 reading off the graded plates still holds and "
+       "nothing needs calibrating again. "
+       "It is a separate design rather than a change to the plain field "
+       "because that plate's size was read off printed terraces and its "
+       "card ships those numbers. A plate that stands on a table does "
+       "not want a hole through it. "
+       "The middle was always free: the innermost socket sits at r = 8.0 "
+       "and no rod goes in the centre, so the bore and its eased mouths "
+       "reach r = 4.3 and leave 2.87 mm of plate before the nearest "
+       "socket. All 56 are kept. "
+       "Drop it over the jig's \u00d830 platform and run the wing nut "
+       "down by hand. The plate overhangs the platform by 12.3 mm all "
+       "round and the clamp carries it; the platform is the washer. "
+       "Print it in matte black PETG like everything else that stands "
+       "near the specimen.",
+       keys="stand tooth fossil carbon rod socket field grid jig mount "
+            "orbital screw",
+       # major: the mount bore followed the jig's thread down from
+       # \u00d89 to \u00d87, so a plate of the earlier shape sits on a
+       # screw this one no longer matches.
+       version="2.0.0",
+       pages=[dict(label="Stand the tooth on it, both ways",
+                   href="docs/tooth-stand.html")],
+       gen=["gen_gazebo.py", "--size", "gz_rfj"], params=[
+           dict(key="material", label="filament", type="select",
+                val="petg",
+                hint="The socket is drawn to the filament, and the "
+                     "numbers are the plain field's \u2014 the mount "
+                     "hole does not change what a bore does.",
+                choices=[
+                    dict(value="petg", label="PETG Basic",
+                         hint="\u00d81.60 \u2014 \u00d81.56 read, opened 0.04"),
+                    dict(value="pla_basic", label="PLA Basic",
+                         hint="\u00d81.65, inferred \u2014 not yet read"),
+                    dict(value="pla_silk", label="PLA Silk",
+                         hint="\u00d81.85, inferred \u2014 not yet read")])],
+       out="gazebo-rod-field-jig-{material}.3mf"),
     _p("rod_field_graded", "Rod field \u2014 graded, to find the size",
        "Stands", "parametric",
        "The rod field with its five rings stepped in bore, to find what "

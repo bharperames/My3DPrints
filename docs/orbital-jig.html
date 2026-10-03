@@ -33,6 +33,12 @@
   @media (max-width: 900px) { .wrap { flex-direction:column; height:auto; } }
   #view { flex:1; position:relative; min-height:420px; background:var(--surface-2); }
   #view canvas { display:block; width:100%; height:100%; }
+  #pick { position:absolute; left:12px; bottom:12px; font-size:12.5px;
+    color:var(--ink); background:color-mix(in srgb,var(--surface) 92%,transparent);
+    border:1px solid var(--line); border-radius:6px; padding:7px 11px;
+    max-width:min(420px, calc(100% - 24px)); line-height:1.45; display:none; }
+  #pick b { font-weight:650; }
+  #pick .sub { color:var(--muted); font-size:11.5px; }
   #hud { position:absolute; left:12px; top:10px; font-size:12.5px;
     font-variant-numeric:tabular-nums; color:var(--ink);
     background:color-mix(in srgb,var(--surface) 88%,transparent);
@@ -129,6 +135,7 @@
 <div class="wrap">
   <div id="view">
     <div id="hud">STATE_INIT — fetching the printed file…</div>
+    <div id="pick"></div>
     <div id="vfbox" class="off"><span id="vflabel">viewfinder · what this frame captures</span></div>
   </div>
   <aside>
@@ -144,6 +151,12 @@
     <div class="bar">
       <span class="lbl">lens</span>
       <span class="seg" id="lenssel"></span>
+    </div>
+    <div class="bar">
+      <span class="lbl">fastener</span>
+      <span class="seg" id="fastsel">
+        <button data-f="wing" class="on">wing nut</button><button data-f="hex">hex nut</button>
+      </span>
     </div>
     <div class="bar">
       <span class="lbl">speed</span>
@@ -168,11 +181,13 @@
       transforms the generator wrote into the same archive. Nothing here is
       a copy of the geometry made for the page. The grey parts are stand-ins
       for hardware that is bought, not printed: three 608 bearings on their
-      M4 axles, the M5 thumbscrew, the ballast, and the camera you pick:
-      a phone held landscape in a spring clamp on the receiver's 1/4-20, or
-      a Sony α1 on an Arca plate behind one of its macros, the receiver
-      slid along its channel to sit under the body's socket. The main lens
-      is on the 150&nbsp;mm sphere either way. The specimen is the scanned tooth from
+      M4 axles, the M5 thumbscrew, and the camera — a phone held landscape
+      in a spring clamp on the receiver's 1/4-20, its main lens on the
+      150&nbsp;mm sphere. A Sony α1 on an Arca plate was carried here too,
+      and the carriage was sized for it: a 1.34&nbsp;kg body whose tripod
+      socket sits 320&nbsp;mm out, against 0.25&nbsp;kg of phone and clamp
+      at 167. It is gone, and so is the ballast at both ends that existed
+      to balance it. The specimen is the scanned tooth from
       <code>models/specimen/</code>, at its real size, base on the platform;
       the jig is built with its focal height at that tooth's centroid.
       <code>?file=</code> picks another glTF from that folder and
@@ -186,11 +201,13 @@
       position with the chosen lens's field, so each flash shows what that
       frame holds. The spec drew one 32° frustum, which frames
       86&nbsp;×&nbsp;57&nbsp;mm at 150&nbsp;mm and cannot hold a 129&nbsp;mm
-      tooth; the phone's main camera frames 216&nbsp;×&nbsp;162, and the
-      α1's 90 macro 60&nbsp;×&nbsp;40, so the lens is a choice here. What
-      no lens fixes is depth of field: a phone's main camera at f/1.8 and
-      150&nbsp;mm holds roughly 5&nbsp;mm in focus against a 31&nbsp;mm-thick
-      specimen, where the α1's macro at f/8–f/13 holds the whole tooth.
+      tooth; the phone's main camera frames 216&nbsp;×&nbsp;162 and its
+      2× crop 120&nbsp;×&nbsp;90, so the lens is a choice here. What no
+      lens fixes is depth of field: a phone's main camera at f/1.8 and
+      150&nbsp;mm holds roughly 5&nbsp;mm in focus against a
+      31&nbsp;mm-thick specimen. That is the real cost of dropping the
+      α1, whose macro at f/8–f/13 held the whole tooth, and it is paid in
+      focus stacking rather than in geometry.
       <br><br>
       <b>One thing the spec does not add up on.</b> The rotor's detent ring
       has 36 dimples at 10°, which serves the horizon ring (10° steps) and the
@@ -241,8 +258,17 @@ try {
     centroid: c.z - box.min.z, box, center: box.getCenter(new THREE.Vector3()) };
   specimenMesh = root;
 } catch (e) { specimenInfo = null; }
+/* The specimen does not stand on the platform any more: it stands on
+   rods in the rod field plate, which stands on the platform. So the dial
+   has to carry the plate's thickness and the rods' stand-off as well as
+   the tooth's own centroid, or the focal point lands inside the plate.
+   MOUNT_LIFT is filled in from the plate's own metadata below; these are
+   its values, kept here only so the dial can be picked before the fetch. */
+const PLATE_T = 8.0, ROD_LEN = 20.0, ROD_SEAT = 7.0;
+const MOUNT_LIFT = PLATE_T + (ROD_LEN - ROD_SEAT);          // 21 mm
 const specimen = Q.get('specimen') ? +Q.get('specimen')
-  : specimenInfo ? Math.min(70, Math.max(6, Math.round(specimenInfo.centroid))) : 12;
+  : specimenInfo ? Math.min(110, Math.max(25,
+      Math.round(specimenInfo.centroid + MOUNT_LIFT))) : 12 + MOUNT_LIFT;
 const params = JSON.stringify({ specimen });
 const src = `../src?id=orbital_jig&params=${encodeURIComponent(params)}`;
 hud.textContent = 'STATE_INIT — building the jig from its generator (a few seconds the first time)…';
@@ -258,6 +284,22 @@ const buf = await res.arrayBuffer();
 const files = unzipSync(new Uint8Array(buf));
 const D = JSON.parse(new TextDecoder().decode(files['Metadata/orbital_jig.json']));
 const model = new ThreeMFLoader().parse(buf);
+
+/* The specimen mount is its own design -- the rod field plate with the
+   bore for the jig's screw -- so it is fetched the same way the jig is,
+   and rendered from the printed file rather than drawn again here. */
+let plateModel = null, plateField = null;
+try {
+  const pres = await fetch('../src?id=rod_field_jig&params=' +
+    encodeURIComponent(JSON.stringify({ material: 'petg' })));
+  if (pres.ok) {
+    const pbuf = await pres.arrayBuffer();
+    const pfiles = unzipSync(new Uint8Array(pbuf));
+    const PD = JSON.parse(new TextDecoder().decode(pfiles['Metadata/gazebo.json']));
+    plateField = PD.field && PD.field.gz_rfj;
+    plateModel = new ThreeMFLoader().parse(pbuf);
+  }
+} catch (e) { plateModel = null; }
 const R = D.R, DEG = Math.PI / 180;
 
 /* ---------- scene, z-up like the spec ---------- */
@@ -360,13 +402,12 @@ const shaft = addBody('thumbscrew', new THREE.CylinderGeometry(T.r, T.r, T.y1 - 
 shaft.position.set(T.u, (T.y0 + T.y1) / 2, 0);
 const knob = addBody('knob', new THREE.CylinderGeometry(T.knob_r, T.knob_r, T.knob_h, 20), hwCarriage, '--cam', HW);
 knob.position.set(T.u, T.y0 - T.knob_h / 2 + 0.5, 0);
-// ballast: washers on the ring and in the carriage's boss
-const bl = D.ballast;
-const wr = addBody('ballast', cylZ(bl.d / 2 - 1, 5, 40), hwRotor, '--hw', HW);
-wr.position.set(bl.r * Math.cos(bl.phi * DEG), bl.r * Math.sin(bl.phi * DEG), bl.z_floor + 2.5);
-const cb = D.cb_pocket;
-const wc = addBody('ballast', cylZ(cb.r - 1, 6, 40), hwCarriage, '--hw', HW);
-wc.position.set(cb.u, D.pupil[1], cb.v_mouth + 3);
+// No ballast. There were two stacks of washers, one on the ring and one
+// in the carriage's boss, and both were sized against a Sony a1. With a
+// phone the carriage's centre of mass sits 27 mm past the thumbscrew --
+// 6.5 N on the tongue, against the a1's 110 -- and the rotor pocket only
+// ever offset 3% of the rotor's own imbalance. Drawing washers that do
+// neither job would be the page asserting a solved problem.
 // the camera: whichever one is chosen, from the same boxes the generator
 // swept against the arc and its leg. Boxes are world coordinates at
 // theta = 0, the carriage's build pose, so they go straight in. The
@@ -405,16 +446,6 @@ function buildCamera(kind, id) {
       glass.position.set(l.c[0] - 1.3, l.c[1], l.c[2]); glass.userData.camera = true;
     }
     for (const b of cfg.boxes.clamp) boxMesh('clamp', b, '--hw', HW);
-  } else {
-    // the a1: a barrel for the lens rather than the sweep's box round it
-    const [lo, hi] = cfg.boxes.lens[0];
-    const r = (hi[1] - lo[1]) / 2, len = hi[0] - lo[0];
-    const barrel = addBody('lens', new THREE.CylinderGeometry(r, r - 3, len, 48).rotateZ(Math.PI / 2), camGroup, '--cam', { rough: .5, metal: .35, hardware: true });
-    barrel.position.set((lo[0] + hi[0]) / 2, 0, 0); barrel.userData.camera = true;
-    const front = addBody('glass', new THREE.CylinderGeometry(r - 8, r - 8, 1.0, 48).rotateZ(Math.PI / 2), camGroup, '--cam', { rough: .05, metal: .9, hardware: true });
-    front.position.set(lo[0] + 0.4, 0, 0); front.userData.camera = true;
-    for (const b of cfg.boxes.body) boxMesh('body', b, '--cam', { rough: .7, metal: .15, hardware: true });
-    for (const b of cfg.boxes.plate) boxMesh('plate', b, '--hw', HW);
   }
   recvShift.position.x = cfg.receiver_u - D.receiver_u;
   camKind = kind; lensId = lens.id;
@@ -482,25 +513,180 @@ function toothGeometry() {
   const merged = mergeGeometries([crown.toNonIndexed(), l1.toNonIndexed(), l2.toNonIndexed()], false);
   return merged;
 }
-let tooth;
+/* ---------- the specimen mount: plate, rods, then the tooth ----------
+   The tooth does not touch the jig. It stands on carbon rods planted in
+   the rod field plate, and the plate is bolted to the platform by the
+   printed screw. Drawing the tooth on the platform showed the screw
+   running up through it, which is not a thing that can happen. */
+let plateTop = D.levels.plat;                 // falls back to the platform
+if (plateModel) {
+  const pg = new THREE.Group();
+  plateModel.traverse(o => {
+    if (!o.isMesh) return;
+    const m = addBody('rod_plate', o.geometry, pg, '--p-small', { rough: .7 });
+    m.position.set(0, 0, 0);
+  });
+  // the plate is laid out flat on its print plate; stand it on the platform
+  const pb = new THREE.Box3().setFromObject(pg);
+  pg.position.set(-(pb.min.x + pb.max.x) / 2, -(pb.min.y + pb.max.y) / 2,
+                  D.levels.plat - pb.min.z);
+  stator.add(pg);
+  plateTop = D.levels.plat + (pb.max.z - pb.min.z);
+}
+
+/* The rods, fitted to the specimen rather than to its bounding box.
+
+   Standing the tooth on its bbox floor left it hanging in the air: the
+   box's bottom is the single lowest point of the root, and at the radius
+   the rods sit the underside is far higher, so nothing touched. The
+   bounding box is not the thing the rods meet.
+
+   So each rod is CUT TO ITS OWN LENGTH, which is what the rod field is
+   for -- "cut them to whatever the specimen needs, since nothing above
+   the deck is fixed". The tooth is held at a stand-off, a ray is cast
+   straight up each candidate hole, and the rod is cut to reach the first
+   polygon of the specimen it meets. A hole whose ray misses the tooth
+   gets no rod: there is nothing there to hold. */
+const ROD_STANDOFF = ROD_LEN - ROD_SEAT;      // nominal, before fitting
+let tooth = null, rodFit = [];
 if (specimenMesh) {
-  // base on the platform, centerd on the pedestal; the focal point is
-  // then `specimen` mm above the platform, which the jig was built for
   const holder = new THREE.Group();
   holder.add(specimenMesh);
   const b = specimenInfo.box, ctr = specimenInfo.center;
   specimenMesh.position.set(-ctr.x, -ctr.y, -b.min.z);
-  holder.position.set(0, 0, D.levels.plat);
+  holder.position.set(0, 0, plateTop + ROD_STANDOFF);
   tooth = holder; tooth.name = 'tooth';
   stator.add(holder);
+  holder.updateMatrixWorld(true);
 } else {
   const toothMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(css('--tooth')), roughness: .45, metalness: .0 });
   tooth = new THREE.Mesh(toothGeometry(), toothMat);
   tooth.name = 'tooth';
-  tooth.position.set(0, 0, D.levels.plat + 4.2);
+  tooth.position.set(0, 0, plateTop + ROD_STANDOFF + 4.2);
   tooth.rotation.z = 0.35;
   stator.add(tooth);
+  tooth.updateMatrixWorld(true);
 }
+
+/* Exposed so the rod stock can be chosen from the specimen rather than
+   guessed: every ring, how many of its holes have tooth above them, and
+   what each rod would have to be cut to. */
+let rodSurvey = () => [];
+if (plateField && tooth) {
+  const NUT_CLEAR = 11.5;            // the wing nut reaches 10.7 from the axis
+  const floor = plateTop - ROD_SEAT;  // where a rod's foot sits in its socket
+  const ray = new THREE.Raycaster();
+  const up = new THREE.Vector3(0, 0, 1);
+  const probe = (hx, hy) => {
+    ray.set(new THREE.Vector3(hx, hy, floor + 0.01), up);
+    ray.far = 400;
+    const hit = ray.intersectObject(tooth, true);
+    return hit.length ? hit[0].point.z : null;
+  };
+  // every hole that clears the nut and actually has tooth above it
+  const cand = [];
+  for (const [hx, hy] of plateField.holes) {
+    const r = Math.hypot(hx, hy);
+    if (r < NUT_CLEAR) continue;
+    const z = probe(hx, hy);
+    if (z !== null) cand.push({ x: hx, y: hy, r, len: z - floor });
+  }
+  /* Spread them: take the widest ring that still has four holes under
+     the tooth, so the stance is as broad as the specimen allows. */
+  const byR = {};
+  for (const c of cand) {
+    const k = Math.round(c.r * 10) / 10;
+    (byR[k] = byR[k] || []).push(c);
+  }
+  rodSurvey = () => Object.keys(byR).map(Number).sort((a, b) => a - b)
+    .map(k => ({ r: k, n: byR[k].length,
+                 lens: byR[k].map(c => +c.len.toFixed(1)).sort((a, b) => a - b) }));
+  const wide = Object.keys(byR).map(Number).sort((a, b) => b - a)
+    .find(k => byR[k].length >= 4);
+  const chosen = wide !== undefined ? byR[wide] : cand.slice(0, 4);
+  const rodMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0x141416), roughness: .35, metalness: .25 });
+  for (const c of chosen) {
+    const g = new THREE.CylinderGeometry(plateField.bore / 2,
+      plateField.bore / 2, c.len, 12).rotateX(Math.PI / 2);
+    const rod = new THREE.Mesh(g, rodMat);
+    rod.name = 'rod';
+    rod.position.set(c.x, c.y, floor + c.len / 2);
+    stator.add(rod);
+    rodFit.push(+c.len.toFixed(1));
+  }
+}
+
+/* ---------- click a part, and it says what it is ----------
+   The bodies arrive from the 3MF under their generator names, which are
+   what the code calls them and not what a person would. The map is the
+   only place the two meet. A body with no entry still answers with its
+   own name rather than nothing: silence would read as a broken click. */
+const PART_NAMES = {
+  stator: ['Stator plate', 'base, bearing towers and the pedestal — does not move'],
+  rotor: ['Rotor ring', '242 mm, rides three 608 bearings; 36 detents, one every 10°'],
+  arc: ['Quadrant arc', 'carries the camera through 10–80° of elevation'],
+  saddle: ['Carriage saddle', 'clamps through the arc\u2019s 5.2 mm slot'],
+  shoe: ['Carriage shoe', 'the other half of the clamp, inboard of the arc'],
+  receiver: ['Camera receiver', '110 mm of fore/aft travel on a 1/4-20'],
+  pawl: ['Detent pawl', 'PETG leaf spring; its nub sits in a dimple at each 10°'],
+  sleeve_a: ['Bearing sleeve', 'one of three, under a 608'],
+  sleeve_b: ['Bearing sleeve', 'one of three, under a 608'],
+  sleeve_ecc: ['Eccentric sleeve', 'bored 1 mm off-centre — 2.0 mm of preload travel'],
+  mount_screw: ['Mount screw', 'printed Ø6 thread; hex head captive under the base'],
+  mount_wing_nut: ['Wing nut', 'printed, turned by fingers — clamps the plate down'],
+  mount_hex_nut: ['Hex nut', 'printed, for a driver when a rod is in the wings\u2019 way'],
+  rod_plate: ['Rod field plate', '56 sockets; the specimen mount'],
+  rod: ['Carbon rod', 'Ø1, cut to reach the specimen where it stands'],
+  tooth: ['Specimen', 'not printed — the scan this jig exists to photograph'],
+};
+const pickEl = document.getElementById('pick');
+const picker = new THREE.Raycaster();
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  // orbiting is a drag, not a click; without this every rotation picks
+  if (!downAt) return;
+  const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]);
+  downAt = null;
+  if (moved > 4) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  picker.setFromCamera(new THREE.Vector2(
+    ((e.clientX - r.left) / r.width) * 2 - 1,
+    -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+  const hits = picker.intersectObjects(scene.children, true)
+    .filter(h => h.object.isMesh && h.object.visible);
+  let o = hits.length ? hits[0].object : null;
+  while (o && !PART_NAMES[o.name] && o.parent) o = o.parent;   // rods sit in groups
+  if (!o || (!PART_NAMES[o.name] && !o.name)) { pickEl.style.display = 'none'; return; }
+  const [title, sub] = PART_NAMES[o.name] || [o.name, ''];
+  pickEl.innerHTML = `<b>${title}</b>` + (sub ? `<div class="sub">${sub}</div>` : '');
+  pickEl.style.display = 'block';
+});
+
+/* ---------- which nut is fitted ----------
+   Both are printed -- the wings are for fingers, the hex for a driver
+   when a rod stands where a wing wants to go -- but only one is on the
+   screw at a time. The unfitted one is simply not shown: drawing it
+   lying beside the jig made it look like part of the assembly. */
+let fastener = 'wing';
+function applyFastener() {
+  // both sit on the axis in the assembly; the edges ride along as a
+  // child of the mesh, so one flag covers each
+  for (const [key, want] of [['mount_wing_nut', 'wing'], ['mount_hex_nut', 'hex']]) {
+    const o = printed[key];
+    if (o) o.visible = (fastener === want);
+  }
+  document.querySelectorAll('#fastsel button')
+    .forEach(b => b.classList.toggle('on', b.dataset.f === fastener));
+  if (typeof setCurrent === 'function') setCurrent();
+}
+document.getElementById('fastsel').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  fastener = b.dataset.f;
+  applyFastener();
+});
 
 /* ---------- spec kinematics ---------- */
 const Pc = (phi, th) => new THREE.Vector3(R * Math.cos(th) * Math.cos(phi), R * Math.cos(th) * Math.sin(phi), R * Math.sin(th));
@@ -803,7 +989,7 @@ function makeThumbs() {
   const camPos = camera.position.clone(), camTgt = controls.target.clone(), aspect = camera.aspect;
   const vis = new Map();
   // one joint, close up: the carriage clamped on the arc, thumbscrew through the slot
-  const cast = new Set(['arc', 'saddle', 'shoe', 'receiver', 'thumbscrew', 'knob', 'ballast', 'phone', 'clamp', 'lens', 'glass', 'screen', 'body', 'plate']);
+  const cast = new Set(['arc', 'saddle', 'shoe', 'receiver', 'thumbscrew', 'knob', 'phone', 'clamp', 'lens', 'glass', 'screen', 'body', 'plate']);
   for (const o of [...allMeshes, tooth]) { vis.set(o, o.visible); o.visible = cast.has(o.name); }
   const ov = overlay.visible; overlay.visible = false;
   scene.updateMatrixWorld(true);
@@ -877,6 +1063,23 @@ window.__jig = {
   get captured() { return captured.slice(); },
   get errors() { return errors.slice(); },
   get bodies() { return Object.keys(printed); },
+  get rods() { return rodFit.slice(); },
+  rodSurvey() { return rodSurvey(); },
+  get fastener() { return fastener; },
+  get picked() { return pickEl.style.display === 'none' ? null : pickEl.querySelector('b').textContent; },
+  setFastener(f) { fastener = f; applyFastener(); },
+  // what is in the scene and where, so a check can measure it rather
+  // than a screenshot have to be squinted at
+  where(name) {
+    const hits = [];
+    scene.traverse(o => { if (o.name === name) {
+      const b = new THREE.Box3().setFromObject(o);
+      hits.push({ z0: +b.min.z.toFixed(2), z1: +b.max.z.toFixed(2),
+                  w: +(b.max.x - b.min.x).toFixed(2),
+                  x: +b.getCenter(new THREE.Vector3()).x.toFixed(2),
+                  shown: o.visible }); } });
+    return hits;
+  },
   get pose() { return { phi: S.phi, theta: S.theta }; },
   pupilWorld() { pupil.updateWorldMatrix(true, false); return pupil.getWorldPosition(new THREE.Vector3()).toArray(); },
   set speed(v) { speed = v; },
@@ -890,6 +1093,7 @@ window.__jig = {
   look(pos, tgt) { camera.position.set(...pos); controls.target.set(...tgt); controls.update(); },
 };
 resize(); init();
+applyFastener();
 buildCamera(camKind, Q.get('lens'));
 renderer.render(scene, camera);
 makeThumbs();

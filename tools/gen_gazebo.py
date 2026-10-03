@@ -53,6 +53,7 @@ sys.path.insert(0, HERE)
 
 import gen_tooth_stand as T                                   # noqa: E402
 from gen_orbital_jig import rot, union, cut                    # noqa: E402
+import gen_orbital_jig as J                                   # noqa: E402
 
 BASE_T = T.ARM_T            # the plate: 5 mm, flat on the table and the dock
 ROUND = 1.5                 # inside corners of the plan
@@ -424,6 +425,8 @@ GRADE_ETCH_BOLD = 0.10      # so the STROKES grow instead. At this cap the
                             # its counter, which a fatter pen would fill.
 
 FIELD_T = 8.0                 # the field deck is thicker: the hole IS the guide
+FIELD_BORE_Z0 = 1.0           # the socket's floor: 7 mm of hole in 8 of deck
+JIG_BORE_CHAMFER = 0.8        # ease at both faces of the jig mount hole
 FIELD_R = 29.5                # the deck's corner radius
 
 # The pattern is CONCENTRIC RINGS whose phase turns with the radius, so
@@ -518,6 +521,16 @@ SIZES = [
     dict(id="gz_rf", name="Gazebo rod field", teeth=(25.0, 150.0), ring=16.0,
          gaps=GRADED, cone=25.0, tip=TIP_R, half=HALF, fillet=FILLET,
          cross=38.0, fore=16.0, rods=ROD_FIELD, field=True),
+    # The same field with one hole through the middle, for the orbital
+    # jig's printed screw. A separate size rather than a change to
+    # gz_rf: that plate's bore was read off printed terraces and the
+    # card ships those numbers, so it is not moved to add a feature it
+    # does not need. The centre is free either way -- the innermost
+    # socket sits at r = 8.0 and no rod goes in the middle.
+    dict(id="gz_rfj", name="Gazebo rod field, jig mount",
+         teeth=(25.0, 150.0), ring=16.0,
+         gaps=GRADED, cone=25.0, tip=TIP_R, half=HALF, fillet=FILLET,
+         cross=38.0, fore=16.0, rods=ROD_FIELD, field=True, jig=True),
 ]
 BY_ID = {s["id"]: s for s in SIZES}
 ALL_IDS = [s["id"] for s in SIZES]
@@ -1103,7 +1116,7 @@ def rod_hole_at(r, z0, top, x, y, chamfer=None, lead=None):
     return b
 
 
-def field_bore(d, x, y, top=None, z0=1.0):
+def field_bore(d, x, y, top=None, z0=FIELD_BORE_Z0):
     """ONE definition of "a hole in the rod field", at any diameter.
 
     The probe exists to tell the field what size to draw, and it was
@@ -1167,6 +1180,25 @@ def plugged_cone(spec, x, y, deck):
                   T.cyl(foot, deck - 0.6, deck + 0.05, x=x, y=y, sections=96)])
 
 
+def jig_mount_bore():
+    """The plain hole the jig's printed screw passes through.
+
+    Radius comes from the jig rather than being typed again here: the
+    screw, the pedestal's bore and this hole are one fit, and a number
+    copied into two files is a number that will disagree with itself.
+    A 45 degree ease on each mouth, as every other hole on this plate
+    gets -- the first layer squeezes, and the nut has to seat flat.
+    """
+    r, c = J.MOUNT_BORE_R, JIG_BORE_CHAMFER
+    # one revolved cutter, eased at BOTH faces: rod_hole_at is a blind
+    # bore and only eases the mouth it opens at, and this hole opens at
+    # two -- the screw enters underneath and the wing nut seats on top.
+    return [T.rev([(0.0, -1.0), (r + c, -1.0), (r + c, 0.0), (r, c),
+                   (r, FIELD_T - c), (r + c, FIELD_T),
+                   (r + c, FIELD_T + 1.0), (0.0, FIELD_T + 1.0)],
+                  sections=64)]
+
+
 def stand(spec):
     """One gazebo: the deck, the relief if it wears one, and then either
     a cone on each ring position or a socket tower for a rod. Flat
@@ -1191,8 +1223,11 @@ def stand(spec):
                                         z0=1.0 - sunk))
             return cut(slab, holes + field_grade_zones(spec)
                        + field_grade_etch(spec))
-        return cut(slab, [field_bore(spec["rods"], x, y)
-                          for x, y in field_holes(spec)])
+        bores = [field_bore(spec["rods"], x, y)
+                 for x, y in field_holes(spec)]
+        if spec.get("jig"):
+            bores.extend(jig_mount_bore())
+        return cut(slab, bores)
     if spec.get("probe"):
         slab = trimesh.creation.extrude_polygon(probe_plan(spec), FIELD_T)
         # the probe IS the field, at fourteen diameters
@@ -1808,6 +1843,16 @@ def meta(parts, poses, rep):
         "ring": dict(phase_deg=PHASE, deck_sides=DECK_SIDES,
                      lean_target_deg=LEAN_TARGET),
         "dock": dict(flat_bottom=True, plat_r=T.PLAT_R),
+        # The field's own hole positions, so a page can draw rods standing
+        # in them without recomputing the pattern. Only the field sizes
+        # have one; everything else carries spikes or cones instead.
+        "field": {i: dict(holes=[[round(float(x), 3), round(float(y), 3)]
+                                 for x, y in field_holes(BY_ID[i])],
+                          bore=BY_ID[i]["rods"], deck_t=FIELD_T,
+                          seat=FIELD_T - FIELD_BORE_Z0,
+                          jig=bool(BY_ID[i].get("jig")))
+                  for i in BY_ID if BY_ID[i].get("field")
+                  and not BY_ID[i].get("grade")},
         "sizes": [dict(s, spikes=spikes(s), contact_z=contact_z(s),
                        dish_z=dish_z(s), tip_r=T.tip_r(s),
                        dish=round(T.dish_d(s), 3), base_t=BASE_T,
