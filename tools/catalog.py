@@ -1188,7 +1188,28 @@ def _gen_module(script):
     mod, was = _GEN_MODULES.get(name, (None, None))
     try:
         if mod is None:
-            mod = importlib.import_module(name)
+            # import_module hands back whatever is already in sys.modules,
+            # untouched. That is the hole this function was written to
+            # close, and it reopened by a route neither file guarded:
+            # _GEN_MODULES lives in THIS module, so when serve.py reloads
+            # catalog -- which it does whenever any gen_*.py moves -- the
+            # record is wiped while sys.modules keeps the stale generator.
+            # The mtime branch below then never runs, because there is no
+            # longer a `was` to compare. A server up for a day served a
+            # jig with two bodies missing and the old stator_side list,
+            # from a file edited an hour earlier.
+            # So: no record plus an already-imported module means reload
+            # it, deps first, rather than trust the import.
+            mod = sys.modules.get(name)
+            if mod is None:
+                mod = importlib.import_module(name)
+            else:
+                for f in watch[1:]:
+                    dep = sys.modules.get(
+                        os.path.splitext(os.path.basename(f))[0])
+                    if dep is not None:
+                        importlib.reload(dep)
+                mod = importlib.reload(mod)
         elif was != now:
             # dependencies first: reloading the generator alone would keep
             # the old cutter bound to the new script

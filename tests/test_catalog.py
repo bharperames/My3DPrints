@@ -885,3 +885,57 @@ class TestAVersionCountsRealChanges(unittest.TestCase):
         names = {p["name"] for p in catalog.catalog()["parts"]}
         self.assertNotIn("chain-test-5seg", names)
         self.assertNotIn("chain-test-5seg-2x", names)
+
+
+class TestGeneratorsReloadUnderALongLivedServer(unittest.TestCase):
+    """A generator edited on disk must reach the next order.
+
+    serve.py reloads `catalog` whenever any gen_*.py moves. `_GEN_MODULES`
+    lives in catalog, so that reload wipes the record of what was loaded
+    while sys.modules keeps the stale generator -- and `import_module`
+    hands that stale object straight back. A server up for a day served a
+    jig with two bodies missing and the old stator_side list, from a file
+    that had been edited an hour before.
+
+    Driven through gen_clasp rather than the generator it was found on:
+    this is a test of catalog's module loading, and pointing it at a
+    design somebody is actively editing would make it fail for reasons
+    that have nothing to do with what it checks.
+    """
+    GEN = "gen_clasp.py"
+    DEP = "genapi"
+
+    def test_a_cleared_record_reloads_rather_than_trusting_sys_modules(self):
+        import importlib
+        catalog._gen_module(self.GEN)
+        real = importlib.reload
+        seen = []
+
+        def spy(m):
+            seen.append(m.__name__)
+            return real(m)
+
+        importlib.reload = spy
+        try:
+            catalog._GEN_MODULES.clear()          # what a catalog reload does
+            mod = catalog._gen_module(self.GEN)
+        finally:
+            importlib.reload = real
+        self.assertIn(self.GEN[:-3], seen,
+                      "the generator was handed back without being reloaded")
+        self.assertIsNotNone(mod)
+
+    def test_dependencies_reload_before_the_generator(self):
+        """A generator reloaded alone keeps the old cutter bound to it."""
+        import importlib
+        catalog._gen_module(self.GEN)
+        real = importlib.reload
+        seen = []
+        importlib.reload = lambda m: (seen.append(m.__name__), real(m))[1]
+        try:
+            catalog._GEN_MODULES.clear()
+            catalog._gen_module(self.GEN)
+        finally:
+            importlib.reload = real
+        self.assertIn(self.DEP, seen)
+        self.assertLess(seen.index(self.DEP), seen.index(self.GEN[:-3]))
