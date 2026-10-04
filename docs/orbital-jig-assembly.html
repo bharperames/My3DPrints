@@ -109,6 +109,7 @@
       <button id="reset">Reset</button>
       <span class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="3">3×</button></span>
       <label class="follow"><input type="checkbox" id="follow" checked> follow the step</label>
+      <span class="seg" id="modes" role="group" aria-label="render mode"></span>
     </div>
     <div class="checks" id="checks"></div>
     <h2>Filament</h2>
@@ -207,19 +208,49 @@ function resize() {
 }
 addEventListener('resize', resize);
 
+const allMeshes = [];
 function makeMesh(geometry, mat) {
   const g = geometry.getAttribute('normal') ? geometry : toCreasedNormals(geometry, Math.PI / 6);
   const mesh = new THREE.Mesh(g, mat);
   mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 25),
     new THREE.LineBasicMaterial({ color: edgeColor(mat) })));
+  mesh.userData.edge = edgeColor(mat);
   mesh.matrixAutoUpdate = false;
   scene.add(mesh);
+  allMeshes.push(mesh);
   return mesh;
 }
-function setGhost(mesh, on) {
-  mesh.material.userData.ghost = on;
-  mesh.material.transparent = on; mesh.material.opacity = on ? 0.55 : 1; mesh.material.depthWrite = !on;
-  mesh.children.forEach(c => c.visible = !on);
+function setGhost(mesh, on) { mesh.userData.ghost = on; }
+/* The render modes the shop's pages offer. Hidden line is the real
+   thing: surfaces still write depth, they just draw no colour, so an
+   edge behind a part is hidden by it -- not every edge at once. */
+const MODES = [['shaded', 'Shaded'], ['edges', 'Shaded + edges'], ['hlr', 'Hidden line'],
+  ['wire', 'Wireframe'], ['xray', 'X-ray']];
+let mode = 'edges';
+const INK = new THREE.Color('#22344c'), INK_SOFT = new THREE.Color('#9fb2c8');
+function style(m) {
+  const mat = m.material, u = m.userData;
+  const ghost = !!u.ghost, fade = u.fade ?? 1, glow = u.glow || 0;
+  let op = mode === 'xray' ? 0.28 : 1;
+  if (ghost) op = Math.min(op, 0.55);
+  op = Math.min(op, fade);
+  mat.wireframe = mode === 'wire';
+  mat.colorWrite = mode !== 'hlr';
+  mat.transparent = op < 1;
+  mat.opacity = op;
+  mat.depthWrite = mode === 'hlr' ? !ghost && fade >= 1 : op >= 1;
+  mat.polygonOffset = true; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 1;
+  // blending and wireframe are compiled into the shader: a change of
+  // either needs the material rebuilt, or the old one keeps drawing
+  const key = `${mat.transparent}|${mat.wireframe}`;
+  if (u.key !== key) { mat.needsUpdate = true; u.key = key; }
+  if (mat.emissive) mat.emissive.copy(GLOW).multiplyScalar(glow);
+  const e = m.children[0];
+  if (e) {
+    e.visible = m.visible && (mode === 'edges' || mode === 'xray' || mode === 'hlr')
+      && !(ghost && mode === 'edges');
+    e.material.color.copy(mode === 'hlr' ? (glow > 0.05 ? GLOW : ghost ? INK_SOFT : INK) : u.edge);
+  }
 }
 
 /* the printed bodies, each with the transform that stands it back up */
@@ -290,17 +321,19 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
     return m;
   }
   const list = MATS[st.id];
-  const kind = list ? (list[j] || list[list.length - 1])
+  const kind = /insert/i.test(h.item) ? 'brass'                // heat-set inserts
+    : list ? (list[j] || list[list.length - 1])
     : p.kind === 'cyl' && j % 2 === 0 ? 'dark' : 'steel';     // bolt heads, shanks
   const m = makeMesh(primGeom(p), hardwareMaterial(kind));
   m.userData.base = p.M ? new THREE.Matrix4().set(...p.M) : new THREE.Matrix4();
   return m;
 })));
 
+const GLOW = new THREE.Color(css('--accent'));
 /* ---------- the bench: the shop's graph paper ----------
    The same paper the shop's cards turn on for scale -- 1-inch rulings
    labelled, half and eighth inches between -- laid as the board the sole
-   plate is glued to, with a wall behind and one to the side. */
+   plate is glued to. */
 const INCH = 25.4;
 function graphTexture(nIn) {
   const px = 96, W = nIn * px;
@@ -339,14 +372,7 @@ function graphTexture(nIn) {
   const x0 = Math.floor((all.min.x - 30) / INCH) * INCH, y0 = Math.floor((all.min.y - 30) / INCH) * INCH;
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(S, S), paper());
   floor.position.set(x0 + S / 2, y0 + S / 2, board - 0.05);
-  const wallH = Math.ceil((all.max.z - board + 30) / INCH) * INCH;
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(S, wallH), paper());
-  back.rotation.x = Math.PI / 2;
-  back.position.set(x0 + S / 2, y0 + S + 0.05, board + wallH / 2);
-  const side = new THREE.Mesh(new THREE.PlaneGeometry(S, wallH), paper());
-  side.rotation.set(Math.PI / 2, Math.PI / 2, 0);
-  side.position.set(x0 - 0.05, y0 + S / 2, board + wallH / 2);
-  scene.add(floor, back, side);
+  scene.add(floor);
   scene.background = new THREE.Color('#dfe7f2');
 }
 
@@ -397,13 +423,9 @@ function visibleAt(i, k) { return spare(i) ? i === k : i <= k; }
    seats, so a small part -- a sensor, an insert -- is found by eye; a
    step with no path (the cable is laid, not pushed) fades in instead of
    appearing. */
-const GLOW = new THREE.Color(css('--accent'));
 function mark(m, current, f, fade) {
-  const mat = m.material;
-  if (mat.emissive) mat.emissive.copy(GLOW).multiplyScalar(current ? 0.55 * (1 - 0.7 * f) : 0);
-  if (fade !== undefined && !mat.userData.ghost) {
-    mat.transparent = fade < 1; mat.opacity = fade; mat.depthWrite = fade >= 1;
-  }
+  m.userData.glow = current ? 0.55 * (1 - 0.7 * Math.min(1, f)) : 0;
+  m.userData.fade = fade === undefined ? 1 : fade;
 }
 function poseAll(k, f) {
   for (const [n, m] of Object.entries(body)) {
@@ -446,6 +468,7 @@ function poseAll(k, f) {
       mark(m, moving, f, !st.path && i === k ? Math.max(0.05, f) : 1);
     });
   });
+  for (const m of allMeshes) style(m);
 }
 
 /* ---------- the panel ---------- */
@@ -495,13 +518,23 @@ document.getElementById('sub').textContent =
   `${STEPS.length} steps · ${Object.keys(D.to_world).length} printed parts · ${Object.values(A.bom).reduce((a, b) => a + b, 0)} bought items · read from the printed 3MF`;
 
 /* ---------- following the step ----------
-   Frame what the current step fits: the camera keeps its direction and
-   eases toward the step's pieces, close enough that a 4 mm sensor reads.
-   Off, the camera is left where the hand put it. */
+   Frame what the current step fits. A move to a far part of the jig
+   eases out to a neutral overview first and then in to the detail, so
+   the eye keeps its place; a move to somewhere close eases straight
+   across. The step's parts wait for the camera to arrive. Off, the
+   camera is left where the hand put it. */
 const followEl = document.getElementById('follow');
-let camGoal = null;
+const whole = new THREE.Box3();
+for (const m of Object.values(body)) { m.updateMatrixWorld(true); }
+for (const [n, m] of Object.entries(body)) {
+  const g = m.geometry; g.computeBoundingBox();
+  whole.union(g.boundingBox.clone().applyMatrix4(toWorld[n]));
+}
+const fitDist = r => Math.min(900, r / Math.sin(camera.fov * Math.PI / 360) * 1.6);
+let cam = null;
+const easeIO = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 function frameStep(i) {
-  if (!followEl.checked) { camGoal = null; return; }
+  if (!followEl.checked) { cam = null; return; }
   const box = new THREE.Box3();
   const add = o => { o.updateMatrixWorld(true); box.expandByObject(o); };
   poseAll(i, 1);
@@ -509,14 +542,35 @@ function frameStep(i) {
   hwOf[i].forEach(add);
   STEPS.forEach((st, j) => { if (carrier[st.id] === i) { hwOf[j].forEach(add);
     for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === j) add(m); } });
-  if (box.isEmpty()) { camGoal = null; return; }
+  poseAll(k, Math.min(1, f));
+  if (box.isEmpty()) { cam = null; return; }
   const c = box.getCenter(new THREE.Vector3());
   const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 18);
   const dir = camera.position.clone().sub(controls.target).normalize();
-  const dist = Math.min(900, r / Math.sin(camera.fov * Math.PI / 360) * 1.6);
-  camGoal = { target: c, pos: c.clone().add(dir.multiplyScalar(dist)) };
+  const goal = { t: c, p: c.clone().add(dir.clone().multiplyScalar(fitDist(r))) };
+  const from = { t: controls.target.clone(), p: camera.position.clone() };
+  const far = from.t.distanceTo(c) > 60;
+  if (far) {
+    const wc = whole.getCenter(new THREE.Vector3());
+    const wr = whole.getSize(new THREE.Vector3()).length() / 2;
+    const mid = { t: wc, p: wc.clone().add(dir.clone().multiplyScalar(fitDist(wr) * 0.85)) };
+    cam = { segs: [{ a: from, b: mid, d: 0.8 }, { a: mid, b: goal, d: 1.0 }], s: 0, t: 0 };
+  } else cam = { segs: [{ a: from, b: goal, d: 0.8 }], s: 0, t: 0 };
+}
+function stepCam(dt) {
+  if (!cam) return;
+  const sg = cam.segs[cam.s];
+  cam.t += dt / sg.d;
+  const e = easeIO(Math.min(1, cam.t));
+  controls.target.lerpVectors(sg.a.t, sg.b.t, e);
+  camera.position.lerpVectors(sg.a.p, sg.b.p, e);
+  if (cam.t >= 1) { cam.s++; cam.t = 0; if (cam.s >= cam.segs.length) cam = null; }
 }
 followEl.onchange = () => frameStep(k);
+/* the small things -- inserts, magnets, sensors, the pin -- stay on
+   screen a moment longer once they are seated */
+const SMALL = /insert|magnet|Hall|dowel/i;
+const holdOf = i => STEPS[i].hardware.some(h => SMALL.test(h.item)) ? 1.0 : 0.25;
 
 /* ---------- playback ---------- */
 const STEP_S = 1.4;
@@ -550,36 +604,39 @@ document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
 
 buildPicker(document.getElementById('petg'), petg, choice => {
   for (const [n, m] of Object.entries(body)) {
-    const ghost = m.material.transparent;
     m.material.dispose();
     m.material = petgMaterial(choice.groups[groupOfPart(n)], n);
-    m.children[0].material.color.copy(edgeColor(m.material));
-    setGhost(m, ghost);
+    m.userData.edge = edgeColor(m.material);
   }
   for (const [m, id] of externalMeshes) {
     m.material.dispose();
     m.material = petgMaterial(choice.groups.small, id);
-    m.children[0].material.color.copy(edgeColor(m.material));
+    m.userData.edge = edgeColor(m.material);
   }
+  poseAll(k, Math.min(1, f));
 });
 resize(); hudText(); poseAll(0, 0); frameStep(0);
-controls.addEventListener('start', () => { camGoal = null; });   // the hand wins
+controls.addEventListener('start', () => { cam = null; });   // the hand wins
+const modesEl = document.getElementById('modes');
+modesEl.innerHTML = MODES.map(([id, label]) =>
+  `<button data-mode="${id}" class="${id === mode ? 'on' : ''}">${label}</button>`).join('');
+modesEl.querySelectorAll('button').forEach(b => b.onclick = () => {
+  mode = b.dataset.mode;
+  modesEl.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  poseAll(k, Math.min(1, f));
+});
 let last = performance.now();
 renderer.setAnimationLoop(now => {
   const dt = Math.min(0.05, (now - last) / 1000) * speed; last = now;
-  if (playing) {
+  stepCam(dt);
+  if (playing && !(cam && f === 0)) {        // the parts wait for the camera
     f += dt / STEP_S;
-    if (f >= 1.25) {                         // a beat on each seated step
+    if (f >= 1 + holdOf(k)) {                // a beat on each seated step
       if (k < STEPS.length - 1) { k++; f = 0; hudText(); frameStep(k); document.getElementById('st' + k).scrollIntoView({ block: 'nearest' }); }
       else { f = 1; playing = false; setPlay(); }
     }
   }
   poseAll(k, Math.min(1, f));
-  if (camGoal) {
-    const a = 1 - Math.pow(0.02, Math.min(0.05, (now - last + 16) / 1000));
-    controls.target.lerp(camGoal.target, a); camera.position.lerp(camGoal.pos, a);
-    if (camera.position.distanceTo(camGoal.pos) < 0.5) camGoal = null;
-  }
   controls.update();
   renderer.render(scene, camera);
 });
@@ -594,6 +651,9 @@ window.__assembly = {
   bounds(n) { const m = body[n]; m.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(m); return { min: b.min.toArray(), max: b.max.toArray(), visible: m.visible }; },
   hwVisible(i) { return hwOf[i].map(m => m.visible); },
+  setMode(m) { mode = m; poseAll(k, Math.min(1, f)); },
+  get camBusy() { return !!cam; },
+  get camState() { return camera.position.distanceTo(controls.target); },
   look(pos, target) { camera.position.set(...pos); controls.target.set(...target); controls.update(); },
 };
 </script>
