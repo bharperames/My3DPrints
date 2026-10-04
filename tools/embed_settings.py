@@ -83,7 +83,7 @@ def base_config():
     return cfg
 
 
-def embed(path, overrides=None, brim=True, per_object=None):
+def embed(path, overrides=None, brim=True, per_object=None, filament=None):
     """Stamp `path` as a Bambu project carrying the P2S presets.
 
     `brim` is a per-part decision, not a global: an outer brim earns its
@@ -94,8 +94,15 @@ def embed(path, overrides=None, brim=True, per_object=None):
     plate: {body name: {key: value}}, written into model_settings.config
     against the object of that name. A plate of one big arm and six small
     pieces wants a brim on the pieces only.
+
+    `filament` names a Bambu system filament preset for parts drawn to a
+    material other than the template's PLA Basic. Its flattened values go
+    in with its name, so the CLI slices it and the GUI opens on it.
     """
     cfg = base_config()
+    if filament:
+        cfg.update(flatten("filament", filament))
+        cfg["filament_settings_id"] = [filament]
     cfg.update(OVERRIDES)
     if not brim:
         cfg["brim_type"] = "no_brim"

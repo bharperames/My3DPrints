@@ -358,7 +358,13 @@ def order_items(order):
                     # a piece that asks for its own brim, on a plate that
                     # has none: `brim_bodies` names body prefixes
                     piece_brim=pb, outline=fp,
-                    group=("brim" if brim == "on" else ""),
+                    # a card that names its own filament and settings
+                    # (`print`) gets plates of its own: a plate is sliced
+                    # in one filament, and the template's is PLA Basic
+                    print=part.get("print"),
+                    group="-".join(g for g in (
+                        "brim" if brim == "on" else "",
+                        (part.get("print") or {}).get("label", "")) if g),
                     **ext))
     return items, reports
 
@@ -506,7 +512,9 @@ def write_plate(p, path, brim=False):
                 if it.get("piece_brim") and not brim:
                     per_object[f"{it['key']}_{n}_{gk}"] = dict(PIECE_BRIM)
     sc.export(path)
-    embed(path, brim=brim, per_object=per_object)
+    pr = p["items"][0].get("print") or {}      # one per plate: it is the group
+    embed(path, brim=brim, per_object=per_object,
+          filament=pr.get("filament"), overrides=pr.get("settings"))
     stamp = _stamp_parts(p)
     # written into the project itself, so the answer travels with the file
     with zipfile.ZipFile(path, "a", zipfile.ZIP_DEFLATED) as z:
@@ -536,7 +544,7 @@ def build_output(plates, outdir, oversized=None):
     """
     made = []
     for p in plates:
-        brim = p["group"] == "brim"
+        brim = "brim" in p["group"].split("-")
         stem = plate_name(p)
         cm3_path = os.path.join(outdir, f"{stem}.3mf")
         m = write_plate(p, cm3_path, brim=brim)
@@ -563,7 +571,8 @@ def build_output(plates, outdir, oversized=None):
                    "My Print Shop — one 3MF per plate, Bambu P2S.\n\n"
                    + describe(plates, oversized or [])
                    + "\n\nEach file carries the P2S machine, 0.20mm Standard\n"
-                     "and PLA Basic presets, supports off. Open a plate and\n"
+                     "and PLA Basic presets (or the filament a part's card\n"
+                     "names, on plates of its own), supports off. Open a plate and\n"
                      "slice; the layout is already arranged.\n\n"
                      "Volumes in the filenames are solid material. A sparse\n"
                      "infill prints well under that — slice for the real\n"
