@@ -203,7 +203,7 @@ controls.enableDamping = true;
 camera.position.set(520, -560, 330);
 controls.target.set(0, 0, -60);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 1.9));
-const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(0.7, -0.9, 1.3); scene.add(key);
+const key = new THREE.DirectionalLight(0xffffff, 1.35); key.position.set(0.7, -0.9, 1.3); scene.add(key);
 const fill = new THREE.DirectionalLight(0xffffff, 0.6); fill.position.set(-0.8, 0.6, 0.4); scene.add(fill);
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
@@ -218,30 +218,49 @@ function makeMesh(geometry, mat) {
   mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 25),
     new THREE.LineBasicMaterial({ color: edgeColor(mat) })));
   mesh.userData.edge = edgeColor(mat);
+  mesh.userData.mat = mat;
   mesh.matrixAutoUpdate = false;
   scene.add(mesh);
   allMeshes.push(mesh);
   return mesh;
 }
 function setGhost(mesh, on) { mesh.userData.ghost = on; }
+function setFilament(m, mat) {
+  m.userData.mat.dispose(); m.userData.mat = mat; m.userData.edge = edgeColor(mat); m.userData.key = null;
+  m.material = mat;
+}
 /* The render modes the shop's pages offer. Hidden line is the real
    thing: surfaces still write depth, they just draw no colour, so an
    edge behind a part is hidden by it -- not every edge at once. */
 const MODES = [['shaded', 'Shaded'], ['edges', 'Shaded + edges'], ['hlr', 'Hidden line'],
   ['wire', 'Wireframe'], ['xray', 'X-ray']];
 let mode = 'edges';
-const INK = new THREE.Color('#22344c'), INK_SOFT = new THREE.Color('#9fb2c8');
+const INK = new THREE.Color('#141f2e'), INK_SOFT = new THREE.Color('#a9b9cc');
+const INK_ON_DARK = new THREE.Color('#d9e2ec'), XRAY_INK = new THREE.Color('#2457b0');
+/* hidden line draws white faces -- a drawing, not the paper seen through
+   the parts -- and X-ray is blue glass, so neither reads like the half-
+   transparent ghosts the steps use for context */
+const HLR_FACE = () => new THREE.MeshBasicMaterial({ color: '#ffffff' });
+const XRAY_FACE = () => new THREE.MeshBasicMaterial({ color: '#6f9be0', transparent: true,
+  opacity: 0.14, depthWrite: false });
+function inkFor(u) {               // CAD edges: dark ink, light on a dark part
+  const hsl = {}; u.mat.color.getHSL(hsl);
+  return hsl.l < 0.32 ? INK_ON_DARK : INK;
+}
 function style(m) {
-  const mat = m.material, u = m.userData;
+  const u = m.userData;
+  const want = mode === 'hlr' ? (u.hlrMat ||= HLR_FACE())
+    : mode === 'xray' ? (u.xrayMat ||= XRAY_FACE()) : u.mat;
+  if (m.material !== want) { m.material = want; u.key = null; }
+  const mat = m.material;
   const ghost = !!u.ghost, fade = u.fade ?? 1, glow = u.glow || 0;
-  let op = mode === 'xray' ? 0.28 : 1;
-  if (ghost) op = Math.min(op, 0.55);
-  op = Math.min(op, fade);
+  let op = mode === 'xray' ? 0.14 : 1;
+  if (ghost && mode !== 'xray') op = Math.min(op, mode === 'hlr' ? 0 : 0.55);
+  op = Math.min(op, fade < 1 ? Math.max(fade, 0.05) : 1);
   mat.wireframe = mode === 'wire';
-  mat.colorWrite = mode !== 'hlr';
   mat.transparent = op < 1;
   mat.opacity = op;
-  mat.depthWrite = mode === 'hlr' ? !ghost && fade >= 1 : op >= 1;
+  mat.depthWrite = op >= 1;
   mat.polygonOffset = true; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 1;
   // blending and wireframe are compiled into the shader: a change of
   // either needs the material rebuilt, or the old one keeps drawing
@@ -252,7 +271,9 @@ function style(m) {
   if (e) {
     e.visible = m.visible && (mode === 'edges' || mode === 'xray' || mode === 'hlr')
       && !(ghost && mode === 'edges');
-    e.material.color.copy(mode === 'hlr' ? (glow > 0.05 ? GLOW : ghost ? INK_SOFT : INK) : u.edge);
+    e.material.color.copy(glow > 0.05 && mode !== 'edges' ? GLOW
+      : mode === 'hlr' ? (ghost ? INK_SOFT : INK)
+      : mode === 'xray' ? XRAY_INK : inkFor(u));
   }
 }
 
@@ -372,7 +393,8 @@ function graphTexture(nIn) {
   const board = sole.min.z;                     // the plate is glued to the board
   const nIn = Math.ceil((Math.max(all.max.x - all.min.x, all.max.y - all.min.y) + 60) / INCH);
   const S = nIn * INCH, tex = graphTexture(nIn);
-  const paper = () => new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+  // one-sided: from underneath you see straight through to the model
+  const paper = () => new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide });
   const x0 = Math.floor((all.min.x - 30) / INCH) * INCH, y0 = Math.floor((all.min.y - 30) / INCH) * INCH;
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(S, S), paper());
   floor.position.set(x0 + S / 2, y0 + S / 2, board - 0.05);
@@ -634,16 +656,8 @@ document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
   speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b)); });
 
 buildPicker(document.getElementById('petg'), petg, choice => {
-  for (const [n, m] of Object.entries(body)) {
-    m.material.dispose();
-    m.material = petgMaterial(choice.groups[groupOfPart(n)], n);
-    m.userData.edge = edgeColor(m.material);
-  }
-  for (const [m, id] of externalMeshes) {
-    m.material.dispose();
-    m.material = petgMaterial(choice.groups[groupOfPart(id)], id);
-    m.userData.edge = edgeColor(m.material);
-  }
+  for (const [n, m] of Object.entries(body)) setFilament(m, petgMaterial(choice.groups[groupOfPart(n)], n));
+  for (const [m, id] of externalMeshes) setFilament(m, petgMaterial(choice.groups[groupOfPart(id)], id));
   poseAll(k, Math.min(1, f));
 });
 resize(); hudText(); poseAll(0, 0); frameStep(0);
