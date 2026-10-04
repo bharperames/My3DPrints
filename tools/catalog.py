@@ -371,18 +371,33 @@ PARTS = [
        "and the camera's entrance pupil on a 150 mm sphere about the "
        "specimen at every setting. The lights, the backdrop and the "
        "tooth never move. "
-       "Thirteen printed bodies: a stator plate with pedestal and bearing "
-       "towers; the rotor ring, with 36 detent dimples every 10\u00b0 and "
+       "Fifteen printed bodies: a stator plate with pedestal and bearing "
+       "towers; the rotor ring, with a 36-slot Geneva lip on its bore and "
        "a slotted pad; the arc, with its own leg down to that pad; a "
-       "two-piece carriage clamped through the arc's 5.2 mm slot by an "
+       "two-piece carriage clamped through the arc's 5.4 mm slot by an "
        "M5 thumbscrew; a receiver with 40 mm of fore/aft travel carrying "
-       "the phone's clamp on its 1/4-20; a detent pawl; three bearing "
-       "sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
+       "the phone's clamp on its 1/4-20; the Geneva driver and its knob; "
+       "a sole plate; three bearing sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
        "wing nut and a hex nut, all printed in the same cosine thread "
        "the Knot uses. "
        "Hardware: three 608 bearings on M4 axles, each riding a printed "
-       "sleeve, one of which is bored a millimeter off-center to give "
-       "2.0 mm of preload travel. "
+       "sleeve bored a millimeter off-center: turned out, every bearing "
+       "stands 0.4 mm clear of the ring so it drops straight in; turned in, "
+       "they close on the race with 0.2 mm of preload in hand. "
+       "The assembly is checked like the motion is: every piece is moved "
+       "along its path, in order, against everything already fitted, the "
+       "bill of materials is the sum of the steps, and every PETG fit is "
+       "measured off the printed parts and graded on the shop's press, "
+       "slip and running table. "
+       "The ring is turned by a Geneva drive: one turn of the knob, inside "
+       "the bore, moves it exactly 10\u00b0 and leaves it locked there, "
+       "powered or not, so the stops are set by the geometry and not by "
+       "whoever turns it. The same driver takes a gearmotor later. Every "
+       "ring of the capture steps a whole number of stops \u2014 10, 10, "
+       "20 and 20\u00b0, still 108 frames. "
+       "The base bolts down through three counterbored holes reached "
+       "from above into a sole plate that is glued to a heavy board, so "
+       "the board needs no holes and the jig lifts off in a minute. "
        "One camera: an iPhone held landscape in a spring clamp, behind "
        "either of its two lenses. A Sony \u03b11 on an Arca plate was "
        "carried here too and was what the carriage was sized for \u2014 "
@@ -422,6 +437,16 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 4.0.0: the assembly sweep found the ring could not be fitted (3 mm
+       # race flanks, one eccentric), the eccentric's axle off its insert,
+       # and the Geneva pin's hole an interference: flanks to 1.4, all
+       # three sleeves eccentric on towers moved out to 131.4, pin hole
+       # to the shop's press, the slot and 1/4-20 to running and
+       # clearance, relief under the receiver's inserts.
+       # 3.0.0: the detent dimples and the pawl gave way to a Geneva lip
+       # on the ring's bore and a driver in a bushing on the base; the
+       # silicone feet to counterbored bolts into a new sole plate.
+       # The ring, the base and the protocol all moved.
        # major, twice over. 1.0.0: the platform went \u00d820 to \u00d830
        # and the pedestal lost 45 mm. 2.0.0 carries three changes that
        # landed before anything was printed from it -- the pedestal at 32
@@ -430,9 +455,11 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="2.0.0",
+       version="4.0.0",
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
+              dict(label="Assemble it, step by step",
+                   href="docs/orbital-jig-assembly.html"),
               dict(label="Drives, mounts and the app: the study",
                    href="docs/orbital-jig-plan.html")],
        gen=["gen_orbital_jig.py"], params=[
@@ -445,8 +472,8 @@ PARTS = [
                      "counted \u2014 which is why the dial starts at 25. "
                      "The pad on the rotor thickens to match, so a tall "
                      "setting is a taller rotor.")],
-       # ten flat-bottomed bodies on broad faces; a brim on the ring's
-       # underside would scar the detent dimples
+       # flat-bottomed bodies on broad faces; a brim on the ring's
+       # underside would ring the Geneva lip and close its slots' mouths
        brim="off",
        out="orbital-jig-S{specimen:g}.3mf"),
     _p("tooth_stand", "Fixed X-wing tooth stands", "Stands",

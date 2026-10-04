@@ -209,11 +209,12 @@
       α1, whose macro at f/8–f/13 held the whole tooth, and it is paid in
       focus stacking rather than in geometry.
       <br><br>
-      <b>One thing the spec does not add up on.</b> The rotor's detent ring
-      has 36 dimples at 10°, which serves the horizon ring (10° steps) and the
-      zenith ring (20°). The 12° and 15° steps of the middle rings land
-      between dimples: on those the thumb holds the rotor against the pawl's
-      spring, and the HUD says so.
+      <b>Where the ring can stop.</b> A Geneva drive turns the ring: one
+      turn of the knob inside the bore moves it exactly 10° and locks it
+      there. So every ring of the capture steps a whole number of stops
+      — 10°, 10°, 20° and 20°, still 108 frames. The spec's 12° and 15°
+      landed between stops; at 55° of elevation 20° spans what 11.5° does
+      on the horizon.
     </div>
   </aside>
 </div>
@@ -386,15 +387,61 @@ function ringGeom(ro, ri, h) {
 }
 const cylZ = (r, h, n = 48) => new THREE.CylinderGeometry(r, r, h, n).rotateX(Math.PI / 2);
 const B = D.bearing;
-for (const phi of B.phi) {
-  const x = B.pitch_r * Math.cos(phi * DEG), y = B.pitch_r * Math.sin(phi * DEG);
+// each bearing where its eccentric has brought it onto the race -- a
+// little off its tower's radial line, which is what an eccentric does
+B.centres.forEach(([x, y], i) => {
   const brg = addBody('bearing', ringGeom(B.r, B.bore / 2, B.w), hardware, '--hw', HW);
   brg.position.set(x, y, B.z - B.w / 2);
   const inner = addBody('race', ringGeom(6.0, B.bore / 2 + 0.01, B.w + 0.02), hardware, '--hw',
     { rough: .3, metal: .7, hardware: true });
   inner.position.set(x, y, B.z - B.w / 2 - 0.01);
+  // the axle is on the tower's axis, not the bearing's: that offset is
+  // the eccentric
+  const a = B.phi[i] * DEG;
   const head = addBody('bolt', cylZ(B.head_r, B.head_h, 24), hardware, '--cam', HW);
-  head.position.set(x, y, B.z + B.w / 2 + 1.0 + B.head_h / 2);   // on the sleeve's flange
+  head.position.set(B.tower_r * Math.cos(a), B.tower_r * Math.sin(a), B.z + B.w / 2 + 1.0 + B.head_h / 2);
+});
+// the bolts, each down on its seat with the shank the joint table gives
+// it: the feet into the sole plate, the arc's bar into the rotor's pad
+for (const f of D.fasteners) {
+  const grp = f.side === 'rotor' ? hwRotor : hardware;
+  for (const [x, y, z] of f.at) {
+    const head = addBody('bolt', cylZ(f.head_r, f.head_h, 24), grp, '--cam', HW);
+    head.position.set(x, y, z + f.head_h / 2);
+    const shank = addBody('bolt', cylZ(f.r, f.len, 16), grp, '--hw', HW);
+    shank.position.set(x, y, z - f.len / 2);
+  }
+}
+// the Geneva driver turns about its own axis: the printed driver, its
+// knob and the steel pin ride one group, posed from the driver angle
+const G = D.geneva;
+const drvAxis = new THREE.Vector3(G.c * Math.cos(G.phi * DEG), G.c * Math.sin(G.phi * DEG), 0);
+const driverGroup = new THREE.Group(); driverGroup.matrixAutoUpdate = false;
+stator.add(driverGroup);
+for (const n of ['driver', 'driver_knob']) if (printed[n]) driverGroup.add(printed[n]);
+{
+  const pin = addBody('pin', cylZ(G.pin_r, G.pin_hi - G.pin_lo, 16), driverGroup, '--hw', HW);
+  pin.position.set(G.pin_xy[0], G.pin_xy[1], (G.pin_lo + G.pin_hi) / 2);
+}
+// the ring's angle for the driver at psi: psi = 180 is home, pin toward
+// the axis and the lock in a seat; one driver turn is one stop. The same
+// law the generator sweeps (geneva_wheel).
+function genevaWheel(psi) {
+  const step = G.pitch_deg, k = Math.floor((psi - 180) / 360);
+  const f = psi - 180 - 360 * k + 180, half = 90 + 180 / G.slots;
+  let w;
+  if (f < 360 - half) w = 0;
+  else if (f > 360 + half) w = step;
+  else { const p = f * DEG; w = step / 2 + Math.atan2(G.crank * Math.sin(p), G.c + G.crank * Math.cos(p)) / DEG; }
+  return k * step + w;
+}
+const psiAt = phiDeg => 180 + phiDeg * 360 / G.pitch_deg;   // at a stop
+function poseDriver(psi) {
+  const T = new THREE.Matrix4().makeTranslation(drvAxis.x, drvAxis.y, 0)
+    .multiply(new THREE.Matrix4().makeRotationZ((psi - 180) * DEG))
+    .multiply(new THREE.Matrix4().makeTranslation(-drvAxis.x, -drvAxis.y, 0));
+  driverGroup.matrix.copy(T);
+  driverGroup.matrixWorldNeedsUpdate = true;
 }
 // thumbscrew through the arc's slot, knob outboard
 const T = D.thumbscrew;
@@ -624,15 +671,17 @@ if (plateField && tooth) {
    own name rather than nothing: silence would read as a broken click. */
 const PART_NAMES = {
   stator: ['Stator plate', 'base, bearing towers and the pedestal — does not move'],
-  rotor: ['Rotor ring', '242 mm, rides three 608 bearings; 36 detents, one every 10°'],
+  rotor: ['Rotor ring', '242 mm, rides three 608 bearings; a 36-slot Geneva lip on its bore'],
   arc: ['Quadrant arc', 'carries the camera through 10–80° of elevation'],
   saddle: ['Carriage saddle', 'clamps through the arc\u2019s 5.2 mm slot'],
   shoe: ['Carriage shoe', 'the other half of the clamp, inboard of the arc'],
-  receiver: ['Camera receiver', '110 mm of fore/aft travel on a 1/4-20'],
-  pawl: ['Detent pawl', 'PETG leaf spring; its nub sits in a dimple at each 10°'],
-  sleeve_a: ['Bearing sleeve', 'one of three, under a 608'],
-  sleeve_b: ['Bearing sleeve', 'one of three, under a 608'],
-  sleeve_ecc: ['Eccentric sleeve', 'bored 1 mm off-centre — 2.0 mm of preload travel'],
+  receiver: ['Camera receiver', '40 mm of fore/aft travel on a 1/4-20'],
+  driver: ['Geneva driver', 'one turn moves the ring 10° and locks it; a Ø3 steel pin drives'],
+  driver_knob: ['Driver knob', 'one turn, one frame — reached from above'],
+  sole_plate: ['Sole plate', 'glued to the board; the base bolts onto its three pads'],
+  sleeve_a: ['Eccentric sleeve', 'one of three: bored 1 mm off-center, turned to bring its 608 onto the race'],
+  sleeve_b: ['Eccentric sleeve', 'one of three: bored 1 mm off-center, turned to bring its 608 onto the race'],
+  sleeve_c: ['Eccentric sleeve', 'one of three: bored 1 mm off-center, turned to bring its 608 onto the race'],
   mount_screw: ['Mount screw', 'printed Ø6 thread; hex head captive under the base'],
   mount_wing_nut: ['Wing nut', 'printed, turned by fingers — clamps the plate down'],
   mount_hex_nut: ['Hex nut', 'printed, for a driver when a rod is in the wings\u2019 way'],
@@ -691,9 +740,10 @@ document.getElementById('fastsel').addEventListener('click', e => {
 /* ---------- spec kinematics ---------- */
 const Pc = (phi, th) => new THREE.Vector3(R * Math.cos(th) * Math.cos(phi), R * Math.cos(th) * Math.sin(phi), R * Math.sin(th));
 const vUp = (phi, th) => new THREE.Vector3(-Math.sin(th) * Math.cos(phi), -Math.sin(th) * Math.sin(phi), Math.cos(th));
-function pose(phiDeg, thDeg) {
+function pose(phiDeg, thDeg, psi) {
   rotor.rotation.z = phiDeg * DEG;
   carriage.rotation.y = -thDeg * DEG;
+  poseDriver(psi ?? psiAt(phiDeg));
 }
 
 /* ---------- capture overlay: frustum, ray, markers, paths ---------- */
@@ -786,14 +836,15 @@ function clearCaptures(fromRing = 0) {
 const RINGS = D.protocol;
 const FRAMES = RINGS.map(p => Math.round(360 / p.step));
 const TOTAL = FRAMES.reduce((a, b) => a + b, 0);
-const ELEV_RATE = 14, AZ_RATE = 55;         // deg/s of simulated time
+const ELEV_RATE = 14;                       // deg/s of simulated time
+const DRV_RATE = 720;                       // the driver: a turn, a frame, in half a second
 const SETTLE = 0.2, FLASH = 0.32;           // seconds
 let S;
 function init() {
-  S = { state: 'INIT', k: 0, i: 0, phi: 0, theta: RINGS[0].elev, phiT: 0, thetaT: RINGS[0].elev,
+  S = { state: 'INIT', k: 0, i: 0, phi: 0, psi: 180, theta: RINGS[0].elev, phiT: 0, thetaT: RINGS[0].elev,
         phiBase: 0, t: 0, playing: false, stepOnce: false, done: false, frames: 0 };
   clearCaptures(0);
-  pose(S.phi, S.theta);
+  pose(S.phi, S.theta, S.psi);
   S.state = 'SET_ELEVATION';
   updateRings(); setPlayLabel(); showHud();
 }
@@ -810,13 +861,14 @@ function advance(dt) {
       break;
     }
     case 'ROTATE_AZIMUTH': {
+      // The ring is not moved: the Geneva driver is turned, a whole turn
+      // per 10 degree stop, and the ring follows it -- standing still
+      // while the lock is in its seat, starting and stopping at rest.
       S.phiT = S.phiBase + S.i * RINGS[S.k].step;
-      const d = S.phiT - S.phi;
-      if (Math.abs(d) < 1e-6) { S.state = 'SETTLE'; S.t = 0; break; }
-      // ease into the stop: a rotor on a bearing race is turned by hand
-      const near = Math.max(0.15, Math.min(1, Math.abs(d) / 6));
-      const stepD = Math.min(Math.abs(d), AZ_RATE * near * dt);
-      S.phi += Math.sign(d) * stepD;
+      const psiT = psiAt(S.phiT);
+      if (S.psi >= psiT - 1e-9) { S.psi = psiT; S.phi = S.phiT; S.state = 'SETTLE'; S.t = 0; break; }
+      S.psi = Math.min(psiT, S.psi + DRV_RATE * dt);
+      S.phi = genevaWheel(S.psi);
       break;
     }
     case 'SETTLE': {
@@ -843,7 +895,7 @@ function advance(dt) {
       break;
     }
   }
-  pose(S.phi, S.theta);
+  pose(S.phi, S.theta, S.psi);
 }
 function verdict() {
   const v = document.getElementById('verdict');
@@ -853,12 +905,13 @@ function verdict() {
     `${RINGS.length} rings at ${RINGS.map(r => r.elev + '°').join(', ')}. ` +
     `Worst pupil radius error ${off.toFixed(3)} mm.`;
 }
-const detentOK = () => Math.abs(((S.phi % 10) + 10) % 10) < 1e-6 || Math.abs(((S.phi % 10) + 10) % 10 - 10) < 1e-6;
+const STOP = D.geneva.pitch_deg;
+const atStop = () => { const m = ((S.phi % STOP) + STOP) % STOP; return m < 1e-6 || STOP - m < 1e-6; };
 function showHud() {
   const r = RINGS[S.k] || RINGS[RINGS.length - 1];
   const phi = ((S.phi % 360) + 360) % 360;
   const name = S.state === 'DONE' ? 'SCAN_COMPLETE' : 'STATE_' + S.state;
-  const det = (S.state === 'SETTLE' || S.state === 'CAPTURE') ? (detentOK() ? ' · in detent' : ' · between detents, held') : '';
+  const det = (S.state === 'SETTLE' || S.state === 'CAPTURE') ? (atStop() ? ' · locked' : ' · between stops') : '';
   hud.innerHTML = `<b>${name}</b> · ring ${Math.min(S.k + 1, RINGS.length)} ${r.name} · ` +
     `θ ${S.theta.toFixed(1)}° · φ ${phi.toFixed(1)}°${det}<br>` +
     `frame ${S.frames} / ${TOTAL} · R ${R} mm · next Δφ ${r.step}°`;
@@ -936,7 +989,7 @@ document.getElementById('facts').innerHTML = [
   ['camera', '<span id="f-cam"></span>'],
   ['lens', '<span id="f-lens"></span>'],
   ['frame', '<span id="f-frame"></span>'],
-  ['detents', `${D.detent.count} at ${D.detent.pitch_deg}°`],
+  ['Geneva', `${D.geneva.slots} stops at ${D.geneva.pitch_deg}° · driver at r ${D.geneva.c}`],
   ['arc', `r ${D.arc.ri}–${D.arc.ro} · slot ${D.arc.slot} mm`],
   ['bearing pitch', D.bearing.pitch_r + ' mm · 3 × 608'],
   ['arc plane off the meridian', Math.abs(D.y_arc) + ' mm'],
@@ -1080,7 +1133,14 @@ window.__jig = {
                   shown: o.visible }); } });
     return hits;
   },
-  get pose() { return { phi: S.phi, theta: S.theta }; },
+  get pose() { return { phi: S.phi, theta: S.theta, psi: S.psi, state: S.state }; },
+  // the Geneva as the page draws it: where the pin actually is, in the
+  // world, against the ring's own slot direction at that moment
+  driverWorld() {
+    const pin = []; driverGroup.updateWorldMatrix(true, true);
+    driverGroup.traverse(o => { if (o.name === 'pin') pin.push(o.getWorldPosition(new THREE.Vector3()).toArray()); });
+    return { pin: pin[0], ring: rotor.rotation.z / DEG };
+  },
   pupilWorld() { pupil.updateWorldMatrix(true, false); return pupil.getWorldPosition(new THREE.Vector3()).toArray(); },
   set speed(v) { speed = v; },
   run() { if (S.done) init(); S.playing = true; setPlayLabel(); },

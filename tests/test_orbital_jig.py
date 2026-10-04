@@ -32,8 +32,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_thirteen_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 13)
+    def test_fifteen_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 15)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -70,22 +70,26 @@ class TestJig(unittest.TestCase):
             self.assertAlmostEqual(float(p[2]), J.R * np.sin(np.radians(th)),
                                    places=6)
 
-    def test_the_protocol_is_the_specs_108_frames(self):
+    def test_the_protocol_keeps_108_frames_on_the_genevas_stops(self):
         frames = [int(round(360.0 / p["step"])) for p in J.PROTOCOL]
-        self.assertEqual(frames, [36, 30, 24, 18])
+        self.assertEqual(frames, [36, 36, 18, 18])
+        pitch = 360.0 / J.GENEVA_N
+        for p in J.PROTOCOL:
+            self.assertAlmostEqual(p["step"] / pitch,
+                                   round(p["step"] / pitch), places=9)
         self.assertEqual(sum(frames), 108)
         self.assertEqual([p["elev"] for p in J.PROTOCOL], [15, 35, 55, 75])
 
-    def test_detents_are_seen_and_a_missing_one_would_be(self):
-        self.assertEqual(self.rep["detents"], 36)
-        # negative control: probe a ring built with one dimple filled in
-        r_ = self.parts["rotor"].copy()
-        zb = J.levels(J.SPECIMEN)["ring_bot"]
-        x, y, _ = J.polar(J.DETENT_R, 0.0)
-        plug = J.cone(J.DETENT_MOUTH + 0.6, zb - 0.6, zb + J.DETENT_MOUTH + 0.1,
-                      x, y)
-        filled = J.union([r_, plug])
-        self.assertEqual(J.count_detents(filled, J.SPECIMEN), 35)
+    def test_slots_are_seen_and_a_missing_one_would_be(self):
+        self.assertEqual(self.rep["slots"], 36)
+        # negative control: probe a ring with one slot filled in
+        z = J.levels(J.SPECIMEN)["ring_bot"]
+        x, y, _ = J.polar((J.GENEVA_MOUTH + J.GENEVA_C + J.GENEVA_A) / 2.0,
+                          J.GENEVA_PHI + 5.0)
+        plug = J.cyl(J.PIN_R + J.SLOT_CLR + 0.3, z, z + J.LIP_T, x, y)
+        filled = J.union([self.parts["rotor"], plug])
+        self.assertEqual(J.count_slots(filled, J.SPECIMEN), 35)
+
 
     def test_bearings_touch_the_race_and_the_check_can_tell(self):
         for r in self.rep["race"]:
@@ -167,6 +171,182 @@ class TestJig(unittest.TestCase):
                                 .max(), 0.01, n)
 
 
+class TestGeneva(unittest.TestCase):
+    """The ring is turned, stopped and held by a Geneva drive.
+
+    A sweep that finds nothing proves nothing on its own: a driver that
+    never reached the lip would sweep clean. So each claim is paired with
+    the part made wrong in the one way that claim is about, and the
+    instrument has to notice.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parts = J.assemble(J.SPECIMEN)
+        cls.g = J.geneva_sweep(cls.parts, J.SPECIMEN)
+
+    def test_a_whole_driver_turn_is_clear_and_moves_the_ring_one_stop(self):
+        self.assertEqual(self.g["fouls"], [])
+        self.assertAlmostEqual(self.g["advance_deg"], 10.0, places=9)
+
+    def test_at_a_stop_the_ring_is_locked_and_mid_slot_it_is_driven(self):
+        self.assertTrue(self.g["locked"])
+        self.assertTrue(self.g["driven"])
+
+    def test_the_law_starts_and_ends_each_step_at_rest(self):
+        w = J.geneva_wheel
+        half = 90.0 + 180.0 / J.GENEVA_N
+        for edge in (360.0 - half, 360.0 + half):
+            for side in (-1, 1):
+                d = abs(w(edge + side * 0.01) - w(edge)) / 0.01
+                self.assertLess(d, 0.01, f"ring moving at {edge}+{side}")
+        self.assertGreater((w(361.0) - w(359.0)) / 2.0, 0.05)
+
+    def test_an_unrelieved_lock_would_jam(self):
+        """Negative control for the sweep: the lock as a whole Ø6 disc."""
+        Z = J.driver_levels(J.SPECIMEN)
+        o, _, _ = J._driver_frame()
+        parts = dict(self.parts)
+        parts["driver"] = J.union([self.parts["driver"],
+                                   J.cyl(J.LOCK_R, Z["lock_lo"], Z["crank_lo"],
+                                         o[0], o[1])])
+        self.assertTrue(J.geneva_sweep(parts, J.SPECIMEN, step=5.0)["fouls"])
+
+    def test_without_its_lock_the_ring_would_not_be_held(self):
+        """Negative control for `locked`: the lock cut off the driver."""
+        Z = J.driver_levels(J.SPECIMEN)
+        o, _, _ = J._driver_frame()
+        parts = dict(self.parts)
+        parts["driver"] = J.cut(self.parts["driver"],
+                                [J.cyl(J.LOCK_R + 0.5, Z["lock_lo"] - 1.0,
+                                       Z["crank_lo"] - 0.01, o[0], o[1])])
+        self.assertFalse(J.geneva_sweep(parts, J.SPECIMEN, step=90.0)["locked"])
+
+    def test_the_driver_drops_in_through_a_seat(self):
+        """It is fitted from above after the ring: everything below the
+        crank must pass down through the lock seat it stands in."""
+        Z = J.driver_levels(J.SPECIMEN)
+        d = self.parts["driver"]
+        o, _, _ = J._driver_frame()
+        below = d.vertices[d.vertices[:, 2] < Z["crank_lo"] - 0.01]
+        lip_z = J.levels(J.SPECIMEN)["ring_bot"]
+        for z in np.linspace(lip_z, Z["crank_lo"] - 0.01, 5):  # lip's plane
+            sec = d.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
+            v = sec.vertices
+            r = np.hypot(v[:, 0] - o[0], v[:, 1] - o[1])
+            self.assertLessEqual(r.max(), J.LOCK_R + 1e-6, z)
+        stub = below[below[:, 2] < lip_z]
+        r2 = np.hypot(stub[:, 0] - o[0], stub[:, 1] - o[1])
+        self.assertLessEqual(r2.max(), J.DRV_JOURNAL_R + 1e-4)
+        # and the seat it passes through is wider than all of it
+        self.assertLess(J.DRV_JOURNAL_R, J.LOCK_R + J.LOCK_CLR)
+
+    def test_the_feet_and_the_knob_are_reached_from_above(self):
+        """Nothing above the foot bolts' heads or the knob's top, so the
+        jig comes off its sole plate, and is wound, without lifting it."""
+        import trimesh
+        others = trimesh.util.concatenate(
+            [m for n, m in self.parts.items()
+             if n not in ("stator", "sole_plate", "driver", "driver_knob")])
+        top = J.levels(J.SPECIMEN)["base_top"]
+        o, _, _ = J._driver_frame()
+        rays = [J.polar(J.FOOT_R + dr, a, 400.0) for a in J.FOOT_PHI
+                for dr in (-J.FOOT_CBORE[0], 0.0, J.FOOT_CBORE[0])]
+        rays += [o + J.polar(J.KNOB_R * f, a, 400.0)
+                 for a in range(0, 360, 45) for f in (0.0, 0.95)]
+        floor = [top] * (len(rays) - 16) + \
+            [J.driver_levels(J.SPECIMEN)["knob_hi"]] * 16
+        locs, idx, _ = others.ray.intersects_location(
+            np.array(rays), np.tile([0, 0, -1.0], (len(rays), 1)),
+            multiple_hits=False)
+        for h, i in zip(locs, idx):
+            self.assertLess(h[2], floor[i], f"something above ray {i}: {h}")
+
+
+class TestAssembly(unittest.TestCase):
+    """It goes together, in the order given, and the BOM is what it takes.
+
+    Each claim is paired with the jig made wrong in the one way that
+    claim is about, because a sweep that finds nothing has only proved
+    something if it would have found the fault.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parts = J.assemble(J.SPECIMEN)
+        cls.a = J.assembly_sweep(cls.parts)
+
+    def test_every_step_reaches_its_seat(self):
+        self.assertEqual([s["id"] for s in self.a["steps"] if s["fouls"]], [])
+        self.assertEqual(self.a["left_on_bench"], [])
+
+    def test_the_bom_is_the_sum_of_the_steps(self):
+        self.assertTrue(self.a["bom_matches"], self.a["bom_diff"])
+        self.assertTrue(self.a["bodies_once"], self.a["missing_bodies"])
+
+    def test_a_bom_line_no_step_uses_would_be_caught(self):
+        from unittest import mock
+        extra = dict(J.inserts(), **{"M3x8": 2})
+        with mock.patch.object(J, "inserts", lambda: extra):
+            a = J.assembly_sweep(self.parts, step=50.0)
+        self.assertFalse(a["bom_matches"])
+        self.assertEqual(a["bom_diff"], {"M3x8": (0, 2)})
+
+    def test_bearings_left_in_would_block_the_ring(self):
+        """Negative control: the eccentrics not turned out. This is the
+        fault the sweep first found, with the old 3 mm flanks and one
+        eccentric: the ring had no way past the bearings."""
+        from unittest import mock
+        real = J.bearing_centres
+        inner = J.sleeves_in_place(J.SPECIMEN)
+        with mock.patch.object(J, "bearing_centres",
+                               lambda retracted=False: real(False)), \
+             mock.patch.object(J, "sleeves_in_place",
+                               lambda specimen=J.SPECIMEN, retracted=False: inner):
+            a = J.assembly_sweep(self.parts, step=2.0)
+        bad = {s["id"] for s in a["steps"] if s["fouls"]}
+        self.assertIn("rotor", bad)
+
+    def test_turned_out_each_bearing_clears_the_ring_by_the_face_gap(self):
+        clear = min(np.linalg.norm(c) for c in J.bearing_centres(True)) \
+            - J.BRG_R - J.RING_RO
+        self.assertAlmostEqual(clear, 0.4, places=6)
+
+    def test_every_axle_is_on_its_towers_insert(self):
+        """The eccentric's bore was 1 mm off its tower's insert, so its
+        axle could not reach the thread. The bore is the tower's axis."""
+        for n, a in zip(J.SLEEVES, J.TOWER_PHI):
+            bx, by = J._sleeve_bore(self.parts[n])
+            T = J.polar(J.TOWER_PITCH, a)[:2]
+            self.assertLess(np.hypot(bx - T[0], by - T[1]), 0.05, n)
+
+    def test_every_fit_is_measured_and_as_intended(self):
+        rows = J.fits(self.parts)
+        self.assertTrue(all(r["hole"] is not None and r["shaft"] is not None
+                            for r in rows), [r["name"] for r in rows
+                                             if r["hole"] is None
+                                             or r["shaft"] is None])
+        self.assertEqual([r["name"] for r in rows if not r["ok"]], [])
+
+    def test_the_grading_is_the_shops_table(self):
+        self.assertEqual(J.fit_class(-0.1), "interference")
+        self.assertEqual(J.fit_class(0.10), "press")
+        self.assertEqual(J.fit_class(0.30), "slip")
+        self.assertEqual(J.fit_class(0.40), "running")
+        self.assertEqual(J.fit_class(0.1, "printed shaft in steel bore"),
+                         "press")
+
+    def test_a_pin_hole_drawn_at_the_pins_size_would_be_caught(self):
+        """Negative control: the crank's hole as first drawn, Ø2.9."""
+        from unittest import mock
+        with mock.patch.object(J, "PIN_HOLE_D", 2.9):
+            d = J.driver(J.SPECIMEN)
+        parts = dict(self.parts, driver=d)
+        row = next(r for r in J.fits(parts) if r["name"].startswith("Geneva pin in the crank"))
+        self.assertEqual(row["got"], "interference")
+        self.assertFalse(row["ok"])
+
+
 class TestFasteners(unittest.TestCase):
     """Every bolt the BOM names must fill its insert and not bottom out.
 
@@ -230,6 +410,12 @@ class TestOneCameraNoBallast(unittest.TestCase):
                      "BALLAST_DEPTH", "CB_POCKET"):
             self.assertFalse(hasattr(J, gone), f"{gone} is still here")
         self.assertNotIn("ballast", json.dumps(J.inserts()).lower())
+
+    def test_nothing_is_left_of_the_detents_or_the_pawl(self):
+        for gone in ("DETENTS", "DETENT_R", "PAWL_PHI", "PAWL_BLOCK", "pawl",
+                     "count_detents"):
+            self.assertFalse(hasattr(J, gone), f"{gone} is still here")
+        self.assertNotIn("silicone", json.dumps(J.inserts()).lower())
 
     def test_the_carriage_balances_well_enough_to_need_none(self):
         b = J.carriage_moment(self.parts)

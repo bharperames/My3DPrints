@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbital scanning jig — assembly</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔩</text></svg>">
+<style>
+  /* The shop's own dark tokens, the same as the capture page, so the two
+     read as rooms of one house. */
+  :root {
+    --bg:#14181A; --surface:#1D2327; --surface-2:#232B2F;
+    --ink:#EAF1EF; --ink-soft:#AFBEBB; --line:#313B40; --edge:#4A5A62;
+    --accent:#5FA893; --accent-ink:#14201C;
+    --good:#7CC287; --warn:#E7B75E; --risk:#E08578;
+    --p-stator:#7A8088; --p-rotor:#4F9A88; --p-arc:#D9736A;
+    --p-carriage:#63A6C4; --p-small:#C99A3C; --hw:#B4BCC3; --cam:#5A626B;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.5 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line);
+    background:var(--surface); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; letter-spacing:-0.01em; }
+  h2 { font-size:13.5px; margin:18px 0 6px; font-weight:650; }
+  .sub { color:var(--ink-soft); font-size:12.5px; }
+  header a { color:var(--accent); text-decoration:none; font-size:12.5px; }
+  header a:hover { text-decoration:underline; }
+  header .links { margin-left:auto; display:flex; gap:14px; }
+  .wrap { display:flex; height:calc(100vh - 58px); }
+  @media (max-width: 900px) { .wrap { flex-direction:column; height:auto; } }
+  #view { flex:1; position:relative; min-height:420px; background:var(--surface-2); }
+  #view canvas { display:block; width:100%; height:100%; }
+  #hud { position:absolute; left:12px; top:10px; font-size:12.5px;
+    background:color-mix(in srgb,var(--surface) 88%,transparent);
+    border:1px solid var(--line); border-radius:6px; padding:6px 10px;
+    max-width:min(620px, calc(100% - 24px)); line-height:1.45; }
+  #hud b { font-weight:650; }
+  #hud .n { font-variant-numeric:tabular-nums; color:var(--ink-soft); }
+  aside { width:430px; flex:0 0 430px; overflow:auto; padding:14px 16px 28px;
+    border-left:1px solid var(--line); background:var(--surface); }
+  @media (max-width: 900px) { aside { width:auto; flex:none; border-left:0; border-top:1px solid var(--line); } }
+  .bar { display:flex; gap:6px; margin:10px 0; flex-wrap:wrap; align-items:center; }
+  button { font:inherit; font-size:12.5px; padding:6px 12px; border-radius:6px;
+    border:1px solid var(--edge); background:var(--surface); color:var(--ink); cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .seg { display:inline-flex; border:1px solid var(--edge); border-radius:6px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; padding:5px 10px; }
+  .seg button + button { border-left:1px solid var(--edge); }
+  .seg button.on { background:var(--accent); color:var(--accent-ink); }
+  .lbl { font-size:12px; color:var(--ink-soft); margin-right:4px; }
+  .checks { display:grid; gap:4px; margin:8px 0 4px; font-size:12.5px; }
+  .chk { display:flex; gap:8px; align-items:baseline; }
+  .chk i { font-style:normal; font-weight:700; width:14px; flex:0 0 14px; }
+  .chk.ok i { color:var(--good); } .chk.bad i { color:var(--risk); }
+  .chk.bad { color:var(--risk); }
+  ol.steps { list-style:none; margin:6px 0 0; padding:0; counter-reset:s; }
+  .step { display:grid; grid-template-columns:26px 1fr auto; gap:2px 8px; padding:7px 8px;
+    border:1px solid var(--edge); border-radius:7px; margin-bottom:6px; cursor:pointer;
+    background:var(--surface); }
+  .step:hover { border-color:var(--accent); }
+  .step.on { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+  .step.done { opacity:.72; }
+  .step .k { font-variant-numeric:tabular-nums; color:var(--ink-soft); font-size:12.5px; }
+  .step b { font-size:13px; font-weight:600; }
+  .step .v { font-size:12px; font-weight:700; }
+  .step .v.ok { color:var(--good); } .step .v.bad { color:var(--risk); }
+  .step .what { grid-column:2 / -1; font-size:12px; color:var(--ink-soft); line-height:1.4; }
+  .chips { grid-column:2 / -1; display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
+  .chip { font-size:11.5px; padding:1px 7px; border-radius:99px; border:1px solid var(--edge); }
+  .chip.p { border-color:var(--p-small); color:var(--ink); }
+  .chip.h { border-color:var(--hw); color:var(--ink-soft); }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+  th { text-align:left; font-weight:600; color:var(--ink-soft); padding:4px 4px 4px 0; border-bottom:1px solid var(--edge); }
+  td { padding:4px 4px 4px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  td.ok { color:var(--good); font-weight:650; } td.bad { color:var(--risk); font-weight:650; }
+  .note { font-size:12px; color:var(--ink-soft); border-top:1px solid var(--line); margin-top:16px; padding-top:12px; }
+  .note b { color:var(--ink); }
+  .tablewrap { overflow-x:auto; }
+</style>
+<script type="importmap">
+{"imports":{"three":"../vendor/three.module.js",
+"three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
+"three/addons/loaders/3MFLoader.js":"../vendor/loaders/3MFLoader.js",
+"three/addons/utils/BufferGeometryUtils.js":"../vendor/utils/BufferGeometryUtils.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1>Orbital scanning jig — assembly</h1>
+  <span class="sub" id="sub">loading…</span>
+  <span class="links"><a href="orbital-jig.html">the capture →</a><a href="../index.html">← the shop</a></span>
+</header>
+<div class="wrap">
+  <div id="view"><div id="hud">fetching the printed file…</div></div>
+  <aside>
+    <div class="bar">
+      <button id="play" class="primary">▶ Assemble</button>
+      <button id="prev">◀ Step</button>
+      <button id="next">Step ▶</button>
+      <button id="reset">Reset</button>
+      <span class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="3">3×</button></span>
+    </div>
+    <div class="checks" id="checks"></div>
+    <h2>The order</h2>
+    <ol class="steps" id="steps"></ol>
+    <h2>Bill of materials, as the steps use it</h2>
+    <div class="tablewrap"><table id="bom"></table></div>
+    <h2>Printed parts, and the step that fits each</h2>
+    <div class="tablewrap"><table id="printed"></table></div>
+    <h2>Fits, measured off the printed parts</h2>
+    <div class="tablewrap"><table id="fits"></table></div>
+    <h2>Bolt lengths</h2>
+    <div class="tablewrap"><table id="joints"></table></div>
+    <div class="note">
+      <b>What is drawn is what prints, and what was checked.</b> The bodies
+      come out of the 3MF the shop builds for this part, and the order, the
+      path every piece travels and the hardware in each step come out of the
+      same archive. Before the file was written, the generator moved each
+      step's pieces along that path, half a millimeter at a time, against
+      everything already in place — printed parts and the hardware fitted
+      before them — and nothing could touch until it seated. A ✓ beside a
+      step is that check, not this page's opinion.
+      <br><br>
+      <b>The bill of materials is the sum of the steps.</b> If the BOM names
+      something no step fits, or a step needs something the BOM does not
+      name, the build fails rather than the bench. Inserts are listed where
+      they are melted in; the board and its glue are not on the list.
+      <br><br>
+      <b>Fits are graded on the shop's PETG table</b> for the P2S and a
+      0.4 mm nozzle, drawn hole minus pin on the diameter: press +0.10,
+      slip +0.30, running +0.40. A printed hole comes out small, so a hole
+      drawn at the pin's size jams. Each size is measured off the built
+      part — a section loop, or a ray across a slot — not read from the
+      number it was drawn with.
+      <br><br>
+      <b>Shown with the carriage half way up the arc</b>, at <span id="theta"></span>°,
+      because that is where it goes on: at the arc's foot the leg is solid
+      and the carriage's tongue has no channel to enter.
+    </div>
+  </aside>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { unzipSync } from '../vendor/libs/fflate.module.js';
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const hud = document.getElementById('hud');
+const errors = [];
+addEventListener('error', e => errors.push(String(e.message || e)));
+const Q = new URLSearchParams(location.search);
+const specimen = Q.get('specimen') ? +Q.get('specimen') : 78;
+hud.textContent = 'building the jig from its generator (a few seconds the first time)…';
+const res = await fetch(`../src?id=orbital_jig&params=${encodeURIComponent(JSON.stringify({ specimen }))}`);
+if (!res.ok) {
+  let msg = res.statusText;
+  try { msg = (await res.json()).error || msg; } catch (e) {}
+  hud.textContent = 'could not build the part: ' + msg;
+  throw new Error(msg);
+}
+const buf = await res.arrayBuffer();
+const files = unzipSync(new Uint8Array(buf));
+const D = JSON.parse(new TextDecoder().decode(files['Metadata/orbital_jig.json']));
+const A = D.assembly;
+const STEPS = A.steps;
+const model = new ThreeMFLoader().parse(buf);
+const DEG = Math.PI / 180;
+document.getElementById('theta').textContent = A.theta;
+
+/* ---------- scene ---------- */
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(css('--surface-2'));
+const camera = new THREE.PerspectiveCamera(36, 1, 1, 4000);
+camera.up.set(0, 0, 1);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+camera.position.set(520, -560, 330);
+controls.target.set(0, 0, -60);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 1.9));
+const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(0.7, -0.9, 1.3); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.6); fill.position.set(-0.8, 0.6, 0.4); scene.add(fill);
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+const colorOf = n => n === 'stator' || n === 'sole_plate' ? '--p-stator' : n === 'rotor' ? '--p-rotor'
+  : n === 'arc' ? '--p-arc' : (n === 'saddle' || n === 'shoe' || n === 'receiver') ? '--p-carriage' : '--p-small';
+function makeMesh(geometry, cssVar, opts = {}) {
+  const g = geometry.getAttribute('normal') ? geometry : toCreasedNormals(geometry, Math.PI / 6);
+  const base = new THREE.Color(css(cssVar));
+  const mat = new THREE.MeshStandardMaterial({ color: base, roughness: opts.rough ?? .6, metalness: opts.metal ?? .05 });
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 25),
+    new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.35) })));
+  mesh.matrixAutoUpdate = false;
+  scene.add(mesh);
+  return mesh;
+}
+function setGhost(mesh, on) {
+  mesh.material.transparent = on; mesh.material.opacity = on ? 0.28 : 1; mesh.material.depthWrite = !on;
+  mesh.children.forEach(c => c.visible = !on);
+}
+
+/* the printed bodies, each with the transform that stands it back up */
+const body = {}, toWorld = {};
+model.traverse(o => {
+  if (!o.isMesh) return;
+  const name = (o.name || (o.parent && o.parent.name) || '').replace(/[^a-z_]/gi, '');
+  if (!D.to_world[name]) { errors.push('unnamed body ' + o.name); return; }
+  toWorld[name] = new THREE.Matrix4().set(...D.to_world[name]);
+  body[name] = makeMesh(o.geometry, colorOf(name));
+});
+for (const n of Object.keys(D.to_world)) if (!body[n]) errors.push('missing body ' + n);
+
+/* hardware from the same primitives the generator swept */
+function primGeom(p) {
+  if (p.kind === 'box') {
+    const s = p.hi.map((v, i) => v - p.lo[i]);
+    return new THREE.BoxGeometry(...s).translate(...p.hi.map((v, i) => (v + p.lo[i]) / 2));
+  }
+  let g;
+  if (p.kind === 'ring') {
+    const sh = new THREE.Shape(); sh.absarc(0, 0, p.ro, 0, Math.PI * 2, false);
+    const hole = new THREE.Path(); hole.absarc(0, 0, p.ri, 0, Math.PI * 2, true); sh.holes.push(hole);
+    g = new THREE.ExtrudeGeometry(sh, { depth: p.h, bevelEnabled: false, curveSegments: 48 }).translate(0, 0, -p.h / 2);
+  } else {
+    g = new THREE.CylinderGeometry(p.r, p.r, p.h, 32).rotateX(Math.PI / 2);   // along z
+  }
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...p.axis).normalize());
+  g.applyQuaternion(q).translate(...p.c);
+  return g;
+}
+const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map(p => {
+  const m = makeMesh(primGeom(p), p.kind === 'box' ? '--cam' : '--hw', { rough: .35, metal: .6 });
+  m.userData.base = p.M ? new THREE.Matrix4().set(...p.M) : new THREE.Matrix4();
+  return m;
+})));
+
+/* ---------- the timeline ---------- */
+const stepOfBody = {};
+STEPS.forEach((st, i) => st.bodies.forEach(b => stepOfBody[b] = i));
+const carrier = {};                       // bench step id -> the step that carries it
+STEPS.forEach((st, i) => st.carry.forEach(id => carrier[id] = i));
+const idx = Object.fromEntries(STEPS.map((s, i) => [s.id, i]));
+const preload = STEPS.findIndex(s => s.turn);
+const checked = A.checked ? Object.fromEntries(A.checked.steps.map(s => [s.id, s])) : {};
+const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+
+function pathMatrix(path, t) {             // t mm short of seated
+  const d = new THREE.Vector3(...path.dir);
+  const M = new THREE.Matrix4().makeTranslation(-d.x * t, -d.y * t, -d.z * t);
+  if (path.spin) {
+    const a = (360 * t / path.spin.lead) * DEG, [x, y] = path.spin.xy;
+    M.multiply(new THREE.Matrix4().makeTranslation(x, y, 0))
+     .multiply(new THREE.Matrix4().makeRotationZ(a))
+     .multiply(new THREE.Matrix4().makeTranslation(-x, -y, 0));
+  }
+  return M;
+}
+const aboutZ = (x, y, deg) => new THREE.Matrix4().makeTranslation(x, y, 0)
+  .multiply(new THREE.Matrix4().makeRotationZ(deg * DEG)).multiply(new THREE.Matrix4().makeTranslation(-x, -y, 0));
+const turnOf = {};
+if (preload >= 0) STEPS[preload].turn.forEach((t, i) => turnOf[t.body] = { ...t, i });
+
+/* where a step's own pieces are, given the current step k and progress f */
+function offsetFor(i, k, f) {
+  const st = STEPS[i];
+  // a bench step's pieces ride with the step that carries them
+  const c = carrier[st.id];
+  if (c !== undefined && k <= c && k > i) {
+    if (k < c) return new THREE.Matrix4();
+    return STEPS[c].path ? pathMatrix(STEPS[c].path, (1 - ease(f)) * STEPS[c].path.travel) : new THREE.Matrix4();
+  }
+  if (i < k || !st.path) return new THREE.Matrix4();
+  return pathMatrix(st.path, (1 - ease(f)) * st.path.travel);
+}
+// a step with no path fits nothing (the spare hex nut): shown only while
+// it is the step, as a ghost where it would go
+const spare = i => !STEPS[i].path && STEPS[i].bodies.length > 0;
+function visibleAt(i, k) { return spare(i) ? i === k : i <= k; }
+
+function poseAll(k, f) {
+  for (const [n, m] of Object.entries(body)) {
+    const i = stepOfBody[n];
+    // a body a bench step builds onto is shown as a ghost during it
+    // (a strict boolean: three skips a body only when visible === false)
+    const benchOn = !!(STEPS[k].against && STEPS[k].against.includes(n) && i > k);
+    m.visible = visibleAt(i, k) || benchOn;
+    setGhost(m, !!benchOn || spare(i));
+    const st = STEPS[i];
+    let M = new THREE.Matrix4();
+    const atStep = benchOn ? STEPS[k] : st;
+    if (atStep.at) M = new THREE.Matrix4().set(...atStep.at);
+    if (turnOf[n]) {
+      const t = turnOf[n];
+      const g = k < preload ? 0 : k === preload ? ease(f) : 1;
+      M = aboutZ(t.axis[0], t.axis[1], -t.deg * (1 - g)).multiply(M);
+    }
+    const O = benchOn ? new THREE.Matrix4() : offsetFor(i, k, f);
+    m.matrix.copy(O.multiply(M).multiply(toWorld[n]));
+    m.matrixWorldNeedsUpdate = true;
+  }
+  STEPS.forEach((st, i) => {
+    const O = offsetFor(i, k, f);
+    hwOf[i].forEach((m, j) => {
+      m.visible = visibleAt(i, k);
+      let M = m.userData.base.clone();
+      // the bearings ride their eccentrics in
+      if (st.id === 'bearings' && preload >= 0) {
+        const t = STEPS[preload].turn[j];
+        const g = k < preload ? 0 : k === preload ? ease(f) : 1;
+        if (t) M = aboutZ(t.axis[0], t.axis[1], t.deg * g).multiply(M);
+      }
+      m.matrix.copy(O.clone().multiply(M));
+      m.matrixWorldNeedsUpdate = true;
+    });
+  });
+}
+
+/* ---------- the panel ---------- */
+const names = n => n.replace(/_/g, ' ');
+const stepsEl = document.getElementById('steps');
+STEPS.forEach((st, i) => {
+  const li = document.createElement('li');
+  li.className = 'step'; li.id = 'st' + i;
+  const c = checked[st.id];
+  const ok = c ? !c.fouls.length : null;
+  const chips = st.bodies.map(b => `<span class="chip p">${names(b)}</span>`)
+    .concat(st.hardware.filter(h => h.item).map(h => `<span class="chip h">${h.qty} × ${h.item}</span>`))
+    .concat(st.carry.map(id => `<span class="chip">with step ${idx[id] + 1}</span>`));
+  li.innerHTML = `<span class="k">${i + 1}</span><b>${st.title}</b>` +
+    `<span class="v ${ok === null ? '' : ok ? 'ok' : 'bad'}" title="${ok ? 'path swept clear' : ok === false ? 'collides: ' + c.fouls.map(f => f[1].join(', ')).join('; ') : 'not swept'}">${ok === null ? '' : ok ? '✓' : '✗'}</span>` +
+    (st.note ? `<span class="what">${st.note}</span>` : '') +
+    (chips.length ? `<span class="chips">${chips.join('')}</span>` : '');
+  li.onclick = () => { go(i); };
+  stepsEl.appendChild(li);
+});
+const C = A.checked;
+const fitsOk = A.fits.every(f => f.ok);
+const anyFoul = C ? C.steps.some(s => s.fouls.length) : true;
+document.getElementById('checks').innerHTML = [
+  [C && !anyFoul, `Every piece reaches its seat along its path: ${C ? C.steps.filter(s => !s.fouls.length).length : 0} of ${STEPS.length} steps swept clear`],
+  [C && C.bom_matches, C && C.bom_matches ? 'The bill of materials is exactly the sum of the steps' : 'BOM and steps disagree: ' + JSON.stringify(C ? C.bom_diff : {})],
+  [C && C.bodies_once, `Every printed part is fitted once: ${Object.keys(D.to_world).length} parts`],
+  [fitsOk, `${A.fits.filter(f => f.ok).length} of ${A.fits.length} fits measured as intended`],
+].map(([ok, t]) => `<div class="chk ${ok ? 'ok' : 'bad'}"><i>${ok ? '✓' : '✗'}</i><span>${t}</span></div>`).join('');
+
+const usedIn = {};
+STEPS.forEach((st, i) => st.hardware.forEach(h => { if (h.item) (usedIn[h.item] ||= []).push([i + 1, h.qty]); }));
+document.getElementById('bom').innerHTML = '<tr><th>item</th><th class="n">BOM</th><th class="n">fitted</th><th>steps</th></tr>' +
+  Object.entries(A.bom).map(([item, q]) => {
+    const u = usedIn[item] || [], got = u.reduce((a, [, n]) => a + n, 0);
+    return `<tr><td>${item}</td><td class="n">${q}</td><td class="n ${got === q ? 'ok' : 'bad'}">${got}</td><td>${u.map(([s, n]) => n > 1 ? `${s} (${n})` : s).join(', ')}</td></tr>`;
+  }).join('');
+document.getElementById('printed').innerHTML = '<tr><th>part</th><th class="n">step</th></tr>' +
+  Object.keys(D.to_world).map(n => `<tr><td>${names(n)}</td><td class="n">${stepOfBody[n] !== undefined ? stepOfBody[n] + 1 : '—'}</td></tr>`).join('');
+document.getElementById('fits').innerHTML = '<tr><th>fit</th><th class="n">hole</th><th class="n">pin</th><th class="n">Δ</th><th>is</th><th>wanted</th></tr>' +
+  A.fits.map(f => `<tr title="${f.note || ''}${f.kind && f.kind !== 'printed hole' ? ' · ' + f.kind : ''}"><td>${f.name}</td>` +
+    `<td class="n">${f.hole ?? '—'}</td><td class="n">${f.shaft ?? '—'}</td><td class="n">${f.allow === null ? '—' : (f.allow >= 0 ? '+' : '') + f.allow.toFixed(2)}</td>` +
+    `<td class="${f.ok ? 'ok' : 'bad'}">${f.got}</td><td>${f.intended}</td></tr>`).join('');
+document.getElementById('joints').innerHTML = '<tr><th>joint</th><th class="n">crosses</th><th class="n">insert</th><th class="n">relief</th><th class="n">bolt</th></tr>' +
+  A.joints.map(j => `<tr><td>${j.qty} × ${j.name}</td><td class="n">${j.crosses}</td><td class="n">${j.insert}</td><td class="n">${j.relief}</td><td class="n">${j.gauge}x${j.length}</td></tr>`).join('');
+document.getElementById('sub').textContent =
+  `${STEPS.length} steps · ${Object.keys(D.to_world).length} printed parts · ${Object.values(A.bom).reduce((a, b) => a + b, 0)} bought items · read from the printed 3MF`;
+
+/* ---------- playback ---------- */
+const STEP_S = 1.4;
+let k = 0, f = 0, playing = false, speed = 1;
+function hudText() {
+  const st = STEPS[k], c = checked[st.id];
+  const v = c ? (c.fouls.length ? ' · <span style="color:var(--risk)">collides</span>' : ' · path swept clear') : '';
+  hud.innerHTML = `<span class="n">step ${k + 1} / ${STEPS.length}</span> · <b>${st.title}</b>${v}`;
+  STEPS.forEach((_, i) => {
+    const el = document.getElementById('st' + i);
+    el.className = 'step' + (i === k ? ' on' : i < k ? ' done' : '');
+  });
+}
+function go(i) { k = Math.max(0, Math.min(STEPS.length - 1, i)); f = 0; playing = true; setPlay(); hudText();
+  document.getElementById('st' + k).scrollIntoView({ block: 'nearest' }); }
+const playBtn = document.getElementById('play');
+function setPlay() { playBtn.textContent = playing ? '⏸ Pause' : (k === STEPS.length - 1 && f >= 1 ? '▶ Again' : '▶ Assemble'); }
+playBtn.onclick = () => { if (!playing && k === STEPS.length - 1 && f >= 1) { k = 0; f = 0; } playing = !playing; setPlay(); };
+document.getElementById('next').onclick = () => { if (f < 1) f = 1; else go(k + 1); playing = false; setPlay(); };
+document.getElementById('prev').onclick = () => { k = Math.max(0, k - 1); f = 1; playing = false; setPlay(); hudText(); };
+document.getElementById('reset').onclick = () => { k = 0; f = 0; playing = false; setPlay(); hudText(); };
+document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
+  speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b)); });
+
+resize(); hudText(); poseAll(0, 0);
+let last = performance.now();
+renderer.setAnimationLoop(now => {
+  const dt = Math.min(0.05, (now - last) / 1000) * speed; last = now;
+  if (playing) {
+    f += dt / STEP_S;
+    if (f >= 1.25) {                         // a beat on each seated step
+      if (k < STEPS.length - 1) { k++; f = 0; hudText(); document.getElementById('st' + k).scrollIntoView({ block: 'nearest' }); }
+      else { f = 1; playing = false; setPlay(); }
+    }
+  }
+  poseAll(k, Math.min(1, f));
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+window.__assembly = {
+  errors, steps: STEPS.length,
+  get at() { return { k, f, id: STEPS[k].id }; },
+  go(i) { k = i; f = 1; playing = false; poseAll(k, 1); hudText(); },
+  poseAt(i, p) { k = i; f = p; playing = false; poseAll(k, p); hudText(); },
+  run() { playing = true; setPlay(); },
+  // world-space bounds of a body as the page has posed it
+  bounds(n) { const m = body[n]; m.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(m); return { min: b.min.toArray(), max: b.max.toArray(), visible: m.visible }; },
+  hwVisible(i) { return hwOf[i].map(m => m.visible); },
+};
+</script>
+</body>
+</html>
