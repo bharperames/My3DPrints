@@ -257,7 +257,8 @@ class TestGeneva(unittest.TestCase):
             for dr in (-J.FOOT_CBORE[0], 0.0, J.FOOT_CBORE[0]):
                 rays.append(J.polar(J.FOOT_R + dr, a, 400.0))
                 floor.append(L["base_top"])
-        post = J.polar(J.POST_R, J.GENEVA_PHI, 400.0)
+        # the post's screw, down its access bore through the cap
+        post = o + u * (J.POST_R - J.GENEVA_C) + t * J.SCREW_Y + np.array([0, 0, 400.0])
         rays.append(post)
         floor.append(Z["face"] + 3.0)
         for y in (-(by - J.BLOCK_EAR / 2), by - J.BLOCK_EAR / 2):
@@ -329,6 +330,20 @@ class TestRealDrive(unittest.TestCase):
     def test_the_cable_fits_under_the_base(self):
         self.assertGreater(J.SOLE_PAD[1], 2 * J.CABLE_R + 1.0)
 
+    def test_the_cable_runs_inside_the_drive(self):
+        """Down a bore in the post, not hung in the air: every point of its
+        path above the base is inside the tower's footprint."""
+        o, u, t = J._driver_frame()
+        L = J.levels(J.SPECIMEN)
+        px = J.POST_R - J.GENEVA_C
+        for x, y, z in J.cable_path(J.SPECIMEN):
+            if z <= L["base_top"]:
+                continue
+            d = np.array([x, y]) - o[:2]
+            lx, ly = d @ u[:2], d @ t[:2]
+            self.assertLess(abs(lx - px), J.POST_X / 2)
+            self.assertLess(abs(ly - J.CABLE_Y), 0.01)
+
     def test_sightlines_see_a_blocker_when_there_is_one(self):
         """Negative control: a post standing between the phone and the
         specimen must block frames."""
@@ -363,6 +378,15 @@ class TestAssembly(unittest.TestCase):
     def test_every_step_reaches_its_seat(self):
         self.assertEqual([s["id"] for s in self.a["steps"] if s["fouls"]], [])
         self.assertEqual(self.a["left_on_bench"], [])
+
+    def test_the_rod_field_plate_is_fitted_from_its_own_card(self):
+        steps = {s["id"]: s for s in J.assembly_steps(self.parts)}
+        self.assertIn("rod_plate", steps)
+        ids = [s["id"] for s in J.assembly_steps(self.parts)]
+        self.assertLess(ids.index("rod_plate"), ids.index("mount"))
+        self.assertEqual(J.inserts()[J.PLATE_ITEM], 1)
+        import catalog
+        self.assertIn(J.PLATE_CARD, {p["id"] for p in catalog.PARTS})
 
     def test_the_bom_is_the_sum_of_the_steps(self):
         self.assertTrue(self.a["bom_matches"], self.a["bom_diff"])

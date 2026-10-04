@@ -246,10 +246,17 @@ PRESS = 0.10            # the shop's press
 FLOOR_T = 3.0           # the block's floor, under the gearmotor's faceplate
 BLOCK_WALL = 2.0        # radial walls of the motor's pocket
 BLOCK_EAR = 5.0         # tangential walls: they carry the cap's inserts
-CAP_T = 2.0
-POST_W = 8.0            # the post, square
-POST_R = 58.5           # its centre from the rotor axis: inside the crank's
-                        # sweep (63.5) and the lip's mouth (72.7)
+# The wiring is inside the parts, not hung between them: the gearmotor's
+# tabs, the phase sensor's leads and the cable meet in a bay under the
+# cap, and the cable goes straight down a bore in the post into a hole in
+# the base under it. The block and post are one solid tower, the post's
+# screw reached from the top down an access bore and a hole in the cap.
+CAP_T = 4.0             # with a wiring bay BAY_D deep in its underside
+BAY_D = 2.0
+POST_X, POST_Y = 10.0, 14.0           # the post: radial, across
+POST_R = 57.5           # its centre from the rotor axis: a millimetre clear
+                        # of the crank and inside the lip's mouth (72.7)
+SCREW_Y, CABLE_Y = -3.5, 3.5          # the post's two bores, side by side
 POST_SOCKET = 0.8       # how far its foot sits down into the base
 INS_M2 = (1.6, 4.0)     # heat-set M2: bore radius, depth
 PIN_L = 16.0            # the Geneva pin: Ø3 x 16, through the 8 mm crank
@@ -639,11 +646,11 @@ def stator(specimen=SPECIMEN):
         tools.append(cyl(FOOT_CBORE[0], -FOOT_CBORE[1], 1.0, x, y, 48))
     # the drive post's foot: a square socket that keys it, an M3 insert
     # under it, and beside it the hole the drive's cable goes down
-    ph = POST_W / 2 + 0.2                  # the shop's running fit
-    sock = box((-ph, -ph, -POST_SOCKET), (ph, ph, 1.0))
-    ins = cyl(INS_M3[0], -POST_SOCKET - INS_M3[1], 0.5, 0, 0, 48)
-    relief = cyl(1.7, -BASE_T - 1, 0.5, 0, 0, 48)
-    wire = cyl(2.5, -BASE_T - 1, 1.0, -(POST_W / 2 + 4.0), 0, 48)
+    hx, hy_ = POST_X / 2 + 0.2, POST_Y / 2 + 0.2      # the shop's running fit
+    sock = box((-hx, -hy_, -POST_SOCKET), (hx, hy_, 1.0))
+    ins = cyl(INS_M3[0], -POST_SOCKET - INS_M3[1], 0.5, 0, SCREW_Y, 48)
+    relief = cyl(1.7, -BASE_T - 1, 0.5, 0, SCREW_Y, 48)
+    wire = cyl(2.5, -BASE_T - 1, 1.0, 0, CABLE_Y, 48)
     for m in (sock, ins, relief, wire):
         m.apply_transform(rot(GENEVA_PHI, [0, 0, 1]))
         m.apply_translation(polar(POST_R, GENEVA_PHI))
@@ -814,44 +821,51 @@ def drive_block(specimen=SPECIMEN):
     Z = driver_levels(specimen)
     bx, by = _block_dims()
     px = POST_R - GENEVA_C                     # the post's centre, local x
-    hw = POST_W / 2
+    hx, hy = POST_X / 2, POST_Y / 2
     blk = box((-bx, -by, Z["floor_lo"]), (bx, by, Z["motor_top"]))
-    arm = box((px - hw, -hw, Z["floor_lo"]), (-bx + 1.0, hw, Z["face"]))
-    post = box((px - hw, -hw, Z["base_top"] - POST_SOCKET),
-               (px + hw, hw, Z["floor_lo"] + 0.5))
-    b = union([blk, arm, post])
+    # one solid tower from the post to the pocket, above the crank
+    tower = box((px - hx, -hy, Z["floor_lo"]), (-bx + 1.0, hy, Z["motor_top"]))
+    post = box((px - hx, -hy, Z["base_top"] - POST_SOCKET),
+               (px + hx, hy, Z["floor_lo"] + 0.5))
+    b = union([blk, tower, post])
     pw, pd = (MOTOR["w"] + SLIP) / 2, (MOTOR["d"] + SLIP) / 2
     tools = [box((-pd, -pw, Z["face"]), (pd, pw, Z["motor_top"] + 1)),
              cyl((MOTOR["bush_d"] + SLIP) / 2, Z["floor_lo"] - 1, Z["face"] + 1,
                  0, 0, 48)]
-    # the cap's two inserts, in the thick tangential walls
     for y in (-(by - BLOCK_EAR / 2), by - BLOCK_EAR / 2):
         tools.append(cyl(INS_M2[0], Z["motor_top"] - INS_M2[1] - 2.0,
                          Z["motor_top"] + 1, 0, y, 32))
-    # the post's screw, down through arm and post into the base's insert
-    tools.append(cyl(1.7, Z["base_top"] - POST_SOCKET - 1, Z["face"] + 1,
-                     px, 0, 32))
-    # a groove down the post's inner face for the cable
-    tools.append(box((px - hw - 1, -(CABLE_R + 0.35), Z["base_top"] - 2),
-                     (px - hw + CABLE_R + 0.35, CABLE_R + 0.35, Z["face"] + 1)))
+    low = Z["base_top"] - POST_SOCKET - 1
+    # the post's screw: its head seats at the arm's old level, reached
+    # down an access bore from the top
+    tools.append(cyl(1.7, low, Z["face"] + 0.01, px, SCREW_Y, 32))
+    tools.append(cyl(3.25, Z["face"], Z["motor_top"] + 1, px, SCREW_Y, 48))
+    # the cable's bore, top to bottom, the shop's running fit and more
+    tools.append(cyl(CABLE_R + 0.45, low, Z["motor_top"] + 1, px, CABLE_Y, 48))
     # the phase sensor, face down in the floor's underside, toward the
-    # rotor axis where the magnet passes; its leads go up through the arm
+    # rotor axis where the magnet passes; its leads up to the bay
     sx = -PHASE_R
     tools.append(box((sx - (HALL[1] + SLIP) / 2, -(HALL[0] + SLIP) / 2,
                       Z["floor_lo"] - 1.0),
                      (sx + (HALL[1] + SLIP) / 2, (HALL[0] + SLIP) / 2,
                       Z["floor_lo"] + HALL[2] + 0.2)))
-    tools.append(cyl(1.2, Z["floor_lo"], Z["face"] + 1, sx - 2.4, 0, 24))
+    tools.append(cyl(1.2, Z["floor_lo"], Z["motor_top"] + 1, sx - 2.4, 0, 24))
     return _local(cut(b, tools))
 
 
 def drive_cap(specimen=SPECIMEN):
-    """Holds the gearmotor down in its pocket; the window lets its two
-    terminals and their wires out."""
+    """Covers the gearmotor and the tower; the wiring bay in its underside
+    is where the motor's tabs, the sensor's leads and the cable meet.
+    Printed upside down, the bay open to the nozzle."""
     Z = driver_levels(specimen)
     bx, by = _block_dims()
-    c = box((-bx, -by, Z["motor_top"]), (bx, by, Z["cap_top"]))
-    tools = [box((-3.5, -4.5, Z["motor_top"] - 1), (3.5, 4.5, Z["cap_top"] + 1))]
+    px = POST_R - GENEVA_C
+    hx, hy = POST_X / 2, POST_Y / 2
+    c = union([box((-bx, -by, Z["motor_top"]), (bx, by, Z["cap_top"])),
+               box((px - hx, -hy, Z["motor_top"]), (-bx + 1.0, hy, Z["cap_top"]))])
+    tools = [box((px - 3.0, -hy + 1.5, Z["motor_top"] - 1),
+                 (4.0, hy - 1.5, Z["motor_top"] + BAY_D)),
+             cyl(3.25, Z["motor_top"] - 1, Z["cap_top"] + 1, px, SCREW_Y, 48)]
     for y in (-(by - BLOCK_EAR / 2), by - BLOCK_EAR / 2):
         tools.append(cyl(1.2, Z["motor_top"] - 1, Z["cap_top"] + 1, 0, y, 32))
     return _local(cut(c, tools))
@@ -955,28 +969,20 @@ def cable_path(specimen=SPECIMEN):
     to the board, and across to the box's inlet."""
     Z = driver_levels(specimen)
     L = levels(specimen)
-    o, u, _ = _driver_frame()
-    bx, _ = _block_dims()
+    o, u, t = _driver_frame()
     px = POST_R - GENEVA_C
-    hw = POST_W / 2
-    loc = lambda x, z: [o[0] + u[0] * x, o[1] + u[1] * x, z]
+    bore = o + u * px + t * CABLE_Y                 # straight down the post
     under = L["base_bot"] - SOLE_PAD[1] / 2
-    wire = polar(POST_R - (POST_W / 2 + 4.0), GENEVA_PHI)
     edge = polar(118.0, (GENEVA_PHI + CTRL["phi"]) / 2)
     co, board = _ctrl_frame(specimen)
     inlet = (co + polar(-(CTRL["l"] / 2 + 6.0), CTRL["phi"])
              + polar(CTRL_INLET_Y, CTRL["phi"] + 90.0))
     r = CABLE_R + 0.3
-    over = Z["face"] + 3.0 + r + 0.2            # clear of the post screw's head
-    inlet_z = board + CTRL["wall"] + r + 0.5    # level with the box's inlet
+    inlet_z = board + CTRL["wall"] + r + 0.5        # level with the box's inlet
     inside = (co + polar(-(CTRL["l"] / 2 - 10.0), CTRL["phi"])
               + polar(CTRL_INLET_Y, CTRL["phi"] + 90.0))
-    # down the post a little proud of its face: the screw's head is 4 mm in
-    down = px - hw - 0.8
-    return [loc(0, Z["cap_top"] + r), loc(-bx - r, Z["cap_top"] + r),
-            loc(-bx - r, over), loc(down, over),
-            loc(down, L["base_top"] + r),
-            [wire[0], wire[1], L["base_top"] + r], [wire[0], wire[1], under],
+    # its end stops just under the bay, where its six conductors fan out
+    return [[bore[0], bore[1], Z["motor_top"] - 1.0], [bore[0], bore[1], under],
             [edge[0], edge[1], under], [edge[0], edge[1], inlet_z],
             [inlet[0], inlet[1], inlet_z], [inside[0], inside[1], inlet_z]]
 
@@ -1492,6 +1498,9 @@ def plate_pose(name, mesh):
     # on its side: the pocket becomes a tunnel, every other face is square
     if name == "drive_block":
         return rot(90.0, polar(1.0, GENEVA_PHI))
+    # its wiring bay up, open to the nozzle
+    if name == "drive_cap":
+        return rot(180.0, [1, 0, 0])
     return np.eye(4)
 
 
@@ -1641,7 +1650,29 @@ def assembly_meta(specimen, poses, parts, rep=None):
 #
 # Hardware is described as primitives so the page draws exactly what the
 # check swept: cylinders, rings and boxes in world coordinates, seated.
+# The rod field plate is the specimen mount and its own design, printed
+# from its own card; the assembly fits it, so it is built here from that
+# card's generator for the sweep, and the page fetches that card's file.
+PLATE_CARD = "rod_field_jig"
+PLATE_ITEM = "Carbon rod field plate, jig mount (printed: its own card)"
+
+
+def rod_plate(specimen=SPECIMEN):
+    """The plate as its own generator builds it, on the platform."""
+    import gen_gazebo as G
+    m = G.stand(G.BY_ID["gz_rfj"])
+    lo, hi = m.bounds
+    m.apply_translation([-(lo[0] + hi[0]) / 2, -(lo[1] + hi[1]) / 2,
+                         levels(specimen)["plat"] - lo[2]])
+    return m
+
+
 def _prim_mesh(p):
+    if p["kind"] == "external":
+        m = rod_plate(p["specimen"])
+        if p.get("M") is not None:
+            m.apply_transform(np.asarray(p["M"], float).reshape(4, 4))
+        return m
     if p["kind"] == "box":
         m = box(p["lo"], p["hi"])
         if p.get("hole"):
@@ -1783,7 +1814,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
                        hi=[-PHASE_R + HALL[1] / 2, HALL[0] / 2,
                            Zd["floor_lo"] + HALL[2]], M=DR)]
     post_screw = [dict(q, M=DR) for q in _bolt_prims(
-        [POST_R - GENEVA_C, 0, Zd["face"]], length["drive post to base"],
+        [POST_R - GENEVA_C, SCREW_Y, Zd["face"]], length["drive post to base"],
         r=1.5, head_r=2.75, head_h=3.0)]
     cp = [np.asarray(q, float) for q in cable_path(specimen)]
     cable = [dict(kind="cyl", c=list((a_ + b_) / 2), axis=list(b_ - a_),
@@ -1807,6 +1838,42 @@ def assembly_steps(parts, specimen=SPECIMEN):
                       hi=[HALL[0] / 2, HALL[1] / 2, htop], M=HM)]
     ring_mag = [dict(kind="cyl", c=[hm[0], hm[1], L["ring_bot"] + MAGNET[1] / 2],
                      axis=[0, 0, 1], r=MAGNET[0] / 2, h=MAGNET[1] - 0.1)]
+    # heat-set inserts, drawn a hair inside their bores so the sweep sees
+    # them seat; in life they melt in a little proud of that
+    def insert(c, ins, axis=(0, 0, 1), M=None):
+        # a threaded tube: its bolt goes through it, so the stand-in is
+        # open to the bolt's major diameter
+        bolt_r = {INS_M4: 2.0, INS_M3: 1.5, INS_M2: 1.0}[ins]
+        q = dict(kind="ring", c=list(map(float, c)), axis=list(axis),
+                 ro=ins[0] - 0.05, ri=bolt_r + 0.05, h=ins[1] - 1.0)
+        if M is not None:
+            q["M"] = M
+        return q
+    ins4, ins3, ins2 = INS_M4, INS_M3, INS_M2
+    sole_ins = [insert(polar(FOOT_R, a, L["base_bot"] - (ins4[1] - 1.0) / 2 - 0.0),
+                       ins4) for a in FOOT_PHI]
+    ttop = L["base_top"] + RING_GAP + RING_T / 2.0 - BRG_W / 2.0 - 0.2
+    tower_ins = [insert(polar(TOWER_PITCH, a, ttop - (ins4[1] - 1.0) / 2), ins4)
+                 for a in TOWER_PHI]
+    post_ins = [insert([POST_R - GENEVA_C, SCREW_Y, L["base_top"] - POST_SOCKET
+                        - (ins3[1] - 1.0) / 2], ins3, M=DR)]
+    floor_ = L["pad_top"] - PAD_SLOT_D
+    pad_ins = [insert([x, Y_ARC, floor_ - (ins4[1] - 1.0) / 2], ins4) for x in BOLTS_X]
+    block_ins = [insert([0.0, y, Zd["motor_top"] - (ins2[1] - 1.0) / 2], ins2, M=DR)
+                 for y in (-(by - BLOCK_EAR / 2), by - BLOCK_EAR / 2)]
+    # the USB-C plug in the XIAO's port, its cord running off the board
+    pz = t_ + 2.8
+    usb = [dict(kind="box", lo=[CTRL["l"] / 2 - t_ + 0.5, -4.1, pz - 1.3],
+                hi=[CTRL["l"] / 2 + 12.0, 4.1, pz + 1.3], M=CR),
+           dict(kind="cyl", c=[CTRL["l"] / 2 + 42.0, 0.0, pz], axis=[1, 0, 0],
+                r=2.0, h=60.0, M=CR)]
+    usb_dir = (np.asarray(CR).reshape(4, 4)[:3, :3] @ np.array([-1.0, 0, 0])).tolist()
+    recv_ins = _moved([dict(kind="ring", axis=[0, 0, 1], ro=ins3[0] - 0.05,
+                            ri=1.55, h=ins3[1] - 1.0,
+                            c=list(_arc_to_world(RECV_U, PLATFORM_V[1]
+                                                 + (ins3[1] - 1.0) / 2, y)))
+                       for y in (CAM_Y - Y_ARC - CHANNEL[3],
+                                 CAM_Y - Y_ARC + CHANNEL[3])], elev(MOUNT_THETA))
     E = elev(MOUNT_THETA)
     hy = CAM_Y - Y_ARC
     # a real M5 square nut, 8 x 4, centred in its 8.4 x 4.4 trap
@@ -1839,11 +1906,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("sole", "Sole plate onto the board",
               "Melt the three M4 inserts into the pads, then glue the plate "
               "to a heavy board, pads up. Board and glue are not on the BOM.",
-              ["sole_plate"], [("M4 heat-set insert", 3, [])], (down, 30.0)),
+              ["sole_plate"], [("M4 heat-set insert", 3, sole_ins)], (down, 30.0)),
         _step("stator_inserts", "Inserts into the base",
               "Three M4 inserts, one in the top of each tower, and an M3 "
               "under the drive post's socket.",
-              hw=[("M4 heat-set insert", 3, []), ("M3 heat-set insert", 1, [])]),
+              hw=[("M4 heat-set insert", 3, tower_ins),
+                  ("M3 heat-set insert", 1, post_ins)],
+              path=(down, 15.0), against=["stator"]),
         _step("mount_screw", "Mount screw up through the pedestal",
               "On the bench, from underneath: the hex head drops into its "
               "pocket and cannot turn. The last time the underside is "
@@ -1852,7 +1921,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("stator", "Base down onto the sole plate",
               "The three counterbored holes over the three pads; the mount "
               "screw rides in it.", ["stator"], path=(down, 30.0),
-              carry=["mount_screw"]),
+              carry=["stator_inserts", "mount_screw"]),
         _step("feet", "Three bolts down into the sole plate",
               "From above, through the bore.",
               hw=[("M4x" + str(length["stator to sole plate"]), 3,
@@ -1877,14 +1946,16 @@ def assembly_steps(parts, specimen=SPECIMEN):
               path=(down, 20.0)),
         _step("rotor_inserts", "Inserts into the rotor's pad",
               "Three M4 inserts in the floor of the pad's slot.",
-              hw=[("M4 heat-set insert", 3, [])]),
+              hw=[("M4 heat-set insert", 3, pad_ins)],
+              path=(down, 15.0), against=["rotor"]),
         _step("ring_magnet", "Home magnet into the ring",
               "On the bench: pressed up into the underside, south face down.",
               hw=[("\u00d83 x 2 N52 disc magnet", 1, ring_mag)],
               path=(up, 10.0), against=["rotor"]),
         _step("rotor", "Ring down past the bearings",
               "Lip down, held at the race while the eccentrics come in.",
-              ["rotor"], path=(down, 40.0), carry=["ring_magnet"]),
+              ["rotor"], path=(down, 40.0),
+              carry=["rotor_inserts", "ring_magnet"]),
         _step("preload", "Turn the eccentrics in and tighten",
               "Each until its bearing meets the race and the ring turns "
               "without play; then the three axles.",
@@ -1900,7 +1971,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
               path=(down, 10.0), against=["driver"]),
         _step("block_inserts", "Inserts into the drive block",
               "Two M2 inserts in the tops of its side walls.",
-              hw=[("M2 heat-set insert", 2, [])]),
+              hw=[("M2 heat-set insert", 2, block_ins)],
+              path=(down, 15.0), against=["drive_block"]),
         _step("motor", "Gearmotor into the drive block",
               "On the bench: shaft down, its bushing into the floor's hole, "
               "the flat of its D-shaft facing across the block.",
@@ -1923,7 +1995,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "As one unit: the lock and pin pass down through a seat in "
               "the lip, the post's foot into its socket.",
               ["drive_block"], path=(down, 45.0),
-              carry=["motor", "cap", "phase_hall", "driver"]),
+              carry=["block_inserts", "motor", "cap", "phase_hall", "driver"]),
         _step("post_screw", "One screw down through the arm and post",
               "Into the base's insert.",
               hw=[(f"M3x{length['drive post to base']}", 1, post_screw)],
@@ -1936,8 +2008,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
                              ("Pololu #2130 DRV8833 dual motor driver carrier", 1,
                               drv)], (down, 25.0)),
         _step("cable", "The cable, motor to controller",
-              "Six conductors: motor +/-, 3V3, GND, phase, home. Down the "
-              "post's groove, through the base, out under it.",
+              "Six conductors: motor +/-, 3V3, GND, phase, home. Threaded "
+              "down the post's bore before the drive went in, out through "
+              "the base under it, across the board to the box.",
               hw=[("6-conductor 26 AWG cable, 1 m", 1, cable)]),
         _step("ctrl_lid", "Lid on the controller",
               "Two self-tapping screws.",
@@ -1947,7 +2020,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "USB-C from a 5 V, 2 A wall adapter into the XIAO. It powers "
               "the controller, the H-bridge and the gearmotor. The phone "
               "runs on its battery: it rides the ring.",
-              hw=[("USB-C cable and 5 V 2 A USB power adapter", 1, [])]),
+              hw=[("USB-C cable and 5 V 2 A USB power adapter", 1, usb)],
+              path=(usb_dir, 25.0)),
         _step("arc", "Arc down onto the pad",
               "The bar keys into the pad's slot.",
               ["arc"], path=(down, 40.0)),
@@ -1973,7 +2047,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("receiver_prep", "Receiver: inserts and the 1/4-20",
               "On the bench: two M3 inserts underneath, the D-ring screw "
               "up through it.",
-              hw=[("M3 heat-set insert", 2, []), ("1/4-20 D-ring", 1, dring)],
+              hw=[("M3 heat-set insert", 2, recv_ins), ("1/4-20 D-ring", 1, dring)],
               path=(up_arc, 20.0), against=["receiver"], at=E),
         _step("receiver", "Receiver onto the platform", "",
               ["receiver"], path=(-up_arc, 20.0), carry=["receiver_prep"],
@@ -1985,8 +2059,17 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("camera", "Phone clamp onto the 1/4-20", "",
               hw=[("phone spring clamp, 1/4-20 socket", 1, cam)],
               path=(-up_arc, 30.0)),
+        _step("rod_plate", "Rod field plate onto the platform",
+              "Printed from its own card. Its plain hole drops over the "
+              "mount screw; the carbon rods go in later, cut to the "
+              "specimen.",
+              hw=[(PLATE_ITEM, 1, [dict(kind="external", id=PLATE_CARD,
+                                         params=dict(material="petg"),
+                                         specimen=specimen,
+                                         c=[0.0, 0.0, L["plat"]])])],
+              path=(down, 30.0)),
         _step("mount", "Wing nut down the mount screw",
-              "Over the rod field plate, which is its own design.",
+              "Turned down onto the plate by the fingers.",
               ["mount_wing_nut"], path=(down, 30.0),
               spin=dict(xy=[0.0, 0.0], lead=mount_thread().lead)),
         _step("spare", "The hex nut: for when a rod is in the wings' way",
@@ -2282,7 +2365,7 @@ def fits(parts, specimen=SPECIMEN):
         _ray_gap(parts["drive_block"], sx, [-u[1], u[0], 0]), HALL[0], "slip")
     pp = polar(POST_R, GENEVA_PHI, L["base_top"] - POST_SOCKET / 2)
     row("Drive post in its socket", _socket_width(parts["stator"], pp, u),
-        POST_W, "running",
+        POST_X, "running",
         note="it keys the drive's angle; the screw holds it down")
     for a in FOOT_PHI[:1]:
         f = polar(FOOT_R, a)
@@ -2644,7 +2727,7 @@ def inserts():
            "608-2RS": 3, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
            "1/4-20 D-ring": 1,
            f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)": 1,
-           "phone spring clamp, 1/4-20 socket": 1}
+           "phone spring clamp, 1/4-20 socket": 1, PLATE_ITEM: 1}
     for _, crosses, ins, relief, n, gauge in JOINTS:
         key = f"{gauge}x{bolt_len(crosses, ins, relief)}"
         out[key] = out.get(key, 0) + n

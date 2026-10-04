@@ -614,8 +614,9 @@ if (plateModel) {
   const pg = new THREE.Group();
   plateModel.traverse(o => {
     if (!o.isMesh) return;
-    const m = addBody('rod_plate', o.geometry, pg, '--p-small', { rough: .7 });
+    const m = addBody('rod_plate', o.geometry, pg, '--p-small', { petg: true });
     m.position.set(0, 0, 0);
+    printed.rod_plate = m;              // so the filament picker reaches it
   });
   // the plate is laid out flat on its print plate; stand it on the platform
   const pb = new THREE.Box3().setFromObject(pg);

@@ -441,6 +441,12 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 6.0.0: the drive's wiring went inside it. The block and post are
+       # one solid tower; the cable runs down a bore in the post into a
+       # hole in the base under it, the motor's tabs and the sensor's
+       # leads meet it in a bay under a thicker cap, and the post's screw
+       # is reached down an access bore. The post is 10 x 14, a third as
+       # bendy. Inserts and the USB-C cord are drawn and swept.
        # 5.0.0: a real drive. The driver hangs on a Pololu #994 gearmotor's
        # D-shaft in a printed block on a post keyed into the base, with an
        # 8 mm crank so the pin is held over its length; the printed stub,
@@ -467,7 +473,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="5.0.0",
+       version="6.0.0",
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
               dict(label="Assemble it, step by step",

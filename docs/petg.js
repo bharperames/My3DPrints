@@ -8,12 +8,15 @@
    scheme or sets each group; the choice is remembered per browser. */
 import * as THREE from 'three';
 
+/* Lighter than the filament's swatch on a reel, on purpose: the scene's
+   ground is a dark slate, and true black PETG vanished into it. Black is
+   drawn as the charcoal black PETG reads as under a lamp. */
 export const FILAMENTS = {
-  black:    { name: 'Black',    color: '#1c1e21', rough: 0.30, metal: 0.00, coat: 0.55 },
-  grey:     { name: 'Grey',     color: '#878d93', rough: 0.34, metal: 0.00, coat: 0.45 },
-  blue:     { name: 'Blue',     color: '#1f5ea6', rough: 0.30, metal: 0.00, coat: 0.55 },
-  green:    { name: 'Green',    color: '#2e8a58', rough: 0.30, metal: 0.00, coat: 0.55 },
-  metallic: { name: 'Metallic', color: '#a9b0b8', rough: 0.40, metal: 0.70, coat: 0.25 },
+  black:    { name: 'Black',    color: '#727a85', rough: 0.30, metal: 0.00, coat: 0.55 },
+  grey:     { name: 'Grey',     color: '#aab0b7', rough: 0.34, metal: 0.00, coat: 0.45 },
+  blue:     { name: 'Blue',     color: '#3a7bcc', rough: 0.30, metal: 0.00, coat: 0.55 },
+  green:    { name: 'Green',    color: '#3cae6e', rough: 0.30, metal: 0.00, coat: 0.55 },
+  metallic: { name: 'Metallic', color: '#c8ced5', rough: 0.40, metal: 0.65, coat: 0.25 },
 };
 
 /* The groups a viewer colors by: what is printed together, roughly. */
@@ -28,12 +31,13 @@ export const GROUPS = {
   ctrl:     { name: 'Controller', parts: ['ctrl_box', 'ctrl_lid'] },
 };
 
-/* Schemes chosen for contrast: neighbors never share a filament. The
-   base is matte-dark in most, because the spec wants what sits under the
-   specimen to drop out of feature matching. */
+/* Schemes chosen for contrast: neighbors never share a filament, and the
+   default puts nothing dark against the dark ground. (The spec wanted
+   what sits under the specimen matte black for feature matching; that
+   is a choice for the print, and Stealth shows it.) */
 export const SCHEMES = {
-  contrast: { name: 'Contrast', base: 'black', ring: 'blue', arc: 'green', carriage: 'grey',
-              drive: 'metallic', small: 'grey', ctrl: 'black' },
+  contrast: { name: 'Contrast', base: 'grey', ring: 'blue', arc: 'green', carriage: 'grey',
+              drive: 'metallic', small: 'metallic', ctrl: 'grey' },
   stealth:  { name: 'Stealth', base: 'black', ring: 'grey', arc: 'black', carriage: 'grey',
               drive: 'metallic', small: 'metallic', ctrl: 'black' },
   ocean:    { name: 'Ocean', base: 'grey', ring: 'blue', arc: 'metallic', carriage: 'blue',
@@ -55,7 +59,7 @@ export const HARDWARE = {
   phone:  { color: '#5a626b', rough: 0.35, metal: 0.40 },
 };
 
-const KEY = 'jig.petg.v1';
+const KEY = 'jig.petg.v2';      // v1 remembered the old, too-dark black
 export function loadChoice() {
   try { const v = JSON.parse(localStorage.getItem(KEY) || 'null'); if (v && v.groups) return v; } catch (e) {}
   return { scheme: 'contrast', groups: { ...SCHEMES.contrast } };

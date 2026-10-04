@@ -46,6 +46,11 @@
   button:hover { border-color:var(--accent); }
   button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  /* the controls stay put while the cards scroll under them */
+  .bar.sticky { position:sticky; top:-14px; z-index:5; margin:-14px -16px 10px; padding:12px 16px 10px;
+    background:var(--surface); border-bottom:1px solid var(--line); }
+  button:disabled { opacity:.4; cursor:default; border-color:var(--edge); }
+  .follow { font-size:12.5px; color:var(--ink-soft); display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
   .seg { display:inline-flex; border:1px solid var(--edge); border-radius:6px; overflow:hidden; }
   .seg button { border:0; border-radius:0; padding:5px 10px; }
   .seg button + button { border-left:1px solid var(--edge); }
@@ -97,12 +102,13 @@
 <div class="wrap">
   <div id="view"><div id="hud">fetching the printed file…</div></div>
   <aside>
-    <div class="bar">
+    <div class="bar sticky">
       <button id="play" class="primary">▶ Assemble</button>
       <button id="prev">◀ Step</button>
       <button id="next">Step ▶</button>
       <button id="reset">Reset</button>
       <span class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="3">3×</button></span>
+      <label class="follow"><input type="checkbox" id="follow" checked> follow the step</label>
     </div>
     <div class="checks" id="checks"></div>
     <h2>Filament</h2>
@@ -149,7 +155,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
-import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { toCreasedNormals, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { unzipSync } from '../vendor/libs/fflate.module.js';
 import { petgMaterial, hardwareMaterial, edgeColor, groupOfPart, loadChoice,
          buildPicker, PICKER_CSS } from './petg.js';
@@ -211,7 +217,8 @@ function makeMesh(geometry, mat) {
   return mesh;
 }
 function setGhost(mesh, on) {
-  mesh.material.transparent = on; mesh.material.opacity = on ? 0.28 : 1; mesh.material.depthWrite = !on;
+  mesh.material.userData.ghost = on;
+  mesh.material.transparent = on; mesh.material.opacity = on ? 0.55 : 1; mesh.material.depthWrite = !on;
   mesh.children.forEach(c => c.visible = !on);
 }
 
@@ -226,6 +233,32 @@ model.traverse(o => {
 });
 for (const n of Object.keys(D.to_world)) if (!body[n]) errors.push('missing body ' + n);
 
+/* parts printed from another card -- the rod field plate -- come from
+   that card's own file, fetched the way this jig's is, and stand where
+   the step puts them */
+const externals = {};
+for (const st of STEPS) for (const h of st.hardware) for (const p of h.prims) {
+  if (p.kind !== 'external' || externals[p.id] !== undefined) continue;
+  externals[p.id] = null;
+  try {
+    const r = await fetch(`../src?id=${p.id}&params=${encodeURIComponent(JSON.stringify(p.params || {}))}`);
+    if (r.ok) {
+      const ext = new ThreeMFLoader().parse(await r.arrayBuffer());
+      ext.updateMatrixWorld(true);
+      const gs = [];
+      ext.traverse(o => { if (o.isMesh) {
+        const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
+        for (const k of Object.keys(g.attributes)) if (k !== 'position') g.deleteAttribute(k);
+        gs.push(g.index ? g.toNonIndexed() : g); } });
+      const g = mergeGeometries(gs);
+      g.computeBoundingBox();
+      const b = g.boundingBox;
+      g.translate(-(b.min.x + b.max.x) / 2, -(b.min.y + b.max.y) / 2, -b.min.z);
+      externals[p.id] = g;
+    }
+  } catch (e) { errors.push('could not fetch ' + p.id + ': ' + e); }
+}
+const externalMeshes = [];
 /* hardware from the same primitives the generator swept */
 function primGeom(p) {
   if (p.kind === 'box') {
@@ -249,6 +282,13 @@ const MATS = { motor: ['steel', 'brass', 'steel', 'brass'], cable: ['cable'], ct
   phase_hall: ['dark'], home_hall: ['dark'], phase_magnet: ['magnet'], ring_magnet: ['magnet'],
   camera: ['phone'], nut: ['steel'], bearings: ['steel'] };
 const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
+  if (p.kind === 'external') {
+    const g = (externals[p.id] || new THREE.BoxGeometry(1, 1, 1)).clone().translate(...p.c);
+    const m = makeMesh(g, petgMaterial(petg.groups.small, p.id));
+    m.userData.base = new THREE.Matrix4();
+    externalMeshes.push([m, p.id]);
+    return m;
+  }
   const list = MATS[st.id];
   const kind = list ? (list[j] || list[list.length - 1])
     : p.kind === 'cyl' && j % 2 === 0 ? 'dark' : 'steel';     // bolt heads, shanks
@@ -256,6 +296,59 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
   m.userData.base = p.M ? new THREE.Matrix4().set(...p.M) : new THREE.Matrix4();
   return m;
 })));
+
+/* ---------- the bench: the shop's graph paper ----------
+   The same paper the shop's cards turn on for scale -- 1-inch rulings
+   labelled, half and eighth inches between -- laid as the board the sole
+   plate is glued to, with a wall behind and one to the side. */
+const INCH = 25.4;
+function graphTexture(nIn) {
+  const px = 96, W = nIn * px;
+  const cv = document.createElement('canvas'); cv.width = cv.height = W;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#f2f7ff'; ctx.fillRect(0, 0, W, W);
+  const line = (i, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, W); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke(); };
+  for (let k = 0; k <= nIn * 8; k++) {
+    const i = k * px / 8;
+    if (k % 8 === 0) continue;
+    line(i, k % 4 === 0 ? 1.6 : 0.7, k % 4 === 0 ? '#8fb0e4' : '#c3d5f2');
+  }
+  for (let k = 0; k <= nIn; k++) line(k * px, 2.6, '#3a6fd8');
+  ctx.fillStyle = '#3a6fd8'; ctx.font = '600 22px IBM Plex Sans, sans-serif';
+  for (let k = 1; k < nIn; k++) {
+    ctx.fillText(k + '\u2033', k * px + 5, W - 8);
+    ctx.fillText(k + '\u2033', 5, W - k * px - 6);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+{
+  const all = new THREE.Box3();
+  for (const [n, m] of Object.entries(body)) {
+    const g = m.geometry; g.computeBoundingBox();
+    all.union(g.boundingBox.clone().applyMatrix4(toWorld[n]));
+  }
+  const sole = body.sole_plate.geometry.boundingBox.clone().applyMatrix4(toWorld.sole_plate);
+  const board = sole.min.z;                     // the plate is glued to the board
+  const nIn = Math.ceil((Math.max(all.max.x - all.min.x, all.max.y - all.min.y) + 60) / INCH);
+  const S = nIn * INCH, tex = graphTexture(nIn);
+  const paper = () => new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+  const x0 = Math.floor((all.min.x - 30) / INCH) * INCH, y0 = Math.floor((all.min.y - 30) / INCH) * INCH;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(S, S), paper());
+  floor.position.set(x0 + S / 2, y0 + S / 2, board - 0.05);
+  const wallH = Math.ceil((all.max.z - board + 30) / INCH) * INCH;
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(S, wallH), paper());
+  back.rotation.x = Math.PI / 2;
+  back.position.set(x0 + S / 2, y0 + S + 0.05, board + wallH / 2);
+  const side = new THREE.Mesh(new THREE.PlaneGeometry(S, wallH), paper());
+  side.rotation.set(Math.PI / 2, Math.PI / 2, 0);
+  side.position.set(x0 - 0.05, y0 + S / 2, board + wallH / 2);
+  scene.add(floor, back, side);
+  scene.background = new THREE.Color('#dfe7f2');
+}
 
 /* ---------- the timeline ---------- */
 const stepOfBody = {};
@@ -300,6 +393,18 @@ function offsetFor(i, k, f) {
 const spare = i => !STEPS[i].path && STEPS[i].bodies.length > 0;
 function visibleAt(i, k) { return spare(i) ? i === k : i <= k; }
 
+/* What the current step fits glows while it moves and fades as it
+   seats, so a small part -- a sensor, an insert -- is found by eye; a
+   step with no path (the cable is laid, not pushed) fades in instead of
+   appearing. */
+const GLOW = new THREE.Color(css('--accent'));
+function mark(m, current, f, fade) {
+  const mat = m.material;
+  if (mat.emissive) mat.emissive.copy(GLOW).multiplyScalar(current ? 0.55 * (1 - 0.7 * f) : 0);
+  if (fade !== undefined && !mat.userData.ghost) {
+    mat.transparent = fade < 1; mat.opacity = fade; mat.depthWrite = fade >= 1;
+  }
+}
 function poseAll(k, f) {
   for (const [n, m] of Object.entries(body)) {
     const i = stepOfBody[n];
@@ -320,6 +425,8 @@ function poseAll(k, f) {
     const O = benchOn ? new THREE.Matrix4() : offsetFor(i, k, f);
     m.matrix.copy(O.multiply(M).multiply(toWorld[n]));
     m.matrixWorldNeedsUpdate = true;
+    const moving = i === k || carrier[st.id] === k;
+    mark(m, moving && !benchOn, f, !st.path && i === k && !spare(i) ? f : undefined);
   }
   STEPS.forEach((st, i) => {
     const O = offsetFor(i, k, f);
@@ -334,6 +441,9 @@ function poseAll(k, f) {
       }
       m.matrix.copy(O.clone().multiply(M));
       m.matrixWorldNeedsUpdate = true;
+      const moving = i === k || carrier[st.id] === k || (st.turn && i === k)
+        || (st.id === 'bearings' && k === preload);
+      mark(m, moving, f, !st.path && i === k ? Math.max(0.05, f) : 1);
     });
   });
 }
@@ -384,11 +494,37 @@ document.getElementById('joints').innerHTML = '<tr><th>joint</th><th class="n">c
 document.getElementById('sub').textContent =
   `${STEPS.length} steps · ${Object.keys(D.to_world).length} printed parts · ${Object.values(A.bom).reduce((a, b) => a + b, 0)} bought items · read from the printed 3MF`;
 
+/* ---------- following the step ----------
+   Frame what the current step fits: the camera keeps its direction and
+   eases toward the step's pieces, close enough that a 4 mm sensor reads.
+   Off, the camera is left where the hand put it. */
+const followEl = document.getElementById('follow');
+let camGoal = null;
+function frameStep(i) {
+  if (!followEl.checked) { camGoal = null; return; }
+  const box = new THREE.Box3();
+  const add = o => { o.updateMatrixWorld(true); box.expandByObject(o); };
+  poseAll(i, 1);
+  for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === i) add(m);
+  hwOf[i].forEach(add);
+  STEPS.forEach((st, j) => { if (carrier[st.id] === i) { hwOf[j].forEach(add);
+    for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === j) add(m); } });
+  if (box.isEmpty()) { camGoal = null; return; }
+  const c = box.getCenter(new THREE.Vector3());
+  const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 18);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const dist = Math.min(900, r / Math.sin(camera.fov * Math.PI / 360) * 1.6);
+  camGoal = { target: c, pos: c.clone().add(dir.multiplyScalar(dist)) };
+}
+followEl.onchange = () => frameStep(k);
+
 /* ---------- playback ---------- */
 const STEP_S = 1.4;
 let k = 0, f = 0, playing = false, speed = 1;
 function hudText() {
   const st = STEPS[k], c = checked[st.id];
+  document.getElementById('prev').disabled = k === 0;
+  document.getElementById('next').disabled = k === STEPS.length - 1 && f >= 1;
   const v = c ? (c.fouls.length ? ' · <span style="color:var(--risk)">collides</span>' : ' · path swept clear') : '';
   hud.innerHTML = `<span class="n">step ${k + 1} / ${STEPS.length}</span> · <b>${st.title}</b>${v}`;
   STEPS.forEach((_, i) => {
@@ -396,14 +532,19 @@ function hudText() {
     el.className = 'step' + (i === k ? ' on' : i < k ? ' done' : '');
   });
 }
-function go(i) { k = Math.max(0, Math.min(STEPS.length - 1, i)); f = 0; playing = true; setPlay(); hudText();
+function go(i) { k = Math.max(0, Math.min(STEPS.length - 1, i)); f = 0; playing = true; setPlay(); hudText(); frameStep(k);
   document.getElementById('st' + k).scrollIntoView({ block: 'nearest' }); }
 const playBtn = document.getElementById('play');
 function setPlay() { playBtn.textContent = playing ? '⏸ Pause' : (k === STEPS.length - 1 && f >= 1 ? '▶ Again' : '▶ Assemble'); }
 playBtn.onclick = () => { if (!playing && k === STEPS.length - 1 && f >= 1) { k = 0; f = 0; } playing = !playing; setPlay(); };
-document.getElementById('next').onclick = () => { if (f < 1) f = 1; else go(k + 1); playing = false; setPlay(); };
-document.getElementById('prev').onclick = () => { k = Math.max(0, k - 1); f = 1; playing = false; setPlay(); hudText(); };
-document.getElementById('reset').onclick = () => { k = 0; f = 0; playing = false; setPlay(); hudText(); };
+document.getElementById('next').onclick = () => {
+  if (f < 1) f = 1; else go(k + 1);
+  playing = false; setPlay(); hudText(); };
+document.getElementById('prev').onclick = () => {
+  if (k === 0) return;
+  k = k - 1; f = 1; playing = false; setPlay(); hudText(); frameStep(k); };
+document.getElementById('reset').onclick = () => {
+  k = 0; f = 0; playing = false; setPlay(); hudText(); frameStep(k); };
 document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
   speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b)); });
 
@@ -415,19 +556,30 @@ buildPicker(document.getElementById('petg'), petg, choice => {
     m.children[0].material.color.copy(edgeColor(m.material));
     setGhost(m, ghost);
   }
+  for (const [m, id] of externalMeshes) {
+    m.material.dispose();
+    m.material = petgMaterial(choice.groups.small, id);
+    m.children[0].material.color.copy(edgeColor(m.material));
+  }
 });
-resize(); hudText(); poseAll(0, 0);
+resize(); hudText(); poseAll(0, 0); frameStep(0);
+controls.addEventListener('start', () => { camGoal = null; });   // the hand wins
 let last = performance.now();
 renderer.setAnimationLoop(now => {
   const dt = Math.min(0.05, (now - last) / 1000) * speed; last = now;
   if (playing) {
     f += dt / STEP_S;
     if (f >= 1.25) {                         // a beat on each seated step
-      if (k < STEPS.length - 1) { k++; f = 0; hudText(); document.getElementById('st' + k).scrollIntoView({ block: 'nearest' }); }
+      if (k < STEPS.length - 1) { k++; f = 0; hudText(); frameStep(k); document.getElementById('st' + k).scrollIntoView({ block: 'nearest' }); }
       else { f = 1; playing = false; setPlay(); }
     }
   }
   poseAll(k, Math.min(1, f));
+  if (camGoal) {
+    const a = 1 - Math.pow(0.02, Math.min(0.05, (now - last + 16) / 1000));
+    controls.target.lerp(camGoal.target, a); camera.position.lerp(camGoal.pos, a);
+    if (camera.position.distanceTo(camGoal.pos) < 0.5) camGoal = null;
+  }
   controls.update();
   renderer.render(scene, camera);
 });
