@@ -105,6 +105,8 @@
       <span class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="3">3×</button></span>
     </div>
     <div class="checks" id="checks"></div>
+    <h2>Filament</h2>
+    <div id="petg"></div>
     <h2>The order</h2>
     <ol class="steps" id="steps"></ol>
     <h2>Bill of materials, as the steps use it</h2>
@@ -149,6 +151,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { unzipSync } from '../vendor/libs/fflate.module.js';
+import { petgMaterial, hardwareMaterial, edgeColor, groupOfPart, loadChoice,
+         buildPicker, PICKER_CSS } from './petg.js';
+document.head.insertAdjacentHTML('beforeend', `<style>${PICKER_CSS}</style>`);
+const petg = loadChoice();
 
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const hud = document.getElementById('hud');
@@ -195,15 +201,11 @@ function resize() {
 }
 addEventListener('resize', resize);
 
-const colorOf = n => n === 'stator' || n === 'sole_plate' ? '--p-stator' : n === 'rotor' ? '--p-rotor'
-  : n === 'arc' ? '--p-arc' : (n === 'saddle' || n === 'shoe' || n === 'receiver') ? '--p-carriage' : '--p-small';
-function makeMesh(geometry, cssVar, opts = {}) {
+function makeMesh(geometry, mat) {
   const g = geometry.getAttribute('normal') ? geometry : toCreasedNormals(geometry, Math.PI / 6);
-  const base = new THREE.Color(css(cssVar));
-  const mat = new THREE.MeshStandardMaterial({ color: base, roughness: opts.rough ?? .6, metalness: opts.metal ?? .05 });
   const mesh = new THREE.Mesh(g, mat);
   mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 25),
-    new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.35) })));
+    new THREE.LineBasicMaterial({ color: edgeColor(mat) })));
   mesh.matrixAutoUpdate = false;
   scene.add(mesh);
   return mesh;
@@ -220,7 +222,7 @@ model.traverse(o => {
   const name = (o.name || (o.parent && o.parent.name) || '').replace(/[^a-z_]/gi, '');
   if (!D.to_world[name]) { errors.push('unnamed body ' + o.name); return; }
   toWorld[name] = new THREE.Matrix4().set(...D.to_world[name]);
-  body[name] = makeMesh(o.geometry, colorOf(name));
+  body[name] = makeMesh(o.geometry, petgMaterial(petg.groups[groupOfPart(name)], name));
 });
 for (const n of Object.keys(D.to_world)) if (!body[n]) errors.push('missing body ' + n);
 
@@ -242,8 +244,15 @@ function primGeom(p) {
   g.applyQuaternion(q).translate(...p.c);
   return g;
 }
-const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map(p => {
-  const m = makeMesh(primGeom(p), p.kind === 'box' ? '--cam' : '--hw', { rough: .35, metal: .6 });
+/* what each step's bought parts are made of */
+const MATS = { motor: ['steel', 'brass', 'steel', 'brass'], cable: ['cable'], ctrl: ['pcb'],
+  phase_hall: ['dark'], home_hall: ['dark'], phase_magnet: ['magnet'], ring_magnet: ['magnet'],
+  camera: ['phone'], nut: ['steel'], bearings: ['steel'] };
+const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
+  const list = MATS[st.id];
+  const kind = list ? (list[j] || list[list.length - 1])
+    : p.kind === 'cyl' && j % 2 === 0 ? 'dark' : 'steel';     // bolt heads, shanks
+  const m = makeMesh(primGeom(p), hardwareMaterial(kind));
   m.userData.base = p.M ? new THREE.Matrix4().set(...p.M) : new THREE.Matrix4();
   return m;
 })));
@@ -398,6 +407,15 @@ document.getElementById('reset').onclick = () => { k = 0; f = 0; playing = false
 document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
   speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b)); });
 
+buildPicker(document.getElementById('petg'), petg, choice => {
+  for (const [n, m] of Object.entries(body)) {
+    const ghost = m.material.transparent;
+    m.material.dispose();
+    m.material = petgMaterial(choice.groups[groupOfPart(n)], n);
+    m.children[0].material.color.copy(edgeColor(m.material));
+    setGhost(m, ghost);
+  }
+});
 resize(); hudText(); poseAll(0, 0);
 let last = performance.now();
 renderer.setAnimationLoop(now => {
@@ -424,6 +442,7 @@ window.__assembly = {
   bounds(n) { const m = body[n]; m.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(m); return { min: b.min.toArray(), max: b.max.toArray(), visible: m.visible }; },
   hwVisible(i) { return hwOf[i].map(m => m.visible); },
+  look(pos, target) { camera.position.set(...pos); controls.target.set(...target); controls.update(); },
 };
 </script>
 </body>

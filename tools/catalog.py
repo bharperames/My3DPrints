@@ -371,12 +371,13 @@ PARTS = [
        "and the camera's entrance pupil on a 150 mm sphere about the "
        "specimen at every setting. The lights, the backdrop and the "
        "tooth never move. "
-       "Fifteen printed bodies: a stator plate with pedestal and bearing "
+       "Eighteen printed bodies: a stator plate with pedestal and bearing "
        "towers; the rotor ring, with a 36-slot Geneva lip on its bore and "
        "a slotted pad; the arc, with its own leg down to that pad; a "
        "two-piece carriage clamped through the arc's 5.4 mm slot by an "
        "M5 thumbscrew; a receiver with 40 mm of fore/aft travel carrying "
-       "the phone's clamp on its 1/4-20; the Geneva driver and its knob; "
+       "the phone's clamp on its 1/4-20; the Geneva driver, the block that "
+       "holds its gearmotor and the block's cap; a controller box and lid; "
        "a sole plate; three bearing sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
        "wing nut and a hex nut, all printed in the same cosine thread "
        "the Knot uses. "
@@ -389,10 +390,13 @@ PARTS = [
        "bill of materials is the sum of the steps, and every PETG fit is "
        "measured off the printed parts and graded on the shop's press, "
        "slip and running table. "
-       "The ring is turned by a Geneva drive: one turn of the knob, inside "
-       "the bore, moves it exactly 10\u00b0 and leaves it locked there, "
-       "powered or not, so the stops are set by the geometry and not by "
-       "whoever turns it. The same driver takes a gearmotor later. Every "
+       "The ring is turned by a Geneva drive: one turn of the driver moves "
+       "it exactly 10\u00b0 and leaves it locked there, powered or not, so "
+       "the stops are set by the geometry and not by whoever turns it. The "
+       "driver hangs on the shaft of a real gearmotor, a Pololu #994 298:1, "
+       "drawn to Pololu's drawing; Hall switches see a magnet in the crank "
+       "once a frame and one in the ring once a turn. Nothing that turns "
+       "carries a wire, and one USB-C cord powers it all. Every "
        "ring of the capture steps a whole number of stops \u2014 10, 10, "
        "20 and 20\u00b0, still 108 frames. "
        "The base bolts down through three counterbored holes reached "
@@ -437,6 +441,14 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 5.0.0: a real drive. The driver hangs on a Pololu #994 gearmotor's
+       # D-shaft in a printed block on a post keyed into the base, with an
+       # 8 mm crank so the pin is held over its length; the printed stub,
+       # its bushing and the knob are gone. Hall switches and magnets for
+       # phase and home; one cable under the base, its pads raised to 5 mm
+       # for it; a controller box. The camera is an iPhone 17 Pro from
+       # Apple's drawing, the saddle trimmed 3.2 mm to clear it, and the
+       # thumbscrew M5x40, since the M5x25 never reached its nut.
        # 4.0.0: the assembly sweep found the ring could not be fitted (3 mm
        # race flanks, one eccentric), the eccentric's axle off its insert,
        # and the Geneva pin's hole an interference: flanks to 1.4, all
@@ -455,7 +467,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="4.0.0",
+       version="5.0.0",
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
               dict(label="Assemble it, step by step",

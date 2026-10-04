@@ -32,8 +32,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_fifteen_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 15)
+    def test_eighteen_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 18)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -235,32 +235,116 @@ class TestGeneva(unittest.TestCase):
             v = sec.vertices
             r = np.hypot(v[:, 0] - o[0], v[:, 1] - o[1])
             self.assertLessEqual(r.max(), J.LOCK_R + 1e-6, z)
-        stub = below[below[:, 2] < lip_z]
-        r2 = np.hypot(stub[:, 0] - o[0], stub[:, 1] - o[1])
-        self.assertLessEqual(r2.max(), J.DRV_JOURNAL_R + 1e-4)
-        # and the seat it passes through is wider than all of it
-        self.assertLess(J.DRV_JOURNAL_R, J.LOCK_R + J.LOCK_CLR)
+        # nothing hangs below the lock but the pin, which points at the
+        # rotor axis at a stop, where the bore is open
+        self.assertGreaterEqual(below[:, 2].min(), Z["lock_lo"] - 1e-4)
 
-    def test_the_feet_and_the_knob_are_reached_from_above(self):
-        """Nothing above the foot bolts' heads or the knob's top, so the
-        jig comes off its sole plate, and is wound, without lifting it."""
+    def test_every_screw_is_reached_from_above(self):
+        """The foot bolts, the drive post's screw and the cap's screws:
+        nothing over their heads, so the jig comes off its sole plate, and
+        the drive out of it, without lifting anything."""
         import trimesh
         others = trimesh.util.concatenate(
             [m for n, m in self.parts.items()
-             if n not in ("stator", "sole_plate", "driver", "driver_knob")])
-        top = J.levels(J.SPECIMEN)["base_top"]
-        o, _, _ = J._driver_frame()
-        rays = [J.polar(J.FOOT_R + dr, a, 400.0) for a in J.FOOT_PHI
-                for dr in (-J.FOOT_CBORE[0], 0.0, J.FOOT_CBORE[0])]
-        rays += [o + J.polar(J.KNOB_R * f, a, 400.0)
-                 for a in range(0, 360, 45) for f in (0.0, 0.95)]
-        floor = [top] * (len(rays) - 16) + \
-            [J.driver_levels(J.SPECIMEN)["knob_hi"]] * 16
+             if n not in ("stator", "sole_plate", "drive_block", "drive_cap",
+                          "driver")])
+        L = J.levels(J.SPECIMEN)
+        Z = J.driver_levels(J.SPECIMEN)
+        o, u, t = J._driver_frame()
+        _, by = J._block_dims()
+        rays, floor = [], []
+        for a in J.FOOT_PHI:
+            for dr in (-J.FOOT_CBORE[0], 0.0, J.FOOT_CBORE[0]):
+                rays.append(J.polar(J.FOOT_R + dr, a, 400.0))
+                floor.append(L["base_top"])
+        post = J.polar(J.POST_R, J.GENEVA_PHI, 400.0)
+        rays.append(post)
+        floor.append(Z["face"] + 3.0)
+        for y in (-(by - J.BLOCK_EAR / 2), by - J.BLOCK_EAR / 2):
+            rays.append(o + t * y + np.array([0, 0, 400.0]))
+            floor.append(Z["cap_top"] + 2.0)
         locs, idx, _ = others.ray.intersects_location(
             np.array(rays), np.tile([0, 0, -1.0], (len(rays), 1)),
             multiple_hits=False)
         for h, i in zip(locs, idx):
             self.assertLess(h[2], floor[i], f"something above ray {i}: {h}")
+
+
+class TestRealDrive(unittest.TestCase):
+    """The drive is real parts at their makers' sizes, and works.
+
+    The gearmotor is Pololu #994 from Pololu's dimension drawing; the
+    Hall switches are Allegro A1120EUA-T. What matters about each is
+    tested where the design depends on it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parts = J.assemble(J.SPECIMEN)
+
+    def test_the_gearmotor_is_the_drawing(self):
+        m = J.MOTOR
+        self.assertEqual((m["w"], m["d"], m["gearbox"], m["body"]),
+                         (12.0, 10.0, 9.0, 15.0))
+        self.assertEqual((m["shaft_d"], m["shaft_flat"], m["shaft_l"]),
+                         (3.0, 2.5, 10.0))
+
+    def test_the_motor_has_torque_to_spare(self):
+        """At 5 V the stall torque scales to about 0.33 N.m; the driver
+        needs the ring's torque divided by the Geneva's leverage, which is
+        least mid-step at a / (C + a)."""
+        stall = J.MOTOR["stall_kgcm"] * 0.0980665 * 5.0 / 6.0
+        lever = J.GENEVA_A / (J.GENEVA_C + J.GENEVA_A)
+        ring_needs = 0.2                     # N.m: generous for three 608s
+        self.assertGreater(stall / (ring_needs * lever), 10.0)
+
+    def test_the_driver_hangs_on_the_motor_shaft(self):
+        Z = J.driver_levels(J.SPECIMEN)
+        # the shaft's tip sits in the crank, with crank left under it
+        self.assertGreater(Z["shaft_tip"], Z["crank_lo"] + 1.0)
+        self.assertLess(Z["shaft_tip"], Z["crank_hi"] - 5.0)
+
+    def test_the_pin_is_held_over_the_whole_crank(self):
+        self.assertEqual(J.CRANK_T, 8.0)
+        Z = J.driver_levels(J.SPECIMEN)
+        lip = J.levels(J.SPECIMEN)["ring_bot"]
+        self.assertLess(Z["pin_lo"], lip)                  # through the lip
+
+    def test_each_hall_switch_sees_its_magnet_closely(self):
+        Z = J.driver_levels(J.SPECIMEN)
+        self.assertLessEqual(Z["floor_lo"] - Z["crank_hi"], 1.0)
+        self.assertLessEqual(J.HOME["gap"], 3.0)
+
+    def test_the_phase_sensor_fires_inside_the_lock(self):
+        """It fires PHASE_LEAD into the lock, and the brake has the rest
+        of the lock to stop in."""
+        lock = 180.0 - 360.0 / J.GENEVA_N           # 170 degrees
+        self.assertGreater(J.PHASE_LEAD, 10.0)
+        self.assertGreater(lock - J.PHASE_LEAD, 90.0)
+
+    def test_nothing_that_turns_carries_a_wire(self):
+        rotating = set(J.ROTOR_SIDE) | set(J.CARRIAGE)
+        self.assertFalse(rotating & {"drive_block", "drive_cap", "ctrl_box"})
+        self.assertIn("drive_block", J.STATOR_SIDE)
+
+    def test_the_cable_fits_under_the_base(self):
+        self.assertGreater(J.SOLE_PAD[1], 2 * J.CABLE_R + 1.0)
+
+    def test_sightlines_see_a_blocker_when_there_is_one(self):
+        """Negative control: a post standing between the phone and the
+        specimen must block frames."""
+        parts = dict(self.parts)
+        parts["drive_cap"] = J.box((60.0, -5.0, -60.0), (70.0, 5.0, 30.0))
+        self.assertGreater(J.sightlines(parts, J.SPECIMEN)["blocked"], 0)
+        self.assertEqual(J.sightlines(self.parts, J.SPECIMEN)["blocked"], 0)
+
+    def test_the_thumbscrew_comes_through_its_nut(self):
+        self.assertTrue(J.thumbscrew_reach()["through"])
+        from unittest import mock
+        with mock.patch.object(J, "THUMB_LEN", 25.0):
+            self.assertFalse(J.thumbscrew_reach()["through"])
+
+    def test_the_phone_stands_clear_of_its_carriage(self):
+        self.assertGreaterEqual(J.phone_clearance(self.parts), J.PHONE_CLEAR)
 
 
 class TestAssembly(unittest.TestCase):

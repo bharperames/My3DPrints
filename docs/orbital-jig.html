@@ -116,6 +116,7 @@
   .verdict { font-size:12.5px; padding:8px 10px; border-radius:6px; margin-top:8px; display:none; }
   .verdict.ok { display:block; background:color-mix(in srgb,var(--good) 15%,transparent); color:var(--good); }
   .verdict.bad { display:block; background:color-mix(in srgb,var(--risk) 15%,transparent); color:var(--risk); }
+  .pk-h { font-size:12.5px; font-weight:650; margin:14px 0 2px; }
   .key { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
 </style>
 <script type="importmap">
@@ -173,6 +174,8 @@
       <label><input type="checkbox" id="t-vf" checked> viewfinder</label>
       <label><input type="checkbox" id="t-hw" checked> hardware &amp; camera</label>
     </div>
+    <h3 class="pk-h">Filament</h3>
+    <div id="petg"></div>
     <table id="facts"></table>
     <div class="note">
       <b>What is drawn is what prints.</b> The bodies are read straight out of
@@ -210,8 +213,8 @@
       focus stacking rather than in geometry.
       <br><br>
       <b>Where the ring can stop.</b> A Geneva drive turns the ring: one
-      turn of the knob inside the bore moves it exactly 10° and locks it
-      there. So every ring of the capture steps a whole number of stops
+      turn of the driver, by a gearmotor inside the bore, moves it exactly
+      10° and locks it there. So every ring of the capture steps a whole number of stops
       — 10°, 10°, 20° and 20°, still 108 frames. The spec's 12° and 15°
       landed between stops; at 55° of elevation 20° spans what 11.5° does
       on the horizon.
@@ -225,6 +228,10 @@ import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { toCreasedNormals, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { unzipSync } from '../vendor/libs/fflate.module.js';
+import { petgMaterial, hardwareMaterial, edgeColor, groupOfPart, loadChoice,
+         buildPicker, PICKER_CSS } from './petg.js';
+document.head.insertAdjacentHTML('beforeend', `<style>${PICKER_CSS}</style>`);
+const petg = loadChoice();
 
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const hud = document.getElementById('hud');
@@ -345,14 +352,18 @@ function addBody(name, geometry, group, cssVar, opts = {}) {
   // 3MF carries no normals. Creased at 30 degrees, not averaged: a bore
   // keeps its edge and the ring's one-degree facets read as a cylinder.
   const g = geometry.getAttribute('normal') ? geometry : toCreasedNormals(geometry, Math.PI / 6);
-  const base = new THREE.Color(css(cssVar));
-  const mat = new THREE.MeshStandardMaterial({ color: base, roughness: opts.rough ?? .6,
-    metalness: opts.metal ?? .05 });
+  // printed bodies are PETG of the chosen filament; bought ones are what
+  // they are made of; the rest keep the page's own tokens
+  const mat = opts.petg ? petgMaterial(petg.groups[groupOfPart(name)], name)
+    : opts.hw ? hardwareMaterial(opts.hw)
+    : new THREE.MeshStandardMaterial({ color: new THREE.Color(css(cssVar)),
+        roughness: opts.rough ?? .6, metalness: opts.metal ?? .05 });
+  const base = mat.color;
   const mesh = new THREE.Mesh(g, mat);
   mesh.name = name;
   if (opts.matrix) { mesh.matrixAutoUpdate = false; mesh.matrix.copy(opts.matrix); }
   const eg = new THREE.LineSegments(new THREE.EdgesGeometry(g, 25),
-    new THREE.LineBasicMaterial({ color: base.clone().multiplyScalar(0.35) }));
+    new THREE.LineBasicMaterial({ color: edgeColor(mat) }));
   eg.name = name + ':edges';
   mesh.add(eg);                       // child: inherits the transform
   group.add(mesh);
@@ -369,7 +380,7 @@ model.traverse(o => {
   // transform stands it back up where it was designed. The loader's build
   // item transform (plate placement) is deliberately ignored.
   const M = new THREE.Matrix4().set(...D.to_world[name]);
-  printed[name] = addBody(name, o.geometry, groupOf(name), colorOf(name), { matrix: M });
+  printed[name] = addBody(name, o.geometry, groupOf(name), colorOf(name), { matrix: M, petg: true });
   found.push(name);
 });
 for (const n of Object.keys(D.to_world)) if (!found.includes(n)) errors.push('missing body ' + n);
@@ -413,16 +424,49 @@ for (const f of D.fasteners) {
   }
 }
 // the Geneva driver turns about its own axis: the printed driver, its
-// knob and the steel pin ride one group, posed from the driver angle
+// steel pin and the phase magnet ride one group, posed from the driver angle
 const G = D.geneva;
 const drvAxis = new THREE.Vector3(G.c * Math.cos(G.phi * DEG), G.c * Math.sin(G.phi * DEG), 0);
 const driverGroup = new THREE.Group(); driverGroup.matrixAutoUpdate = false;
 stator.add(driverGroup);
-for (const n of ['driver', 'driver_knob']) if (printed[n]) driverGroup.add(printed[n]);
-{
-  const pin = addBody('pin', cylZ(G.pin_r, G.pin_hi - G.pin_lo, 16), driverGroup, '--hw', HW);
-  pin.position.set(G.pin_xy[0], G.pin_xy[1], (G.pin_lo + G.pin_hi) / 2);
+if (printed.driver) driverGroup.add(printed.driver);
+/* the drive's bought parts, from the primitives the generator swept: the
+   gearmotor, its sensors and screws, the cable and the controller's
+   boards stand still; the pin and the phase magnet turn with the driver;
+   the home magnet turns with the ring */
+function primGeom(p) {
+  if (p.kind === 'box') {
+    const sz = p.hi.map((v, i) => v - p.lo[i]);
+    return new THREE.BoxGeometry(...sz).translate(...p.hi.map((v, i) => (v + p.lo[i]) / 2));
+  }
+  let g;
+  if (p.kind === 'ring') {
+    const sh = new THREE.Shape(); sh.absarc(0, 0, p.ro, 0, Math.PI * 2, false);
+    const hole = new THREE.Path(); hole.absarc(0, 0, p.ri, 0, Math.PI * 2, true); sh.holes.push(hole);
+    g = new THREE.ExtrudeGeometry(sh, { depth: p.h, bevelEnabled: false, curveSegments: 48 }).translate(0, 0, -p.h / 2);
+  } else g = new THREE.CylinderGeometry(p.r, p.r, p.h, 24).rotateX(Math.PI / 2);
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...p.axis).normalize());
+  return g.applyQuaternion(q).translate(...p.c);
 }
+function addPrims(list, group) {
+  for (const p of list) {
+    const m = addBody('hw:' + p.mat, primGeom(p), group, '--hw', { hw: p.mat, hardware: true });
+    if (p.M) { m.matrixAutoUpdate = false; m.matrix.set(...p.M); }
+  }
+}
+addPrims(D.hardware.static, hardware);
+addPrims(D.hardware.driver, driverGroup);
+addPrims(D.hardware.rotor, hwRotor);
+// the filament picker: swaps each printed body's material in place
+buildPicker(document.getElementById('petg'), petg, choice => {
+  for (const [n, m] of Object.entries(printed)) {
+    m.material.dispose();
+    m.material = petgMaterial(choice.groups[groupOfPart(n)], n);
+    const e = m.children.find(c => c.isLineSegments);
+    if (e) e.material.color.copy(edgeColor(m.material));
+  }
+  applyView();
+});
 // the ring's angle for the driver at psi: psi = 180 is home, pin toward
 // the axis and the lock in a seat; one driver turn is one stop. The same
 // law the generator sweeps (geneva_wheel).
@@ -676,8 +720,11 @@ const PART_NAMES = {
   saddle: ['Carriage saddle', 'clamps through the arc\u2019s 5.2 mm slot'],
   shoe: ['Carriage shoe', 'the other half of the clamp, inboard of the arc'],
   receiver: ['Camera receiver', '40 mm of fore/aft travel on a 1/4-20'],
-  driver: ['Geneva driver', 'one turn moves the ring 10° and locks it; a Ø3 steel pin drives'],
-  driver_knob: ['Driver knob', 'one turn, one frame — reached from above'],
+  driver: ['Geneva driver', 'on the gearmotor\u2019s D-shaft: one turn moves the ring 10° and locks it; a Ø3 steel pin drives'],
+  drive_block: ['Drive block', 'holds the Pololu #994 gearmotor shaft-down over the driver; post keyed into the base'],
+  drive_cap: ['Drive cap', 'holds the gearmotor in its pocket; its wires come out through the window'],
+  ctrl_box: ['Controller box', 'XIAO ESP32S3 and a DRV8833 on the board beside the jig; one USB-C cord powers it all'],
+  ctrl_lid: ['Controller lid', 'two self-tapping screws'],
   sole_plate: ['Sole plate', 'glued to the board; the base bolts onto its three pads'],
   sleeve_a: ['Eccentric sleeve', 'one of three: bored 1 mm off-center, turned to bring its 608 onto the race'],
   sleeve_b: ['Eccentric sleeve', 'one of three: bored 1 mm off-center, turned to bring its 608 onto the race'],
@@ -1138,7 +1185,9 @@ window.__jig = {
   // world, against the ring's own slot direction at that moment
   driverWorld() {
     const pin = []; driverGroup.updateWorldMatrix(true, true);
-    driverGroup.traverse(o => { if (o.name === 'pin') pin.push(o.getWorldPosition(new THREE.Vector3()).toArray()); });
+    // the pin is the driver group's steel part; its centre in the world
+    driverGroup.traverse(o => { if (o.name === 'hw:steel') { o.geometry.computeBoundingBox();
+      pin.push(o.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld).toArray()); } });
     return { pin: pin[0], ring: rotor.rotation.z / DEG };
   },
   pupilWorld() { pupil.updateWorldMatrix(true, false); return pupil.getWorldPosition(new THREE.Vector3()).toArray(); },
