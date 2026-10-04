@@ -184,7 +184,7 @@
       transforms the generator wrote into the same archive. Nothing here is
       a copy of the geometry made for the page. The grey parts are stand-ins
       for hardware that is bought, not printed: three 608 bearings on their
-      M4 axles, the M5 thumbscrew, and the camera — a phone held landscape
+      M3 axles, the M5 thumbscrew, and the camera — a phone held landscape
       in a spring clamp on the receiver's 1/4-20, its main lens on the
       150&nbsp;mm sphere. A Sony α1 on an Arca plate was carried here too,
       and the carriage was sized for it: a 1.34&nbsp;kg body whose tripod
@@ -426,7 +426,9 @@ for (const f of D.fasteners) {
 // the Geneva driver turns about its own axis: the printed driver, its
 // steel pin ride one group, posed from the driver angle
 const G = D.geneva;
-const drvAxis = new THREE.Vector3(G.c * Math.cos(G.phi * DEG), G.c * Math.sin(G.phi * DEG), 0);
+// the driver stands a little nearer the axis than the lip was cut for
+const drvAt = G.at ?? G.c;
+const drvAxis = new THREE.Vector3(drvAt * Math.cos(G.phi * DEG), drvAt * Math.sin(G.phi * DEG), 0);
 const driverGroup = new THREE.Group(); driverGroup.matrixAutoUpdate = false;
 stator.add(driverGroup);
 if (printed.driver) driverGroup.add(printed.driver);

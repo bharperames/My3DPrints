@@ -381,10 +381,14 @@ PARTS = [
        "a sole plate; three bearing sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
        "wing nut and a hex nut, all printed in the same cosine thread "
        "the Knot uses. "
-       "Hardware: three 608 bearings on M4 axles, each riding a printed "
-       "sleeve bored a millimeter off-center: turned out, every bearing "
-       "stands 0.4 mm clear of the ring so it drops straight in; turned in, "
-       "they close on the race with 0.2 mm of preload in hand. "
+       "Hardware: three 608 bearings on M3 axles, each riding a printed "
+       "sleeve bored 1.5 mm off-center: turned out, every bearing "
+       "stands 0.9 mm clear of the ring so it drops straight in; turned in, "
+       "they close on the race with 0.7 mm still in hand, so the ring can "
+       "come off the plate 0.5% smaller than the base and still be "
+       "reached. The driver stands half a millimeter inside where the lip "
+       "was cut for it, so the Geneva runs with the ring 0.4 mm off "
+       "in any direction. "
        "The assembly is checked like the motion is: every piece is moved "
        "along its path, in order, against everything already fitted, the "
        "bill of materials is the sum of the steps, and every PETG fit is "
@@ -442,6 +446,13 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 9.0.0: the eccentrics' offset 1.0 -> 1.5 mm on M3 axles into M3
+       # inserts in the towers (was M4), so the bearings reach a ring up
+       # to 0.5% smaller than the base; the drive stands 0.5 mm nearer
+       # the axis than the lip was cut for, so the Geneva runs with the
+       # ring 0.4 mm off; the tower and post as wide as the block, which
+       # now prints flat on its side; lead-ins on the driver's bores; an
+       # omnipolar home sensor (SS451A).
        # 8.0.0: the encoder gearmotor (Pololu #5173, side connector) in
        # place of #994: no phase magnet or sensor, a plug-in cable in a
        # channel to the post's bore, a flat lid on a peg and a key in
@@ -481,7 +492,15 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="8.0.0",
+       version="9.0.0",
+       # the printed mount hardware stands on little: the screw is an 11:1
+       # lever on its head, the hex nut 7 mm2 of first layer
+       brim_bodies=["mount_screw", "mount_hex_nut", "mount_wing_nut"],
+       # what gen_orbital_jig embeds in its own file, for the shop's plates;
+       # tests/test_orbital_jig.py holds the two together
+       print=dict(label="petg", filament="Bambu PETG Basic @BBL P2S 0.4 nozzle",
+                  settings={"wall_loops": "4", "sparse_infill_density": "25%",
+                            "sparse_infill_pattern": "gyroid"}),
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
               dict(label="Assemble it, step by step",

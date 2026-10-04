@@ -11,6 +11,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 import numpy as np
@@ -171,6 +172,22 @@ class TestJig(unittest.TestCase):
                                 .max(), 0.01, n)
 
 
+class TestPrintSettings(unittest.TestCase):
+    """The file and the shop's plates print the jig as its card says."""
+
+    def test_the_card_and_the_generator_name_the_same_settings(self):
+        import catalog
+        card = catalog.find("orbital_jig")
+        self.assertEqual(card["print"]["filament"], J.FILAMENT)
+        self.assertEqual(card["print"]["settings"], J.PRINT_SETTINGS)
+        self.assertEqual(set(card["brim_bodies"]), set(J.BRIMMED))
+
+    def test_the_filament_preset_exists_for_this_printer(self):
+        from embed_settings import flatten
+        f = flatten("filament", J.FILAMENT)
+        self.assertEqual(f["filament_type"], ["PETG"])
+
+
 class TestGeneva(unittest.TestCase):
     """The ring is turned, stopped and held by a Geneva drive.
 
@@ -192,6 +209,24 @@ class TestGeneva(unittest.TestCase):
     def test_at_a_stop_the_ring_is_locked_and_mid_slot_it_is_driven(self):
         self.assertTrue(self.g["locked"])
         self.assertTrue(self.g["driven"])
+
+    def test_it_runs_with_the_ring_off_where_the_driver_expects_it(self):
+        """The post's play in its socket, the ring centred by hand and the
+        two big parts shrinking differently put the lip a few tenths off
+        the driver either way. It must run 0.4 mm off in every direction,
+        with the ring free to follow the pin as a real one is."""
+        w = J.geneva_window(self.parts)
+        for k in ("in", "out", "across", "across_back"):
+            self.assertEqual(w[k], 0, k)
+        self.assertTrue(w["control_jams"])
+
+    def test_without_the_bias_the_lip_closes_on_the_lock(self):
+        """Negative control: the driver where the lip was cut for, and the
+        ring 0.4 mm toward the axis, jams at the stops."""
+        with mock.patch.object(J, "GENEVA_AT", J.GENEVA_C):
+            parts = dict(self.parts, driver=J.driver())
+            _, u, _ = J._driver_frame()
+            self.assertTrue(J.geneva_follows(parts, -u[:2] * J.GENEVA_STACK))
 
     def test_the_law_starts_and_ends_each_step_at_rest(self):
         w = J.geneva_wheel
@@ -270,8 +305,8 @@ class TestGeneva(unittest.TestCase):
 class TestRealDrive(unittest.TestCase):
     """The drive is real parts at their makers' sizes, and works.
 
-    The gearmotor is Pololu #994 from Pololu's dimension drawing; the
-    Hall switches are Allegro A1120EUA-T. What matters about each is
+    The gearmotor is Pololu #5173 from Pololu's dimension drawing; the
+    home sensor is a Honeywell SS451A. What matters about each is
     tested where the design depends on it."""
 
     @classmethod
@@ -321,7 +356,8 @@ class TestRealDrive(unittest.TestCase):
         sensor, no second magnet, no inserts or screws for the lid."""
         bom = J.inserts()
         self.assertIn("side connector", J.MOTOR["item"])
-        self.assertEqual(bom["Allegro A1120EUA-T Hall switch"], 1)
+        self.assertEqual(bom[J.HALL_ITEM], 1)
+        self.assertIn("omnipolar", J.HALL_ITEM)
         self.assertNotIn("M2 heat-set insert", bom)
         self.assertFalse(any(k.startswith("M2x8") for k in bom))
         self.assertIn(J.CABLE_ITEM, bom)
@@ -432,7 +468,19 @@ class TestAssembly(unittest.TestCase):
     def test_turned_out_each_bearing_clears_the_ring_by_the_face_gap(self):
         clear = min(np.linalg.norm(c) for c in J.bearing_centres(True)) \
             - J.BRG_R - J.RING_RO
-        self.assertAlmostEqual(clear, 0.4, places=6)
+        self.assertGreaterEqual(clear, 0.4)
+
+    def test_the_eccentrics_absorb_the_big_parts_shrinking_differently(self):
+        """Turned fully in, each bearing can still go PRELOAD past the
+        race. The ring and the base are both 240 mm across; this margin is
+        what lets the ring come out up to 0.5% smaller than the base and
+        the bearings still reach it."""
+        s_ring, s_base = 0.005, 0.0
+        reach = (J.RACE_R * (1 - s_ring) + J.BRG_R) \
+            - (J.TOWER_PITCH * (1 - s_base) - J.ECC)
+        self.assertGreater(reach, 0.0)
+        # the sleeve keeps a real wall between its bolt and its bearing
+        self.assertGreaterEqual(J.SLEEVE_R - J.ECC - J.AXLE_R, 0.7)
 
     def test_every_axle_is_on_its_towers_insert(self):
         """The eccentric's bore was 1 mm off its tower's insert, so its
