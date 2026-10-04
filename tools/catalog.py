@@ -441,6 +441,8 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 7.0.0: both Hall switches' lead holes went from 2.8 to 3.6 mm,
+       # to pass three leads on the A1120's 1.27 mm pitch.
        # 6.0.0: the drive's wiring went inside it. The block and post are
        # one solid tower; the cable runs down a bore in the post into a
        # hole in the base under it, the motor's tabs and the sensor's
@@ -473,7 +475,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="6.0.0",
+       version="7.0.0",
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
               dict(label="Assemble it, step by step",

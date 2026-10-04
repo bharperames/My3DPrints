@@ -263,6 +263,8 @@ PIN_L = 16.0            # the Geneva pin: Ø3 x 16, through the 8 mm crank
 MAGNET = (3.0, 2.0)     # Ø3 x 2 N52 disc, south face to its sensor
 # Allegro A1120EUA-T Hall switch, "UA" package: a body 4.1 x 3.0 x 1.5.
 HALL = (4.1, 3.0, 1.5)
+HALL_LEADS = (0.25, 1.27)   # its three leads: radius, pitch
+HALL_HOLE_R = 1.8           # the hole its leads go through: 3 x 1.27 pitch
 PHASE_R = 7.0           # the phase magnet, out from the driver's axis
 PHASE_LEAD = 60.0       # ahead of the pin, so the sensor fires 60 degrees
                         # into the 170 degree lock and leaves 110 to brake in
@@ -663,7 +665,7 @@ def stator(specimen=SPECIMEN):
     pk.apply_transform(rot(HOME["phi"], [0, 0, 1]))
     pk.apply_translation([hx, hy_, 0])
     tools.append(pk)
-    tools.append(cyl(1.4, -BASE_T - 1, top, hx, hy_, 32))
+    tools.append(cyl(HALL_HOLE_R, -BASE_T - 1, top, hx, hy_, 32))
     # The specimen mount: a plain bore straight through the pedestal and
     # the base, for the printed screw that clamps the rod field plate on
     # top. Neither the platform nor the plate is threaded -- the thread
@@ -849,7 +851,7 @@ def drive_block(specimen=SPECIMEN):
                       Z["floor_lo"] - 1.0),
                      (sx + (HALL[1] + SLIP) / 2, (HALL[0] + SLIP) / 2,
                       Z["floor_lo"] + HALL[2] + 0.2)))
-    tools.append(cyl(1.2, Z["floor_lo"], Z["motor_top"] + 1, sx - 2.4, 0, 24))
+    tools.append(cyl(HALL_HOLE_R, Z["floor_lo"], Z["motor_top"] + 1, sx - 2.4, 0, 32))
     return _local(cut(b, tools))
 
 
@@ -1809,10 +1811,16 @@ def assembly_steps(parts, specimen=SPECIMEN):
                   for q in _bolt_prims([0, y, Zd["cap_top"]],
                                        length["cap to drive block"], r=1.0,
                                        head_r=1.9, head_h=2.0)]
+    lr, lp = HALL_LEADS
+    # face down in the floor; its leads bend up the hole beside it to the bay
     phase_hall = [dict(kind="box", lo=[-PHASE_R - HALL[1] / 2, -HALL[0] / 2,
                                        Zd["floor_lo"]],
                        hi=[-PHASE_R + HALL[1] / 2, HALL[0] / 2,
                            Zd["floor_lo"] + HALL[2]], M=DR)]
+    lz0, lz1 = Zd["floor_lo"] + HALL[2] / 2, Zd["motor_top"] - 0.5
+    phase_hall += [dict(kind="cyl", c=[-PHASE_R - 2.4, y, (lz0 + lz1) / 2],
+                        axis=[0, 0, 1], r=lr, h=lz1 - lz0, M=DR)
+                   for y in (-lp, 0.0, lp)]
     post_screw = [dict(q, M=DR) for q in _bolt_prims(
         [POST_R - GENEVA_C, SCREW_Y, Zd["face"]], length["drive post to base"],
         r=1.5, head_r=2.75, head_h=3.0)]
@@ -1834,8 +1842,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
     HM[:3, 3] = [hm[0], hm[1], 0]
     HM = (HM @ rot(HOME["phi"], [0, 0, 1])).ravel().tolist()
     htop = L["base_top"] + RING_GAP - HOME["gap"]
+    # face up in its boss; its leads go straight down through the base
     home_hall = [dict(kind="box", lo=[-HALL[0] / 2, -HALL[1] / 2, htop - HALL[2]],
                       hi=[HALL[0] / 2, HALL[1] / 2, htop], M=HM)]
+    hz0, hz1 = L["base_bot"] - 3.0, htop - HALL[2]
+    home_hall += [dict(kind="cyl", c=[x, 0.0, (hz0 + hz1) / 2], axis=[0, 0, 1],
+                       r=HALL_LEADS[0], h=hz1 - hz0, M=HM)
+                  for x in (-HALL_LEADS[1], 0.0, HALL_LEADS[1])]
     ring_mag = [dict(kind="cyl", c=[hm[0], hm[1], L["ring_bot"] + MAGNET[1] / 2],
                      axis=[0, 0, 1], r=MAGNET[0] / 2, h=MAGNET[1] - 0.1)]
     # heat-set inserts, drawn a hair inside their bores so the sweep sees
@@ -2071,7 +2084,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("mount", "Wing nut down the mount screw",
               "Turned down onto the plate by the fingers.",
               ["mount_wing_nut"], path=(down, 30.0),
-              spin=dict(xy=[0.0, 0.0], lead=mount_thread().lead)),
+              spin=dict(xy=[0.0, 0.0], lead=mount_thread().lead,
+                        engage=float(parts["mount_screw"].bounds[1][2]
+                                     - (L["plat"] + PLATE_T)))),
         _step("spare", "The hex nut: for when a rod is in the wings' way",
               "Printed with the set, fitted instead of the wing nut.",
               ["mount_hex_nut"], check="spare"),
@@ -2089,7 +2104,9 @@ def _path_pose(path, t, phase=0.0):
     T[:3, 3] = -np.asarray(path["dir"], float) * t
     sp = path.get("spin")
     if sp:
-        ang = 360.0 * t / sp["lead"] + phase
+        # above the screw's tip the nut is only dropped; it turns, at the
+        # thread's lead, for the distance it is actually on the thread
+        ang = 360.0 * min(t, sp.get("engage", t)) / sp["lead"] + phase
         T = T @ rot(ang, [0, 0, 1], origin=[sp["xy"][0], sp["xy"][1], 0])
     return T
 

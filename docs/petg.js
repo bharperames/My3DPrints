@@ -29,6 +29,7 @@ export const GROUPS = {
   small:    { name: 'Sleeves & mount', parts: ['sleeve_a', 'sleeve_b', 'sleeve_c',
               'mount_screw', 'mount_wing_nut', 'mount_hex_nut'] },
   ctrl:     { name: 'Controller', parts: ['ctrl_box', 'ctrl_lid'] },
+  plate:    { name: 'Rod field plate', parts: ['rod_plate', 'rod_field_jig'] },
 };
 
 /* Schemes chosen for contrast: neighbors never share a filament, and the
@@ -37,15 +38,15 @@ export const GROUPS = {
    is a choice for the print, and Stealth shows it.) */
 export const SCHEMES = {
   contrast: { name: 'Contrast', base: 'grey', ring: 'blue', arc: 'green', carriage: 'grey',
-              drive: 'metallic', small: 'metallic', ctrl: 'grey' },
+              drive: 'metallic', small: 'metallic', ctrl: 'grey', plate: 'green' },
   stealth:  { name: 'Stealth', base: 'black', ring: 'grey', arc: 'black', carriage: 'grey',
-              drive: 'metallic', small: 'metallic', ctrl: 'black' },
+              drive: 'metallic', small: 'metallic', ctrl: 'black', plate: 'black' },
   ocean:    { name: 'Ocean', base: 'grey', ring: 'blue', arc: 'metallic', carriage: 'blue',
-              drive: 'black', small: 'metallic', ctrl: 'grey' },
+              drive: 'black', small: 'metallic', ctrl: 'grey', plate: 'grey' },
   forest:   { name: 'Forest', base: 'black', ring: 'green', arc: 'grey', carriage: 'green',
-              drive: 'metallic', small: 'grey', ctrl: 'black' },
+              drive: 'metallic', small: 'grey', ctrl: 'black', plate: 'metallic' },
   metallic: { name: 'Metallic', base: 'black', ring: 'metallic', arc: 'grey', carriage: 'metallic',
-              drive: 'blue', small: 'grey', ctrl: 'black' },
+              drive: 'blue', small: 'grey', ctrl: 'black', plate: 'blue' },
 };
 
 /* Bought hardware, by what it is made of. */
@@ -61,7 +62,15 @@ export const HARDWARE = {
 
 const KEY = 'jig.petg.v2';      // v1 remembered the old, too-dark black
 export function loadChoice() {
-  try { const v = JSON.parse(localStorage.getItem(KEY) || 'null'); if (v && v.groups) return v; } catch (e) {}
+  // a saved choice keeps what it set; a group added since takes its
+  // scheme's colour rather than none
+  try {
+    const v = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (v && v.groups) {
+      const base = SCHEMES[v.scheme] || SCHEMES.contrast;
+      return { scheme: v.scheme, groups: { ...base, ...v.groups } };
+    }
+  } catch (e) {}
   return { scheme: 'contrast', groups: { ...SCHEMES.contrast } };
 }
 export function saveChoice(c) { try { localStorage.setItem(KEY, JSON.stringify(c)); } catch (e) {} }

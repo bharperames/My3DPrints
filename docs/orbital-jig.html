@@ -1046,7 +1046,7 @@ document.getElementById('facts').innerHTML = [
 ].map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
 
 /* ---------- view modes, with thumbnails from this scene ---------- */
-const MODES = [['shaded', 'Shaded'], ['edges', 'Shaded + edges'], ['hlr', 'Edges only'],
+const MODES = [['shaded', 'Shaded'], ['edges', 'Shaded + edges'], ['hlr', 'Hidden line'],
   ['wire', 'Wireframe'], ['xray', 'X-ray']];
 let mode = 'edges';
 const modebar = document.getElementById('modes');
@@ -1074,14 +1074,24 @@ for (const [id, label] of MODES) {
 }
 function applyView() {
   for (const m of allMeshes) {
-    m.material.visible = (mode !== 'hlr');
+    // hidden line: surfaces still write depth and draw no colour, so an
+    // edge behind a part stays hidden -- not every edge at once
+    m.material.visible = true;
+    m.material.colorWrite = (mode !== 'hlr');
+    m.material.polygonOffset = true; m.material.polygonOffsetFactor = 1; m.material.polygonOffsetUnits = 1;
     m.material.wireframe = (mode === 'wire');
     m.material.transparent = (mode === 'xray');
     m.material.opacity = (mode === 'xray') ? 0.28 : 1;
     m.material.depthWrite = (mode !== 'xray');
     m.material.needsUpdate = true;
   }
-  for (const e of allEdges) e.visible = (mode === 'edges' || mode === 'hlr' || mode === 'xray');
+  // hidden line draws only edges, so on the dark ground they take a light ink
+  const ink = new THREE.Color('#dfe7ee');
+  for (const e of allEdges) {
+    e.visible = (mode === 'edges' || mode === 'hlr' || mode === 'xray');
+    if (!e.userData.base) e.userData.base = e.material.color.clone();
+    e.material.color.copy(mode === 'hlr' ? ink : e.userData.base);
+  }
 }
 applyView();
 function makeThumbs() {
