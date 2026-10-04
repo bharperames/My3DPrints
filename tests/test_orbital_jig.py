@@ -251,19 +251,15 @@ class TestGeneva(unittest.TestCase):
         L = J.levels(J.SPECIMEN)
         Z = J.driver_levels(J.SPECIMEN)
         o, u, t = J._driver_frame()
-        _, by = J._block_dims()
         rays, floor = [], []
         for a in J.FOOT_PHI:
             for dr in (-J.FOOT_CBORE[0], 0.0, J.FOOT_CBORE[0]):
                 rays.append(J.polar(J.FOOT_R + dr, a, 400.0))
                 floor.append(L["base_top"])
-        # the post's screw, down its access bore through the cap
+        # the post's screw, down its access bore (lid off)
         post = o + u * (J.POST_R - J.GENEVA_C) + t * J.SCREW_Y + np.array([0, 0, 400.0])
         rays.append(post)
         floor.append(Z["face"] + 3.0)
-        for y in (-(by - J.BLOCK_EAR / 2), by - J.BLOCK_EAR / 2):
-            rays.append(o + t * y + np.array([0, 0, 400.0]))
-            floor.append(Z["cap_top"] + 2.0)
         locs, idx, _ = others.ray.intersects_location(
             np.array(rays), np.tile([0, 0, -1.0], (len(rays), 1)),
             multiple_hits=False)
@@ -310,17 +306,25 @@ class TestRealDrive(unittest.TestCase):
         lip = J.levels(J.SPECIMEN)["ring_bot"]
         self.assertLess(Z["pin_lo"], lip)                  # through the lip
 
-    def test_each_hall_switch_sees_its_magnet_closely(self):
-        Z = J.driver_levels(J.SPECIMEN)
-        self.assertLessEqual(Z["floor_lo"] - Z["crank_hi"], 1.0)
+    def test_the_home_sensor_sees_its_magnet_closely(self):
         self.assertLessEqual(J.HOME["gap"], 3.0)
 
-    def test_the_phase_sensor_fires_inside_the_lock(self):
-        """It fires PHASE_LEAD into the lock, and the brake has the rest
-        of the lock to stop in."""
-        lock = 180.0 - 360.0 / J.GENEVA_N           # 170 degrees
-        self.assertGreater(J.PHASE_LEAD, 10.0)
-        self.assertGreater(lock - J.PHASE_LEAD, 90.0)
+    def test_the_encoder_knows_the_driver_finely(self):
+        """3,576 counts a driver turn: the controller can stop it anywhere
+        in the lock's 170 degrees with three orders of margin."""
+        self.assertEqual(J.MOTOR["counts"], 12 * 298)
+        lock = 180.0 - 360.0 / J.GENEVA_N
+        self.assertGreater(J.MOTOR["counts"] * lock / 360.0, 1000)
+
+    def test_nothing_at_the_motor_is_soldered(self):
+        """One plug carries motor and encoder; the BOM has no phase
+        sensor, no second magnet, no inserts or screws for the lid."""
+        bom = J.inserts()
+        self.assertIn("side connector", J.MOTOR["item"])
+        self.assertEqual(bom["Allegro A1120EUA-T Hall switch"], 1)
+        self.assertNotIn("M2 heat-set insert", bom)
+        self.assertFalse(any(k.startswith("M2x8") for k in bom))
+        self.assertIn(J.CABLE_ITEM, bom)
 
     def test_nothing_that_turns_carries_a_wire(self):
         rotating = set(J.ROTOR_SIDE) | set(J.CARRIAGE)
@@ -331,18 +335,28 @@ class TestRealDrive(unittest.TestCase):
         self.assertGreater(J.SOLE_PAD[1], 2 * J.CABLE_R + 1.0)
 
     def test_the_cable_runs_inside_the_drive(self):
-        """Down a bore in the post, not hung in the air: every point of its
-        path above the base is inside the tower's footprint."""
+        """Along the plug's channel and down a bore in the post, not hung
+        in the air: every point of its path above the base is inside the
+        drive's footprint, under its lid."""
+        from shapely.geometry import Point
         o, u, t = J._driver_frame()
         L = J.levels(J.SPECIMEN)
-        px = J.POST_R - J.GENEVA_C
+        Z = J.driver_levels(J.SPECIMEN)
+        fp = J._footprint()
         for x, y, z in J.cable_path(J.SPECIMEN):
             if z <= L["base_top"]:
                 continue
             d = np.array([x, y]) - o[:2]
-            lx, ly = d @ u[:2], d @ t[:2]
-            self.assertLess(abs(lx - px), J.POST_X / 2)
-            self.assertLess(abs(ly - J.CABLE_Y), 0.01)
+            self.assertTrue(fp.contains(Point(d @ u[:2], d @ t[:2])), (x, y, z))
+            self.assertLess(z, Z["motor_top"])
+
+    def test_the_lid_key_holds_the_plug_down(self):
+        """The key reaches down into the channel to just over the plug."""
+        Z = J.driver_levels(J.SPECIMEN)
+        plug_top = J._plug_z(Z) + J.MOTOR["plug"][2] / 2
+        key_bottom = Z["motor_top"] - J.KEY_D
+        self.assertGreater(key_bottom, plug_top)
+        self.assertLess(key_bottom - plug_top, 1.0)
 
     def test_sightlines_see_a_blocker_when_there_is_one(self):
         """Negative control: a post standing between the phone and the

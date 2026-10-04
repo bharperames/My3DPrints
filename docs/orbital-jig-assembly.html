@@ -334,7 +334,7 @@ function primGeom(p) {
 }
 /* what each step's bought parts are made of */
 const MATS = { motor: ['steel', 'brass', 'steel', 'brass'], cable: ['cable'], ctrl: ['pcb'],
-  phase_hall: ['dark'], home_hall: ['dark'], phase_magnet: ['magnet'], ring_magnet: ['magnet'],
+  home_hall: ['dark'], ring_magnet: ['magnet'], home_lead: ['cable'], cable_run: ['cable'],
   camera: ['phone'], nut: ['steel'], bearings: ['steel'] };
 const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
   if (p.kind === 'external') {

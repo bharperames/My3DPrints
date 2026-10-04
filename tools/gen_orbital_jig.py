@@ -236,26 +236,45 @@ LIP_GAP = 0.6                         # crank underside above the lip
 # the driver's axis, so nothing may cross the lip's plane there. The
 # gearbox's output bushing is the driver's bearing, and the motor sits in
 # a printed block on a post from the base, where its wires never turn.
-MOTOR = dict(item="Pololu #994 298:1 Micro Metal Gearmotor HP 6V",
-             w=12.0, d=10.0, gearbox=9.0, body=15.0, tabs=2.0,
+# Pololu #5173: the same 298:1 HP 6V gearbox, face and shaft as #994,
+# with a 12 CPR magnetic encoder on the back and a 6-pin JST SH plug
+# carrying everything -- motor +/-, encoder VCC, A, B, GND. 3,576 counts
+# a driver turn, so the controller knows where the driver is at every
+# moment: no phase magnet, no phase sensor, no solder at the motor.
+# The side-connector version, not the back: a plug on the back stands up
+# over the motor with its wires bending above it, and that height put the
+# drive in four frames at the bottom of the dial. On the side, facing the
+# tower, the cable leaves level and runs straight into the post's bore.
+# The encoder end is bigger than the gearbox, 13.6 x 13.0 from the drawing.
+MOTOR = dict(item="Pololu #5173 298:1 Micro Metal Gearmotor HP 6V, "
+                  "12 CPR encoder, side connector",
+             w=12.0, d=10.0, gearbox=9.0, body=15.0, enc=8.5,
+             enc_w=13.6, enc_d=13.0,
+             # the side header (2.7 proud) with the JST SH housing on it:
+             # out from the encoder, across, tall
+             plug=(5.8, 8.0, 4.0),
              shaft_d=3.0, shaft_flat=2.5, shaft_l=10.0,
              bush_d=4.0, bush_h=0.7, rpm_6v=100.0, stall_kgcm=4.0,
-             stall_a=1.6)
+             stall_a=1.6, counts=3576)
 SLIP = 0.30             # the shop's slip, drawn hole minus pin
 PRESS = 0.10            # the shop's press
 FLOOR_T = 3.0           # the block's floor, under the gearmotor's faceplate
-BLOCK_WALL = 2.0        # radial walls of the motor's pocket
-BLOCK_EAR = 5.0         # tangential walls: they carry the cap's inserts
-# The wiring is inside the parts, not hung between them: the gearmotor's
-# tabs, the phase sensor's leads and the cable meet in a bay under the
-# cap, and the cable goes straight down a bore in the post into a hole in
-# the base under it. The block and post are one solid tower, the post's
-# screw reached from the top down an access bore and a hole in the cap.
-CAP_T = 4.0             # with a wiring bay BAY_D deep in its underside
-BAY_D = 2.0
+# The block's walls round the encoder: thin on the outward side, where its
+# corner passes 1.5 mm inside the arc's bar, thicker inward.
+WALL_OUT, WALL_IN, WALL_SIDE = 1.2, 2.0, 1.6
+# Nothing is soldered at the motor. Pololu's 6-pin cable plugs into the
+# encoder's side, the plug lying in an open-topped channel through the
+# block's inner wall, and its loose end goes down a bore in the post and
+# out through the base. A flat lid presses on over all of it: a peg in
+# the screw's access bore and a key in the top of the plug's channel,
+# which also keeps the plug from ever backing out. No inserts, no screws.
+CAP_T = 3.0
+KEY_D = 1.5             # the lid's key, down into the top of the plug's channel
 POST_X, POST_Y = 10.0, 14.0           # the post: radial, across
-POST_R = 57.5           # its centre from the rotor axis: a millimetre clear
-                        # of the crank and inside the lip's mouth (72.7)
+POST_R = 55.0           # its centre from the rotor axis: clear of the crank,
+                        # inside the lip's mouth (72.7), and far enough in
+                        # that the plug's channel never reaches the screw's
+                        # access bore
 SCREW_Y, CABLE_Y = -3.5, 3.5          # the post's two bores, side by side
 POST_SOCKET = 0.8       # how far its foot sits down into the base
 INS_M2 = (1.6, 4.0)     # heat-set M2: bore radius, depth
@@ -265,9 +284,6 @@ MAGNET = (3.0, 2.0)     # Ø3 x 2 N52 disc, south face to its sensor
 HALL = (4.1, 3.0, 1.5)
 HALL_LEADS = (0.25, 1.27)   # its three leads: radius, pitch
 HALL_HOLE_R = 1.8           # the hole its leads go through: 3 x 1.27 pitch
-PHASE_R = 7.0           # the phase magnet, out from the driver's axis
-PHASE_LEAD = 60.0       # ahead of the pin, so the sensor fires 60 degrees
-                        # into the 170 degree lock and leaves 110 to brake in
 HOME = dict(r=100.0, phi=85.0, boss_r=5.5, gap=3.0)   # the ring's home sensor
 
 Y_ARC = -60.0           # the arc's plane, off the meridian
@@ -759,7 +775,7 @@ def driver_levels(specimen=SPECIMEN):
     c1 = c0 + CRANK_T
     floor_lo = c1 + LIP_GAP                           # the block's floor
     face = floor_lo + FLOOR_T                         # gearmotor faceplate
-    top = face + MOTOR["gearbox"] + MOTOR["body"]     # motor's back end
+    top = face + MOTOR["gearbox"] + MOTOR["body"] + MOTOR["enc"]  # its plug
     return dict(lock_lo=L["ring_bot"] - 0.3, crank_lo=c0, crank_hi=c1,
                 pin_lo=c1 - PIN_L, floor_lo=floor_lo, face=face,
                 shaft_tip=face - MOTOR["shaft_l"], motor_top=top,
@@ -786,9 +802,9 @@ def _dshaft_cut(d, flat, z0, z1):
 def driver(specimen=SPECIMEN):
     """Crank and lock in one piece, pressed onto the gearmotor's D-shaft.
 
-    Printed crank-top down: the D-bore and the magnet's pocket open on
-    the plate, and the lock rises off the crank's underside, so nothing
-    overhangs. The pin goes through the whole 8 mm of crank."""
+    Printed crank-top down: the D-bore opens on the plate and the lock
+    rises off the crank's underside, so nothing overhangs. The pin goes
+    through the whole 8 mm of crank."""
     Z = driver_levels(specimen)
     o, u, _ = _driver_frame()
     lock = trimesh.creation.extrude_polygon(geneva_lock_2d(),
@@ -800,103 +816,126 @@ def driver(specimen=SPECIMEN):
     bore = _local(_dshaft_cut(MOTOR["shaft_d"] + PRESS,
                               MOTOR["shaft_flat"] + PRESS,
                               Z["shaft_tip"] - 0.2, Z["crank_hi"] + 1))
-    mag = _local(cyl((MAGNET[0] + PRESS) / 2, Z["crank_hi"] - MAGNET[1] - 0.1,
-                     Z["crank_hi"] + 1, *polar(PHASE_R, 180.0 + PHASE_LEAD)[:2],
-                     sections=48))
     return cut(d, [cyl(PIN_HOLE_D / 2, Z["crank_lo"] - 1, Z["crank_hi"] + 1,
-                       pin[0], pin[1], 48), bore, mag])
+                       pin[0], pin[1], 48), bore])
 
 
 def _block_dims():
-    bx = (MOTOR["d"] + SLIP) / 2 + BLOCK_WALL
-    by = (MOTOR["w"] + SLIP) / 2 + BLOCK_EAR
-    return bx, by
+    """The block's extent in the driver's frame: inward x, outward x, and
+    half its width across -- set by the encoder end, the widest part."""
+    ed = (MOTOR["enc_d"] + SLIP) / 2
+    ew = (MOTOR["enc_w"] + SLIP) / 2
+    return ed + WALL_IN, ed + WALL_OUT, ew + WALL_SIDE
+
+
+def _footprint():
+    """The block and tower together, in plan, local frame."""
+    xin, xout, by = _block_dims()
+    px = POST_R - GENEVA_C
+    return unary_union([Polygon([(-xin, -by), (xout, -by), (xout, by), (-xin, by)]),
+                        Polygon([(px - POST_X / 2, -POST_Y / 2), (-xin + 1.0, -POST_Y / 2),
+                                 (-xin + 1.0, POST_Y / 2), (px - POST_X / 2, POST_Y / 2)])])
 
 
 def drive_block(specimen=SPECIMEN):
-    """The gearmotor's housing on its post: a slip-fit pocket, a floor
-    the gearbox's bushing centres in, the phase sensor in the floor's
-    underside, and an arm back to a post keyed into the base.
-
-    Printed on its side: every face is square to the plate, the pocket is
-    a tunnel and its roof a 12 mm bridge."""
+    """The gearmotor's housing on its post: a slip-fit pocket stepped out
+    for the encoder, a floor the gearbox's bushing centres in, one solid
+    tower down to a post keyed into the base, the cable's bore and the
+    screw's down it. Printed on its side: every face square to the plate,
+    the pocket a tunnel with a 13 mm bridge for its roof."""
     Z = driver_levels(specimen)
-    bx, by = _block_dims()
-    px = POST_R - GENEVA_C                     # the post's centre, local x
+    xin, xout, by = _block_dims()
+    px = POST_R - GENEVA_C
     hx, hy = POST_X / 2, POST_Y / 2
-    blk = box((-bx, -by, Z["floor_lo"]), (bx, by, Z["motor_top"]))
-    # one solid tower from the post to the pocket, above the crank
-    tower = box((px - hx, -hy, Z["floor_lo"]), (-bx + 1.0, hy, Z["motor_top"]))
+    blk = box((-xin, -by, Z["floor_lo"]), (xout, by, Z["motor_top"]))
+    tower = box((px - hx, -hy, Z["floor_lo"]), (-xin + 1.0, hy, Z["motor_top"]))
     post = box((px - hx, -hy, Z["base_top"] - POST_SOCKET),
                (px + hx, hy, Z["floor_lo"] + 0.5))
     b = union([blk, tower, post])
     pw, pd = (MOTOR["w"] + SLIP) / 2, (MOTOR["d"] + SLIP) / 2
-    tools = [box((-pd, -pw, Z["face"]), (pd, pw, Z["motor_top"] + 1)),
-             cyl((MOTOR["bush_d"] + SLIP) / 2, Z["floor_lo"] - 1, Z["face"] + 1,
-                 0, 0, 48)]
-    for y in (-(by - BLOCK_EAR / 2), by - BLOCK_EAR / 2):
-        tools.append(cyl(INS_M2[0], Z["motor_top"] - INS_M2[1] - 2.0,
-                         Z["motor_top"] + 1, 0, y, 32))
+    ew, ed = (MOTOR["enc_w"] + SLIP) / 2, (MOTOR["enc_d"] + SLIP) / 2
+    enc0 = Z["face"] + MOTOR["gearbox"] + MOTOR["body"] - 0.5
     low = Z["base_top"] - POST_SOCKET - 1
-    # the post's screw: its head seats at the arm's old level, reached
-    # down an access bore from the top
-    tools.append(cyl(1.7, low, Z["face"] + 0.01, px, SCREW_Y, 32))
-    tools.append(cyl(3.25, Z["face"], Z["motor_top"] + 1, px, SCREW_Y, 48))
-    # the cable's bore, top to bottom, the shop's running fit and more
-    tools.append(cyl(CABLE_R + 0.45, low, Z["motor_top"] + 1, px, CABLE_Y, 48))
-    # the phase sensor, face down in the floor's underside, toward the
-    # rotor axis where the magnet passes; its leads up to the bay
-    sx = -PHASE_R
-    tools.append(box((sx - (HALL[1] + SLIP) / 2, -(HALL[0] + SLIP) / 2,
-                      Z["floor_lo"] - 1.0),
-                     (sx + (HALL[1] + SLIP) / 2, (HALL[0] + SLIP) / 2,
-                      Z["floor_lo"] + HALL[2] + 0.2)))
-    tools.append(cyl(HALL_HOLE_R, Z["floor_lo"], Z["motor_top"] + 1, sx - 2.4, 0, 32))
+    tools = [box((-pd, -pw, Z["face"]), (pd, pw, Z["motor_top"] + 1)),
+             box((-ed, -ew, enc0), (ed, ew, Z["motor_top"] + 1)),
+             cyl((MOTOR["bush_d"] + SLIP) / 2, Z["floor_lo"] - 1, Z["face"] + 1,
+                 0, 0, 48),
+             # the post's screw: its head seats at the floor's top, reached
+             # down an access bore from the top
+             cyl(1.7, low, Z["face"] + 0.01, px, SCREW_Y, 32),
+             cyl(3.25, Z["face"], Z["motor_top"] + 1, px, SCREW_Y, 48),
+             # the cable's bore, top to bottom
+             cyl(CABLE_R + 0.6, low, Z["motor_top"] + 1, px, CABLE_Y, 48)]
+    # the plug's channel: out of the encoder's pocket through the inner
+    # wall, open at the top so the plug drops in with the motor; it stops
+    # short of the screw's access bore and a slot carries the cable on
+    # into its own
+    x_end, x1, pyw, pz0 = _channel(Z)
+    tools.append(box((x_end, -pyw, pz0), (x1, pyw, Z["motor_top"] + 1)))
+    tools.append(box((px, CABLE_Y - CABLE_R - 0.6, pz0),
+                     (x_end + 0.5, CABLE_Y + CABLE_R + 0.6, Z["motor_top"] + 1)))
     return _local(cut(b, tools))
 
 
+def _plug_z(Z):
+    """The side plug's height: the middle of the encoder end."""
+    return Z["motor_top"] - MOTOR["enc"] / 2
+
+
+def _channel(Z):
+    """The plug's channel in the driver's frame: x from, x to, half its
+    width across, and its floor."""
+    ed = (MOTOR["enc_d"] + SLIP) / 2
+    return (-ed - MOTOR["plug"][0] - SLIP, -ed + 0.5,
+            MOTOR["plug"][1] / 2 + SLIP, _plug_z(Z) - MOTOR["plug"][2] / 2 - SLIP)
+
+
 def drive_cap(specimen=SPECIMEN):
-    """Covers the gearmotor and the tower; the wiring bay in its underside
-    is where the motor's tabs, the sensor's leads and the cable meet.
-    Printed upside down, the bay open to the nozzle."""
+    """The lid: a flat plate over the block, the tower and the plug's
+    channel, pressed on -- a peg in the screw's access bore, a key in the
+    channel's top, both at the shop's press fit. The key sits on the plug
+    and keeps it home. Printed upside down, peg and key up."""
     Z = driver_levels(specimen)
-    bx, by = _block_dims()
     px = POST_R - GENEVA_C
-    hx, hy = POST_X / 2, POST_Y / 2
-    c = union([box((-bx, -by, Z["motor_top"]), (bx, by, Z["cap_top"])),
-               box((px - hx, -hy, Z["motor_top"]), (-bx + 1.0, hy, Z["cap_top"]))])
-    tools = [box((px - 3.0, -hy + 1.5, Z["motor_top"] - 1),
-                 (4.0, hy - 1.5, Z["motor_top"] + BAY_D)),
-             cyl(3.25, Z["motor_top"] - 1, Z["cap_top"] + 1, px, SCREW_Y, 48)]
-    for y in (-(by - BLOCK_EAR / 2), by - BLOCK_EAR / 2):
-        tools.append(cyl(1.2, Z["motor_top"] - 1, Z["cap_top"] + 1, 0, y, 32))
-    return _local(cut(c, tools))
+    lid = trimesh.creation.extrude_polygon(_footprint(), CAP_T)
+    lid.apply_translation([0, 0, Z["motor_top"]])
+    x0, x1, hw, _ = _channel(Z)
+    key = box((x0 + PRESS / 2, -hw + PRESS / 2, Z["motor_top"] - KEY_D),
+              (-(MOTOR["enc_d"] + SLIP) / 2 - 0.2, hw - PRESS / 2, Z["motor_top"] + 0.5))
+    peg = cyl((6.5 - PRESS) / 2, Z["motor_top"] - 3.0, Z["motor_top"] + 0.5,
+              px, SCREW_Y, 48)
+    return _local(union([lid, key, peg]))
 
 
 def motor_prims(specimen=SPECIMEN):
-    """The gearmotor as the sweeps and pages see it: its box, the
-    gearbox's bushing, and the D-shaft."""
+    """The gearmotor as the sweeps and pages see it: gearbox and motor,
+    the encoder end, the gearbox's bushing, the D-shaft."""
     Z = driver_levels(specimen)
     o, _, _ = _driver_frame()
-    R = rot(GENEVA_PHI, [0, 0, 1])
     M = np.eye(4)
     M[:3, 3] = [o[0], o[1], 0]
-    M = (M @ R).ravel().tolist()
+    M = (M @ rot(GENEVA_PHI, [0, 0, 1])).ravel().tolist()
     w, d = MOTOR["w"] / 2, MOTOR["d"] / 2
-    return [dict(kind="box", lo=[-d, -w, Z["face"]], hi=[d, w, Z["motor_top"]], M=M),
+    e0 = Z["face"] + MOTOR["gearbox"] + MOTOR["body"]
+    return [dict(kind="box", lo=[-d, -w, Z["face"]], hi=[d, w, e0], M=M),
+            dict(kind="box", lo=[-MOTOR["enc_d"] / 2, -MOTOR["enc_w"] / 2, e0],
+                 hi=[MOTOR["enc_d"] / 2, MOTOR["enc_w"] / 2, Z["motor_top"]], M=M),
             dict(kind="cyl", c=[0, 0, Z["face"] - MOTOR["bush_h"] / 2],
                  axis=[0, 0, 1], r=MOTOR["bush_d"] / 2, h=MOTOR["bush_h"], M=M),
             dict(kind="cyl", c=[0, 0, Z["face"] - MOTOR["shaft_l"] / 2],
                  axis=[0, 0, 1], r=MOTOR["shaft_d"] / 2, h=MOTOR["shaft_l"],
                  flat=MOTOR["shaft_flat"], M=M),
-            dict(kind="box", lo=[-1.5, -3.5, Z["motor_top"]],
-                 hi=[1.5, 3.5, Z["motor_top"] + MOTOR["tabs"]], M=M)]
+            # the encoder's side connector with the cable's plug in it
+            dict(kind="box", lo=[-MOTOR["enc_d"] / 2 - MOTOR["plug"][0],
+                                 -MOTOR["plug"][1] / 2, _plug_z(Z) - MOTOR["plug"][2] / 2],
+                 hi=[-MOTOR["enc_d"] / 2, MOTOR["plug"][1] / 2,
+                     _plug_z(Z) + MOTOR["plug"][2] / 2], M=M)]
 
 
 # --- the controller and its cable ---------------------------------------
 # Everything that carries a wire stands still: the gearmotor and both
 # sensors are on the stator, so no cable winds as the ring turns. One
-# 6-conductor cable (motor +/-, 3V3, GND, phase, home) leaves the drive
+# 6-pin cable (motor +/-, encoder VCC, A, B, GND) leaves the drive
 # down its post, runs under the base in the gap the sole plate's pads
 # leave, and out across the board to a box beside the jig. One USB-C cord
 # from a 5 V wall adapter powers the controller, the H-bridge and the
@@ -905,7 +944,12 @@ def motor_prims(specimen=SPECIMEN):
 XIAO = (21.0, 17.8, 4.5)          # Seeed XIAO ESP32S3: board and parts' height
 DRV8833 = (12.7, 20.3, 3.5)       # Pololu #2130 DRV8833 carrier
 CTRL = dict(r=175.0, phi=15.0, l=64.0, w=40.0, h=20.0, wall=2.0, lid=2.0)
-CABLE_R = 1.75                    # a 6-conductor 26 AWG cable, 3.5 mm thick
+CABLE_R = 1.3                     # Pololu's cable: six loose 28 AWG wires
+LEAD_R = 0.9                      # the home sensor's three-wire lead
+CABLE_DY, LEAD_DY = 1.8, -2.2     # where each comes through the box's inlet
+CABLE_ITEM = ("Pololu 6-pin JST SH cable, single-ended female, 75 cm "
+              "(six 28 AWG)")
+LEAD_ITEM = "3-conductor 26 AWG lead, 60 cm (home sensor)"
 CTRL_INLET_Y = -12.0              # off centre: clear of the ear and the lid boss
 CTRL_BOSSES = ((-CTRL["l"] / 2 + CTRL["wall"] + 2.0, CTRL["w"] / 2 - CTRL["wall"] - 2.0),
                (CTRL["l"] / 2 - CTRL["wall"] - 2.0, -CTRL["w"] / 2 + CTRL["wall"] + 2.0))
@@ -965,44 +1009,106 @@ def ctrl_lid(specimen=SPECIMEN):
     return _ctrl_local(cut(lid, tools), specimen)
 
 
-def cable_path(specimen=SPECIMEN):
-    """The cable's centreline, motor to box: up out of the cap, back over
-    it to the post, down the post's groove, through the base, out under it
-    to the board, and across to the box's inlet."""
+def _to_box(specimen, dy):
+    """The way into the controller box, offset dy along its inlet."""
+    co, board = _ctrl_frame(specimen)
+    inlet = (co + polar(-(CTRL["l"] / 2 + 6.0), CTRL["phi"])
+             + polar(CTRL_INLET_Y + dy, CTRL["phi"] + 90.0))
+    inside = (co + polar(-(CTRL["l"] / 2 - 10.0), CTRL["phi"])
+              + polar(CTRL_INLET_Y + dy, CTRL["phi"] + 90.0))
+    z = board + CTRL["wall"] + 2.0
+    return inlet, inside, z
+
+
+def _approach(specimen, dy):
+    """20 mm out from the inlet, square to the wall, so a cable never
+    crosses the box's screw ear on its way in."""
+    co, board = _ctrl_frame(specimen)
+    return (co + polar(-(CTRL["l"] / 2 + 20.0), CTRL["phi"])
+            + polar(CTRL_INLET_Y + dy, CTRL["phi"] + 90.0))
+
+
+def cable_upper(specimen=SPECIMEN):
+    """The motor's cable inside the drive: level out of the encoder's side
+    plug along its channel, and down the post's bore to its foot. It goes
+    in with the drive."""
     Z = driver_levels(specimen)
     L = levels(specimen)
     o, u, t = _driver_frame()
     px = POST_R - GENEVA_C
-    bore = o + u * px + t * CABLE_Y                 # straight down the post
+    zc = _plug_z(Z)
+    end = o + u * (-MOTOR["enc_d"] / 2 - MOTOR["plug"][0])     # the plug's back
+    turn = o + u * (-(MOTOR["enc_d"] + SLIP) / 2 - MOTOR["plug"][0]) + t * CABLE_Y
+    bore = o + u * px + t * CABLE_Y
+    return [[end[0], end[1], zc], [turn[0], turn[1], zc], [bore[0], bore[1], zc],
+            [bore[0], bore[1], L["base_top"] - POST_SOCKET]]
+
+
+def cable_lower(specimen=SPECIMEN):
+    """Its loose end, threaded on down through the base and out under it
+    to the controller."""
+    L = levels(specimen)
+    o, u, t = _driver_frame()
+    bore = o + u * (POST_R - GENEVA_C) + t * CABLE_Y
     under = L["base_bot"] - SOLE_PAD[1] / 2
     edge = polar(118.0, (GENEVA_PHI + CTRL["phi"]) / 2)
-    co, board = _ctrl_frame(specimen)
-    inlet = (co + polar(-(CTRL["l"] / 2 + 6.0), CTRL["phi"])
-             + polar(CTRL_INLET_Y, CTRL["phi"] + 90.0))
-    r = CABLE_R + 0.3
-    inlet_z = board + CTRL["wall"] + r + 0.5        # level with the box's inlet
-    inside = (co + polar(-(CTRL["l"] / 2 - 10.0), CTRL["phi"])
-              + polar(CTRL_INLET_Y, CTRL["phi"] + 90.0))
-    # its end stops just under the bay, where its six conductors fan out
-    return [[bore[0], bore[1], Z["motor_top"] - 1.0], [bore[0], bore[1], under],
-            [edge[0], edge[1], under], [edge[0], edge[1], inlet_z],
-            [inlet[0], inlet[1], inlet_z], [inside[0], inside[1], inlet_z]]
+    inlet, inside, z = _to_box(specimen, CABLE_DY)
+    a = _approach(specimen, CABLE_DY)
+    return [[bore[0], bore[1], L["base_top"] - POST_SOCKET], [bore[0], bore[1], under],
+            [edge[0], edge[1], under], [edge[0], edge[1], z], [a[0], a[1], z],
+            [inlet[0], inlet[1], z], [inside[0], inside[1], z]]
+
+
+def home_lead(specimen=SPECIMEN):
+    """The home sensor's leads go down through the base; its own short lead
+    runs under it to the box. It goes round the inner end of the post
+    rather than across the motor's cable, lower in the gap and clear of
+    the sensor's pins, then alongside the motor's cable, 4 mm off it, all
+    the way into the box."""
+    L = levels(specimen)
+    h = polar(HOME["r"], HOME["phi"])
+    z = L["base_bot"] - 4.0
+    b = polar(46.0, GENEVA_PHI + 9.0)
+    c = polar(46.0, GENEVA_PHI - 14.0)
+    # the corner where the motor's cable turns for the box, offset to its
+    # inside by the same 4 mm from both of the runs that meet there
+    lo = cable_lower(specimen)
+    bore2, e = np.asarray(lo[1][:2]), np.asarray(lo[2][:2])
+    inlet, inside, zb = _to_box(specimen, LEAD_DY)
+    a = _approach(specimen, CABLE_DY)[:2]
+    a1 = (e - bore2) / np.linalg.norm(e - bore2)
+    a2 = (a - e) / np.linalg.norm(a - e)
+    n1, n2 = np.array([a1[1], -a1[0]]), np.array([a2[1], -a2[0]])
+    m = (n1 + n2) / np.linalg.norm(n1 + n2)
+    d = e + m * (CABLE_DY - LEAD_DY) / float(m @ n1)
+    # and again where it squares up to the box's wall
+    il = np.asarray(_to_box(specimen, CABLE_DY)[0][:2])
+    a3 = (il - a) / np.linalg.norm(il - a)
+    n3 = np.array([a3[1], -a3[0]])
+    m2 = (n2 + n3) / np.linalg.norm(n2 + n3)
+    a2 = a + m2 * (CABLE_DY - LEAD_DY) / float(m2 @ n2)
+    return [[h[0], h[1], L["base_bot"] - 3.2], [h[0], h[1], z], [b[0], b[1], z],
+            [c[0], c[1], z], [d[0], d[1], z], [d[0], d[1], zb], [a2[0], a2[1], zb],
+            [inlet[0], inlet[1], zb], [inside[0], inside[1], zb]]
+
+
+def cable_path(specimen=SPECIMEN):
+    return cable_upper(specimen) + cable_lower(specimen)[1:]
+
+
+def _tubes(pts, r):
+    pts = [np.asarray(q, float) for q in pts]
+    return [dict(kind="cyl", c=list((a_ + b_) / 2), axis=list(b_ - a_), r=r,
+                 h=float(np.linalg.norm(b_ - a_)))
+            for a_, b_ in zip(pts[:-1], pts[1:]) if np.linalg.norm(b_ - a_) > 1e-6]
 
 
 def cable_proxy(specimen=SPECIMEN):
-    """The cable as thin tubes, so the sweeps can prove nothing that
-    moves ever reaches it."""
-    pts = np.asarray(cable_path(specimen), float)
-    segs = []
-    for a, b in zip(pts[:-1], pts[1:]):
-        L_ = float(np.linalg.norm(b - a))
-        if L_ < 1e-6:
-            continue
-        c = trimesh.creation.cylinder(radius=CABLE_R, height=L_, sections=12)
-        c.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], (b - a) / L_))
-        c.apply_translation((a + b) / 2)
-        segs.append(c)
-    return trimesh.util.concatenate(segs)
+    """The cables as thin tubes, so the sweeps can prove nothing that
+    moves ever reaches them."""
+    return trimesh.util.concatenate(
+        [_prim_mesh(q) for q in _tubes(cable_path(specimen), CABLE_R)
+         + _tubes(home_lead(specimen), LEAD_R)])
 
 
 def pin_proxy(specimen=SPECIMEN):
@@ -1550,10 +1656,10 @@ def page_hardware(parts, specimen=SPECIMEN):
     driver, what turns with the ring. Taken from the assembly's own steps,
     so the page draws what was swept."""
     steps = {s_["id"]: s_ for s_ in assembly_steps(parts, specimen)}
-    mats = {"motor": ["steel", "brass", "steel", "brass"], "cap": ["dark"],
-            "phase_hall": ["dark"], "home_hall": ["dark"], "post_screw": ["dark"],
-            "cable": ["cable"], "ctrl": ["pcb"], "pin": ["steel"],
-            "phase_magnet": ["magnet"], "ring_magnet": ["magnet"]}
+    mats = {"motor": ["steel", "dark", "brass", "steel"],
+            "home_hall": ["dark"], "post_screw": ["dark", "steel"],
+            "cable": ["cable"], "cable_run": ["cable"], "home_lead": ["cable"],
+            "ctrl": ["pcb"], "pin": ["steel"], "ring_magnet": ["magnet"]}
 
     def take(*ids):
         out = []
@@ -1563,9 +1669,9 @@ def page_hardware(parts, specimen=SPECIMEN):
             out += [dict(q, mat=m[k] if k < len(m) else m[-1])
                     for k, q in enumerate(prims)]
         return out
-    return dict(static=take("motor", "cap", "phase_hall", "home_hall",
-                            "post_screw", "cable", "ctrl"),
-                driver=take("pin", "phase_magnet"), rotor=take("ring_magnet"))
+    return dict(static=take("motor", "home_hall", "post_screw", "cable",
+                            "cable_run", "home_lead", "ctrl"),
+                driver=take("pin"), rotor=take("ring_magnet"))
 
 
 def _jsonable(o):
@@ -1799,35 +1905,17 @@ def assembly_steps(parts, specimen=SPECIMEN):
                                (Z["pin_lo"] + Z["crank_hi"]) / 2],
                 axis=[0, 0, 1], r=PIN_R, h=Z["crank_hi"] - Z["pin_lo"])]
     Zd = driver_levels(specimen)
-    pm = o + polar(PHASE_R, GENEVA_PHI + 180.0 + PHASE_LEAD)
-    phase_mag = [dict(kind="cyl", c=[pm[0], pm[1], Zd["crank_hi"] - MAGNET[1] / 2],
-                      axis=[0, 0, 1], r=MAGNET[0] / 2, h=MAGNET[1] - 0.1)]
     motor = motor_prims(specimen)
-    bx, by = _block_dims()
     DR = np.eye(4)
     DR[:3, 3] = [o[0], o[1], 0]
     DR = (DR @ rot(GENEVA_PHI, [0, 0, 1])).ravel().tolist()
-    cap_screws = [dict(q, M=DR) for y in (-(by - BLOCK_EAR / 2), by - BLOCK_EAR / 2)
-                  for q in _bolt_prims([0, y, Zd["cap_top"]],
-                                       length["cap to drive block"], r=1.0,
-                                       head_r=1.9, head_h=2.0)]
     lr, lp = HALL_LEADS
-    # face down in the floor; its leads bend up the hole beside it to the bay
-    phase_hall = [dict(kind="box", lo=[-PHASE_R - HALL[1] / 2, -HALL[0] / 2,
-                                       Zd["floor_lo"]],
-                       hi=[-PHASE_R + HALL[1] / 2, HALL[0] / 2,
-                           Zd["floor_lo"] + HALL[2]], M=DR)]
-    lz0, lz1 = Zd["floor_lo"] + HALL[2] / 2, Zd["motor_top"] - 0.5
-    phase_hall += [dict(kind="cyl", c=[-PHASE_R - 2.4, y, (lz0 + lz1) / 2],
-                        axis=[0, 0, 1], r=lr, h=lz1 - lz0, M=DR)
-                   for y in (-lp, 0.0, lp)]
     post_screw = [dict(q, M=DR) for q in _bolt_prims(
         [POST_R - GENEVA_C, SCREW_Y, Zd["face"]], length["drive post to base"],
         r=1.5, head_r=2.75, head_h=3.0)]
-    cp = [np.asarray(q, float) for q in cable_path(specimen)]
-    cable = [dict(kind="cyl", c=list((a_ + b_) / 2), axis=list(b_ - a_),
-                  r=CABLE_R, h=float(np.linalg.norm(b_ - a_)))
-             for a_, b_ in zip(cp[:-1], cp[1:]) if np.linalg.norm(b_ - a_) > 1e-6]
+    cable_in = _tubes(cable_upper(specimen), CABLE_R)
+    cable_out = _tubes(cable_lower(specimen), CABLE_R)
+    lead = _tubes(home_lead(specimen), LEAD_R)
     co, board = _ctrl_frame(specimen)
     CR = np.eye(4)
     CR[:3, 3] = [co[0], co[1], board]
@@ -1872,8 +1960,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
                         - (ins3[1] - 1.0) / 2], ins3, M=DR)]
     floor_ = L["pad_top"] - PAD_SLOT_D
     pad_ins = [insert([x, Y_ARC, floor_ - (ins4[1] - 1.0) / 2], ins4) for x in BOLTS_X]
-    block_ins = [insert([0.0, y, Zd["motor_top"] - (ins2[1] - 1.0) / 2], ins2, M=DR)
-                 for y in (-(by - BLOCK_EAR / 2), by - BLOCK_EAR / 2)]
+
     # the USB-C plug in the XIAO's port, its cord running off the board
     pz = t_ + 2.8
     usb = [dict(kind="box", lo=[CTRL["l"] / 2 - t_ + 0.5, -4.1, pz - 1.3],
@@ -1978,41 +2065,36 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "whole 8 mm of crank, flush with its top.",
               hw=[(f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)", 1, pin)],
               path=(down, 20.0), against=["driver"]),
-        _step("phase_magnet", "Phase magnet into the crank",
-              "On the bench: south face up, pressed into its pocket.",
-              hw=[("\u00d83 x 2 N52 disc magnet", 1, phase_mag)],
-              path=(down, 10.0), against=["driver"]),
-        _step("block_inserts", "Inserts into the drive block",
-              "Two M2 inserts in the tops of its side walls.",
-              hw=[("M2 heat-set insert", 2, block_ins)],
-              path=(down, 15.0), against=["drive_block"]),
         _step("motor", "Gearmotor into the drive block",
               "On the bench: shaft down, its bushing into the floor's hole, "
-              "the flat of its D-shaft facing across the block.",
+              "the flat of its D-shaft facing across the block. Nothing to "
+              "solder: everything is on its plug.",
               hw=[(MOTOR["item"], 1, motor)], path=(down, 30.0),
               against=["drive_block"]),
-        _step("cap", "Cap over the gearmotor",
-              "Its terminals and their wires come up through the window.",
-              ["drive_cap"], [(f"M2x{length['cap to drive block']}", 2, cap_screws)],
-              path=(down, 15.0), against=["drive_block"]),
-        _step("phase_hall", "Phase sensor into the block's floor",
-              "On the bench: face down, its leads up through the arm.",
-              hw=[("Allegro A1120EUA-T Hall switch", 1, phase_hall)],
-              path=(up, 10.0), against=["drive_block"]),
+        _step("cable", "Plug the cable on and thread it down",
+              "On the bench: Pololu's 6-pin cable into the encoder's side "
+              "connector, the plug lying in its channel, its loose end down "
+              "the post's bore until it comes out of the foot.",
+              hw=[(CABLE_ITEM, 1, cable_in)], against=["drive_block"]),
         _step("driver", "Driver up onto the gearmotor's shaft",
               "On the bench: the D-bore onto the D-shaft, pressed home. The "
-              "pin and the magnet go with it.",
+              "pin goes with it.",
               ["driver"], path=(up, 15.0), against=["drive_block", "motor"],
-              carry=["pin", "phase_magnet"]),
+              carry=["pin"]),
         _step("drive", "The drive down onto the base",
-              "As one unit: the lock and pin pass down through a seat in "
-              "the lip, the post's foot into its socket.",
+              "As one unit: the cable's loose end through the base's hole, "
+              "the lock and pin down through a seat in the lip, the post's "
+              "foot into its socket.",
               ["drive_block"], path=(down, 45.0),
-              carry=["block_inserts", "motor", "cap", "phase_hall", "driver"]),
-        _step("post_screw", "One screw down through the arm and post",
-              "Into the base's insert.",
+              carry=["motor", "cable", "driver"]),
+        _step("post_screw", "One screw down through the tower and post",
+              "Down the access bore into the base's insert.",
               hw=[(f"M3x{length['drive post to base']}", 1, post_screw)],
               path=(down, 30.0)),
+        _step("cap", "Lid pressed on",
+              "Its two pegs into the screw's access bore and their own "
+              "hole, over the motor, the plug and the cable's channel.",
+              ["drive_cap"], path=(down, 15.0)),
         _step("ctrl", "Controller box onto the board",
               "Two wood screws through its ears; the XIAO in its cradle with "
               "its USB-C through the wall, the DRV8833 beside it.",
@@ -2020,11 +2102,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
                              ("Seeed Studio XIAO ESP32S3", 1, xiao),
                              ("Pololu #2130 DRV8833 dual motor driver carrier", 1,
                               drv)], (down, 25.0)),
-        _step("cable", "The cable, motor to controller",
-              "Six conductors: motor +/-, 3V3, GND, phase, home. Threaded "
-              "down the post's bore before the drive went in, out through "
-              "the base under it, across the board to the box.",
-              hw=[("6-conductor 26 AWG cable, 1 m", 1, cable)]),
+        _step("cable_run", "The motor's cable under the base to the box",
+              "Its loose end from under the base, across the board, in "
+              "through the box's inlet.", hw=[("", 0, cable_out)]),
+        _step("home_lead", "The home sensor's lead to the box",
+              "Spliced onto its three leads under the base, alongside the "
+              "motor's cable.",
+              hw=[(LEAD_ITEM, 1, lead)]),
         _step("ctrl_lid", "Lid on the controller",
               "Two self-tapping screws.",
               ["ctrl_lid"], [("M2x6 self-tapping screw", 2, [])],
@@ -2209,7 +2293,8 @@ def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
     bom = {}
     for st in steps:
         for h in st["hardware"]:
-            bom[h["item"]] = bom.get(h["item"], 0) + h["qty"]
+            if h["item"]:                  # "" is hardware carried on, not bought
+                bom[h["item"]] = bom.get(h["item"], 0) + h["qty"]
     want = inserts()
     return dict(steps=out, left_on_bench=sorted(bench),
                 bodies_once=sorted(counts) == sorted(parts)
@@ -2290,6 +2375,20 @@ def _socket_width(mesh, centre, direction):
     return sum(hits)
 
 
+def _key_width(mesh, centre, direction):
+    """Across a solid key, from outside it inward on both sides."""
+    d = np.asarray(direction, float) / np.linalg.norm(direction)
+    total = 0.0
+    for sgn in (1, -1):
+        start = centre + d * sgn * 20.0
+        loc, _, _ = mesh.ray.intersects_location([start], [-d * sgn],
+                                                 multiple_hits=False)
+        if not len(loc):
+            return None
+        total += 20.0 - float(np.linalg.norm(loc[0] - start))
+    return total
+
+
 def _ray_gap(mesh, origin, direction):
     d = np.asarray(direction, float) / np.linalg.norm(direction)
     total = 0.0
@@ -2365,10 +2464,26 @@ def fits(parts, specimen=SPECIMEN):
         hole_d(parts["drive_block"], o, Z["floor_lo"] + FLOOR_T / 2,
                MOTOR["bush_d"] / 2), MOTOR["bush_d"], "slip",
         note="this is what centres the driver on its axis")
-    pm = o + polar(PHASE_R, GENEVA_PHI + 180.0 + PHASE_LEAD)
-    row("Phase magnet in the crank",
-        hole_d(parts["driver"], pm, Z["crank_hi"] - 1.0, MAGNET[0] / 2),
-        MAGNET[0], "press")
+    ze = Z["motor_top"] - MOTOR["enc"] / 2
+    pe = np.array([o[0], o[1], ze])
+    row("Encoder across its pocket",
+        _ray_gap(parts["drive_block"], pe, [-u[1], u[0], 0]), MOTOR["enc_w"], "slip")
+    # out to the outward wall and doubled: inward, the plug's channel opens
+    ow = _ray_hit(parts["drive_block"], pe, u)
+    row("Encoder along its pocket", None if ow is None else 2 * ow,
+        MOTOR["enc_d"], "slip")
+    x0, x1, hw_, _ = _channel(Z)
+    kc = o + u * ((x0 + x1) / 2 - 1.0) + np.array([0, 0, Z["motor_top"] - KEY_D / 2])
+    tt = np.array([-u[1], u[0], 0])
+    kh = _ray_gap(parts["drive_block"], kc, tt)
+    lid_lo = parts["drive_cap"].copy()
+    row("Lid's key in the plug's channel", kh,
+        None if kh is None else _key_width(parts["drive_cap"], kc, tt), "press",
+        note="it holds the lid, and holds the plug in its socket")
+    ab = o + u * (POST_R - GENEVA_C) + np.array([-u[1], u[0], 0]) * SCREW_Y
+    row("Lid's big peg in the access bore",
+        hole_d(parts["drive_block"], ab, Z["motor_top"] - 1.5, 3.25),
+        shaft_d(parts["drive_cap"], ab, Z["motor_top"] - 1.5, 3.2), "press")
     hm = polar(HOME["r"], HOME["phi"])
     row("Home magnet in the ring",
         hole_d(parts["rotor"], hm, L["ring_bot"] + 1.0, MAGNET[0] / 2),
@@ -2377,9 +2492,6 @@ def fits(parts, specimen=SPECIMEN):
     row("Home sensor in its boss",
         _ray_gap(parts["stator"], hc, polar(1.0, HOME["phi"])), HALL[0],
         "slip")
-    sx = o - u * PHASE_R + np.array([0, 0, Z["floor_lo"] + 0.8 - o[2]])
-    row("Phase sensor in the block's floor",
-        _ray_gap(parts["drive_block"], sx, [-u[1], u[0], 0]), HALL[0], "slip")
     pp = polar(POST_R, GENEVA_PHI, L["base_top"] - POST_SOCKET / 2)
     row("Drive post in its socket", _socket_width(parts["stator"], pp, u),
         POST_X, "running",
@@ -2696,7 +2808,6 @@ JOINTS = (
     ("drive post to base", driver_levels()["face"] - (levels()["base_top"]
                                                        - POST_SOCKET),
      INS_M3[1], BASE_T - POST_SOCKET - INS_M3[1] + SOLE_PAD[1] - 0.5, 1, "M3"),
-    ("cap to drive block", CAP_T, INS_M2[1], 2.0, 2, "M2"),
     # up through the platform into the receiver, so it slides the channel
     ("receiver to platform", PLATFORM_V[1] - PLATFORM_V[0], INS_M3[1],
      RECV_RELIEF, 2, "M3"),
@@ -2733,12 +2844,12 @@ def bolt_len(crosses, insert, relief):
 
 def inserts():
     out = {"M4 heat-set insert": 3 + 3 + 3, "M3 heat-set insert": 2 + 1,
-           "M2 heat-set insert": 2, MOTOR["item"]: 1,
-           "Allegro A1120EUA-T Hall switch": 2,
-           "\u00d83 x 2 N52 disc magnet": 2,
+           MOTOR["item"]: 1,
+           "Allegro A1120EUA-T Hall switch": 1,
+           "\u00d83 x 2 N52 disc magnet": 1,
+           CABLE_ITEM: 1, LEAD_ITEM: 1,
            "Seeed Studio XIAO ESP32S3": 1,
            "Pololu #2130 DRV8833 dual motor driver carrier": 1,
-           "6-conductor 26 AWG cable, 1 m": 1,
            "USB-C cable and 5 V 2 A USB power adapter": 1,
            "No. 4 x 1/2 in wood screw": 2, "M2x6 self-tapping screw": 2,
            "608-2RS": 3, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,

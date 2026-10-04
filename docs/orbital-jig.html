@@ -424,7 +424,7 @@ for (const f of D.fasteners) {
   }
 }
 // the Geneva driver turns about its own axis: the printed driver, its
-// steel pin and the phase magnet ride one group, posed from the driver angle
+// steel pin ride one group, posed from the driver angle
 const G = D.geneva;
 const drvAxis = new THREE.Vector3(G.c * Math.cos(G.phi * DEG), G.c * Math.sin(G.phi * DEG), 0);
 const driverGroup = new THREE.Group(); driverGroup.matrixAutoUpdate = false;
@@ -432,7 +432,7 @@ stator.add(driverGroup);
 if (printed.driver) driverGroup.add(printed.driver);
 /* the drive's bought parts, from the primitives the generator swept: the
    gearmotor, its sensors and screws, the cable and the controller's
-   boards stand still; the pin and the phase magnet turn with the driver;
+   boards stand still; the pin turns with the driver;
    the home magnet turns with the ring */
 function primGeom(p) {
   if (p.kind === 'box') {

@@ -393,9 +393,10 @@ PARTS = [
        "The ring is turned by a Geneva drive: one turn of the driver moves "
        "it exactly 10\u00b0 and leaves it locked there, powered or not, so "
        "the stops are set by the geometry and not by whoever turns it. The "
-       "driver hangs on the shaft of a real gearmotor, a Pololu #994 298:1, "
-       "drawn to Pololu's drawing; Hall switches see a magnet in the crank "
-       "once a frame and one in the ring once a turn. Nothing that turns "
+       "driver hangs on the shaft of a real gearmotor, a Pololu #5173 298:1 "
+       "with a 12 CPR encoder, drawn to Pololu's drawing; one plug carries "
+       "motor and encoder, so nothing is soldered at the motor, and a Hall "
+       "switch sees a magnet in the ring once a turn. Nothing that turns "
        "carries a wire, and one USB-C cord powers it all. Every "
        "ring of the capture steps a whole number of stops \u2014 10, 10, "
        "20 and 20\u00b0, still 108 frames. "
@@ -441,6 +442,11 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 8.0.0: the encoder gearmotor (Pololu #5173, side connector) in
+       # place of #994: no phase magnet or sensor, a plug-in cable in a
+       # channel to the post's bore, a flat lid on a peg and a key in
+       # place of the cap, its inserts and screws; the post 2.5 mm
+       # further in; the home sensor on its own lead.
        # 7.0.0: both Hall switches' lead holes went from 2.8 to 3.6 mm,
        # to pass three leads on the A1120's 1.27 mm pitch.
        # 6.0.0: the drive's wiring went inside it. The block and post are
@@ -475,7 +481,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="7.0.0",
+       version="8.0.0",
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
               dict(label="Assemble it, step by step",
