@@ -383,10 +383,10 @@ PARTS = [
        "the Knot uses. "
        "Hardware: three 608 bearings on M3 axles, each riding a printed "
        "sleeve bored 1.5 mm off-center: turned out, every bearing "
-       "stands 0.9 mm clear of the ring so it drops straight in; turned in, "
-       "they close on the race with 0.7 mm still in hand, so the ring can "
+       "stands 0.75 mm clear of the ring so it drops straight in; turned in, "
+       "they close on the race with 0.85 mm still in hand, so the ring can "
        "come off the plate 0.5% smaller than the base and still be "
-       "reached. The driver stands 0.9 mm inside where the lip was cut "
+       "reached. The driver stands 1.0 mm inside where the lip was cut "
        "for it, so the Geneva runs with the ring a millimeter off in "
        "any direction. Every fit is sampled over how PETG really prints "
        "(tools/jig_tolerance.py), and works in at least 99.9% of builds. "
@@ -447,6 +447,18 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 11.0.0: no crush ribs -- PETG yields and creeps, it does not
+       # crush, and how ribs behaved was a guess. The D-shaft in a
+       # clearance bore held by an M3 set screw through a captured nut;
+       # the pin's hole drawn at its size, pressed in a vise, the crank
+       # 0.9 mm larger for 2.5 mm of wall; the lid's peg and key plain and
+       # a little over. One USB-C cord into the XIAO again, the motor
+       # behind a 4.7 ohm resistor that holds a stall under the gearbox's
+       # 2 kg.cm limit; the controller box back to 40 wide. From the
+       # reviews: one-layer skins over the holes that open through a
+       # bridge (the block's floor, the base's screw pocket), pushed out
+       # after printing; the driver's lead-ins 0.8; the crank 1.3 above
+       # the lip; the driver 1.0 inside the lip's cut; the towers 0.15 in.
        # 10.0.0: from the tolerance stack-up. Crush ribs for the pin and
        # the D-shaft and on the lid's peg and key; the crank 1.0 above the
        # lip (was 0.6), its height set by a printed shim, the driver's
@@ -503,7 +515,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="10.0.0",
+       version="11.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

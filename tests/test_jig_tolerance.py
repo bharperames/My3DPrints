@@ -33,7 +33,7 @@ class TestStack(unittest.TestCase):
     def test_the_bearings_reach_the_race_and_clear_the_ring(self):
         b = self.rep["bearings"]
         self.assertLess(b["fail_reach"], 0.001)
-        self.assertEqual(b["fail_drop_in"], 0.0)
+        self.assertLess(b["fail_drop_in"], 0.001)
 
     def test_the_crank_never_rubs_the_lip_or_the_floor(self):
         h = self.rep["heights"]

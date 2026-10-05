@@ -52,7 +52,6 @@ PART_SIGMA = 0.05       # mm on the diameter, shared by a part's holes
 FEAT_SIGMA = 0.03       # mm, each hole on its own
 RECT_LOSS, RECT_SIGMA = 0.10, 0.05
 SHAFT_GAIN, SHAFT_SIGMA = 0.03, 0.03
-RIB_TIP, RIB_SIGMA = 0.08, 0.05     # a rib's tip prints short, and scatters more
 SHRINK_MU, SHRINK_SIGMA = -0.0035, 0.0012   # common to the whole print
 DIFF_SIGMA = 0.0007                          # each part's own, on top
 Z_SIGMA = 0.05
@@ -88,21 +87,24 @@ def fit_rows(parts):
     slip = (0.0, 0.35)
     run = (0.05, 0.60)
     clear = (0.05, 9.0)
-    crush = (-0.55, -0.05)            # ribs reach past the shaft, and crush: 0.8 wide, they give 0.25 a side
+    # a press into PETG: tight in every print is the aim. PETG yields
+    # past ~5% strain rather than cracking, so a tight press needs a vise,
+    # not luck; the limit here is a press a bench vise still makes
+    vise = (-0.40, 0.0)
+    pp = (-0.40, 0.02)                # printed into printed: both yield
     spec = [
         # name in fits(),                            kind,   part,          mate,                      works if, note
-        ("Geneva pin in the crank's ribs",           "rib",   "driver",      (3.0, 0.002, 0.008),       crush,   "dowel, m6"),
-        ("Geneva pin in the crank's core",           "vhole", "driver",      (3.0, 0.002, 0.008),       run,     "the core never binds"),
+        ("Geneva pin in the crank",                  "vhole", "driver",      (3.0, 0.002, 0.008),       vise,    "dowel, m6, pressed in a vise"),
         ("Geneva pin in a slot",                     "vhole", "rotor",       (3.0, 0.002, 0.008),       run,     "slot, as a hole"),
-        ("Gearmotor's D-shaft in the crank, flat to rib", "rib", "driver",   (2.5, -0.05, 0.05),        crush,   "Pololu D-shaft"),
-        ("Gearmotor's D-shaft in the crank, core",   "vhole", "driver",      (3.0, -0.012, 0.0),        run,     ""),
+        ("Gearmotor's D-shaft in the crank, round",  "vhole", "driver",      (3.0, -0.012, 0.0),        (0.0, 0.6), "held by the set screw"),
+        ("Gearmotor's D-shaft in the crank, flat",   "vhole", "driver",      (2.5, -0.05, 0.05),        (0.0, 0.6), "the set screw bears on it"),
         ("Gearmotor across its pocket",              "rect",  "drive_block", (12.0, -0.10, 0.10),       (0.0, 0.65), "the bushing locates it"),
         ("Gearmotor along its pocket",               "rect",  "drive_block", (10.0, -0.10, 0.10),       (0.0, 0.65), ""),
         ("Gearbox bushing in the block's floor",     "vhole", "drive_block", (4.0, -0.03, 0.03),        (0.0, 0.40), "locates the driver's axis"),
         ("Encoder across its pocket",                "rect",  "drive_block", (13.6, -0.15, 0.15),       (0.0, 0.75), "routed PCB"),
         ("Encoder along its pocket",                 "rect",  "drive_block", (13.0, -0.15, 0.15),       (0.0, 0.75), ""),
-        ("Lid's key ribs in the plug's channel",     "rect",  "drive_block", ("prib", None),            crush,   "printed ribs"),
-        ("Lid's peg ribs in the access bore",        "vhole", "drive_block", ("prib", None),            crush,   "printed ribs"),
+        ("Lid's key in the plug's channel",          "rect",  "drive_block", ("p", None),               pp,      "printed key"),
+        ("Lid's peg in the access bore",             "vhole", "drive_block", ("p", None),               pp,      "printed peg"),
         ("Home magnet in the ring",                  "vhole", "rotor",       (3.0, -0.10, 0.10),        (0.0, 0.55), "glued; small discs run +-0.1"),
         ("Home sensor in its boss",                  "rect",  "stator",      (4.06, -0.10, 0.10),       (0.0, 0.65), "SS451A body"),
         ("Drive post in its socket",                 "rect",  "stator",      ("p", None),               run,     "printed post"),
@@ -148,13 +150,7 @@ def sample_fits(rows, rng, n, part_bias):
     out = {}
     for r in rows:
         d = r["hole"]
-        if r["kind"] == "rib":
-            # the rib tips, as a circle: the hole's loss is the core's, and
-            # a narrow tip prints a little short of where it is drawn
-            core = d + J.CRUSH_CORE - J.CRUSH_RIB
-            hole = d - hole_loss(core) + RIB_TIP + part_bias[r["part"]] \
-                + rng.normal(0, RIB_SIGMA, n)
-        elif r["kind"] == "vhole":
+        if r["kind"] == "vhole":
             hole = d - hole_loss(d) + part_bias[r["part"]] + rng.normal(0, FEAT_SIGMA, n)
         elif r["kind"] == "hhole":
             # a horizontal hole loses as a round one, then sags at its crown
@@ -167,8 +163,6 @@ def sample_fits(rows, rng, n, part_bias):
         m = r["mate"]
         if m[0] == "p":         # a printed shaft, peg, key or post
             shaft = m[1] + SHAFT_GAIN + rng.normal(0, SHAFT_SIGMA, n)
-        elif m[0] == "prib":    # printed ribs on a printed shaft or key
-            shaft = m[1] + SHAFT_GAIN - RIB_TIP + rng.normal(0, RIB_SIGMA, n)
         elif m[0] == "pz":      # a printed height
             shaft = m[1] + rng.normal(0, Z_SIGMA, n)
         else:
@@ -193,7 +187,7 @@ CACHE = os.path.join(os.path.dirname(HERE), "models", "meta", "orbital_jig_genev
 
 def _fingerprint():
     keys = ("GENEVA_N", "GENEVA_C", "GENEVA_BIAS", "LIP_T", "PIN_R", "SLOT_CLR",
-            "LOCK_R", "LOCK_CLR", "LOCK_RELIEF", "CRANK_T", "LIP_GAP")
+            "LOCK_R", "LOCK_CLR", "LOCK_RELIEF", "CRANK_T", "CRANK_R", "LIP_GAP")
     return {k: float(getattr(J, k)) for k in keys}
 
 
@@ -289,7 +283,22 @@ def runs(win, dr, dt):
     return ok[i0, j1] & ok[i1, j1] & ok[i0, j1b] & ok[i1, j1b]
 
 
-def simulate(n=100000, seed=1, window=None):
+SCATTERS = ("PART_SIGMA", "FEAT_SIGMA", "RECT_SIGMA", "SHAFT_SIGMA", "DIFF_SIGMA",
+            "SHRINK_SIGMA", "Z_SIGMA", "ECC_SET_SIGMA", "RING_OOR_SIGMA")
+
+
+def simulate(n=100000, seed=1, window=None, scatter=1.0):
+    """`scatter` multiplies every assumed spread at once: 1.0 is the
+    estimate, 1.5 or 2.0 asks what fails first if the estimates are low."""
+    if scatter != 1.0:
+        g = globals()
+        saved = {k: g[k] for k in SCATTERS}
+        try:
+            for k in SCATTERS:
+                g[k] = saved[k] * scatter
+            return simulate(n, seed, window, 1.0)
+        finally:
+            g.update(saved)
     rng = np.random.default_rng(seed)
     parts = J.assemble(J.SPECIMEN)
     rows = fit_rows(parts)
@@ -338,6 +347,9 @@ def simulate(n=100000, seed=1, window=None):
     post_u = rng.uniform(-1, 1, n) * play_x / 2
     post_t = rng.uniform(-1, 1, n) * np.clip(play_y, 0, None) / 2
     bush = np.clip(fits["Gearbox bushing in the block's floor"]["c"], 0, None) / 2
+    # the set screw pushes the shaft across its clearance bore, flat side
+    # first: the crank sits that much off the shaft, sideways (+t)
+    setscrew_t = np.clip(fits["Gearmotor's D-shaft in the crank, round"]["c"], 0, None) / 2
     ang = rng.uniform(0, 2 * np.pi, n)
     bush_u, bush_t = bush * np.cos(ang), bush * np.sin(ang)
     sock_u = rng.normal(0, 0.03, n)          # where the stator put the socket
@@ -349,9 +361,15 @@ def simulate(n=100000, seed=1, window=None):
     cx = -(2 / 3) * (e * np.cos(phis)[:, None]).sum(0)
     cy = -(2 / 3) * (e * np.sin(phis)[:, None]).sum(0)
     c_u, c_t = cx * u[0] + cy * u[1], cx * t[0] + cy * t[1]
+    # the structural review's terms: the motor tilting in its slip pocket
+    # about the bushing (+-0.1 at the lock, 15 mm below), play in the
+    # gearbox's output, and the base flexing under the post and towers
+    tilt_u, tilt_t = U(rng, -0.12, 0.12, n), U(rng, -0.12, 0.12, n)
+    play_u, play_t = U(rng, -0.05, 0.05, n), U(rng, -0.05, 0.05, n)
+    flex_u = rng.normal(0, 0.05, n)
     driver_u = (J.POST_R - J.GENEVA_BIAS) * s["stator"] + arm * s["drive_block"] \
-        + sock_u + post_u + bush_u
-    driver_t = sock_t + post_t + arm * theta + bush_t
+        + sock_u + post_u + bush_u + tilt_u + play_u + flex_u
+    driver_t = sock_t + post_t + arm * theta + bush_t + setscrew_t + tilt_t + play_t
     lip_u = J.GENEVA_C * s["rotor"] + c_u
     dr = lip_u - driver_u
     dt = c_t - driver_t
@@ -398,7 +416,10 @@ def simulate(n=100000, seed=1, window=None):
     play = (J.RACE_W - (J.BRG_W - rng.uniform(0, 0.12, n))) + zq()
     lift = np.clip(play, 0, None) * (J.GENEVA_AT + J.TOWER_PITCH / 2) \
         / (J.TOWER_PITCH * 1.5)                 # rocked by the arc's weight, at the drive
-    lip_top = tower_top + seat + ring_feat + lift
+    # the base's corners flex under the bearing loads and lift the lip a
+    # little more than the rocking alone (structural review: ~0.2)
+    tower_flex = U(rng, 0.1, 0.2, n)
+    lip_top = tower_top + seat + ring_feat + lift + tower_flex
     sock = zq()                                 # the socket's floor
     post_to_floor = zq() + 0.001 * rng.normal(0, 1, n) * (Z["floor_lo"] - Z["base_top"])
     floor_lo = sock + post_to_floor
@@ -434,7 +455,7 @@ def table(rep):
     for r in rep["rows"]:
         f = rep["fits"][r["name"]]
         m = r["mate"]
-        mate = (("printed %.2f" % m[1]) + (" ribs" if m[0] == "prib" else "")) if m[0] in ("p", "pz", "prib") else \
+        mate = ("printed %.2f" % m[1]) if m[0] in ("p", "pz") else \
             "%.3f %+.3f/%+.3f" % (m[0], m[2], m[1])
         lo, hi = r["accept"]
         lines.append("%-42s %7.3f %-22s %4.2f..%-4.2f %7.3f %7.3f %7.3f %5.1f%% %5.1f%%" % (
@@ -448,8 +469,10 @@ def main():
     ap.add_argument("-n", type=int, default=100000)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--window", help="the Geneva window grid (json)")
+    ap.add_argument("--scatter", type=float, default=1.0,
+                    help="multiply every assumed spread (1.5, 2: pessimistic)")
     a = ap.parse_args()
-    rep = simulate(a.n, a.seed, a.window)
+    rep = simulate(a.n, a.seed, a.window, a.scatter)
     print(table(rep))
     for k in ("bearings", "geneva_offsets", "geneva_jams", "heights"):
         if k in rep:

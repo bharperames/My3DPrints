@@ -60,8 +60,18 @@ class TestJig(unittest.TestCase):
         for n in flat:
             back = flat[n].copy()
             back.apply_transform(poses[n])
-            self.assertLess(np.abs(back.vertices - self.parts[n].vertices)
-                            .max(), 1e-6, n)
+            # laid out is as printed: with its skins over holes in bridges
+            want = J.printed(n, self.parts[n])
+            self.assertLess(np.abs(back.vertices - want.vertices).max(), 1e-6, n)
+
+    def test_skins_are_printed_and_never_assembled(self):
+        """A hole opening through a bridge gets a one-layer skin in the
+        printed file; the assembled part, which the sweeps see, has none."""
+        for n in ("drive_block", "stator"):
+            sk = self.parts[n].metadata.get("membranes")
+            self.assertTrue(sk, n)
+            added = J.printed(n, self.parts[n]).volume - self.parts[n].volume
+            self.assertTrue(1.0 < added < 20.0, (n, added))
 
     def test_pupil_sits_on_the_working_sphere_in_the_meridian(self):
         for th in (10.0, 15.0, 35.0, 55.0, 75.0, 80.0):
@@ -506,27 +516,39 @@ class TestAssembly(unittest.TestCase):
         self.assertEqual(J.fit_class(0.1, "printed shaft in steel bore"),
                          "press")
 
-    def test_ribs_that_reach_too_far_would_be_caught(self):
-        """Negative control: crush ribs drawn 0.4 into the pin, more than
-        a rib can give, grade as an interference."""
-        with mock.patch.object(J, "CRUSH_RIB", -0.40):
+    def test_a_pin_hole_drawn_loose_would_be_caught(self):
+        """Negative control: the pin's hole drawn 0.3 over the pin grades
+        as a slip, which would let the pin fall out of the crank."""
+        with mock.patch.object(J, "PIN_PRESS", 0.30):
             d = J.driver(J.SPECIMEN)
         parts = dict(self.parts, driver=d)
-        row = next(r for r in J.fits(parts) if r["name"] == "Geneva pin in the crank's ribs")
-        self.assertEqual(row["got"], "interference")
+        row = next(r for r in J.fits(parts) if r["name"] == "Geneva pin in the crank")
+        self.assertNotEqual(row["got"], "press")
         self.assertFalse(row["ok"])
 
-    def test_every_press_into_a_print_is_a_crush_rib(self):
-        """A plain press is a 0.15 mm window and printed holes scatter
-        about +-0.15: the steel pin and the D-shaft go into crush ribs,
-        whose core never binds."""
+    def test_nothing_depends_on_a_press_into_the_print_being_exact(self):
+        """The D-shaft slides into a clearance bore and a set screw holds
+        it; the pin's hole is drawn under the pin so it is tight in every
+        print. PETG yields rather than cracks, and the crank has 2.5 mm of
+        wall beside the pin."""
         rows = {r["name"]: r for r in J.fits(self.parts)}
-        for n in ("Geneva pin in the crank's ribs",
-                  "Gearmotor's D-shaft in the crank, flat to rib"):
-            self.assertEqual(rows[n]["got"], "crush", n)
-        for n in ("Geneva pin in the crank's core",
-                  "Gearmotor's D-shaft in the crank, core"):
-            self.assertGreaterEqual(rows[n]["allow"], 0.35, n)
+        for n in ("Gearmotor's D-shaft in the crank, round",
+                  "Gearmotor's D-shaft in the crank, flat"):
+            self.assertGreaterEqual(rows[n]["allow"], 0.4, n)
+        self.assertLess(rows["Geneva pin in the crank"]["allow"], 0.0)
+        self.assertGreaterEqual(J.CRANK_R - J.GENEVA_A - J.PIN_R, 2.5)
+        bom = J.inserts()
+        self.assertEqual(bom[J.SETSCREW_ITEM], 1)
+        self.assertEqual(bom[J.NUT_ITEM], 1)
+
+    def test_a_jam_stays_under_the_gearbox_limit(self):
+        """Pololu: 2 kg.cm instantaneous for the 298:1. The series resistor
+        holds a stall under it, whatever the firmware does."""
+        r_total = 6.0 / 1.6 + J.MOTOR_R + 0.36 + 0.32 + 0.15
+        i = 5.0 / r_total
+        torque_kgcm = 4.0 * (i - 0.1) / 1.5
+        self.assertLess(torque_kgcm, 1.5)
+        self.assertLess(i, 1.0)            # the JST SH contacts' rating
 
 
 class TestFasteners(unittest.TestCase):
