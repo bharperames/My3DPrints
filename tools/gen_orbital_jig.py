@@ -171,19 +171,33 @@ RING_RO, RING_RI, RING_T = 121.0, 90.0, 18.0
 # (tools/jig_tolerance.py --scatter 1.5) the bearings' reach failed first,
 # so the towers came in 0.15 from where that left them, trading drop-in
 # clearance, which had more to spare.
-RACE_FLANK = 1.4        # 45 degree flanks up to the OD: printable, and
-                        # they bear on the bearing's edges for axial hold
-RACE_R = RING_RO - RACE_FLANK         # groove floor the bearing rolls on
-RACE_W = 7.4            # 7 mm bearing + 0.2 a side
-BRG_R, BRG_W, BRG_BORE = 11.0, 7.0, 8.0
-BRG_PITCH = RACE_R + BRG_R            # 130.6: a bearing on the race
+# V wheels, not 608s. A 608 on a flat race with 45 degree flanks carried
+# the ring's weight on its 0.3 mm edge chamfer against PETG, about 120 MPa,
+# and left the ring 0.4 mm of axial play to rock in whenever the camera's
+# weight was outside the bearings, which is most of the time. A Delrin
+# V wheel (the OpenBuilds Solid V: 23.9 OD, 10.23 wide, a 90 degree V
+# edge) seats on both faces of a V groove in the ring's OD: the load is on
+# its V faces, and the ring has no axial play at all. The wheel holds two
+# 16 x 5 mm bearings; 688-2RS (8 x 16 x 5) in place of the kit's 625s gives
+# it an 8 mm bore, so it rides the same printed eccentric sleeve the 608
+# did. The V's tip enters the groove WHEEL_E, and the groove runs 0.4
+# deeper so the tip never bottoms: only the faces touch.
+WHEEL = dict(r=11.95, w=10.23, tip=0.5, side_r=9.6)   # tip: half the V's flat
+WHEEL_ITEM = "Solid V wheel, Delrin (OpenBuilds type: 23.9 OD, 10.23 wide)"
+WHEEL_BRG_ITEM = "688-2RS bearing (8 x 16 x 5), two in each V wheel"
+WHEEL_E = 1.4           # how far the V's tip enters the groove
+RACE_FLANK = WHEEL_E    # (named for what it was: the groove's depth at the V)
+RACE_R = RING_RO - WHEEL_E            # where the wheel's tip runs
+RACE_PLAY = 0.0         # axial: the V seats on both faces
+BRG_R, BRG_W, BRG_BORE = WHEEL["r"], WHEEL["w"], 8.0
+BRG_PITCH = RACE_R + BRG_R            # a wheel seated in the groove
 PRELOAD = 0.85          # how much further in an eccentric can still go
 RING_GAP = 8.0          # ring underside above the base top: the tip of
                         # the driver's pin swings through here
-TOWER_R, BOSS_R, BOSS_H = 7.0, 5.5, 1.0
+TOWER_R, BOSS_R, BOSS_H = 7.0, 4.8, 1.0   # the boss bears on a 688's inner race only
 # Ø7.95, not 7.9: a printed shaft comes out at about its drawn size, so
 # 7.9 sat in the 608's 8 mm bore with a tenth of play
-SLEEVE_R, SLEEVE_H, SLEEVE_FL_R, SLEEVE_FL_H = 3.975, 6.8, 5.75, 1.0
+SLEEVE_R, SLEEVE_H, SLEEVE_FL_R, SLEEVE_FL_H = 3.975, WHEEL["w"] - 0.2, 5.75, 1.0
 BOLT_R = 2.2            # M4 clearance, radius
 AXLE_R = 1.7            # the bearing axles' M3 clearance, radius
 ECC = 1.5               # eccentric sleeve offset: 3.0 mm of travel
@@ -723,7 +737,7 @@ def stator(specimen=SPECIMEN):
     plate = trimesh.creation.extrude_polygon(base_outline(), BASE_T)
     plate.apply_translation([0, 0, -BASE_T])
     parts = [plate]
-    top = RING_GAP + RING_T / 2.0 - BRG_W / 2.0 - 0.2     # bearing bottom
+    top = RING_GAP + RING_T / 2.0 - BRG_W / 2.0           # the wheel's underside
     for a in TOWER_PHI:
         x, y, _ = polar(TOWER_PITCH, a)
         parts.append(cyl(TOWER_R, -1.0, top - BOSS_H, x, y))
@@ -1383,7 +1397,7 @@ def bearing_centres(retracted=False):
 
 def sleeves_in_place(specimen=SPECIMEN, retracted=False):
     L = levels(specimen)
-    z0 = L["brg_z"] - BRG_W / 2.0 - 0.1
+    z0 = L["brg_z"] - BRG_W / 2.0
     out = {}
     for n, a, B in zip(SLEEVES, TOWER_PHI, bearing_centres(retracted)):
         T = polar(TOWER_PITCH, a)[:2]
@@ -1399,11 +1413,22 @@ def sleeves_in_place(specimen=SPECIMEN, retracted=False):
 
 # --- rotor ring with its boss ------------------------------------------
 def ring_profile():
-    t, f = RING_T, RACE_FLANK
-    lo = (t - RACE_W) / 2.0 - f
-    return [(RING_RI, 0), (RING_RO, 0), (RING_RO, lo), (RACE_R, lo + f),
-            (RACE_R, lo + f + RACE_W), (RING_RO, lo + 2 * f + RACE_W),
-            (RING_RO, t), (RING_RI, t)]
+    """The ring in section, with a 90 degree V groove on its OD whose
+    faces are the wheel's V faces seated, and 0.4 of relief at the root."""
+    t, e, tip = RING_T, WHEEL_E, WHEEL["tip"]
+    zc = t / 2.0
+    root = RING_RO - e - 0.4
+    return [(RING_RI, 0), (RING_RO, 0), (RING_RO, zc - tip - e),
+            (root, zc - tip + 0.4), (root, zc + tip - 0.4),
+            (RING_RO, zc + tip + e), (RING_RO, t), (RING_RI, t)]
+
+
+def wheel_profile():
+    """The V wheel in section about its own axis, mid-plane at z = 0."""
+    r, hw, tip, sr = WHEEL["r"], WHEEL["w"] / 2.0, WHEEL["tip"], WHEEL["side_r"]
+    zv = tip + (r - sr)                     # where the V meets the hub
+    return [(0, -hw), (sr, -hw), (sr, -zv), (r, -tip), (r, tip), (sr, zv),
+            (sr, hw), (0, hw)]
 
 
 def rotor(specimen=SPECIMEN):
@@ -1588,9 +1613,25 @@ def receiver():
 
 # --- proxies: hardware and the camera, for the sweeps and the page -----
 def bearing_proxies(specimen=SPECIMEN, retracted=False):
+    """The V wheels as they are: their true profile, revolved."""
     L = levels(specimen)
-    return [cyl(BRG_R, L["brg_z"] - BRG_W / 2, L["brg_z"] + BRG_W / 2,
-                x, y, 120) for x, y in bearing_centres(retracted)]
+    out = []
+    for x, y in bearing_centres(retracted):
+        w = rev(wheel_profile(), sections=120)
+        w.apply_translation([x, y, L["brg_z"]])
+        out.append(w)
+    return out
+
+
+def _wheel_rings(c, z):
+    """A V wheel as stepped rings for the page and the drop-in sweep: they
+    circumscribe the true profile, so a sweep that clears them clears it."""
+    r, tip, sr = WHEEL["r"], WHEEL["tip"], WHEEL["side_r"]
+    zv = tip + (r - sr)
+    bands = [(WHEEL["w"] / 2.0, sr), (zv, sr + (r - sr) * 0.45),
+             (tip + (r - sr) * 0.55, r - (r - sr) * 0.25), (tip + 0.3, r)]
+    return [dict(kind="ring", c=[float(c[0]), float(c[1]), z], axis=[0, 0, 1],
+                 ro=float(ro), ri=BRG_BORE / 2.0, h=float(2 * hz)) for hz, ro in bands]
 
 
 def mount_thread():
@@ -2106,9 +2147,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
     bars = [[x, Y_ARC, LEG_BOTTOM + BAR_T - CBORE[1]] for x in BOLTS_X]
 
     def bearings(retracted):
-        return [dict(kind="ring", c=[float(x), float(y), L["brg_z"]],
-                     axis=[0, 0, 1], ro=BRG_R, ri=BRG_BORE / 2.0, h=BRG_W)
-                for x, y in bearing_centres(retracted)]
+        return [q for c in bearing_centres(retracted)
+                for q in _wheel_rings(c, L["brg_z"])]
     # how far each eccentric turns between standing out and standing in
     turn = []
     for n, T, Bo, Bi in zip(SLEEVES, towers, bearing_centres(True),
@@ -2173,7 +2213,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
     ins4, ins3, ins2 = INS_M4, INS_M3, INS_M2
     sole_ins = [insert(polar(FOOT_R, a, L["base_bot"] - (ins4[1] - 1.0) / 2 - 0.0),
                        ins4) for a in FOOT_PHI]
-    ttop = L["base_top"] + RING_GAP + RING_T / 2.0 - BRG_W / 2.0 - 0.2
+    ttop = L["base_top"] + RING_GAP + RING_T / 2.0 - BRG_W / 2.0
     tower_ins = [insert(polar(TOWER_PITCH, a, ttop - (ins3[1] - 1.0) / 2), ins3)
                  for a in TOWER_PHI]
     post_ins = [insert([POST_R - GENEVA_C, SCREW_Y, L["base_top"] - POST_SOCKET
@@ -2257,10 +2297,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
                     _bolt_prims(f, length["stator to sole plate"])])],
               path=(down, 20.0)),
         _step("bearings", "Sleeves and bearings onto the towers",
-              "A 608 pressed on each sleeve. All three sleeves are "
+              "A V wheel on each sleeve, its two 688s pressed into it in "
+              "place of the kit's 625s. All three sleeves are "
               "eccentric: turn each so its bearing stands back from where "
               "the ring will be.", list(SLEEVES),
-              [("608-2RS", 3, bearings(True))], (down, 25.0),
+              [(WHEEL_ITEM, 3, bearings(True)), (WHEEL_BRG_ITEM, 6, [])], (down, 25.0),
               alt="retracted"),
         _step("axles", "Axle bolts, finger tight",
               "Down through each sleeve into its tower's insert.",
@@ -2552,10 +2593,10 @@ def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
             # the eccentrics come in: sleeves and bearings to where they run
             for n in SLEEVES:
                 installed[n] = parts[n]
-            for k in [k for k in installed if k.startswith("608-2RS#")]:
+            for k in [k for k in installed if k.startswith(WHEEL_ITEM + "#")]:
                 del installed[k]
             for i, b in enumerate(bearing_proxies(specimen)):
-                installed[f"608-2RS#{i}"] = b
+                installed[f"{WHEEL_ITEM}#{i}"] = b
         if st["check"] == "race":
             r = race_contact(parts["rotor"], specimen)
             if not all(x["gap"] < 0.05 and x["pressed_collides"] for x in r):
@@ -2799,7 +2840,7 @@ def fits(parts, specimen=SPECIMEN):
     row("Axle bolt through a sleeve", hole_d(sl, (bx, by), zs, AXLE_R), 3.0,
         "clearance")
     oc = sl.centroid[:2]
-    row("Sleeve in a 608's bore", 8.0, shaft_d(sl, oc, zs, SLEEVE_R),
+    row("Sleeve in a 688's bore", 8.0, shaft_d(sl, oc, zs, SLEEVE_R),
         "press", kind="printed shaft in steel bore",
         note="the bearing pressed onto its sleeve")
     th = np.radians(45.0)
@@ -3195,7 +3236,7 @@ def inserts():
            "Pololu #2130 DRV8833 dual motor driver carrier": 1,
            "USB-C cable and 5 V 2 A USB power adapter": 1,
            "No. 4 x 1/2 in wood screw": 2, "M2x6 self-tapping screw": 2,
-           "608-2RS": 3, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
+           WHEEL_ITEM: 3, WHEEL_BRG_ITEM: 6, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
            "1/4-20 D-ring": 1,
            f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)": 1,
            "phone spring clamp, 1/4-20 socket": 1, PLATE_ITEM: 1}

@@ -182,6 +182,44 @@ class TestJig(unittest.TestCase):
                                 .max(), 0.01, n)
 
 
+class TestVWheels(unittest.TestCase):
+    """The ring rides V wheels: seated on both faces of its groove, with no
+    axial play to rock in, and the load on the V's faces."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parts = J.assemble(J.SPECIMEN)
+
+    def test_every_wheel_seats_on_the_groove(self):
+        for c in J.race_contact(self.parts["rotor"], J.SPECIMEN):
+            self.assertLess(c["gap"], 0.05)
+            self.assertTrue(c["pressed_collides"])
+
+    def test_the_ring_has_no_axial_play(self):
+        """Lifted 0.1 mm, the ring runs into every wheel's V: nothing lets
+        it rock but the towers' own give."""
+        import trimesh.collision as tc
+        ring = self.parts["rotor"].copy()
+        ring.apply_translation([0, 0, 0.1])
+        cm = tc.CollisionManager()
+        cm.add_object("ring", ring)
+        for w in J.bearing_proxies(J.SPECIMEN):
+            self.assertTrue(cm.in_collision_single(w))
+
+    def test_the_tip_never_bottoms(self):
+        """The groove runs deeper than the V's tip enters: only the faces
+        carry load."""
+        prof = np.array(J.ring_profile())
+        root = prof[:, 0][prof[:, 0] < J.RING_RO - 0.01].min()
+        self.assertLess(root, J.RACE_R - 0.3)
+
+    def test_the_wheel_takes_688s_on_the_same_sleeve(self):
+        bom = J.inserts()
+        self.assertEqual(bom[J.WHEEL_ITEM], 3)
+        self.assertEqual(bom[J.WHEEL_BRG_ITEM], 6)
+        self.assertEqual(J.BRG_BORE, 8.0)
+
+
 class TestPrintSettings(unittest.TestCase):
     """The file and the shop's plates print the jig as its card says."""
 

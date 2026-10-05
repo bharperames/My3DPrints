@@ -366,7 +366,7 @@ PARTS = [
            "-X{wrench}.3mf"),
     _p("orbital_jig", "Orbital scanning jig", "Designed here", "parametric",
        "A photogrammetry rig that holds the specimen still and moves the "
-       "camera. Azimuth on a 242 mm rotor ring riding three 608 "
+       "camera. Azimuth on a 242 mm rotor ring riding three V wheels "
        "bearings, elevation on a 90\u00b0 quadrant arc the ring carries, "
        "and the camera's entrance pupil on a 150 mm sphere about the "
        "specimen at every setting. The lights, the backdrop and the "
@@ -381,7 +381,9 @@ PARTS = [
        "a sole plate; three bearing sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
        "wing nut and a hex nut, all printed in the same cosine thread "
        "the Knot uses. "
-       "Hardware: three 608 bearings on M3 axles, each riding a printed "
+       "Hardware: three Delrin V wheels (two 688-2RS in each) on M3 axles, "
+       "seated on both faces of a V groove in the ring, so it has no axial "
+       "play to rock in; each riding a printed "
        "sleeve bored 1.5 mm off-center: turned out, every bearing "
        "stands 0.75 mm clear of the ring so it drops straight in; turned in, "
        "they close on the race with 0.85 mm still in hand, so the ring can "
@@ -447,6 +449,11 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 12.0.0: V wheels in a V groove in place of 608s on a flat race
+       # with flanks: the load on the V's faces, not a 0.3 mm chamfer (about
+       # 12 MPa, not 120), and no axial play, so the ring's rocking at the
+       # drive goes from 0.32 to 0.05 mm. The towers out to 132.2 for the
+       # larger wheel; the sleeves through two 688s.
        # 11.0.0: no crush ribs -- PETG yields and creeps, it does not
        # crush, and how ribs behaved was a guess. The D-shaft in a
        # clearance bore held by an M3 set screw through a captured nut;
@@ -515,7 +522,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="11.0.0",
+       version="12.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

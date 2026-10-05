@@ -183,7 +183,7 @@
       printer — and put back into their assembled positions from the
       transforms the generator wrote into the same archive. Nothing here is
       a copy of the geometry made for the page. The grey parts are stand-ins
-      for hardware that is bought, not printed: three 608 bearings on their
+      for hardware that is bought, not printed: three V wheels on their
       M3 axles, the M5 thumbscrew, and the camera — a phone held landscape
       in a spring clamp on the receiver's 1/4-20, its main lens on the
       150&nbsp;mm sphere. A Sony α1 on an Arca plate was carried here too,
@@ -718,7 +718,7 @@ if (plateField && tooth) {
    own name rather than nothing: silence would read as a broken click. */
 const PART_NAMES = {
   stator: ['Stator plate', 'base, bearing towers and the pedestal — does not move'],
-  rotor: ['Rotor ring', '242 mm, rides three 608 bearings; a 36-slot Geneva lip on its bore'],
+  rotor: ['Rotor ring', '242 mm, rides three V wheels in a V groove; a 36-slot Geneva lip on its bore'],
   arc: ['Quadrant arc', 'carries the camera through 10–80° of elevation'],
   saddle: ['Carriage saddle', 'clamps through the arc\u2019s 5.2 mm slot'],
   shoe: ['Carriage shoe', 'the other half of the clamp, inboard of the arc'],
@@ -729,9 +729,9 @@ const PART_NAMES = {
   ctrl_box: ['Controller box', 'XIAO ESP32S3 and a DRV8833 on the board beside the jig; one USB-C cord powers it all'],
   ctrl_lid: ['Controller lid', 'two self-tapping screws'],
   sole_plate: ['Sole plate', 'glued to the board; the base bolts onto its three pads'],
-  sleeve_a: ['Eccentric sleeve', 'one of three: bored 1 mm off-center, turned to bring its 608 onto the race'],
-  sleeve_b: ['Eccentric sleeve', 'one of three: bored 1 mm off-center, turned to bring its 608 onto the race'],
-  sleeve_c: ['Eccentric sleeve', 'one of three: bored 1 mm off-center, turned to bring its 608 onto the race'],
+  sleeve_a: ['Eccentric sleeve', 'one of three: bored 1.5 mm off-center, turned to bring its V wheel into the groove'],
+  sleeve_b: ['Eccentric sleeve', 'one of three: bored 1.5 mm off-center, turned to bring its V wheel into the groove'],
+  sleeve_c: ['Eccentric sleeve', 'one of three: bored 1.5 mm off-center, turned to bring its V wheel into the groove'],
   mount_screw: ['Mount screw', 'printed Ø6 thread; hex head captive under the base'],
   mount_wing_nut: ['Wing nut', 'printed, turned by fingers — clamps the plate down'],
   mount_hex_nut: ['Hex nut', 'printed, for a driver when a rod is in the wings\u2019 way'],
@@ -1041,7 +1041,7 @@ document.getElementById('facts').innerHTML = [
   ['frame', '<span id="f-frame"></span>'],
   ['Geneva', `${D.geneva.slots} stops at ${D.geneva.pitch_deg}° · driver at r ${D.geneva.c}`],
   ['arc', `r ${D.arc.ri}–${D.arc.ro} · slot ${D.arc.slot} mm`],
-  ['bearing pitch', D.bearing.pitch_r + ' mm · 3 × 608'],
+  ['bearing pitch', D.bearing.pitch_r + ' mm · 3 V wheels'],
   ['arc plane off the meridian', Math.abs(D.y_arc) + ' mm'],
   ['carriage range', `${D.elev_range[0]}–${D.elev_range[1]}°`],
   ['printed volume', Object.values(D.volume_cm3).reduce((a, b) => a + b, 0).toFixed(0) + ' cm³'],

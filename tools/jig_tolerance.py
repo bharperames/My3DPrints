@@ -111,7 +111,7 @@ def fit_rows(parts):
         ("Foot bolt through the base",               "vhole", "stator",      (3.90, -0.08, 0.07),       clear,   "M4 major"),
         ("Bar bolt through the arc",                 "hhole", "arc",         (3.90, -0.08, 0.07),       (0.0, 9.0), "horizontal as printed"),
         ("Axle bolt through a sleeve",               "vhole", "sleeve_a",    (2.93, -0.05, 0.05),       clear,   "M3 major"),
-        ("Sleeve in a 608's bore",                   "steel", "sleeve_a",    ("p", None),               (-0.08, 0.12), "608 bore 8 -0.008"),
+        ("Sleeve in a 688's bore",                   "steel", "sleeve_a",    ("p", None),               (-0.08, 0.12), "688 bore 8 -0.008"),
         ("Thumbscrew along the arc's slot",          "vhole", "arc",         (4.90, -0.08, 0.07),       (0.05, 0.9), "M5 major; loose only slides easier"),
         ("Receiver screws along the channel",        "vhole", "saddle",      (2.93, -0.05, 0.05),       run,     "M3 major"),
         ("1/4-20 through the receiver",              "vhole", "receiver",    (6.30, -0.10, 0.05),       clear,   "1/4-20 major"),
@@ -325,7 +325,7 @@ def simulate(n=100000, seed=1, window=None, scatter=1.0):
     tower = J.TOWER_PITCH * (1 + s["stator"]) + rng.normal(0, 0.03, n)
     brg = J.BRG_R - rng.uniform(0, 0.0045, n)
     ecc = J.ECC + rng.normal(0, 0.02, n)
-    sleeve_play = np.clip(fits["Sleeve in a 608's bore"]["c"], 0, None) / 2
+    sleeve_play = np.clip(fits["Sleeve in a 688's bore"]["c"], 0, None) / 2
     oor = np.abs(rng.normal(0, RING_OOR_SIGMA, n))
     reach = (race + brg) - (tower - ecc) - sleeve_play - oor
     drop_in = (tower + ecc) - brg - od - sleeve_play - oor
@@ -413,7 +413,13 @@ def simulate(n=100000, seed=1, window=None, scatter=1.0):
     tower_top = zq()
     seat = U(rng, -0.10, 0.0, n)               # the race's flank on the bearing's chamfer
     ring_feat = zq() + U(rng, -0.1, 0.1, n)     # race to lip top, printed upright
-    play = (J.RACE_W - (J.BRG_W - rng.uniform(0, 0.12, n))) + zq()
+    if hasattr(J, "RACE_PLAY"):
+        # V wheels: no axial play; the ring tips only by pushing a wheel out
+        # of its V against the tower's radial stiffness (~37 N/mm, the
+        # structural review) under the ~2.4 N uplift: about 0.07, with scatter
+        play = J.RACE_PLAY + np.abs(rng.normal(0.065, 0.02, n))
+    else:
+        play = (J.RACE_W - (J.BRG_W - rng.uniform(0, 0.12, n))) + zq()
     lift = np.clip(play, 0, None) * (J.GENEVA_AT + J.TOWER_PITCH / 2) \
         / (J.TOWER_PITCH * 1.5)                 # rocked by the arc's weight, at the drive
     # the base's corners flex under the bearing loads and lift the lip a
