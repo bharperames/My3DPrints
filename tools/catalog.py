@@ -449,7 +449,10 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
-       # 12.0.0: V wheels in a V groove in place of 608s on a flat race
+       # 12.0.0 (combined): three printed feet glued to the board under
+       # the base's corners: each tower 1000x stiffer downward and 45x
+       # against tilting, in the structural review's plate model. And:
+       # V wheels in a V groove in place of 608s on a flat race
        # with flanks: the load on the V's faces, not a 0.3 mm chamfer (about
        # 12 MPa, not 120), and no axial play, so the ring's rocking at the
        # drive goes from 0.32 to 0.05 mm. The towers out to 132.2 for the

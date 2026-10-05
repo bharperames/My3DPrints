@@ -21,7 +21,7 @@ export const FILAMENTS = {
 
 /* The groups a viewer colors by: what is printed together, roughly. */
 export const GROUPS = {
-  base:     { name: 'Base',       parts: ['stator', 'sole_plate'] },
+  base:     { name: 'Base',       parts: ['stator', 'sole_plate', 'corner_foot_a', 'corner_foot_b', 'corner_foot_c'] },
   ring:     { name: 'Ring',       parts: ['rotor'] },
   arc:      { name: 'Arc',        parts: ['arc'] },
   carriage: { name: 'Carriage',   parts: ['saddle', 'shoe', 'receiver'] },
