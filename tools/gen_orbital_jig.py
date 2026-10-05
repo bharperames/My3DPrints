@@ -388,8 +388,19 @@ ARC_HW = 10.0           # flange half-width (y)
 WEB_HT = 4.0            # web half-thickness
 FLANGE = 5.0
 CHAM = 4.0              # 45 degree web roots, so the underside prints
-SLOT_W = 5.4            # an M5 slides along it: the shop's running fit
-SLOT_DEG = (4.0, 86.0)
+# A closed box, not an H with a slot down its web. The carriage hangs 73 mm
+# off the arc's plane, so the arc carries a twist all the way from its pad
+# to the carriage, and an open section slit along its length for the
+# thumbscrew twisted like two loose rails: 2.1 mm and 1.0 degree at the
+# lens at 80 degrees, first mode 7 Hz. Closed, 3 mm walls, no slot: 0.65 mm,
+# 0.2 degree, 11.5 Hz in the same beam model. The carriage clamps round
+# the outside instead, lips riding the box's inner and outer faces.
+BOX_WALL = 3.0
+BOX_CHAM = 4.0          # the cavity's corners at 45 degrees: its roof prints
+                        # as a 16 mm bridge held along both edges
+LIP_CLR = 0.25          # each lip off its face: a running fit
+LIP_T = 2.5             # a lip's radial thickness
+SLOT_W = 0.0            # no slot
 LEG_BOTTOM = -28.0      # the arc's leg ends here, whatever the specimen;
                         # moves with PED_H, one for one -- see PED_H above
 BAR_T, BAR_X0 = 20.0, 66.0            # the bar in to the ring; its inner end
@@ -439,6 +450,8 @@ TONGUE = (147.0, 163.0, 6.2)          # r0, r1, depth stops at |h| = 6.2
 NUB_R, NUB_POS = 2.0, ((142.5, -15.0), (142.5, 15.0),
                        (167.5, -15.0), (167.5, 15.0))
 SCREW_R = 2.7           # M5 clearance
+# the thumbscrew clamps saddle to shoe just outside the box's outer face
+CLAMP_R = ARC_RO + LIP_CLR + LIP_T + 0.5 + SCREW_R
 NUT = (8.4, 4.4)        # M5 square nut trap, across and thick
 # The platform ran to u = 350 and the channel 208-318 -- 110 mm of travel
 # -- because it had to seat two cameras whose sockets are 90 mm apart: a
@@ -1481,11 +1494,17 @@ def rotor(specimen=SPECIMEN):
 
 # --- quadrant arc ------------------------------------------------------
 def arc_profile():
-    ri, ro, hw, wt, f, c = ARC_RI, ARC_RO, ARC_HW, WEB_HT, FLANGE, CHAM
-    return [(ri, -hw), (ri + f, -hw), (ri + f, -wt - c), (ri + f + c, -wt),
-            (ro - f - c, -wt), (ro - f, -wt - c), (ro - f, -hw), (ro, -hw),
-            (ro, hw), (ro - f, hw), (ro - f, wt + c), (ro - f - c, wt),
-            (ri + f + c, wt), (ri + f, wt + c), (ri + f, hw), (ri, hw)]
+    """The box's outside, in (r, h)."""
+    ri, ro, hw = ARC_RI, ARC_RO, ARC_HW
+    return [(ri, -hw), (ro, -hw), (ro, hw), (ri, hw)]
+
+
+def arc_cavity():
+    """The box's inside, its corners chamfered at 45 degrees."""
+    w, c = BOX_WALL, BOX_CHAM
+    a, b, h = ARC_RI + w, ARC_RO - w, ARC_HW - w
+    return [(a + c, -h), (b - c, -h), (b, -h + c), (b, h - c), (b - c, h),
+            (a + c, h), (a, h - c), (a, -h + c)]
 
 
 def arc():
@@ -1494,12 +1513,14 @@ def arc():
     into the world at the end. Independent of the specimen dial: the
     ring's pad absorbs that."""
     quad = rev(arc_profile(), 0.0, 90.0, sections=180)
+    # hollow from a little above the leg to a little short of the top, so
+    # both ends are closed
+    cav = rev(arc_cavity(), 2.0, 88.0, sections=172)
     leg = box((ARC_RI, LEG_BOTTOM, -ARC_HW), (ARC_RO, 0.5, ARC_HW))
     bar = box((BAR_X0, LEG_BOTTOM, -ARC_HW), (ARC_RO, LEG_BOTTOM + BAR_T,
                                               ARC_HW))
     a = union([quad, leg, bar])
-    tools = [sector(155.0 - SLOT_W / 2.0, 155.0 + SLOT_W / 2.0,
-                    -ARC_HW - 1, ARC_HW + 1, SLOT_DEG[0], SLOT_DEG[1])]
+    tools = [cav]
     half = np.degrees(TICK_W / 2.0 / ARC_RO)
     for f in FIDUCIALS:
         tools.append(sector(ARC_RO - TICK_D, ARC_RO + 1, -ARC_HW - 1,
@@ -1527,11 +1548,15 @@ def shoe_body(hband, sign):
     profile in (r, h) revolved over the saddle's span."""
     h0, h1 = sorted(hband)
     d = SADDLE_DEG
-    plate = sector(ARC_RI - 2.0, ARC_RO + 7.0, h0, h1, -d, d)
-    t0, t1, td = TONGUE
-    tin = (sign * td, sign * (10.0 + NUB_CLR + 1.0))
-    tongue = sector(t0, t1, min(tin), max(tin), -d + 0.5, d - 0.5)
-    parts = [plate, tongue]
+    r_in = ARC_RI - LIP_CLR - LIP_T
+    plate = sector(r_in, CLAMP_R + SCREW_R + 3.5, h0, h1, -d, d)
+    # lips over the box's inner and outer faces, half its depth each side
+    lh = (sign * 1.0, sign * (ARC_HW + NUB_CLR + 1.0))
+    # the plate's whole span, so the lips' ends are flush with its ends
+    # and nothing hangs off them as the part prints
+    lips = [sector(r_in, ARC_RI - LIP_CLR, min(lh), max(lh), -d, d),
+            sector(ARC_RO + LIP_CLR, ARC_RO + LIP_CLR + LIP_T, min(lh), max(lh), -d, d)]
+    parts = [plate] + lips
     for r_, v in NUB_POS:
         n = cyl(NUB_R, min(sign * (ARC_HW + NUB_CLR), sign * (ARC_HW + 1.5)),
                 max(sign * (ARC_HW + NUB_CLR), sign * (ARC_HW + 1.5)),
@@ -1561,8 +1586,8 @@ def saddle():
     tools = [screw_hole(h0 - 6.0, h1 + 1.0)]
     # square nut trap, open toward down-arc so the nut slides in
     nw, nt = NUT
-    tools.append(box((155.0 - nw / 2, -30.0, h0 + 3.2),
-                     (155.0 + nw / 2, nw / 2, h0 + 3.2 + nt)))
+    tools.append(box((CLAMP_R - nw / 2, -30.0, h0 + 3.2),
+                     (CLAMP_R + nw / 2, nw / 2, h0 + 3.2 + nt)))
     # fore/aft channel: two slots the receiver's screws ride in
     u0, u1, w, dy = CHANNEL
     for y in (hy - dy, hy + dy):
@@ -1582,7 +1607,7 @@ def saddle():
 
 def screw_hole(h0, h1):
     c = cyl(SCREW_R, h0, h1, 0, 0, 48)
-    c.apply_translation([155.0, 0, 0])
+    c.apply_translation([CLAMP_R, 0, 0])
     return c
 
 
@@ -1733,7 +1758,7 @@ def camera_proxy(kind=CAMERA_DEFAULT, lens_id=None):
         [box(lo, hi) for group in cfg["boxes"].values() for lo, hi in group])
 
 
-CLAMP_U = 155.0         # the thumbscrew's axis, where the carriage hangs
+CLAMP_U = CLAMP_R       # the thumbscrew's axis, where the carriage hangs
 INFILL = 0.50           # 4-5 walls at 25-30% gyroid, as a share of solid
 # What the tongue can take as a couple before the joint wants help. The
 # a1 asked 110 N of it, which is what the ballast was for; the phone asks
@@ -1770,7 +1795,7 @@ def carriage_moment(parts, kind=CAMERA_DEFAULT, lens_id=None,
     M = tot_m + cam_g
     com = (tot_mu + cam_g * cam_u) / M
     moment = M / 1000.0 * 9.81 * (com - CLAMP_U) / 1000.0
-    tongue = TONGUE[1] - TONGUE[0]
+    tongue = (ARC_RO - ARC_RI) + 2 * LIP_CLR + LIP_T   # the lips' couple arm
     return dict(mass_g=round(M, 1), com_u=round(com, 1),
                 arm_mm=round(com - CLAMP_U, 1), moment_nm=round(moment, 3),
                 tongue_couple_n=round(abs(moment) / (tongue / 1000.0), 1))
@@ -2014,10 +2039,10 @@ def assembly_meta(specimen, poses, parts, rep=None):
         "hardware": _jsonable(page_hardware(parts, specimen)),
         "motor": _jsonable(MOTOR),
         "arc": dict(ri=ARC_RI, ro=ARC_RO, hw=ARC_HW, slot=SLOT_W,
-                    slot_deg=list(SLOT_DEG), fiducials=list(FIDUCIALS)),
+                    slot_deg=[], box_wall=BOX_WALL, fiducials=list(FIDUCIALS)),
         "thumbscrew": dict(r=2.5, y0=Y_ARC + SHOE_H[0] - 6.0,
                            y1=Y_ARC + SHOE_H[0] + THUMB_LEN, knob_r=7.0,
-                           knob_h=6.0, u=155.0),
+                           knob_h=6.0, u=CLAMP_R),
         "cameras": {k: dict(c, configs={l["id"]: camera_config(k, l["id"])
                                         for l in c["lenses"]})
                     for k, c in CAMERAS.items()},
@@ -2262,11 +2287,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
     hy = CAM_Y - Y_ARC
     # a real M5 square nut, 8 x 4, centred in its 8.4 x 4.4 trap
     zn = PLATE_H[0] + 3.2 + NUT[1] / 2
-    nut = _moved([dict(kind="box", lo=[151.0, -4.0, zn - 2.0],
-                       hi=[159.0, 4.0, zn + 2.0], M=M_ARC.ravel().tolist(),
-                       hole=dict(c=[155.0, 0.0, zn], axis=[0, 0, 1],
+    nut = _moved([dict(kind="box", lo=[CLAMP_R - 4.0, -4.0, zn - 2.0],
+                       hi=[CLAMP_R + 4.0, 4.0, zn + 2.0], M=M_ARC.ravel().tolist(),
+                       hole=dict(c=[CLAMP_R, 0.0, zn], axis=[0, 0, 1],
                                  r=2.55, h=6.0))], E)
-    thumb = _moved(_bolt_prims(_arc_to_world(155.0, 0.0, SHOE_H[0]), THUMB_LEN,
+    thumb = _moved(_bolt_prims(_arc_to_world(CLAMP_R, 0.0, SHOE_H[0]), THUMB_LEN,
                                r=2.5, head_r=7.0, head_h=6.0,
                                axis=(0, -1, 0)), E)
     v0 = PLATFORM_V[0]
@@ -2456,7 +2481,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
               hw=[("M5 square nut", 1, nut)], path=(up_arc, 20.0),
               against=["saddle"], at=E),
         _step("saddle", "Saddle onto the arc, inboard",
-              "Half way up the arc, its tongue into the inboard channel.",
+              "Half way up the arc, its lips over the arc's inner and outer faces.",
               ["saddle"], path=(inboard, 30.0), carry=["nut"], at=E),
         _step("shoe", "Shoe onto the arc, outboard", "",
               ["shoe"], path=(outboard, 30.0), at=E),
@@ -2876,11 +2901,9 @@ def fits(parts, specimen=SPECIMEN):
     row("Sleeve in a 688's bore", 8.0, shaft_d(sl, oc, zs, SLEEVE_R),
         "press", kind="printed shaft in steel bore",
         note="the bearing pressed onto its sleeve")
-    th = np.radians(45.0)
-    sc = np.array([155.0 * np.cos(th), Y_ARC, 155.0 * np.sin(th)])
-    row("Thumbscrew along the arc's slot",
-        _ray_gap(parts["arc"], sc, [np.cos(th), 0, np.sin(th)]), 5.0,
-        "running", note="it slides the slot's length with every ring")
+    ar = arc_radii(parts["arc"])
+    row("Carriage lips on the arc", (ARC_RO + LIP_CLR) - (ARC_RI - LIP_CLR),
+        ar[1] - ar[0], "running", note="they slide the arc's length with every ring")
     hy = CAM_Y - Y_ARC
     ch = _arc_to_world((CHANNEL[0] + CHANNEL[1]) / 2,
                        (PLATFORM_V[0] + PLATFORM_V[1]) / 2, hy + CHANNEL[3])
@@ -2932,6 +2955,17 @@ def arc_radii(a):
 
 
 def slot_width(a):
+    """The box's walls, probed at mid-wall all along the quadrant: the
+    share of points inside. 1.0 is a closed box with no slot."""
+    pts = []
+    for th in np.radians(np.arange(5.0, 85.1, 2.5)):
+        for r_, h in ((ARC_RI + BOX_WALL / 2, 0.0), (ARC_RO - BOX_WALL / 2, 0.0),
+                      (155.0, ARC_HW - BOX_WALL / 2), (155.0, -ARC_HW + BOX_WALL / 2)):
+            pts.append([r_ * np.cos(th), Y_ARC + h, r_ * np.sin(th)])
+    return round(float(np.mean(a.contains(np.array(pts)))), 4)
+
+
+def _old_slot_width(a):
     """Probe across the web at 45 degrees; the first r not inside the
     mesh from each side is the slot's edge."""
     rs = np.arange(150.0, 160.01, 0.05)
@@ -3325,8 +3359,7 @@ def gates(rep):
             ("pedestal_hidden_at_75", rep["pedestal_hidden_at_75"]),
             ("arc_concentric", ARC_RI - 0.05 <= rep["arc_radii"][0]
              and rep["arc_radii"][1] <= ARC_RO + 0.05),
-            ("slot_width", rep["slot_mm"] is not None
-             and abs(rep["slot_mm"] - SLOT_W) < 0.15),
+            ("arc_box_closed", rep["slot_mm"] == 1.0),
             ("36_slots", rep["slots"] == GENEVA_N),
             ("geneva_turns_clear", not rep["geneva"]["fouls"]),
             ("geneva_locks_and_drives", rep["geneva"]["locked"]

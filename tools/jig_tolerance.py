@@ -112,7 +112,7 @@ def fit_rows(parts):
         ("Bar bolt through the arc",                 "hhole", "arc",         (3.90, -0.08, 0.07),       (0.0, 9.0), "horizontal as printed"),
         ("Axle bolt through a sleeve",               "vhole", "sleeve_a",    (2.93, -0.05, 0.05),       clear,   "M3 major"),
         ("Sleeve in a 688's bore",                   "steel", "sleeve_a",    ("p", None),               (-0.08, 0.12), "688 bore 8 -0.008"),
-        ("Thumbscrew along the arc's slot",          "vhole", "arc",         (4.90, -0.08, 0.07),       (0.05, 0.9), "M5 major; loose only slides easier"),
+        ("Carriage lips on the arc",                 "rect",  "saddle",      ("p", None),               run,     "the arc's 30 mm, printed on its side"),
         ("Receiver screws along the channel",        "vhole", "saddle",      (2.93, -0.05, 0.05),       run,     "M3 major"),
         ("1/4-20 through the receiver",              "vhole", "receiver",    (6.30, -0.10, 0.05),       clear,   "1/4-20 major"),
         ("Mount screw through the pedestal",         "vhole", "stator",      ("p", None),               clear,   "printed thread"),
@@ -138,7 +138,6 @@ def fit_rows(parts):
         ("Controller lid screw's pilot", "vhole", "ctrl_box", 1.95, (1.45, -0.05, 0.05), (0.0, 0.42), "M2 thread-former: over its core, under its 2.0"),
         ("Hall leads through the base", "vhole", "stator", 2 * J.HALL_HOLE_R, (2.97, -0.05, 0.05), clear, "three leads at 1.27"),
         ("Motor cable down the post's bore", "vhole", "drive_block", 2 * (J.CABLE_R + 0.6), (2.6, -0.2, 0.2), clear, "six loose wires"),
-        ("Tongue in the arc's channel, at its tip", "rect", "arc", (J.ARC_RO - J.FLANGE - (J.WEB_HT + J.CHAM - t[2])) - (J.ARC_RI + J.FLANGE + (J.WEB_HT + J.CHAM - t[2])), ("p", t[1] - t[0]), run, "the carriage slides"),
     ]
     for name, kind, part, hole, mate, acc, note in extra:
         rows.append(dict(name=name, kind=kind, part=part, hole=float(hole),
