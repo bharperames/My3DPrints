@@ -179,7 +179,9 @@ PRELOAD = 0.7           # how much further in an eccentric can still go
 RING_GAP = 8.0          # ring underside above the base top: the tip of
                         # the driver's pin swings through here
 TOWER_R, BOSS_R, BOSS_H = 7.0, 5.5, 1.0
-SLEEVE_R, SLEEVE_H, SLEEVE_FL_R, SLEEVE_FL_H = 3.95, 6.8, 5.75, 1.0
+# Ø7.95, not 7.9: a printed shaft comes out at about its drawn size, so
+# 7.9 sat in the 608's 8 mm bore with a tenth of play
+SLEEVE_R, SLEEVE_H, SLEEVE_FL_R, SLEEVE_FL_H = 3.975, 6.8, 5.75, 1.0
 BOLT_R = 2.2            # M4 clearance, radius
 AXLE_R = 1.7            # the bearing axles' M3 clearance, radius
 ECC = 1.5               # eccentric sleeve offset: 3.0 mm of travel
@@ -187,8 +189,14 @@ ECC = 1.5               # eccentric sleeve offset: 3.0 mm of travel
 # bearing PRELOAD past the race; turned fully out it stands back ECC.
 TOWER_PITCH = BRG_PITCH + ECC - PRELOAD   # 131.4
 LOBE_REACH = 142.0      # how far the base's corner lobes reach
-INS_M4 = (2.65, 7.0)    # heat-set M4 x 6: bore radius, depth
-INS_M3 = (2.0, 5.0)
+# Named, and drawn to their makers' holes: the standard knurled M4 x 8.1
+# wants Ø5.6 and the M3 x 5.7 Ø4.0, each a little deeper than it is long.
+# The M4 bore was Ø5.3 for an insert nobody had named, 0.4 under the
+# common one.
+INS_M4 = (2.8, 9.0)     # bore radius, depth
+INS_M3 = (2.0, 6.2)
+INSERT_M4 = "M4 heat-set insert, M4 x 8.1 (\u00d85.6 hole)"
+INSERT_M3 = "M3 heat-set insert, M3 x 5.7 (\u00d84.0 hole)"
 HEAD_R, HEAD_H = 3.5, 4.0             # M4 socket head
 AXLE_HEAD = (2.75, 3.0)               # M3 socket head
 
@@ -223,15 +231,18 @@ GENEVA_MOUTH = GENEVA_C * np.cos(np.pi / GENEVA_N)  # 72.72: the pin enters
                                       # a slot moving along it, not across it
 # The lip and the lock are cut for a driver at GENEVA_C; the driver stands
 # GENEVA_BIAS nearer the axis than that. The Geneva's tolerance is
-# lopsided: with the ring free to follow the pin, the lip may sit 1.3 mm
-# further out than the driver expects and still run, but 0.2 mm further
-# in and the lock's seat closes on the lock at every stop. Everything that
-# moves the lip relative to the driver -- the post's play in its socket,
-# the ring centred by three eccentrics, the ring and the base shrinking
-# differently -- adds up to a few tenths either way. Biased by 0.5 the
-# window is about -0.65 to +0.8, and the stop's play goes from 0.32 to
-# 0.42 degrees, which the capture never sees.
-GENEVA_BIAS = 0.5
+# lopsided: with the ring free to follow the pin, the lip may sit 0.2 mm
+# further in than the driver expects before the lock's seat closes on the
+# lock at every stop, but well over a millimeter further out, where all
+# that grows is the stop's play. Everything that moves the lip relative to
+# the driver -- the post's play in its socket, the ring centred by three
+# eccentrics turned by hand, the ring out of round, the ring and the base
+# shrinking differently -- was sampled together (tools/jig_tolerance.py)
+# and wants about +-0.9. Biased by 0.9 the window is -1.0 (a jam, with
+# the lip printed as it prints) to +1.0 (a degree of play at the stop),
+# and the stop's play at nominal is 0.4 degrees, which the capture never
+# sees.
+GENEVA_BIAS = 0.9
 GENEVA_AT = GENEVA_C - GENEVA_BIAS
 LIP_T = 5.0
 PIN_R = 1.5                           # Ø3 steel dowel, pressed into the crank
@@ -245,7 +256,14 @@ LOCK_CLR = 0.2                        # in its seat, running: it turns
 LOCK_RELIEF = 0.2
 CRANK_R = GENEVA_A + PIN_R + 1.6      # the crank disc, above the lip
 CRANK_T = 8.0           # the pin is held over all of it
-LIP_GAP = 0.6                         # crank underside above the lip
+# The crank's underside stands 1.0 above the lip, its top 0.6 under the
+# block's floor. The ring rocks on its bearings when the camera's weight
+# is outside them, which it mostly is, lifting the lip up to 0.3 at the
+# drive; the tolerance stack (tools/jig_tolerance.py) closed the 0.6 it
+# had in 4% of builds. The floor gap is set with a printed 0.6 shim when
+# the driver is pressed on, not by where the shaft's tip happens to end.
+LIP_GAP = 1.0
+FLOOR_GAP = 0.6
 DRIVER_LEADIN = 0.4                   # chamfer where its bores meet the plate
 # --- the motor that turns the driver, and what holds it -----------------
 # A real part, drawn from its maker's drawing: Pololu #994, the 298:1
@@ -279,9 +297,27 @@ MOTOR = dict(item="Pololu #5173 298:1 Micro Metal Gearmotor HP 6V, "
              plug=(5.8, 8.0, 4.0),
              shaft_d=3.0, shaft_flat=2.5, shaft_l=10.0,
              bush_d=4.0, bush_h=0.7, rpm_6v=100.0, stall_kgcm=4.0,
-             stall_a=1.6, counts=3576)
+             # 297.92:1 exactly (Pololu), so 12 x 297.92 counts a driver
+             # turn, not 3,576: counted at 3,576 it drifts a count a frame
+             stall_a=1.6, counts=12 * 297.92)
 SLIP = 0.30             # the shop's slip, drawn hole minus pin
 PRESS = 0.10            # the shop's press
+# A press that survives the print. A plain press is a 0.15 mm window and
+# printed holes scatter about +-0.15, so a fifth of them come out loose
+# or split their walls. This one draws a clearance core and three narrow
+# ribs that crush: the core never binds, the ribs take whatever the
+# print gives them, and the crushing happens in the ribs, not the wall.
+CRUSH_CORE = 0.45       # core over the pin, on the diameter
+CRUSH_RIB = -0.20       # rib tips over the pin, on the diameter
+KEY_REACH = 0.12        # the lid's printed ribs past their printed walls:
+PEG_REACH = 0.10        # a round bore, its own reach
+CRUSH_W = 0.8           # a rib's width: two extrusions
+# pockets for bought parts that something else locates: room for the
+# maker's tolerance, so they never have to be scraped to go in
+POCKET_GB, POCKET_ENC = 0.4, 0.5      # gearbox plates; a routed PCB
+BUSH_FIT = 0.35         # the gearbox's bushing in the floor
+HALL_FIT = 0.4
+MAGNET_FIT = 0.40       # slip, and glued: small discs run +-0.05 to 0.1
 FLOOR_T = 3.0           # the block's floor, under the gearmotor's faceplate
 # The block's walls round the encoder: thin on the outward side, where its
 # corner passes 1.5 mm inside the arc's bar, thicker inward.
@@ -298,7 +334,7 @@ KEY_D = 1.5             # the lid's key, down into the top of the plug's channel
 # block prints on its side, and a narrower tower stood 1.55 mm off the
 # plate for its whole length, an overhang with nothing under it.
 POST_X = 10.0                                             # radial
-POST_Y = MOTOR["enc_w"] + SLIP + 2 * WALL_SIDE            # across: 17.2
+POST_Y = MOTOR["enc_w"] + POCKET_ENC + 2 * WALL_SIDE      # across
 POST_R = 55.0           # its centre from the rotor axis: clear of the crank,
                         # inside the lip's mouth (72.7), and far enough in
                         # that the plug's channel never reaches the screw's
@@ -710,8 +746,8 @@ def stator(specimen=SPECIMEN):
     # the home sensor lies face up in its boss; its leads go down through
     top = RING_GAP - HOME["gap"]
     hx, hy_, _ = polar(HOME["r"], HOME["phi"])
-    pk = box((-(HALL[0] + SLIP) / 2, -(HALL[1] + SLIP) / 2, top - HALL[2] - 0.2),
-             ((HALL[0] + SLIP) / 2, (HALL[1] + SLIP) / 2, top + 1.0))
+    pk = box((-(HALL[0] + HALL_FIT) / 2, -(HALL[1] + HALL_FIT) / 2, top - HALL[2] - 0.2),
+             ((HALL[0] + HALL_FIT) / 2, (HALL[1] + HALL_FIT) / 2, top + 1.0))
     pk.apply_transform(rot(HOME["phi"], [0, 0, 1]))
     pk.apply_translation([hx, hy_, 0])
     tools.append(pk)
@@ -807,7 +843,7 @@ def driver_levels(specimen=SPECIMEN):
     L = levels(specimen)
     c0 = L["ring_bot"] + LIP_T + LIP_GAP              # crank underside
     c1 = c0 + CRANK_T
-    floor_lo = c1 + LIP_GAP                           # the block's floor
+    floor_lo = c1 + FLOOR_GAP                         # the block's floor
     face = floor_lo + FLOOR_T                         # gearmotor faceplate
     top = face + MOTOR["gearbox"] + MOTOR["body"] + MOTOR["enc"]  # its plug
     return dict(lock_lo=L["ring_bot"] - 0.3, crank_lo=c0, crank_hi=c1,
@@ -853,24 +889,51 @@ def driver(specimen=SPECIMEN):
     # lead-in is one lofted solid -- a separate cone unioned onto a bore
     # left zero-length edges where the two met. The shaft and the pin
     # both enter from this side.
-    z0, zj, zt = Z["shaft_tip"] - 0.2, Z["crank_hi"] - DRIVER_LEADIN, Z["crank_hi"] + 0.5
-    r = (MOTOR["shaft_d"] + PRESS) / 2
-    flat = MOTOR["shaft_flat"] + PRESS - r            # flat's distance from the axis
-    # the D: round on -y, closed by the flat at +y
-    ang = np.linspace(np.pi - np.arcsin(flat / r), 2 * np.pi + np.arcsin(flat / r), 48)
-    d_pts = [(r * np.cos(a_), r * np.sin(a_)) for a_ in ang]
+    # deep enough that the shaft's tip never bottoms: the shim sets the
+    # driver's height, not the shaft's length
+    z0, zj, zt = Z["shaft_tip"] - 0.8, Z["crank_hi"] - DRIVER_LEADIN, Z["crank_hi"] + 0.5
+    rs = MOTOR["shaft_d"] / 2
+    rc = rs + CRUSH_CORE / 2
+    # the D: its flat a hair clear, one rib opposite it that presses the
+    # shaft onto the flat -- no backlash -- and two either side that
+    # centre it
+    flat = MOTOR["shaft_flat"] - rs + 0.10
+    yc = flat - (MOTOR["shaft_flat"] - rs)         # where the shaft's centre sits
+    def on_shaft(a_):
+        a_ = np.radians(a_)
+        return yc * np.sin(a_) + np.sqrt(rs ** 2 - (yc * np.cos(a_)) ** 2)
+    ribs = [(-90.0, (MOTOR["shaft_flat"] + CRUSH_RIB) - flat)] + \
+        [(a_, on_shaft(a_) + CRUSH_RIB / 2) for a_ in (-25.0, -155.0)]
+    d_pts = _crush_pts(rc, ribs, flat=flat)
     # 45 degrees: the flare grows as far as it rises
-    bore = _local(_funnel(d_pts, z0, zj, zt, (r + zt - zj) / r))
-    rp = PIN_HOLE_D / 2
-    c_pts = [(rp * np.cos(a_), rp * np.sin(a_))
-             for a_ in np.linspace(0, 2 * np.pi, 48, endpoint=False)]
+    bore = _local(_funnel(d_pts, z0, zj, zt, (rc + zt - zj) / rc))
+    # the pin's ribs turned away from the crank's thin side
+    rp = PIN_R + CRUSH_CORE / 2
+    ph = GENEVA_PHI
+    c_pts = _crush_pts(rp, [(ph + k, PIN_R + CRUSH_RIB / 2) for k in (0.0, 120.0, 240.0)])
     pin_hole = _funnel(c_pts, Z["crank_lo"] - 1, zj, zt, (rp + zt - zj) / rp)
     pin_hole.apply_translation([pin[0], pin[1], 0])
     return cut(d, [pin_hole, bore])
 
 
+def _crush_pts(r_core, ribs, flat=None, n=96):
+    """A crush-rib hole in plan: a round core of r_core, less a flat at y
+    = flat if given, with narrow ribs standing in from the wall to the
+    radii in `ribs` ([(angle in degrees, tip radius)]). Star-shaped about
+    the origin, counter-clockwise."""
+    from shapely.geometry.polygon import orient
+    g = Point(0, 0).buffer(r_core, quad_segs=n // 4)
+    if flat is not None:
+        g = g.intersection(Polygon([(-9, -9), (9, -9), (9, flat), (-9, flat)]))
+    for a_, rt in ribs:
+        rib = Polygon([(rt, -CRUSH_W / 2), (r_core + 1, -CRUSH_W / 2),
+                       (r_core + 1, CRUSH_W / 2), (rt, CRUSH_W / 2)])
+        g = g.difference(affinity.rotate(rib, a_, origin=(0, 0)))
+    return list(orient(g, 1.0).exterior.coords)[:-1]
+
+
 def _funnel(pts, z0, zj, zt, k):
-    """A convex outline (CCW, about the origin) as a straight bore from z0
+    """An outline star-shaped about the origin (CCW) as a straight bore from z0
     up to zj, then flaring to k times its size at zt: one closed solid."""
     P = np.asarray(pts, float)
     n = len(P)
@@ -894,8 +957,8 @@ def _funnel(pts, z0, zj, zt, k):
 def _block_dims():
     """The block's extent in the driver's frame: inward x, outward x, and
     half its width across -- set by the encoder end, the widest part."""
-    ed = (MOTOR["enc_d"] + SLIP) / 2
-    ew = (MOTOR["enc_w"] + SLIP) / 2
+    ed = (MOTOR["enc_d"] + POCKET_ENC) / 2
+    ew = (MOTOR["enc_w"] + POCKET_ENC) / 2
     return ed + WALL_IN, ed + WALL_OUT, ew + WALL_SIDE
 
 
@@ -923,13 +986,13 @@ def drive_block(specimen=SPECIMEN):
     post = box((px - hx, -hy, Z["base_top"] - POST_SOCKET),
                (px + hx, hy, Z["floor_lo"] + 0.5))
     b = union([blk, tower, post])
-    pw, pd = (MOTOR["w"] + SLIP) / 2, (MOTOR["d"] + SLIP) / 2
-    ew, ed = (MOTOR["enc_w"] + SLIP) / 2, (MOTOR["enc_d"] + SLIP) / 2
+    pw, pd = (MOTOR["w"] + POCKET_GB) / 2, (MOTOR["d"] + POCKET_GB) / 2
+    ew, ed = (MOTOR["enc_w"] + POCKET_ENC) / 2, (MOTOR["enc_d"] + POCKET_ENC) / 2
     enc0 = Z["face"] + MOTOR["gearbox"] + MOTOR["body"] - 0.5
     low = Z["base_top"] - POST_SOCKET - 1
     tools = [box((-pd, -pw, Z["face"]), (pd, pw, Z["motor_top"] + 1)),
              box((-ed, -ew, enc0), (ed, ew, Z["motor_top"] + 1)),
-             cyl((MOTOR["bush_d"] + SLIP) / 2, Z["floor_lo"] - 1, Z["face"] + 1,
+             cyl((MOTOR["bush_d"] + BUSH_FIT) / 2, Z["floor_lo"] - 1, Z["face"] + 1,
                  0, 0, 48),
              # the post's screw: its head seats at the floor's top, reached
              # down an access bore from the top
@@ -956,7 +1019,7 @@ def _plug_z(Z):
 def _channel(Z):
     """The plug's channel in the driver's frame: x from, x to, half its
     width across, and its floor."""
-    ed = (MOTOR["enc_d"] + SLIP) / 2
+    ed = (MOTOR["enc_d"] + POCKET_ENC) / 2
     return (-ed - MOTOR["plug"][0] - SLIP, -ed + 0.5,
             MOTOR["plug"][1] / 2 + SLIP, _plug_z(Z) - MOTOR["plug"][2] / 2 - SLIP)
 
@@ -971,11 +1034,49 @@ def drive_cap(specimen=SPECIMEN):
     lid = trimesh.creation.extrude_polygon(_footprint(), CAP_T)
     lid.apply_translation([0, 0, Z["motor_top"]])
     x0, x1, hw, _ = _channel(Z)
-    key = box((x0 + PRESS / 2, -hw + PRESS / 2, Z["motor_top"] - KEY_D),
-              (-(MOTOR["enc_d"] + SLIP) / 2 - 0.2, hw - PRESS / 2, Z["motor_top"] + 0.5))
-    peg = cyl((6.5 - PRESS) / 2, Z["motor_top"] - 3.0, Z["motor_top"] + 0.5,
-              px, SCREW_Y, 48)
-    return _local(union([lid, key, peg]))
+    # the key: a core 0.3 clear of the channel's walls each side, and a
+    # pair of crush ribs on each side that reach 0.05 past them
+    k0, k1 = x0 + 0.3, -(MOTOR["enc_d"] + POCKET_ENC) / 2 - 0.2
+    kz0, kz1 = Z["motor_top"] - KEY_D, Z["motor_top"] + 0.5
+    parts_ = [box((k0, -hw + 0.3, kz0), (k1, hw - 0.3, kz1))]
+    for xr in key_ribs(Z):
+        for y0, y1 in ((hw - 0.5, hw + KEY_REACH), (-hw - KEY_REACH, -hw + 0.5)):
+            parts_.append(box((xr - CRUSH_W / 2, y0, kz0), (xr + CRUSH_W / 2, y1, kz1)))
+        # (reach: the ribs' tips stand KEY_REACH past the channel's walls)
+    key = union(parts_)
+    # the peg: a core 0.3 clear of the access bore, three ribs 0.05 past it
+    bore_r = 6.5 / 2
+    pg = Point(0, 0).buffer(bore_r - 0.3, quad_segs=24)
+    for a_ in (0.0, 120.0, 240.0):
+        rib = Polygon([(bore_r - 0.6, -CRUSH_W / 2), (bore_r + PEG_REACH, -CRUSH_W / 2),
+                       (bore_r + PEG_REACH, CRUSH_W / 2), (bore_r - 0.6, CRUSH_W / 2)])
+        pg = pg.union(affinity.rotate(rib, a_, origin=(0, 0)))
+    peg = trimesh.creation.extrude_polygon(pg, 3.5)
+    peg.apply_translation([px, SCREW_Y, Z["motor_top"] - 3.0])
+    # the encoder's magnet disc spins on the back of the motor, right
+    # under the lid: a recess over it rather than trusting the last half
+    # millimeter of the drawing
+    return _local(cut(union([lid, key, peg]),
+                      [cyl(5.0, Z["motor_top"] - 1.0, Z["motor_top"] + 1.0, 0, 0, 48)]))
+
+
+def key_ribs(Z):
+    """Where along the lid's key its crush ribs stand."""
+    x0, _, _, _ = _channel(Z)
+    k0, k1 = x0 + 0.3, -(MOTOR["enc_d"] + POCKET_ENC) / 2 - 0.2
+    return (k0 + (k1 - k0) * 0.25, k0 + (k1 - k0) * 0.75)
+
+
+def driver_shim(specimen=SPECIMEN):
+    """The 0.6 mm fork slid between the crank and the block's floor while
+    the driver is pressed up its shaft, then pulled out: it is what sets
+    the crank's height. A tool, printed with the set and never fitted."""
+    Z = driver_levels(specimen)
+    g = Polygon([(-3, -5), (24, -5), (24, 5), (-3, 5)]).difference(
+        Polygon([(-4, -1.7), (1.7, -1.7), (1.7, 1.7), (-4, 1.7)]))
+    m = trimesh.creation.extrude_polygon(g, FLOOR_GAP)
+    m.apply_translation([0, 0, Z["crank_hi"]])
+    return _local(m)
 
 
 def motor_prims(specimen=SPECIMEN):
@@ -1014,7 +1115,19 @@ def motor_prims(specimen=SPECIMEN):
 # capture turns the ring four times over.
 XIAO = (21.0, 17.8, 4.5)          # Seeed XIAO ESP32S3: board and parts' height
 DRV8833 = (12.7, 20.3, 3.5)       # Pololu #2130 DRV8833 carrier
-CTRL = dict(r=175.0, phi=15.0, l=64.0, w=40.0, h=20.0, wall=2.0, lid=2.0)
+CTRL = dict(r=175.0, phi=15.0, l=64.0, w=50.0, h=20.0, wall=2.0, lid=2.0)
+# The motor does not run through the XIAO. Its 5 V pin is tied straight to
+# its USB VBUS and Seeed asks for no more than 500 mA through it; the
+# gearmotor starts and stalls at 1.3 A. Power comes in on its own USB-C
+# breakout (Adafruit #4090: 5.1 k CC resistors, so any USB-C charger gives
+# 5 V, 1.5 A on VBUS), straight to the DRV8833's VM with a 470 uF
+# capacitor across it, and to the XIAO's 5 V pin through a Schottky diode,
+# as Seeed asks for an external supply. The XIAO's own port is for flashing.
+PWR = (20.4, 14.2, 5.0)            # the breakout: long, wide, tall
+PWR_ITEM = "Adafruit #4090 USB Type C breakout, downstream (5.1 k CC)"
+CAP_ITEM = "470 uF 10 V electrolytic capacitor"
+DIODE_ITEM = "1N5817 Schottky diode"
+XIAO_Y, PWR_Y = -8.5, 11.0         # where each board sits across the box
 CABLE_R = 1.3                     # Pololu's cable: six loose 28 AWG wires
 LEAD_R = 0.9                      # the home sensor's three-wire lead
 CABLE_DY, LEAD_DY = 1.8, -2.2     # where each comes through the box's inlet
@@ -1056,11 +1169,21 @@ def ctrl_box(specimen=SPECIMEN):
     b = union([b] + bosses)
     xs, xd = 10.0, -14.0              # where the two boards sit, along x
     cut2 = []
-    # the XIAO in a slip-fit cradle against the outer wall; its USB-C,
-    # 9 x 3.3, through the wall at the board's height
-    cut2.append(box((xs - XIAO[0] / 2, -XIAO[1] / 2 - SLIP / 2, t - 0.01),
-                    (l / 2 - t + 0.01, XIAO[1] / 2 + SLIP / 2, t + 1.2)))
-    cut2.append(box((l / 2 - t - 1, -4.75, t + 1.0), (l / 2 + 1, 4.75, t + 4.6)))
+    # the XIAO in a slip-fit cradle against the outer wall. Its USB-C
+    # opening takes the plug's overmold (12.35 x 6.5 at most, by the USB-C
+    # spec), not just the receptacle: through a 2 mm wall a receptacle-
+    # sized hole stopped the overmold with the plug 4.6 of its 6.6 mm in
+    cut2.append(box((xs - XIAO[0] / 2, XIAO_Y - XIAO[1] / 2 - SLIP / 2, t - 0.01),
+                    (l / 2 - t + 0.01, XIAO_Y + XIAO[1] / 2 + SLIP / 2, t + 1.2)))
+    uz = t + 1.0 + 3.26 / 2                       # the receptacle's centre
+    cut2.append(box((l / 2 - t - 0.5, XIAO_Y - 6.4, uz - 3.5),
+                    (l / 2 + 1, XIAO_Y + 6.4, uz + 3.5)))
+    # the power breakout beside it, in a 1 mm recess, its port the same way
+    cut2.append(box((l / 2 - t - PWR[0] - SLIP / 2, PWR_Y - PWR[1] / 2 - SLIP / 2, t - 1.0),
+                    (l / 2 - t + 0.01, PWR_Y + PWR[1] / 2 + SLIP / 2, t + 1.0)))
+    pz_ = _pwr_z()
+    cut2.append(box((l / 2 - t - 0.5, PWR_Y - 6.4, pz_ - 3.5),
+                    (l / 2 + 1, PWR_Y + 6.4, pz_ + 3.5)))
     cut2.append(box((xd - DRV8833[0] / 2 - SLIP / 2, -DRV8833[1] / 2 - SLIP / 2, t - 0.01),
                     (xd + DRV8833[0] / 2 + SLIP / 2, DRV8833[1] / 2 + SLIP / 2, t + 1.0)))
     # the cable's way in, low on the inner wall, and the tie bar beside it
@@ -1068,9 +1191,16 @@ def ctrl_box(specimen=SPECIMEN):
                     (-l / 2 + t + 1, CTRL_INLET_Y + 3.5, t + 2 * CABLE_R + 1.5)))
     for x in (-l / 2 - 4.5, l / 2 + 4.5):
         cut2.append(cyl(1.7, -1, 4, x, 0, 24))
+    # M2 thread-forming pilots: drawn Ø1.95, which prints about Ø1.7 for
+    # the screw's 1.45 core; Ø1.6 printed 1.2 and would split the boss
     for x, y in CTRL_BOSSES:
-        cut2.append(cyl(0.8, 3, h + 1, x, y, 24))
+        cut2.append(cyl(0.975, 3, h + 1, x, y, 24))
     return _ctrl_local(cut(b, cut2), specimen)
+
+
+def _pwr_z():
+    """The breakout's receptacle centre: a 1.6 mm board in its 1 mm recess."""
+    return CTRL["wall"] - 1.0 + 1.6 + 3.26 / 2
 
 
 def ctrl_lid(specimen=SPECIMEN):
@@ -1109,7 +1239,7 @@ def cable_upper(specimen=SPECIMEN):
     px = POST_R - GENEVA_C
     zc = _plug_z(Z)
     end = o + u * (-MOTOR["enc_d"] / 2 - MOTOR["plug"][0])     # the plug's back
-    turn = o + u * (-(MOTOR["enc_d"] + SLIP) / 2 - MOTOR["plug"][0]) + t * CABLE_Y
+    turn = o + u * (-(MOTOR["enc_d"] + POCKET_ENC) / 2 - MOTOR["plug"][0]) + t * CABLE_Y
     bore = o + u * px + t * CABLE_Y
     return [[end[0], end[1], zc], [turn[0], turn[1], zc], [bore[0], bore[1], zc],
             [bore[0], bore[1], L["base_top"] - POST_SOCKET]]
@@ -1280,7 +1410,7 @@ def rotor(specimen=SPECIMEN):
     r_ = union([ring, pad, lip])
     # the home magnet, pressed up into the underside over its sensor
     mx, my, _ = polar(HOME["r"], HOME["phi"])
-    tools = [cyl((MAGNET[0] + PRESS) / 2, zb - 1, zb + MAGNET[1] + 0.1,
+    tools = [cyl((MAGNET[0] + MAGNET_FIT) / 2, zb - 1, zb + MAGNET[1] + 0.1,
                  mx, my, 48)]
     # the slot the arc's bar keys into, and the inserts it bolts down to
     tools.append(box((BAR_X0 - 5.0, Y_ARC - ARC_HW - 0.2, zp - PAD_SLOT_D),
@@ -1320,7 +1450,8 @@ def arc():
                             ARC_HW + 1, f - half, f + half, 4))
     # bolts run along the arc frame's Y (world z), down through the bar
     for x in BOLTS_X:
-        for r_, y0, y1 in ((BOLT_R, LEG_BOTTOM - 1, LEG_BOTTOM + BAR_T + 1),
+        # horizontal as the arc prints, so its crown sags: 0.1 more room
+        for r_, y0, y1 in ((BOLT_R + 0.1, LEG_BOTTOM - 1, LEG_BOTTOM + BAR_T + 1),
                            (CBORE[0], LEG_BOTTOM + BAR_T - CBORE[1],
                             LEG_BOTTOM + BAR_T + 1)):
             c = trimesh.creation.cylinder(radius=r_, height=y1 - y0,
@@ -1633,6 +1764,7 @@ def assemble(specimen=SPECIMEN):
              "drive_cap": drive_cap(specimen), "ctrl_box": ctrl_box(specimen),
              "ctrl_lid": ctrl_lid(specimen)}
     parts.update(sleeves_in_place(specimen))
+    parts["driver_shim"] = driver_shim(specimen)
     parts["rotor"] = rotor(specimen)
     parts["arc"] = arc()
     parts["saddle"] = saddle()
@@ -1674,9 +1806,15 @@ def plate_pose(name, mesh):
     # crank-top down, so the bore opens on the plate and the lock rises
     if name == "driver":
         return rot(180.0, [1, 0, 0])
-    # on its side: the pocket becomes a tunnel, every other face is square
+    # Lid face down. On its side, the plug channel's wall was a tab held
+    # by one edge -- the cable's slot one side of it, the encoder's pocket
+    # the other, the end open -- printed on air, and it is the face the
+    # lid's key presses against. Upside down the pockets and the channel
+    # are shafts open to the plate, every fit is a vertical wall, and the
+    # only roofs are the floor over the pocket and the channel's end, each
+    # landed all round.
     if name == "drive_block":
-        return rot(90.0, polar(1.0, GENEVA_PHI))
+        return rot(180.0, [1, 0, 0])
     # its wiring bay up, open to the nozzle
     if name == "drive_cap":
         return rot(180.0, [1, 0, 0])
@@ -1927,7 +2065,8 @@ MOUNT_THETA = 45.0
 
 
 def _step(id_, title, note, bodies=(), hw=(), path=None, against=None,
-          check=None, spin=None, carry=(), at=None, alt=None, turn=None):
+          check=None, spin=None, carry=(), at=None, alt=None, turn=None,
+          presses=()):
     """`hw` is [(bom_item, qty, [prims])]; `path` is (direction, travel),
     the way the pieces arrive. `against`, when given, makes it a bench
     step checked against those bodies only; what it builds rides along
@@ -1944,7 +2083,7 @@ def _step(id_, title, note, bodies=(), hw=(), path=None, against=None,
                 check=check, carry=list(carry),
                 at=None if at is None else [round(float(v), 6)
                                             for v in np.ravel(at)],
-                alt=alt, turn=turn)
+                alt=alt, turn=turn, presses=[list(p) for p in presses])
 
 
 def assembly_steps(parts, specimen=SPECIMEN):
@@ -1993,8 +2132,10 @@ def assembly_steps(parts, specimen=SPECIMEN):
     CR[:3, 3] = [co[0], co[1], board]
     CR = (CR @ rot(CTRL["phi"], [0, 0, 1])).ravel().tolist()
     t_ = CTRL["wall"]
-    xiao = [dict(kind="box", lo=[10.0 - XIAO[0] / 2, -XIAO[1] / 2, t_],
-                 hi=[CTRL["l"] / 2 - t_ - 0.2, XIAO[1] / 2, t_ + XIAO[2]], M=CR)]
+    xiao = [dict(kind="box", lo=[10.0 - XIAO[0] / 2, XIAO_Y - XIAO[1] / 2, t_],
+                 hi=[CTRL["l"] / 2 - t_ - 0.2, XIAO_Y + XIAO[1] / 2, t_ + XIAO[2]], M=CR)]
+    pwr = [dict(kind="box", lo=[CTRL["l"] / 2 - t_ - PWR[0], PWR_Y - PWR[1] / 2, t_ - 1.0],
+                hi=[CTRL["l"] / 2 - t_ - 0.2, PWR_Y + PWR[1] / 2, t_ - 1.0 + PWR[2]], M=CR)]
     drv = [dict(kind="box", lo=[-14.0 - DRV8833[0] / 2, -DRV8833[1] / 2, t_],
                 hi=[-14.0 + DRV8833[0] / 2, DRV8833[1] / 2, t_ + DRV8833[2]], M=CR)]
     hm = polar(HOME["r"], HOME["phi"])
@@ -2033,11 +2174,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
     floor_ = L["pad_top"] - PAD_SLOT_D
     pad_ins = [insert([x, Y_ARC, floor_ - (ins4[1] - 1.0) / 2], ins4) for x in BOLTS_X]
 
-    # the USB-C plug in the XIAO's port, its cord running off the board
-    pz = t_ + 2.8
-    usb = [dict(kind="box", lo=[CTRL["l"] / 2 - t_ + 0.5, -4.1, pz - 1.3],
-                hi=[CTRL["l"] / 2 + 12.0, 4.1, pz + 1.3], M=CR),
-           dict(kind="cyl", c=[CTRL["l"] / 2 + 42.0, 0.0, pz], axis=[1, 0, 0],
+    # the USB-C plug in the power breakout's port, its cord off the board
+    pz = _pwr_z()
+    usb = [dict(kind="box", lo=[CTRL["l"] / 2 - t_ + 0.5, PWR_Y - 4.1, pz - 1.3],
+                hi=[CTRL["l"] / 2 + 12.0, PWR_Y + 4.1, pz + 1.3], M=CR),
+           dict(kind="cyl", c=[CTRL["l"] / 2 + 42.0, PWR_Y, pz], axis=[1, 0, 0],
                 r=2.0, h=60.0, M=CR)]
     usb_dir = (np.asarray(CR).reshape(4, 4)[:3, :3] @ np.array([-1.0, 0, 0])).tolist()
     recv_ins = _moved([dict(kind="ring", axis=[0, 0, 1], ro=ins3[0] - 0.05,
@@ -2078,11 +2219,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("sole", "Sole plate onto the board",
               "Melt the three M4 inserts into the pads, then glue the plate "
               "to a heavy board, pads up. Board and glue are not on the BOM.",
-              ["sole_plate"], [("M4 heat-set insert", 3, sole_ins)], (down, 30.0)),
+              ["sole_plate"], [(INSERT_M4, 3, sole_ins)], (down, 30.0)),
         _step("stator_inserts", "Inserts into the base",
               "Four M3 inserts: one in the top of each tower, one under "
               "the drive post's socket.",
-              hw=[("M3 heat-set insert", 4, tower_ins + post_ins)],
+              hw=[(INSERT_M3, 4, tower_ins + post_ins)],
               path=(down, 15.0), against=["stator"]),
         _step("mount_screw", "Mount screw up through the pedestal",
               "On the bench, from underneath: the hex head drops into its "
@@ -2122,10 +2263,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
               path=(down, 20.0)),
         _step("rotor_inserts", "Inserts into the rotor's pad",
               "Three M4 inserts in the floor of the pad's slot.",
-              hw=[("M4 heat-set insert", 3, pad_ins)],
+              hw=[(INSERT_M4, 3, pad_ins)],
               path=(down, 15.0), against=["rotor"]),
         _step("ring_magnet", "Home magnet into the ring",
-              "On the bench: pressed up into the underside, either way up.",
+              "On the bench: a drop of CA in its pocket, then the magnet, "
+              "either way up.",
               hw=[("\u00d83 x 2 N52 disc magnet", 1, ring_mag)],
               path=(up, 10.0), against=["rotor"]),
         _step("rotor", "Ring down past the bearings",
@@ -2141,7 +2283,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "On the bench: the \u00d83 x 16 dowel pressed down through the "
               "whole 8 mm of crank, flush with its top.",
               hw=[(f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)", 1, pin)],
-              path=(down, 20.0), against=["driver"]),
+              path=(down, 20.0), against=["driver"],
+              presses=[("\u00d83 x 16 steel dowel", "driver")]),
         _step("motor", "Gearmotor into the drive block",
               "On the bench: shaft down, its bushing into the floor's hole, "
               "the flat of its D-shaft facing across the block. Nothing to "
@@ -2153,11 +2296,18 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "connector, the plug lying in its channel, its loose end down "
               "the post's bore until it comes out of the foot.",
               hw=[(CABLE_ITEM, 1, cable_in)], against=["drive_block"]),
+        _step("shim", "The driver's shim",
+              "Printed with the set, fitted never: the 0.6 mm fork that sets "
+              "the crank's height in the next step.",
+              ["driver_shim"], check="spare"),
         _step("driver", "Driver up onto the gearmotor's shaft",
-              "On the bench: the D-bore onto the D-shaft, pressed home. The "
-              "pin goes with it.",
+              "On the bench: the shim against the block's floor, round the "
+              "shaft; the D-bore onto the D-shaft, flat to flat, pressed up "
+              "until the crank nips the shim. Pull the shim out. Press with "
+              "the motor held down in its pocket, not through its gearbox. "
+              "The pin goes with it.",
               ["driver"], path=(up, 15.0), against=["drive_block", "motor"],
-              carry=["pin"]),
+              carry=["pin"], presses=[("driver", MOTOR["item"])]),
         _step("drive", "The drive down onto the base",
               "As one unit: the cable's loose end through the base's hole, "
               "the lock and pin down through a seat in the lip, the post's "
@@ -2173,12 +2323,16 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("cap", "Lid pressed on",
               "Its two pegs into the screw's access bore and their own "
               "hole, over the motor, the plug and the cable's channel.",
-              ["drive_cap"], path=(down, 15.0)),
+              ["drive_cap"], path=(down, 15.0),
+              presses=[("drive_cap", "drive_block")]),
         _step("ctrl", "Controller box onto the board",
-              "Two wood screws through its ears; the XIAO in its cradle with "
-              "its USB-C through the wall, the DRV8833 beside it.",
+              "Two wood screws through its ears; the XIAO in its cradle and "
+              "the power breakout beside it, both ports through the wall, the "
+              "DRV8833 behind them. Breakout VBUS to the DRV8833's VM with the "
+              "capacitor across it, and through the diode to the XIAO's 5 V pin.",
               ["ctrl_box"], [("No. 4 x 1/2 in wood screw", 2, []),
                              ("Seeed Studio XIAO ESP32S3", 1, xiao),
+                             (PWR_ITEM, 1, pwr), (CAP_ITEM, 1, []), (DIODE_ITEM, 1, []),
                              ("Pololu #2130 DRV8833 dual motor driver carrier", 1,
                               drv)], (down, 25.0)),
         _step("cable_run", "The motor's cable under the base to the box",
@@ -2193,9 +2347,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["ctrl_lid"], [("M2x6 self-tapping screw", 2, [])],
               path=(down, 15.0)),
         _step("power", "The one power cord",
-              "USB-C from a 5 V, 2 A wall adapter into the XIAO. It powers "
-              "the controller, the H-bridge and the gearmotor. The phone "
-              "runs on its battery: it rides the ring.",
+              "USB-C from a 5 V, 2 A wall adapter into the power breakout, "
+              "not the XIAO: the gearmotor's starts would pull more through "
+              "the XIAO's port than it is built for. It powers the "
+              "controller, the H-bridge and the gearmotor. The phone runs "
+              "on its battery: it rides the ring.",
               hw=[("USB-C cable and 5 V 2 A USB power adapter", 1, usb)],
               path=(usb_dir, 25.0)),
         _step("arc", "Arc down onto the pad",
@@ -2223,7 +2379,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("receiver_prep", "Receiver: inserts and the 1/4-20",
               "On the bench: two M3 inserts underneath, the D-ring screw "
               "up through it.",
-              hw=[("M3 heat-set insert", 2, recv_ins), ("1/4-20 D-ring", 1, dring)],
+              hw=[(INSERT_M3, 2, recv_ins), ("1/4-20 D-ring", 1, dring)],
               path=(up_arc, 20.0), against=["receiver"], at=E),
         _step("receiver", "Receiver onto the platform", "",
               ["receiver"], path=(-up_arc, 20.0), carry=["receiver_prep"],
@@ -2274,6 +2430,30 @@ def _path_pose(path, t, phase=0.0):
     return T
 
 
+# A crush-rib press overlaps its partner by design. The sweep lets a
+# declared pair touch, but only by about what the ribs give: a part that
+# really did not fit would overlap far more.
+CRUSH_VOL_MAX = 4.0     # mm3
+
+
+def _crushes(pair, st, movers, stat, T):
+    """Is this contact a declared press, overlapping by no more than its
+    ribs crush?"""
+    for a_, b_ in st.get("presses") or ():
+        for x, y in (pair, pair[::-1]):
+            if x.startswith(a_) and y.startswith(b_):
+                mv = movers[x] if x in movers else movers[y]
+                st_ = stat[y] if y in stat else stat[x]
+                m = mv.copy()
+                m.apply_transform(T)
+                try:
+                    v = trimesh.boolean.intersection([m, st_], engine="manifold").volume
+                except Exception:
+                    return False
+                return v <= CRUSH_VOL_MAX
+    return False
+
+
 def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
     """Every step's pieces along their path against what is in place --
     printed bodies and the hardware fitted before them. Returns per-step
@@ -2319,9 +2499,15 @@ def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
                 for n in movers:
                     cm.set_transform("M:" + n, T)
                 _, names = cm.in_collision_internal(return_names=True)
-                return sorted({"|".join(sorted((a[2:], b[2:])))
-                               for a, b in names
-                               if (a[:2] == "M:") != (b[:2] == "M:")})
+                out_ = set()
+                for a, b in names:
+                    if (a[:2] == "M:") == (b[:2] == "M:"):
+                        continue
+                    pair = (a[2:], b[2:])
+                    if _crushes(pair, st, movers, stat, T):
+                        continue
+                    out_.add("|".join(sorted(pair)))
+                return sorted(out_)
 
             if st["path"].get("spin"):
                 # a nut ends wherever its thread lets it: find that phase
@@ -2397,6 +2583,11 @@ FIT_BANDS = (("interference", -9.0, 0.0), ("press", 0.0, 0.2),
 
 
 def fit_class(allow, kind="printed hole"):
+    if kind == "crush ribs":
+        # the ribs must reach past the shaft, and by no more than they
+        # can crush
+        return "crush" if -0.30 <= allow <= -0.05 else (
+            "interference" if allow < -0.30 else "slip")
     if kind == "printed shaft in steel bore":
         return "press" if -0.2 < allow <= 0.15 else (
             "interference" if allow <= -0.2 else "slip")
@@ -2510,8 +2701,11 @@ def fits(parts, specimen=SPECIMEN):
         return None if lp is None else 2 * lp[1]
 
     zc = (Z["crank_lo"] + Z["crank_hi"]) / 2
-    row("Geneva pin in the crank", hole_d(parts["driver"], pin_xy, zc, PIN_R),
-        2 * PIN_R, "press", note="steel dowel, pressed")
+    lp = _loop_at(parts["driver"], pin_xy, zc, PIN_R)
+    row("Geneva pin in the crank's ribs", None if lp is None else 2 * lp[0],
+        2 * PIN_R, "crush", kind="crush ribs", note="steel dowel, pressed")
+    row("Geneva pin in the crank's core", None if lp is None else 2 * lp[1],
+        2 * PIN_R, "running", note="never binds")
     zl = L["ring_bot"] + LIP_T / 2
     a_s = np.radians(GENEVA_PHI + 180.0 / GENEVA_N)
     rs = (GENEVA_MOUTH + GENEVA_C + GENEVA_A) / 2
@@ -2525,20 +2719,22 @@ def fits(parts, specimen=SPECIMEN):
     # toward its round side -- out to the round wall and to the flat
     t_ = np.array([-u[1], u[0], 0.0])
     od = np.array([o[0], o[1], Z["crank_hi"] - 2.0])
-    rnd, flt = _ray_hit(parts["driver"], od, -t_), _ray_hit(parts["driver"], od, t_)
-    row("Gearmotor's D-shaft in the crank, round",
-        None if rnd is None else 2 * rnd, MOTOR["shaft_d"], "press",
-        note="steel D-shaft into a printed D-bore")
-    row("Gearmotor's D-shaft in the crank, flat",
-        None if rnd is None or flt is None else rnd + flt, MOTOR["shaft_flat"],
-        "press")
+    rib, flt = _ray_hit(parts["driver"], od, -t_), _ray_hit(parts["driver"], od, t_)
+    core = _ray_hit(parts["driver"], od, u)
+    row("Gearmotor's D-shaft in the crank, flat to rib",
+        None if rib is None or flt is None else rib + flt, MOTOR["shaft_flat"],
+        "crush", kind="crush ribs",
+        note="the rib opposite the flat presses the shaft onto it")
+    row("Gearmotor's D-shaft in the crank, core",
+        None if core is None else 2 * core, MOTOR["shaft_d"], "running",
+        note="never binds")
     zp = Z["face"] + 8.0
     pc = np.array([o[0], o[1], zp])
     row("Gearmotor across its pocket",
-        _ray_gap(parts["drive_block"], pc, [-u[1], u[0], 0]), MOTOR["w"], "slip",
-        note="it is located by the pocket and its bushing")
+        _ray_gap(parts["drive_block"], pc, [-u[1], u[0], 0]), MOTOR["w"], "running",
+        note="the bushing locates it; the pocket only has to take it")
     row("Gearmotor along its pocket",
-        _ray_gap(parts["drive_block"], pc, u), MOTOR["d"], "slip")
+        _ray_gap(parts["drive_block"], pc, u), MOTOR["d"], "running")
     row("Gearbox bushing in the block's floor",
         hole_d(parts["drive_block"], o, Z["floor_lo"] + FLOOR_T / 2,
                MOTOR["bush_d"] / 2), MOTOR["bush_d"], "slip",
@@ -2546,31 +2742,33 @@ def fits(parts, specimen=SPECIMEN):
     ze = Z["motor_top"] - MOTOR["enc"] / 2
     pe = np.array([o[0], o[1], ze])
     row("Encoder across its pocket",
-        _ray_gap(parts["drive_block"], pe, [-u[1], u[0], 0]), MOTOR["enc_w"], "slip")
+        _ray_gap(parts["drive_block"], pe, [-u[1], u[0], 0]), MOTOR["enc_w"], "running",
+        note="a routed PCB, +-0.15")
     # out to the outward wall and doubled: inward, the plug's channel opens
     ow = _ray_hit(parts["drive_block"], pe, u)
     row("Encoder along its pocket", None if ow is None else 2 * ow,
-        MOTOR["enc_d"], "slip")
+        MOTOR["enc_d"], "running")
     x0, x1, hw_, _ = _channel(Z)
-    kc = o + u * ((x0 + x1) / 2 - 1.0) + np.array([0, 0, Z["motor_top"] - KEY_D / 2])
+    kc = o + u * key_ribs(Z)[0] + np.array([0, 0, Z["motor_top"] - KEY_D / 2])
     tt = np.array([-u[1], u[0], 0])
     kh = _ray_gap(parts["drive_block"], kc, tt)
-    lid_lo = parts["drive_cap"].copy()
-    row("Lid's key in the plug's channel", kh,
-        None if kh is None else _key_width(parts["drive_cap"], kc, tt), "press",
+    row("Lid's key ribs in the plug's channel", kh,
+        None if kh is None else _key_width(parts["drive_cap"], kc, tt), "crush",
+        kind="crush ribs",
         note="it holds the lid, and holds the plug in its socket")
     ab = o + u * (POST_R - GENEVA_C) + np.array([-u[1], u[0], 0]) * SCREW_Y
-    row("Lid's big peg in the access bore",
+    row("Lid's peg ribs in the access bore",
         hole_d(parts["drive_block"], ab, Z["motor_top"] - 1.5, 3.25),
-        shaft_d(parts["drive_cap"], ab, Z["motor_top"] - 1.5, 3.2), "press")
+        shaft_d(parts["drive_cap"], ab, Z["motor_top"] - 1.5, 3.2), "crush",
+        kind="crush ribs")
     hm = polar(HOME["r"], HOME["phi"])
     row("Home magnet in the ring",
         hole_d(parts["rotor"], hm, L["ring_bot"] + 1.0, MAGNET[0] / 2),
-        MAGNET[0], "press")
+        MAGNET[0], "running", note="loose on purpose, and glued")
     hc = np.array([hm[0], hm[1], L["base_top"] + RING_GAP - HOME["gap"] - 0.8])
     row("Home sensor in its boss",
         _ray_gap(parts["stator"], hc, polar(1.0, HOME["phi"])), HALL[0],
-        "slip")
+        "running")
     pp = polar(POST_R - GENEVA_BIAS, GENEVA_PHI, L["base_top"] - POST_SOCKET / 2)
     row("Drive post in its socket", _socket_width(parts["stator"], pp, u),
         POST_X, "running",
@@ -2581,7 +2779,7 @@ def fits(parts, specimen=SPECIMEN):
             hole_d(parts["stator"], f, L["base_top"] - FOOT_CBORE[1] - 1.5,
                    BOLT_R), 4.0, "clearance")
     row("Bar bolt through the arc",
-        hole_d(parts["arc"], (BOLTS_X[0], Y_ARC), LEG_BOTTOM + 3.0, BOLT_R),
+        hole_d(parts["arc"], (BOLTS_X[0], Y_ARC), LEG_BOTTOM + 3.0, BOLT_R + 0.1),
         4.0, "clearance")
     sl = parts["sleeve_a"]
     bx, by = _sleeve_bore(sl)
@@ -2735,7 +2933,9 @@ def geneva_follows(parts, shift=(0.0, 0.0), psi_step=3.0, search=1.5,
         th0 = geneva_wheel(psi)
         for k in tries:
             cm.set_transform("rotor", Tsh @ rot(th0 + k, [0, 0, 1]))
-            if not cm.in_collision_internal():
+            _, names = cm.in_collision_internal(return_names=True)
+            # the pin is pressed into the crank's ribs: only the rotor counts
+            if not any("rotor" in p_ for p_ in names):
                 break
         else:
             jams.append(float(psi))
@@ -2746,18 +2946,18 @@ def geneva_follows(parts, shift=(0.0, 0.0), psi_step=3.0, search=1.5,
 # together: the post's play in its running-fit socket (0.2), the ring
 # centred by eccentrics turned in by hand, and the ring and the base
 # shrinking differently (0.1-0.2 at r 73).
-GENEVA_STACK = 0.4
+GENEVA_STACK = 0.6
 
 
 def geneva_window(parts):
     """The ring off by GENEVA_STACK each way along the drive's line and
-    across it must run; off by 1 mm toward the axis it must jam, or the
+    across it must run; off by 1.6 mm toward the axis it must jam, or the
     check sees nothing."""
     _, u, t = _driver_frame()
     out = {}
     for name, v in (("in", -u), ("out", u), ("across", t), ("across_back", -t)):
         out[name] = len(geneva_follows(parts, v[:2] * GENEVA_STACK))
-    out["control_jams"] = len(geneva_follows(parts, -u[:2] * 1.0)) > 0
+    out["control_jams"] = len(geneva_follows(parts, -u[:2] * 1.6)) > 0
     return out
 
 
@@ -2972,12 +3172,12 @@ def bolt_len(crosses, insert, relief):
 
 
 def inserts():
-    out = {"M4 heat-set insert": 3 + 3, "M3 heat-set insert": 2 + 1 + 3,
+    out = {INSERT_M4: 3 + 3, INSERT_M3: 2 + 1 + 3,
            MOTOR["item"]: 1,
            HALL_ITEM: 1,
            "\u00d83 x 2 N52 disc magnet": 1,
            CABLE_ITEM: 1, LEAD_ITEM: 1,
-           "Seeed Studio XIAO ESP32S3": 1,
+           "Seeed Studio XIAO ESP32S3": 1, PWR_ITEM: 1, CAP_ITEM: 1, DIODE_ITEM: 1,
            "Pololu #2130 DRV8833 dual motor driver carrier": 1,
            "USB-C cable and 5 V 2 A USB power adapter": 1,
            "No. 4 x 1/2 in wood screw": 2, "M2x6 self-tapping screw": 2,
@@ -3081,7 +3281,7 @@ def gates(rep):
 
 # --- export ------------------------------------------------------------
 BRIM = {"brim_type": "outer_only", "brim_width": "5", "brim_object_gap": "0"}
-BRIMMED = ("mount_screw", "mount_hex_nut", "mount_wing_nut")
+BRIMMED = ("mount_screw", "mount_hex_nut", "mount_wing_nut", "drive_block")
 FILAMENT = "Bambu PETG Basic @BBL P2S 0.4 nozzle"
 PRINT_SETTINGS = {"wall_loops": "4", "sparse_infill_density": "25%",
                   "sparse_infill_pattern": "gyroid"}

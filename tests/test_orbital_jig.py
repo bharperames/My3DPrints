@@ -33,8 +33,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_eighteen_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 18)
+    def test_nineteen_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 19)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -347,7 +347,7 @@ class TestRealDrive(unittest.TestCase):
     def test_the_encoder_knows_the_driver_finely(self):
         """3,576 counts a driver turn: the controller can stop it anywhere
         in the lock's 170 degrees with three orders of margin."""
-        self.assertEqual(J.MOTOR["counts"], 12 * 298)
+        self.assertAlmostEqual(J.MOTOR["counts"], 12 * 297.92)   # Pololu's exact ratio
         lock = 180.0 - 360.0 / J.GENEVA_N
         self.assertGreater(J.MOTOR["counts"] * lock / 360.0, 1000)
 
@@ -506,15 +506,27 @@ class TestAssembly(unittest.TestCase):
         self.assertEqual(J.fit_class(0.1, "printed shaft in steel bore"),
                          "press")
 
-    def test_a_pin_hole_drawn_at_the_pins_size_would_be_caught(self):
-        """Negative control: the crank's hole as first drawn, Ø2.9."""
-        from unittest import mock
-        with mock.patch.object(J, "PIN_HOLE_D", 2.9):
+    def test_ribs_that_reach_too_far_would_be_caught(self):
+        """Negative control: crush ribs drawn 0.4 into the pin, more than
+        a rib can give, grade as an interference."""
+        with mock.patch.object(J, "CRUSH_RIB", -0.40):
             d = J.driver(J.SPECIMEN)
         parts = dict(self.parts, driver=d)
-        row = next(r for r in J.fits(parts) if r["name"].startswith("Geneva pin in the crank"))
+        row = next(r for r in J.fits(parts) if r["name"] == "Geneva pin in the crank's ribs")
         self.assertEqual(row["got"], "interference")
         self.assertFalse(row["ok"])
+
+    def test_every_press_into_a_print_is_a_crush_rib(self):
+        """A plain press is a 0.15 mm window and printed holes scatter
+        about +-0.15: the steel pin and the D-shaft go into crush ribs,
+        whose core never binds."""
+        rows = {r["name"]: r for r in J.fits(self.parts)}
+        for n in ("Geneva pin in the crank's ribs",
+                  "Gearmotor's D-shaft in the crank, flat to rib"):
+            self.assertEqual(rows[n]["got"], "crush", n)
+        for n in ("Geneva pin in the crank's core",
+                  "Gearmotor's D-shaft in the crank, core"):
+            self.assertGreaterEqual(rows[n]["allow"], 0.35, n)
 
 
 class TestFasteners(unittest.TestCase):
