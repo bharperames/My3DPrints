@@ -130,11 +130,25 @@ class TestJig(unittest.TestCase):
         parts["arc"].apply_translation([0, 12.0, 0])   # into the saddle
         self.assertTrue(J.elevation_sweep(parts, step=90.0))
 
-    def test_arc_is_concentric_and_slotted(self):
+    def test_arc_is_concentric_and_a_closed_box(self):
+        """No slot down its length: the thumbscrew clamps outside it, so
+        the box's four walls run unbroken from the leg to the top."""
         lo, hi = self.rep["arc_radii"]
         self.assertGreaterEqual(lo, J.ARC_RI - 0.05)
         self.assertLessEqual(hi, J.ARC_RO + 0.05)
-        self.assertAlmostEqual(self.rep["slot_mm"], J.SLOT_W, delta=0.15)
+        self.assertEqual(self.rep["slot_mm"], 1.0)
+
+    def test_a_slotted_arc_would_be_caught(self):
+        """Negative control: a slot cut down the outboard wall."""
+        a = self.parts["arc"].copy()
+        a.apply_transform(np.linalg.inv(J.M_ARC))
+        cut_ = J.sector(J.ARC_RI - 1, J.ARC_RO + 1, -J.ARC_HW - 1, -J.ARC_HW + 2, 20, 70)
+        a = J.cut(a, [cut_])
+        a.apply_transform(J.M_ARC)
+        self.assertLess(J.slot_width(a), 1.0)
+
+    def test_the_clamp_stands_clear_of_the_box(self):
+        self.assertGreater(J.CLAMP_R - J.SCREW_R, J.ARC_RO + J.LIP_CLR + J.LIP_T)
 
     def test_the_dial_moves_the_pad_and_not_the_arc(self):
         """Stated as a rate, not an identity.

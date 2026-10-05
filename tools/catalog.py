@@ -414,8 +414,8 @@ PARTS = [
        "1.34 kg with its tripod socket 320 mm out, against 0.25 kg of "
        "phone and clamp at 167. Dropping it took 75 mm off the platform, "
        "70 mm off the channel, and both ballasts: the carriage's centre "
-       "of mass now sits 27 mm past the thumbscrew, which the tongue "
-       "takes as 6.5 N where the \u03b11 asked 110. The rotor's ballast "
+       "of mass now sits 6 mm past the thumbscrew, which the carriage's lips "
+       "take as 0.7 N where the \u03b11 asked 110. The rotor's ballast "
        "pocket went too \u2014 it only ever offset 3% of the rotor's own "
        "imbalance, and what actually holds that is the race flanks. "
        "What is lost with it is depth of field, not geometry: a phone at "
@@ -447,6 +447,11 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 12.0.0: the arc a closed 30 x 20 box with 3 mm walls, no slot;
+       # the carriage's lips ride its inner and outer faces and the
+       # thumbscrew clamps just outside it. At 80 degrees the lens moves
+       # 0.8 mm, not 2.1, turns 0.28 degree, not 1.05, first mode 10.9 Hz,
+       # not 7; the carriage's couple on the arc 0.7 N, not 6.5.
        # 11.0.0: no crush ribs -- PETG yields and creeps, it does not
        # crush, and how ribs behaved was a guess. The D-shaft in a
        # clearance bore held by an M3 set screw through a captured nut;
@@ -515,7 +520,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="11.0.0",
+       version="12.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

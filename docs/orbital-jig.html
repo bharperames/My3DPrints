@@ -489,7 +489,7 @@ function poseDriver(psi) {
   driverGroup.matrix.copy(T);
   driverGroup.matrixWorldNeedsUpdate = true;
 }
-// thumbscrew through the arc's slot, knob outboard
+// thumbscrew just outside the arc's box, knob outboard
 const T = D.thumbscrew;
 const shaft = addBody('thumbscrew', new THREE.CylinderGeometry(T.r, T.r, T.y1 - T.y0, 24), hwCarriage, '--hw', HW);
 shaft.position.set(T.u, (T.y0 + T.y1) / 2, 0);
@@ -720,7 +720,7 @@ const PART_NAMES = {
   stator: ['Stator plate', 'base, bearing towers and the pedestal — does not move'],
   rotor: ['Rotor ring', '242 mm, rides three 608 bearings; a 36-slot Geneva lip on its bore'],
   arc: ['Quadrant arc', 'carries the camera through 10–80° of elevation'],
-  saddle: ['Carriage saddle', 'clamps through the arc\u2019s 5.2 mm slot'],
+  saddle: ['Carriage saddle', 'clamps round the outside of the arc\u2019s closed box'],
   shoe: ['Carriage shoe', 'the other half of the clamp, inboard of the arc'],
   receiver: ['Camera receiver', '40 mm of fore/aft travel on a 1/4-20'],
   driver: ['Geneva driver', 'on the gearmotor\u2019s D-shaft: one turn moves the ring 10° and locks it; a Ø3 steel pin drives'],
@@ -1040,7 +1040,7 @@ document.getElementById('facts').innerHTML = [
   ['lens', '<span id="f-lens"></span>'],
   ['frame', '<span id="f-frame"></span>'],
   ['Geneva', `${D.geneva.slots} stops at ${D.geneva.pitch_deg}° · driver at r ${D.geneva.c}`],
-  ['arc', `r ${D.arc.ri}–${D.arc.ro} · slot ${D.arc.slot} mm`],
+  ['arc', `r ${D.arc.ri}–${D.arc.ro} · ${D.arc.box_wall ? 'closed box, ' + D.arc.box_wall + ' mm walls' : 'slot ' + D.arc.slot + ' mm'}`],
   ['bearing pitch', D.bearing.pitch_r + ' mm · 3 × 608'],
   ['arc plane off the meridian', Math.abs(D.y_arc) + ' mm'],
   ['carriage range', `${D.elev_range[0]}–${D.elev_range[1]}°`],
