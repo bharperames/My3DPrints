@@ -418,7 +418,8 @@ def simulate(n=100000, seed=1, window=None, scatter=1.0):
         / (J.TOWER_PITCH * 1.5)                 # rocked by the arc's weight, at the drive
     # the base's corners flex under the bearing loads and lift the lip a
     # little more than the rocking alone (structural review: ~0.2)
-    tower_flex = U(rng, 0.1, 0.2, n)
+    tower_flex = (U(rng, 0.0, 0.01, n) if hasattr(J, "CORNER_FEET")   # feet under the corners
+                  else U(rng, 0.1, 0.2, n))
     lip_top = tower_top + seat + ring_feat + lift + tower_flex
     sock = zq()                                 # the socket's floor
     post_to_floor = zq() + 0.001 * rng.normal(0, 1, n) * (Z["floor_lo"] - Z["base_top"])

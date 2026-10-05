@@ -447,6 +447,9 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 12.0.0: three printed feet glued to the board under the base's
+       # corners: each tower 1000x stiffer downward and 45x against
+       # tilting, in the structural review's plate model.
        # 11.0.0: no crush ribs -- PETG yields and creeps, it does not
        # crush, and how ribs behaved was a guess. The D-shaft in a
        # clearance bore held by an M3 set screw through a captured nut;
@@ -515,7 +518,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="11.0.0",
+       version="12.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

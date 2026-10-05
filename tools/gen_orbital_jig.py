@@ -1330,6 +1330,29 @@ def pin_proxy(specimen=SPECIMEN):
 
 
 # --- the sole plate ------------------------------------------------------
+# The base's corners stand 100 mm past the line between two of its feet,
+# on an 8 mm plate: each tower gave 0.11 mm per newton downward and its
+# top 0.021 mm per newton sideways, which tilted the ring and lifted the
+# lip at the drive. A printed foot under each corner, glued to the board
+# with the base sitting on it, carries the corner straight down: 0.0001
+# and 0.0005 mm per newton in the same plate model. The glue takes up any
+# height difference while it cures, so nothing is forced, and the base
+# still lifts off: the feet hold it up, the three bolts hold it down.
+CORNER_FOOT_R = 12.0
+CORNER_FEET = ("corner_foot_a", "corner_foot_b", "corner_foot_c")
+
+
+def corner_feet(specimen=SPECIMEN):
+    L = levels(specimen)
+    board = L["base_bot"] - SOLE_PAD[1] - SOLE_T
+    out = {}
+    for n, a in zip(CORNER_FEET, TOWER_PHI):
+        x, y, _ = polar(TOWER_PITCH, a)
+        # a twentieth short of the base: the glue under it fills the rest
+        out[n] = cyl(CORNER_FOOT_R, board, L["base_bot"] - 0.05, x, y, 96)
+    return out
+
+
 def sole_plate(specimen=SPECIMEN):
     """Glued to the board; the base bolts down onto its three pads."""
     L = levels(specimen)
@@ -1774,6 +1797,7 @@ def assemble(specimen=SPECIMEN):
     parts.update(sleeves_in_place(specimen))
     parts["driver_shim"] = driver_shim(specimen)
     parts["rotor"] = rotor(specimen)
+    parts.update(corner_feet(specimen))
     parts["arc"] = arc()
     parts["saddle"] = saddle()
     parts["shoe"] = shoe()
@@ -2256,6 +2280,15 @@ def assembly_steps(parts, specimen=SPECIMEN):
                    [p for f in feet for p in
                     _bolt_prims(f, length["stator to sole plate"])])],
               path=(down, 20.0)),
+    ] + [
+        _step(n, "A foot under the base's corner",
+              "Slid in under the tower from outside, a dab of glue under it, "
+              "onto the board. The base sits on the three feet while the "
+              "glue cures, so they set at exactly its height and push "
+              "nothing out of true; the base still lifts off.",
+              [n], path=(tuple(-np.asarray(polar(1.0, a))), 30.0))
+        for n, a in zip(CORNER_FEET, TOWER_PHI)
+    ] + [
         _step("bearings", "Sleeves and bearings onto the towers",
               "A 608 pressed on each sleeve. All three sleeves are "
               "eccentric: turn each so its bearing stands back from where "

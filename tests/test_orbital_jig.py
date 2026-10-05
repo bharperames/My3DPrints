@@ -33,8 +33,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_nineteen_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 19)
+    def test_twenty_two_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 22)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -180,6 +180,26 @@ class TestJig(unittest.TestCase):
                 back.apply_transform(M)
                 self.assertLess(np.abs(back.bounds - self.parts[n].bounds)
                                 .max(), 0.01, n)
+
+
+class TestCornerFeet(unittest.TestCase):
+    """Each tower stands on a foot glued to the board, not on 100 mm of
+    8 mm plate cantilevered past the line between two bolts."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parts = J.assemble(J.SPECIMEN)
+
+    def test_each_foot_stands_under_its_tower_and_just_short_of_the_base(self):
+        L = J.levels(J.SPECIMEN)
+        board = L["base_bot"] - J.SOLE_PAD[1] - J.SOLE_T
+        for n, a in zip(J.CORNER_FEET, J.TOWER_PHI):
+            m = self.parts[n]
+            c = m.bounds.mean(0)[:2]
+            self.assertLess(np.linalg.norm(c - J.polar(J.TOWER_PITCH, a)[:2]), 0.01)
+            self.assertAlmostEqual(m.bounds[0][2], board, places=6)
+            gap = L["base_bot"] - m.bounds[1][2]
+            self.assertTrue(0.0 < gap <= 0.1, gap)
 
 
 class TestPrintSettings(unittest.TestCase):
