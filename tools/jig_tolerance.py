@@ -446,6 +446,9 @@ def simulate(n=100000, seed=1, window=None, scatter=1.0):
         crank_to_lip_p01=float(np.percentile(g_lip, 0.1)),
         crank_to_lip_p50=float(np.median(g_lip)),
         fail_lip=float(np.mean(g_lip < 0.1)),
+        # the lock's root fillet hangs that much lower, beside the lock only
+        fillet_to_lip_p01=float(np.percentile(g_lip - getattr(J, "LOCK_FILLET", 0.0), 0.1)),
+        fail_fillet=float(np.mean(g_lip - getattr(J, "LOCK_FILLET", 0.0) < 0.1)),
         crank_to_floor_p01=float(np.percentile(g_floor, 0.1)),
         crank_to_floor_p50=float(np.median(g_floor)),
         fail_floor=float(np.mean(g_floor < 0.1)),

@@ -271,6 +271,7 @@ LOCK_CLR = 0.2                        # in its seat, running: it turns
 # The lock is cut by the lip itself: everything the lip sweeps through
 # while the pin drives, taken in the driver's frame and grown by this.
 LOCK_RELIEF = 0.2
+LOCK_FILLET = 0.6       # at the lock's root, under the crank
 CRANK_R = GENEVA_A + PIN_R + 2.5      # the crank disc, above the lip: 2.5
                                       # of wall beside the pin, which is pressed
 CRANK_T = 8.0           # the pin is held over all of it
@@ -922,7 +923,22 @@ def driver(specimen=SPECIMEN):
     lock = trimesh.creation.extrude_polygon(geneva_lock_2d(),
                                             Z["crank_lo"] - Z["lock_lo"] + 0.01)
     # drawn on the axis the lip was cut for; carried to where the driver is
-    lock.apply_translation(np.r_[(o - polar(GENEVA_C, GENEVA_PHI))[:2], Z["lock_lo"]])
+    shift = np.r_[(o - polar(GENEVA_C, GENEVA_PHI))[:2], 0.0]
+    lock.apply_translation(shift + np.r_[0, 0, Z["lock_lo"]])
+    # A fillet at the lock's root. The lock is loaded across its layers
+    # whenever the ring is pushed at a stop, and a sharp printed corner is
+    # where it would crack. Stepped down from the crank's underside, it
+    # stays well above anything the lip reaches: the lip's top is LIP_GAP
+    # below the crank, the fillet LOCK_FILLET.
+    fl = []
+    steps_ = 3
+    for k in range(steps_):
+        grow = LOCK_FILLET * (steps_ - k) / steps_
+        g = geneva_lock_2d().buffer(grow, quad_segs=16)
+        sl = trimesh.creation.extrude_polygon(g, LOCK_FILLET / steps_ + 0.01)
+        sl.apply_translation(shift + np.r_[0, 0, Z["crank_lo"] - LOCK_FILLET * (k + 1) / steps_])
+        fl.append(sl)
+    lock = union([lock] + fl)
     crank = cyl(CRANK_R, Z["crank_lo"], Z["crank_hi"], o[0], o[1], 96)
     # turned half a facet, so no vertex of its rim sits on the set screw's
     # axis: one there left the screw's hole two zero-length edges

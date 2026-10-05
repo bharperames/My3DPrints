@@ -347,11 +347,15 @@ class TestGeneva(unittest.TestCase):
         o, _, _ = J._driver_frame()
         below = d.vertices[d.vertices[:, 2] < Z["crank_lo"] - 0.01]
         lip_z = J.levels(J.SPECIMEN)["ring_bot"]
-        for z in np.linspace(lip_z, Z["crank_lo"] - 0.01, 5):  # lip's plane
+        # the lip's own thickness: what passes down through the seat. Above
+        # the lip's top the driver never enters it, and the lock's root
+        # fillet lives there, under the crank
+        for z in np.linspace(lip_z, lip_z + J.LIP_T, 5):
             sec = d.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
             v = sec.vertices
             r = np.hypot(v[:, 0] - o[0], v[:, 1] - o[1])
             self.assertLessEqual(r.max(), J.LOCK_R + 1e-6, z)
+        self.assertGreater(Z["crank_lo"] - J.LOCK_FILLET, lip_z + J.LIP_T)
         # nothing hangs below the lock but the pin, which points at the
         # rotor axis at a stop, where the bore is open
         self.assertGreaterEqual(below[:, 2].min(), Z["lock_lo"] - 1e-4)
