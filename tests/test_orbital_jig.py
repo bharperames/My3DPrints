@@ -649,7 +649,7 @@ class TestFasteners(unittest.TestCase):
         """The table is only right if the part agrees with it."""
         r = J.rotor(J.SPECIMEN)
         floor = J.levels(J.SPECIMEN)["pad_top"] - J.PAD_SLOT_D
-        claimed = J.INS_M4[1] + 4.0
+        claimed = J.INS_M3[1] + 4.0
         for x in J.BOLTS_X:
             on = r.ray.intersects_location([[x, J.Y_ARC, floor + 0.5]],
                                            [[0, 0, -1.0]], multiple_hits=True)[0]

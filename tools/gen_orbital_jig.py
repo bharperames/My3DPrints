@@ -138,7 +138,7 @@ FOOT_PHI = (15.0, 135.0, 255.0)       # mid-edges: a three-point stance
 # driver reaches every head from above with the jig assembled, so the
 # board needs no holes and nothing is done from underneath.
 FOOT_R = 60.0
-FOOT_CBORE = (3.9, 5.0)               # M4 socket head: radius, depth
+FOOT_CBORE = (3.9, 5.0)               # the socket head and its key: radius, depth
 # The sole plate: an annulus under the feet, with a raised pad at each so
 # the base touches it at three points and nothing else -- a full face
 # would screw any warp in the glued plate into the base, and from there
@@ -198,23 +198,24 @@ TOWER_R, BOSS_R, BOSS_H = 7.0, 4.8, 1.0   # the boss bears on a 688's inner race
 # Ø7.95, not 7.9: a printed shaft comes out at about its drawn size, so
 # 7.9 sat in the 608's 8 mm bore with a tenth of play
 SLEEVE_R, SLEEVE_H, SLEEVE_FL_R, SLEEVE_FL_H = 3.975, WHEEL["w"] - 0.2, 5.75, 1.0
-BOLT_R = 2.2            # M4 clearance, radius
+# One thread through the whole jig: every bolt is an M3, into one insert,
+# turned with one key. The base's feet and the arc's bar were M4; at M3
+# the bar's three still hold the arc a hundred times over, and the
+# order is one bag of inserts and one of screws.
+BOLT_R = 1.7            # M3 clearance, radius
 AXLE_R = 1.7            # the bearing axles' M3 clearance, radius
 ECC = 1.5               # eccentric sleeve offset: 3.0 mm of travel
 # The towers stand where an eccentric turned fully in would push its
 # bearing PRELOAD past the race; turned fully out it stands back ECC.
 TOWER_PITCH = BRG_PITCH + ECC - PRELOAD   # 131.4
 LOBE_REACH = 142.0      # how far the base's corner lobes reach
-# Named, and drawn to their makers' holes: the standard knurled M4 x 8.1
-# wants Ø5.6 and the M3 x 5.7 Ø4.0, each a little deeper than it is long.
-# The M4 bore was Ø5.3 for an insert nobody had named, 0.4 under the
-# common one.
-INS_M4 = (2.8, 9.0)     # bore radius, depth
-INS_M3 = (2.0, 6.2)
-INSERT_M4 = "M4 heat-set insert, M4 x 8.1 (\u00d85.6 hole)"
+# Named, and drawn to its maker's hole: Ruthex's M3 x 5.7 asks for Ø4.0
+# and 6.7 deep -- a millimeter past its length, so the plastic it melts
+# out of the way has somewhere to go besides up round the screw.
+INS_M3 = (2.0, 6.7)     # bore radius, depth
 INSERT_M3 = "M3 heat-set insert, M3 x 5.7 (\u00d84.0 hole)"
-HEAD_R, HEAD_H = 3.5, 4.0             # M4 socket head
 AXLE_HEAD = (2.75, 3.0)               # M3 socket head
+HEAD_R, HEAD_H = AXLE_HEAD
 
 # --- the Geneva drive: how the ring is turned, stopped and held --------
 # A driver turns continuously; once per turn its pin enters a slot in a
@@ -368,7 +369,6 @@ POST_R = 55.0           # its centre from the rotor axis: clear of the crank,
                         # access bore
 SCREW_Y, CABLE_Y = -3.5, 3.5          # the post's two bores, side by side
 POST_SOCKET = 0.8       # how far its foot sits down into the base
-INS_M2 = (1.6, 4.0)     # heat-set M2: bore radius, depth
 PIN_L = 16.0            # the Geneva pin: Ø3 x 16, through the 8 mm crank
 MAGNET = (3.0, 2.0)     # Ø3 x 2 N52 disc, either face to its sensor
 # Honeywell SS451A, an omnipolar Hall switch: it answers either pole, so
@@ -406,7 +406,7 @@ LEG_BOTTOM = -28.0      # the arc's leg ends here, whatever the specimen;
                         # moves with PED_H, one for one -- see PED_H above
 BAR_T, BAR_X0 = 20.0, 66.0            # the bar in to the ring; its inner end
                                       # stays over the annulus (r 96 at y -70)
-BOLTS_X = (72.0, 86.0, 100.0)         # three M4s down through the bar
+BOLTS_X = (72.0, 86.0, 100.0)         # three M3s down through the bar
 CBORE = (4.0, 8.0)      # counterbore radius and depth for their heads
 FIDUCIALS = (15.0, 30.0, 45.0, 60.0, 75.0)
 TICK_W, TICK_D = 1.2, 1.0
@@ -1194,8 +1194,13 @@ LEAD_R = 0.9                      # the home sensor's three-wire lead
 CABLE_DY, LEAD_DY = 1.8, -2.2     # where each comes through the box's inlet
 CABLE_ITEM = ("Pololu 6-pin JST SH cable, single-ended female, 75 cm "
               "(six 28 AWG)")
-LEAD_ITEM = "3-conductor 26 AWG lead, 60 cm (home sensor)"
-CTRL_INLET_Y = -12.0              # off centre: clear of the ear and the lid boss
+CTRL_INLET_Y = -12.0              # off centre: clear of the lid's boss
+# The lid presses on with two pegs: bore and peg diameters, and the peg's
+# length. Drawn a slip, because a hole this small prints about 0.2 under
+# its size -- drawn at the drive lid's press it came out 4.6% too tight to
+# push home; drawn so, it prints at that lid's own -0.19. Nothing pulls on
+# this lid; it only has to stay put and come off for the wiring.
+CTRL_PEG = (2.6, 2.55, 4.0)
 CTRL_BOSSES = ((-CTRL["l"] / 2 + CTRL["wall"] + 2.0, CTRL["w"] / 2 - CTRL["wall"] - 2.0),
                (CTRL["l"] / 2 - CTRL["wall"] - 2.0, -CTRL["w"] / 2 + CTRL["wall"] + 2.0))
 
@@ -1215,18 +1220,17 @@ def _ctrl_local(m, specimen=SPECIMEN):
 
 
 def ctrl_box(specimen=SPECIMEN):
-    """On the board beside the jig, screwed down through two ears. The
-    XIAO's USB-C faces outward through the wall; the jig's cable comes in
-    through the inner wall past a bar it is tied to."""
+    """On the board beside the jig, glued down with the epoxy that holds
+    the sole plate. The XIAO's USB-C faces outward through the wall; the
+    jig's cable comes in through the inner wall past a bar it is tied
+    to."""
     l, w, h, t = CTRL["l"], CTRL["w"], CTRL["h"], CTRL["wall"]
     b = box((-l / 2, -w / 2, 0), (l / 2, w / 2, h))
-    ears = [box((-l / 2 - 8, -5, 0), (-l / 2 + 1, 5, 3)),
-            box((l / 2 - 1, -5, 0), (l / 2 + 8, 5, 3))]
     # the lid's bosses run into the walls: tangent to them, the faces fold
     # into non-manifold edges on the way out to the 3MF
     bosses = [cyl(2.5, t - 0.5, h, x, y, 32) for x, y in CTRL_BOSSES]
     tools = [box((-l / 2 + t, -w / 2 + t, t), (l / 2 - t, w / 2 - t, h + 1))]
-    b = cut(union([b] + ears), tools)
+    b = cut(b, tools)
     b = union([b] + bosses)
     xs, xd = 10.0, -14.0              # where the two boards sit, along x
     cut2 = []
@@ -1245,20 +1249,19 @@ def ctrl_box(specimen=SPECIMEN):
     # the cable's way in, low on the inner wall, and the tie bar beside it
     cut2.append(box((-l / 2 - 1, CTRL_INLET_Y - 3.5, t),
                     (-l / 2 + t + 1, CTRL_INLET_Y + 3.5, t + 2 * CABLE_R + 1.5)))
-    for x in (-l / 2 - 4.5, l / 2 + 4.5):
-        cut2.append(cyl(1.7, -1, 4, x, 0, 24))
-    # M2 thread-forming pilots: drawn Ø1.95, which prints about Ø1.7 for
-    # the screw's 1.45 core; Ø1.6 printed 1.2 and would split the boss
+    # the lid's pegs press into the bosses, printed into printed like the
+    # drive's lid
     for x, y in CTRL_BOSSES:
-        cut2.append(cyl(0.975, 3, h + 1, x, y, 24))
+        cut2.append(cyl(CTRL_PEG[0] / 2, h - CTRL_PEG[2] - 2.0, h + 1, x, y, 32))
     return _ctrl_local(cut(b, cut2), specimen)
 
 
 def ctrl_lid(specimen=SPECIMEN):
     l, w, h = CTRL["l"], CTRL["w"], CTRL["h"]
     lid = box((-l / 2, -w / 2, h), (l / 2, w / 2, h + CTRL["lid"]))
-    tools = [cyl(1.2, h - 1, h + CTRL["lid"] + 1, x, y, 24) for x, y in CTRL_BOSSES]
-    return _ctrl_local(cut(lid, tools), specimen)
+    pegs = [cyl(CTRL_PEG[1] / 2, h - CTRL_PEG[2], h + 0.5, x, y, 32)
+            for x, y in CTRL_BOSSES]
+    return _ctrl_local(union([lid] + pegs), specimen)
 
 
 def _to_box(specimen, dy):
@@ -1406,8 +1409,10 @@ def sole_plate(specimen=SPECIMEN):
     for a in FOOT_PHI:
         x, y, _ = polar(FOOT_R, a)
         pads.append(cyl(SOLE_PAD[0], SOLE_T - 0.5, pad_top, x, y, 96))
-        tools.append(cyl(INS_M4[0], pad_top - INS_M4[1], pad_top + 1,
+        tools.append(cyl(INS_M3[0], pad_top - INS_M3[1], pad_top + 1,
                          x, y, 48))
+        # the joint table's millimeter under the insert, for the bolt's tip
+        tools.append(cyl(BOLT_R, pad_top - INS_M3[1] - 1.5, pad_top, x, y, 48))
     s = cut(union([s] + pads), tools)
     s.apply_translation([0, 0, L["base_bot"] - pad_top])
     return s
@@ -1501,9 +1506,9 @@ def rotor(specimen=SPECIMEN):
     tools.append(box((BAR_X0 - 5.0, Y_ARC - ARC_HW - 0.2, zp - PAD_SLOT_D),
                      (RING_RO + 5.0, Y_ARC + ARC_HW + 0.2, zp + 1)))
     for x in BOLTS_X:
-        tools.append(cyl(INS_M4[0], zp - PAD_SLOT_D - INS_M4[1],
+        tools.append(cyl(INS_M3[0], zp - PAD_SLOT_D - INS_M3[1],
                          zp - PAD_SLOT_D + 0.5, x, Y_ARC, 48))
-        tools.append(cyl(BOLT_R, zp - PAD_SLOT_D - INS_M4[1] - 4.0,
+        tools.append(cyl(BOLT_R, zp - PAD_SLOT_D - INS_M3[1] - 4.0,
                          zp - PAD_SLOT_D, x, Y_ARC, 48))
     return cut(r_, tools)
 
@@ -1929,8 +1934,8 @@ def plate_pose(name, mesh):
     # landed all round.
     if name == "drive_block":
         return rot(180.0, [1, 0, 0])
-    # its wiring bay up, open to the nozzle
-    if name == "drive_cap":
+    # its wiring bay up, open to the nozzle; the controller's lid, pegs up
+    if name in ("drive_cap", "ctrl_lid"):
         return rot(180.0, [1, 0, 0])
     return np.eye(4)
 
@@ -2148,7 +2153,7 @@ def _moved(prims, M):
     return out
 
 
-def _bolt_prims(seat, length, r=2.0, head_r=HEAD_R, head_h=HEAD_H,
+def _bolt_prims(seat, length, r=1.5, head_r=HEAD_R, head_h=HEAD_H,
                 axis=(0, 0, 1)):
     """A socket-head bolt with its head's underside on `seat`; `axis`
     points from the shank to the head."""
@@ -2269,22 +2274,22 @@ def assembly_steps(parts, specimen=SPECIMEN):
     def insert(c, ins, axis=(0, 0, 1), M=None):
         # a threaded tube: its bolt goes through it, so the stand-in is
         # open to the bolt's major diameter
-        bolt_r = {INS_M4: 2.0, INS_M3: 1.5, INS_M2: 1.0}[ins]
+        bolt_r = {INS_M3: 1.5}[ins]
         q = dict(kind="ring", c=list(map(float, c)), axis=list(axis),
                  ro=ins[0] - 0.05, ri=bolt_r + 0.05, h=ins[1] - 1.0)
         if M is not None:
             q["M"] = M
         return q
-    ins4, ins3, ins2 = INS_M4, INS_M3, INS_M2
-    sole_ins = [insert(polar(FOOT_R, a, L["base_bot"] - (ins4[1] - 1.0) / 2 - 0.0),
-                       ins4) for a in FOOT_PHI]
+    ins3 = INS_M3
+    sole_ins = [insert(polar(FOOT_R, a, L["base_bot"] - (ins3[1] - 1.0) / 2),
+                       ins3) for a in FOOT_PHI]
     ttop = L["base_top"] + RING_GAP + RING_T / 2.0 - BRG_W / 2.0
     tower_ins = [insert(polar(TOWER_PITCH, a, ttop - (ins3[1] - 1.0) / 2), ins3)
                  for a in TOWER_PHI]
     post_ins = [insert([POST_R - GENEVA_C, SCREW_Y, L["base_top"] - POST_SOCKET
                         - (ins3[1] - 1.0) / 2], ins3, M=DR)]
     floor_ = L["pad_top"] - PAD_SLOT_D
-    pad_ins = [insert([x, Y_ARC, floor_ - (ins4[1] - 1.0) / 2], ins4) for x in BOLTS_X]
+    pad_ins = [insert([x, Y_ARC, floor_ - (ins3[1] - 1.0) / 2], ins3) for x in BOLTS_X]
 
     # the USB-C plug in the XIAO's port, its cord running off the board
     pz = t_ + 1.0 + 3.26 / 2
@@ -2329,9 +2334,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
     inboard, outboard = (0, -1, 0), (0, 1, 0)
     return [
         _step("sole", "Sole plate onto the board",
-              "Melt the three M4 inserts into the pads, then glue the plate "
+              "Melt the three M3 inserts into the pads, then glue the plate "
               "to a heavy board, pads up. Board and glue are not on the BOM.",
-              ["sole_plate"], [(INSERT_M4, 3, sole_ins)], (down, 30.0)),
+              ["sole_plate"], [(INSERT_M3, 3, sole_ins)], (down, 30.0)),
         _step("stator_inserts", "Inserts into the base",
               "Four M3 inserts: one in the top of each tower, one under "
               "the drive post's socket.",
@@ -2345,7 +2350,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
               against=["stator"]),
         _step("home_hall", "Home sensor into its boss",
               "On the bench: face up, its leads down through the base. "
-              "Splice the home lead onto them underneath now and sleeve "
+              "Its lead is the motor cable's spare: cut the cable 37 cm from "
+              "its plug and take three of the six wires off the loose 38 cm. "
+              "Splice them onto the sensor's leads underneath now and sleeve "
               "each joint -- the splice ends up in the gap under the base, "
               "where nothing can be soldered once the base is down.",
               hw=[(HALL_ITEM, 1, home_hall)],
@@ -2357,7 +2364,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
               carry=["stator_inserts", "mount_screw", "home_hall"]),
         _step("feet", "Three bolts down into the sole plate",
               "From above, through the bore.",
-              hw=[("M4x" + str(length["stator to sole plate"]), 3,
+              hw=[("M3x" + str(length["stator to sole plate"]), 3,
                    [p for f in feet for p in
                     _bolt_prims(f, length["stator to sole plate"])])],
               path=(down, 20.0)),
@@ -2385,8 +2392,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
                                 head_r=AXLE_HEAD[0], head_h=AXLE_HEAD[1])])],
               path=(down, 20.0)),
         _step("rotor_inserts", "Inserts into the rotor's pad",
-              "Three M4 inserts in the floor of the pad's slot.",
-              hw=[(INSERT_M4, 3, pad_ins)],
+              "Three M3 inserts in the floor of the pad's slot.",
+              hw=[(INSERT_M3, 3, pad_ins)],
               path=(down, 15.0), against=["rotor"]),
         _step("ring_magnet", "Home magnet into the ring",
               "On the bench: a drop of CA in its pocket, then the magnet, "
@@ -2453,13 +2460,12 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["drive_cap"], path=(down, 15.0),
               presses=[("drive_cap", "drive_block")]),
         _step("ctrl", "Controller box onto the board",
-              "Two wood screws through its ears; the XIAO in its cradle with "
+              "Glued to the board like the sole plate; the XIAO in its cradle with "
               "its USB-C through the wall, the DRV8833 beside it: the "
               "resistor in series with the motor's red wire, the capacitor "
               "across the DRV8833's supply, the pull-up on the home "
               "sensor's output.",
-              ["ctrl_box"], [("No. 4 x 1/2 in wood screw", 2, []),
-                             ("Seeed Studio XIAO ESP32S3", 1, xiao),
+              ["ctrl_box"], [("Seeed Studio XIAO ESP32S3", 1, xiao),
                              (MOTOR_R_ITEM, 1, []), (CAP_ITEM, 1, []),
                              (PULLUP_ITEM, 1, []),
                              ("Pololu #2130 DRV8833 dual motor driver carrier", 1,
@@ -2470,11 +2476,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("home_lead", "The home sensor's lead to the box",
               "Spliced on before the base went down; laid under it now, "
               "alongside the motor's cable, and in through the box's inlet.",
-              hw=[(LEAD_ITEM, 1, lead)]),
+              hw=[("", 0, lead)]),
         _step("ctrl_lid", "Lid on the controller",
-              "Two self-tapping screws.",
-              ["ctrl_lid"], [("M2x6 self-tapping screw", 2, [])],
-              path=(down, 15.0)),
+              "Its two pegs pressed into the bosses.",
+              ["ctrl_lid"], path=(down, 15.0),
+              presses=[("ctrl_lid", "ctrl_box")]),
         _step("power", "The one power cord",
               "USB-C from a 5 V, 2 A wall charger (not a laptop port) into "
               "the XIAO. It powers the controller, the H-bridge and the "
@@ -2488,7 +2494,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["arc"], path=(down, 40.0)),
         _step("arc_bolts", "Three bolts down through the bar",
               "Into the pad's inserts.",
-              hw=[("M4x" + str(length["arc bar to rotor pad"]), 3,
+              hw=[("M3x" + str(length["arc bar to rotor pad"]), 3,
                    [p for b in bars for p in
                     _bolt_prims(b, length["arc bar to rotor pad"])])],
               path=(down, 25.0)),
@@ -2888,6 +2894,14 @@ def fits(parts, specimen=SPECIMEN):
         hole_d(parts["drive_block"], ab, Z["motor_top"] - 1.5, 3.25),
         shaft_d(parts["drive_cap"], ab, Z["motor_top"] - 1.5, 3.2), "press",
         kind="printed in printed")
+    co, cb = _ctrl_frame(specimen)
+    cp = rot(CTRL["phi"], [0, 0, 1])[:3, :3] @ np.array([*CTRL_BOSSES[0], 0.0])
+    cp = cp + np.array([co[0], co[1], cb + CTRL["h"] - 1.5])
+    row("Controller lid's peg in its boss",
+        hole_d(parts["ctrl_box"], cp[:2], cp[2], CTRL_PEG[0] / 2),
+        shaft_d(parts["ctrl_lid"], cp[:2], cp[2], CTRL_PEG[1] / 2), "slip",
+        kind="printed in printed",
+        note="a slip as drawn; the bore prints 0.2 small, so it presses")
     hm = polar(HOME["r"], HOME["phi"])
     row("Home magnet in the ring",
         hole_d(parts["rotor"], hm, L["ring_bot"] + 1.0, MAGNET[0] / 2),
@@ -2904,10 +2918,10 @@ def fits(parts, specimen=SPECIMEN):
         f = polar(FOOT_R, a)
         row("Foot bolt through the base",
             hole_d(parts["stator"], f, L["base_top"] - FOOT_CBORE[1] - 1.5,
-                   BOLT_R), 4.0, "clearance")
+                   BOLT_R), 3.0, "clearance")
     row("Bar bolt through the arc",
         hole_d(parts["arc"], (BOLTS_X[0], Y_ARC), LEG_BOTTOM + 3.0, BOLT_R + 0.1),
-        4.0, "clearance")
+        3.0, "clearance")
     sl = parts["sleeve_a"]
     bx, by = _sleeve_bore(sl)
     zs = sl.bounds[0][2] + 1.0
@@ -3264,10 +3278,10 @@ def fits_plate(m, bed=246.0, height=250.0):
 # on the built rotor: 11.00 mm of hole on each bolt axis, 0.00 beside it.
 JOINTS = (
     # name, crosses, insert depth, relief, count
-    ("arc bar to rotor pad", BAR_T - CBORE[1], INS_M4[1], 4.0, 3, "M4"),
+    ("arc bar to rotor pad", BAR_T - CBORE[1], INS_M3[1], 4.0, 3, "M3"),
     ("bearing axle to tower", SLEEVE_H + SLEEVE_FL_H, INS_M3[1], 4.0, 3, "M3"),
     # the head sits in a 5 mm counterbore; under the insert, 1 mm of pad
-    ("stator to sole plate", BASE_T - FOOT_CBORE[1], INS_M4[1], 1.0, 3, "M4"),
+    ("stator to sole plate", BASE_T - FOOT_CBORE[1], INS_M3[1], 1.0, 3, "M3"),
     # down through the drive's arm and post into the base, its tip out
     # into the gap the sole plate's pads leave under the base
     ("drive post to base", driver_levels()["face"] - (levels()["base_top"]
@@ -3287,12 +3301,12 @@ def fasteners(specimen=SPECIMEN):
     L = levels(specimen)
     length = {n: bolt_len(c, i, r) for n, c, i, r, _, _ in JOINTS}
     return [
-        dict(joint="stator to sole plate", side="stator", r=2.0,
+        dict(joint="stator to sole plate", side="stator", r=1.5,
              head_r=HEAD_R, head_h=HEAD_H, len=length["stator to sole plate"],
              at=[[round(float(v), 4) for v in
                   polar(FOOT_R, a, L["base_top"] - FOOT_CBORE[1])]
                  for a in FOOT_PHI]),
-        dict(joint="arc bar to rotor pad", side="rotor", r=2.0,
+        dict(joint="arc bar to rotor pad", side="rotor", r=1.5,
              head_r=HEAD_R, head_h=HEAD_H, len=length["arc bar to rotor pad"],
              at=[[x, Y_ARC, LEG_BOTTOM + BAR_T - CBORE[1]] for x in BOLTS_X]),
     ]
@@ -3308,17 +3322,16 @@ def bolt_len(crosses, insert, relief):
 
 
 def inserts():
-    out = {INSERT_M4: 3 + 3, INSERT_M3: 2 + 1 + 3,
+    out = {INSERT_M3: 3 + 3 + 2 + 1 + 3,
            MOTOR["item"]: 1,
            HALL_ITEM: 1,
            "\u00d83 x 2 N52 disc magnet": 1,
-           CABLE_ITEM: 1, LEAD_ITEM: 1,
+           CABLE_ITEM: 1,
            "Seeed Studio XIAO ESP32S3": 1, MOTOR_R_ITEM: 1, CAP_ITEM: 1,
            PULLUP_ITEM: 1,
            SETSCREW_ITEM: 1, NUT_ITEM: 1,
            "Pololu #2130 DRV8833 dual motor driver carrier": 1,
            "USB-C cable and 5 V 2 A USB power adapter": 1,
-           "No. 4 x 1/2 in wood screw": 2, "M2x6 self-tapping screw": 2,
            WHEEL_ITEM: 3, WHEEL_BRG_ITEM: 6, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
            "1/4-20 D-ring": 1,
            f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)": 1,

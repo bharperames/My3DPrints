@@ -105,11 +105,12 @@ def fit_rows(parts):
         ("Encoder along its pocket",                 "rect",  "drive_block", (13.0, -0.15, 0.15),       (0.0, 0.75), ""),
         ("Lid's key in the plug's channel",          "rect",  "drive_block", ("p", None),               pp,      "printed key"),
         ("Lid's peg in the access bore",             "vhole", "drive_block", ("p", None),               pp,      "printed peg"),
+        ("Controller lid's peg in its boss",         "vhole", "ctrl_box",    ("p", None),               pp,      "printed peg"),
         ("Home magnet in the ring",                  "vhole", "rotor",       (3.0, -0.10, 0.10),        (0.0, 0.55), "glued; small discs run +-0.1"),
         ("Home sensor in its boss",                  "rect",  "stator",      (4.06, -0.10, 0.10),       (0.0, 0.65), "SS451A body"),
         ("Drive post in its socket",                 "rect",  "stator",      ("p", None),               run,     "printed post"),
-        ("Foot bolt through the base",               "vhole", "stator",      (3.90, -0.08, 0.07),       clear,   "M4 major"),
-        ("Bar bolt through the arc",                 "hhole", "arc",         (3.90, -0.08, 0.07),       (0.0, 9.0), "horizontal as printed"),
+        ("Foot bolt through the base",               "vhole", "stator",      (2.93, -0.05, 0.05),       clear,   "M3 major"),
+        ("Bar bolt through the arc",                 "hhole", "arc",         (2.93, -0.05, 0.05),       (0.0, 9.0), "horizontal as printed"),
         ("Axle bolt through a sleeve",               "vhole", "sleeve_a",    (2.93, -0.05, 0.05),       clear,   "M3 major"),
         ("Sleeve in a 688's bore",                   "steel", "sleeve_a",    ("p", None),               (-0.08, 0.12), "688 bore 8 -0.008"),
         ("Carriage lips on the arc",                 "rect",  "saddle",      ("p", None),               run,     "the arc's 30 mm, printed on its side"),
@@ -128,14 +129,10 @@ def fit_rows(parts):
     # what fits() does not measure
     t = J.TONGUE
     extra = [
-        # heat-set inserts: wanted 0.2-0.6 of interference on a knurl; the
-        # BOM does not name the insert, so the common Ø4.0 M3 and Ø5.6 M4
-        # bodies stand in
-        # against the hole the insert's maker asks for: printed holes run a
-        # little small, and the maker's figure already allows for that
+        # heat-set inserts, against the hole the insert's maker asks for:
+        # printed holes run a little small, and the maker's figure already
+        # allows for that. One insert, M3, everywhere
         ("M3 insert bore against its maker's 4.0", "vhole", "stator", 2 * J.INS_M3[0], (4.0, 0, 0), (-0.35, 0.10), J.INSERT_M3),
-        ("M4 insert bore against its maker's 5.6", "vhole", "rotor", 2 * J.INS_M4[0], (5.6, 0, 0), (-0.35, 0.10), J.INSERT_M4),
-        ("Controller lid screw's pilot", "vhole", "ctrl_box", 1.95, (1.45, -0.05, 0.05), (0.0, 0.42), "M2 thread-former: over its core, under its 2.0"),
         ("Hall leads through the base", "vhole", "stator", 2 * J.HALL_HOLE_R, (2.97, -0.05, 0.05), clear, "three leads at 1.27"),
         ("Motor cable down the post's bore", "vhole", "drive_block", 2 * (J.CABLE_R + 0.6), (2.6, -0.2, 0.2), clear, "six loose wires"),
     ]
