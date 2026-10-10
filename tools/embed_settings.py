@@ -69,6 +69,36 @@ def flatten(kind, name):
     return {k: v for k, v in merged.items() if k not in META_KEYS}
 
 
+def one_filament(fl, cfg):
+    """A filament preset as a project holds it: one value per filament.
+
+    The system presets give the P2S's per-filament values one entry per
+    nozzle variant (Standard, High Flow, E3D High Flow), and the AMS's
+    drying values one per AMS model. A project with one filament keeps
+    the entry for the nozzle it prints on -- the GUI's own saves keep
+    exactly that -- and the GUI rejects anything longer as "Invalid
+    configuration file", then opens with no geometry. The CLI slices the
+    long form without a murmur, so only the GUI ever saw it.
+    """
+    variants = cfg.get("printer_extruder_variant") or ["Direct Drive Standard"]
+    want = (cfg.get("filament_extruder_variant") or variants)[0]
+    i = variants.index(want) if want in variants else 0
+    out = {}
+    for k, v in fl.items():
+        # a preset's own bookkeeping -- `include`, which names another
+        # template for the loader to fetch, `compatible_printers`, the
+        # description -- is not a project setting: keep only the keys the
+        # GUI-saved template holds
+        if k not in cfg:
+            continue
+        if isinstance(v, list) and len(v) > 1:
+            v = [v[i] if len(v) == len(variants) else v[0]]
+        out[k] = v
+    out["filament_self_index"] = ["1"]
+    out["filament_extruder_variant"] = [want]
+    return out
+
+
 def base_config():
     if os.path.exists(TEMPLATE):
         with open(TEMPLATE) as f:
@@ -101,7 +131,7 @@ def embed(path, overrides=None, brim=True, per_object=None, filament=None):
     """
     cfg = base_config()
     if filament:
-        cfg.update(flatten("filament", filament))
+        cfg.update(one_filament(flatten("filament", filament), cfg))
         cfg["filament_settings_id"] = [filament]
     cfg.update(OVERRIDES)
     if not brim:

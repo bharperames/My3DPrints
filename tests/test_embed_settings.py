@@ -77,6 +77,31 @@ class TestEmbed(unittest.TestCase):
             cfg = json.loads(z.read("Metadata/project_settings.config"))
         self.assertEqual(cfg["brim_width"], "8")
 
+    def test_a_named_filament_is_held_as_one_filament(self):
+        """The GUI rejects a project whose one filament carries a value per
+        nozzle variant ("Invalid configuration file", then no geometry);
+        the CLI slices it anyway, so only this test stands in for the GUI.
+        Every per-filament list must be one entry long, as the GUI saves."""
+        name = "Bambu PETG Basic @BBL P2S 0.4 nozzle"
+        if not os.path.exists(os.path.join(embed_settings.PRESETS, "filament",
+                                           name + ".json")):
+            self.skipTest("Bambu Studio's system presets are not installed")
+        embed_settings.embed(self.path, filament=name)
+        with zipfile.ZipFile(self.path) as z:
+            cfg = json.loads(z.read("Metadata/project_settings.config"))
+        own = embed_settings.flatten("filament", name)
+        long_ = {k: cfg[k] for k in own
+                 if isinstance(cfg.get(k), list) and len(cfg[k]) != 1}
+        self.assertEqual(long_, {})
+        self.assertEqual(cfg["filament_self_index"], ["1"])
+        self.assertEqual(cfg["filament_settings_id"], [name])
+        # the Standard nozzle's values, which is what the P2S ships with
+        self.assertEqual(cfg["nozzle_temperature"], ["250"])
+        self.assertEqual(cfg["filament_type"], ["PETG"])
+        # preset bookkeeping stays out of the project
+        for k in ("include", "compatible_printers", "description"):
+            self.assertNotIn(k, cfg)
+
 
 if __name__ == "__main__":
     unittest.main()
