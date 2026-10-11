@@ -481,8 +481,17 @@ CHANNEL = (215.0, 255.0, 3.4, 12.0)   # fore/aft slots: u0, u1, width, ±y
 RECV = (40.0, 50.0, 12.0)             # receiver: u, y, v
 RECV_U = 232.0          # where the generator poses it; a camera moves it
 RECV_RELIEF = 4.0       # past the M3 inserts, for the screw's tip
-ARCA = (38.5, 4.0)      # dovetail mouth and depth, 45 degree flanks
-QTR_R, QTR_CB = 3.4, (7.0, 4.0)       # 1/4"-20 clearance; D-ring head
+# The phone's clamp screws onto a 1/4-20 stud: a plain hex-head bolt up
+# through the receiver, its head in a hex pocket underneath so it cannot
+# turn while the clamp is spun on. This was a D-ring screw in a 7.6 mm
+# counterbore, which no D-ring head (12-17 mm) fits, under an Arca
+# dovetail left from the Sony; the screw drawn in it stopped flush with
+# the top, with nothing for the clamp to thread onto.
+QTR_R = 3.4                           # 1/4"-20 clearance, radius
+QTR_HEAD = (7.0 / 16 * 25.4, 4.14)    # 7/16 across flats; ASME's tallest head
+QTR_HEX = (QTR_HEAD[0] + 0.4, QTR_HEAD[1] + 0.3)   # its pocket: flats, depth
+QTR_LEN = 0.5 * 25.4                  # under the head: 5.1 mm stands proud
+QTR_ITEM = "1/4-20 x 1/2 in hex head cap screw (the clamp's stud)"
 
 # --- the specimen mount: a printed screw and wing nut -------------------
 # The rod field plate is the specimen mount, so the only thing the jig
@@ -564,6 +573,15 @@ _Y_BOT = _Y_TOP + IP17["length"]                               # 116.40
 _V_HI = IP17["main_from_side"]                                 # 14.37
 _V_LO = _V_HI - IP17["width"]                                  # -57.48
 _LR = IP17["lens_d"] / 2.0
+def _socket_foot(lo, hi, u, y, half=3.6):
+    """A clamp's foot as four blocks round a square hole for its 1/4-20
+    socket, so the stud it threads onto is not read as a collision."""
+    (u0, y0, v0), (u1, y1, v1) = lo, hi
+    return [((u0, y0, v0), (u - half, y1, v1)), ((u + half, y0, v0), (u1, y1, v1)),
+            ((u - half, y0, v0), (u + half, y - half, v1)),
+            ((u - half, y + half, v0), (u + half, y1, v1))]
+
+
 CAMERAS = {
     "iphone": dict(
         name="iPhone 17 Pro in a spring clamp", receiver_u=232.0,
@@ -583,7 +601,10 @@ CAMERAS = {
                           ((152.0, 25.0, _V_HI), (172.0, 65.0, _V_HI + 8.4)),
                           ((_U_FRONT, -15.0, _V_LO - 12.0),
                            (_U_FRONT + 10.0, 70.0, _V_HI + 12.0)),
-                          ((_U_FRONT + 10.0, -15.0, -45.0), (247.0, 15.0, -37.0))]),
+                          # its foot, round the 1/4-20 socket the stud
+                          # threads into (at u 232, y 0)
+                          *_socket_foot((_U_FRONT + 10.0, -15.0, -45.0),
+                                        (247.0, 15.0, -37.0), 232.0, 0.0)]),
         # main, ultra wide, 4x telephoto: Apple's centres, re-based on the
         # main lens
         rings=[dict(c=(_U_GLASS, 0.0, 0.0), r=_LR),
@@ -1648,27 +1669,21 @@ def shoe():
 
 
 def receiver():
-    """Arca dovetail slot on top, a 1/4-20 D-ring through the middle, two
-    M3 inserts underneath for the fore/aft channel."""
+    """A flat top the phone's clamp sits on, a 1/4-20 stud up through the
+    middle from a hex pocket underneath, two M3 inserts underneath for the
+    fore/aft channel."""
     lu, ly, lv = RECV
     hy = CAM_Y - Y_ARC
     v0 = PLATFORM_V[1]
     r_ = box((RECV_U - lu / 2, v0, hy - ly / 2), (RECV_U + lu / 2, v0 + lv,
                                                   hy + ly / 2))
-    mouth, depth = ARCA
-    dv = Polygon([(hy - mouth / 2, v0 + lv + 0.5), (hy + mouth / 2, v0 + lv + 0.5),
-                  (hy + mouth / 2 + depth, v0 + lv - depth),
-                  (hy - mouth / 2 - depth, v0 + lv - depth)])
-    dove = trimesh.creation.extrude_polygon(dv, lu + 2)
-    # profile in (y, v): map polygon x -> h, y -> v, extrusion -> u
-    dove.apply_transform(np.array([[0, 0, 1, RECV_U - lu / 2 - 1],
-                                   [0, 1, 0, 0], [1, 0, 0, 0],
-                                   [0, 0, 0, 1]], float))
-    tools = [dove]
-    for r_h, v_lo, v_hi in ((QTR_R, v0 - 1, v0 + lv + 1),
-                            (QTR_CB[0] / 2 + 0.3, v0 - 1, v0 + QTR_CB[1])):
+    tools = []
+    # the bore, and the hex pocket: six sections make a hexagon whose
+    # corners sit at the radius, so the flats are at r cos 30
+    for r_h, v_lo, v_hi, n in ((QTR_R, v0 - 1, v0 + lv + 1, 48),
+                               (QTR_HEX[0] / np.sqrt(3), v0 - 1, v0 + QTR_HEX[1], 6)):
         c = trimesh.creation.cylinder(radius=r_h, height=v_hi - v_lo,
-                                      sections=48)
+                                      sections=n)
         c.apply_transform(rot(90.0, [1, 0, 0]))
         c.apply_translation([RECV_U, (v_lo + v_hi) / 2, hy])
         tools.append(c)
@@ -2331,10 +2346,10 @@ def assembly_steps(parts, specimen=SPECIMEN):
                                                axis=(0, 0, -1))], E)
     # its shank stops at the receiver's top here: it really runs on into
     # the clamp's socket, which the clamp's box stand-in does not have
-    dring = _moved(_bolt_prims(
-        _arc_to_world(RECV_U, PLATFORM_V[1] + QTR_CB[1], hy),
-        RECV[2] - QTR_CB[1] - 0.1, r=3.175, head_r=QTR_CB[0] / 2.0,
-        head_h=QTR_CB[1] - 0.2, axis=(0, 0, -1)), E)
+    stud = _moved(_bolt_prims(
+        _arc_to_world(RECV_U, PLATFORM_V[1] + QTR_HEX[1], hy),
+        QTR_LEN, r=3.175, head_r=QTR_HEAD[0] / 2.0,
+        head_h=QTR_HEAD[1], axis=(0, 0, -1)), E)
     cfg = camera_config(CAMERA_DEFAULT)
     cam = _moved([dict(kind="box", lo=list(lo), hi=list(hi))
                   for grp in cfg["boxes"].values() for lo, hi in grp], E)
@@ -2524,9 +2539,10 @@ def assembly_steps(parts, specimen=SPECIMEN):
               hw=[(f"M5x{THUMB_LEN:g} thumbscrew", 1, thumb)],
               path=(outboard, 50.0)),
         _step("receiver_prep", "Receiver: inserts and the 1/4-20",
-              "On the bench: two M3 inserts underneath, the D-ring screw "
-              "up through it.",
-              hw=[(INSERT_M3, 2, recv_ins), ("1/4-20 D-ring", 1, dring)],
+              "On the bench: two M3 inserts underneath, and the 1/4-20 "
+              "bolt up through the middle, its head in the hex pocket so "
+              "it cannot turn when the clamp is screwed on.",
+              hw=[(INSERT_M3, 2, recv_ins), (QTR_ITEM, 1, stud)],
               path=(up_arc, 20.0), against=["receiver"], at=E),
         _step("receiver", "Receiver onto the platform", "",
               ["receiver"], path=(-up_arc, 20.0), carry=["receiver_prep"],
@@ -2535,7 +2551,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "Into the receiver's inserts; loose enough to slide it.",
               hw=[("M3x" + str(length["receiver to platform"]), 2,
                    recv_screws)], path=(up_arc, 30.0)),
-        _step("camera", "Phone clamp onto the 1/4-20", "",
+        _step("camera", "Phone clamp onto the 1/4-20",
+              "Spin its socket down the stud until it sits on the "
+              "receiver's top, turned so the phone lies across the arc.",
               hw=[("phone spring clamp, 1/4-20 socket", 1, cam)],
               path=(-up_arc, 30.0)),
         _step("rod_plate", "Rod field plate onto the platform",
@@ -2953,8 +2971,8 @@ def fits(parts, specimen=SPECIMEN):
         _ray_gap(parts["saddle"], ch, [1, 0, 0]) and
         _ray_gap(parts["saddle"], ch, [0, 1, 0]), 3.0, "running",
         note="they slide the channel to set the phone's distance")
-    # between the D-ring's counterbore and the dovetail cut over it
-    rc = _arc_to_world(RECV_U, PLATFORM_V[1] + QTR_CB[1] + 2.0, hy)
+    # above the hex pocket
+    rc = _arc_to_world(RECV_U, PLATFORM_V[1] + QTR_HEX[1] + 2.0, hy)
     row("1/4-20 through the receiver",
         hole_d(parts["receiver"], rc, rc[2], QTR_R), 6.35, "clearance")
     row("Mount screw through the pedestal",
@@ -3345,7 +3363,7 @@ def inserts():
            "Pololu #2130 DRV8833 dual motor driver carrier": 1,
            "USB-C cable and 5 V 2 A USB power adapter": 1,
            WHEEL_ITEM: 3, WHEEL_BRG_ITEM: 6, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
-           "1/4-20 D-ring": 1,
+           QTR_ITEM: 1,
            f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)": 1,
            "phone spring clamp, 1/4-20 socket": 1, PLATE_ITEM: 1}
     for _, crosses, ins, relief, n, gauge in JOINTS:

@@ -453,6 +453,19 @@ class TestRealDrive(unittest.TestCase):
         self.assertFalse(rotating & {"drive_block", "drive_cap", "ctrl_box"})
         self.assertIn("drive_block", J.STATOR_SIDE)
 
+    def test_the_clamps_stud_stands_proud_and_cannot_turn(self):
+        """The phone's clamp threads onto the 1/4-20: it needs thread
+        above the receiver's top, but no more than a clamp's socket is
+        deep, and the bolt's head held in a hex it cannot turn in."""
+        proud = J.QTR_LEN - (J.RECV[2] - J.QTR_HEX[1])
+        self.assertGreater(proud, 4.0)      # three threads and more
+        self.assertLess(proud, 6.0)         # a shallow socket still seats
+        r = self.parts["receiver"]
+        # the pocket's flats: a round head would turn, a tight one jams
+        self.assertGreater(J.QTR_HEX[0] - J.QTR_HEAD[0], 0.3)
+        self.assertLess(J.QTR_HEX[0] - J.QTR_HEAD[0], 0.6)
+        self.assertTrue(r.is_watertight)
+
     def test_the_cable_fits_under_the_base(self):
         self.assertGreater(J.CABLE_UNDER, J.CABLE_R + 0.5)
         self.assertGreater(J.PUCK_H - J.CABLE_UNDER, J.CABLE_R + 0.5)

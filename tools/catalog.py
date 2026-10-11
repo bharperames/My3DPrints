@@ -450,6 +450,10 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 15.0.0: the receiver's top is flat (the Arca dovetail, left from
+       # the Sony, is gone) and the phone's clamp threads onto a 1/4-20 x
+       # 1/2 hex bolt held in a hex pocket underneath. The D-ring it
+       # replaces could not fit its 7.6 mm counterbore, and stopped flush.
        # 14.0.0: the sole plate became three pucks, bolted under the
        # base's feet and glued down with it, so the base is their
        # template. The base and every other part are unmoved.
@@ -539,7 +543,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="14.0.0",
+       version="15.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face
