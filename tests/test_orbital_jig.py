@@ -34,7 +34,7 @@ class TestJig(unittest.TestCase):
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
     def test_twenty_two_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 22)
+        self.assertEqual(len(self.parts), 24)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -244,7 +244,7 @@ class TestCornerFeet(unittest.TestCase):
 
     def test_each_foot_stands_under_its_tower_and_just_short_of_the_base(self):
         L = J.levels(J.SPECIMEN)
-        board = L["base_bot"] - J.SOLE_PAD[1] - J.SOLE_T
+        board = L["base_bot"] - J.PUCK_H
         for n, a in zip(J.CORNER_FEET, J.TOWER_PHI):
             m = self.parts[n]
             c = m.bounds.mean(0)[:2]
@@ -362,12 +362,12 @@ class TestGeneva(unittest.TestCase):
 
     def test_every_screw_is_reached_from_above(self):
         """The foot bolts, the drive post's screw and the cap's screws:
-        nothing over their heads, so the jig comes off its sole plate, and
+        nothing over their heads, so the jig comes off its pucks, and
         the drive out of it, without lifting anything."""
         import trimesh
         others = trimesh.util.concatenate(
             [m for n, m in self.parts.items()
-             if n not in ("stator", "sole_plate", "drive_block", "drive_cap",
+             if n not in ("stator", *J.PUCKS, "drive_block", "drive_cap",
                           "driver")])
         L = J.levels(J.SPECIMEN)
         Z = J.driver_levels(J.SPECIMEN)
@@ -454,7 +454,31 @@ class TestRealDrive(unittest.TestCase):
         self.assertIn("drive_block", J.STATOR_SIDE)
 
     def test_the_cable_fits_under_the_base(self):
-        self.assertGreater(J.SOLE_PAD[1], 2 * J.CABLE_R + 1.0)
+        self.assertGreater(J.CABLE_UNDER, J.CABLE_R + 0.5)
+        self.assertGreater(J.PUCK_H - J.CABLE_UNDER, J.CABLE_R + 0.5)
+
+    def test_the_base_stands_on_its_three_pucks_and_nothing_else(self):
+        """Each puck under its foot bolt, its top at the base's underside
+        and its foot on the board; nothing else under the base reaches
+        the board's side of the gap but the corner feet, which stand
+        short of it."""
+        L = J.levels(J.SPECIMEN)
+        for n, a in zip(J.PUCKS, J.FOOT_PHI):
+            m = self.parts[n]
+            self.assertTrue(m.is_watertight, n)
+            x, y, _ = J.polar(J.FOOT_R, a)
+            c = m.bounds.mean(0)
+            self.assertAlmostEqual(c[0], x, delta=0.01)
+            self.assertAlmostEqual(c[1], y, delta=0.01)
+            self.assertAlmostEqual(m.bounds[1][2], L["base_bot"], delta=0.01)
+            self.assertAlmostEqual(m.bounds[0][2], L["base_bot"] - J.PUCK_H,
+                                   delta=0.01)
+            # the bolt's hole is open down the axis to the insert and past
+            hits = m.ray.intersects_location([[x, y, L["base_bot"] + 1]],
+                                             [[0, 0, -1.0]], multiple_hits=True)[0]
+            floor = max(v[2] for v in hits)
+            self.assertAlmostEqual(L["base_bot"] - floor, J.INS_M3[1] + 1.5,
+                                   delta=0.05)
 
     def test_the_cable_runs_inside_the_drive(self):
         """Along the plug's channel and down a bore in the post, not hung

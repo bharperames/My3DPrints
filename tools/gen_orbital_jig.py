@@ -133,21 +133,24 @@ BASE_ROUND = 6.0
 # axis is 250 mm across the plate, and 241 both ways when turned.
 TOWER_PHI = (75.0, 195.0, 315.0)
 FOOT_PHI = (15.0, 135.0, 255.0)       # mid-edges: a three-point stance
-# The three feet are bolts now, down into a sole plate glued to a heavy
-# board. They stay at r = 60 because that is inside the ring's bore: a
-# driver reaches every head from above with the jig assembled, so the
-# board needs no holes and nothing is done from underneath.
+# The three feet are bolts, down into three pucks glued to a heavy board.
+# They stay at r = 60 because that is inside the ring's bore: a driver
+# reaches every head from above with the jig assembled, so the board
+# needs no holes and nothing is done from underneath.
 FOOT_R = 60.0
 FOOT_CBORE = (3.9, 5.0)               # the socket head and its key: radius, depth
-# The sole plate: an annulus under the feet, with a raised pad at each so
-# the base touches it at three points and nothing else -- a full face
-# would screw any warp in the glued plate into the base, and from there
-# into the race. Open in the middle for the mount screw's captive head.
-SOLE_R = (42.0, 76.0)
-SOLE_T = 5.0
-# 5 mm, not 3: the drive's cable runs under the base between the pads --
-# six loose 28 AWG wires, 2.6 mm across, and the home lead beside it.
-SOLE_PAD = (9.0, 5.0)                 # pad radius and height above the plate
+# The pucks: one under each foot, so the base touches the board at three
+# points and nothing else -- a full face would screw any warp in the
+# board into the base, and from there into the race. Bolted under the
+# base and then glued down with it, so the base is their template: they
+# land under its holes because they are bolted to them. They were one
+# ring, a sole plate, whose only other job was that spacing.
+PUCK_R = 9.0                          # its top, which the base stands on
+PUCK_FOOT = (13.0, 2.0)               # its glued foot: radius, height
+PUCK_H = 10.0                         # the base's underside above the board
+# the drive's cable runs under the base, clear of its underside --
+# six loose 28 AWG wires, 2.6 mm across, and the home lead beside it
+CABLE_UNDER = 2.5
 
 # 242, not the spec's 246: this shop packs with a 5 mm plate margin and a
 # 3 mm gap round every part, and 246 + 3 does not go into 246. The bore
@@ -231,7 +234,7 @@ HEAD_R, HEAD_H = AXLE_HEAD
 # The lip is on the ring's bore, flush with its underside, so the ring
 # still prints as it stands. The driver is INSIDE the bore at r = 73:
 # its knob is reached from above with everything assembled, and nothing
-# hangs under the base, which is bolted down to a sole plate. 73 is the
+# hangs under the base, which is bolted down to its pucks. 73 is the
 # largest radius whose knob still passes inside the arc's bar, whose
 # inner corner sweeps r = 82.8 three millimetres above the ring at the
 # bottom of the dial.
@@ -767,7 +770,7 @@ def stator(specimen=SPECIMEN):
         x, y, _ = polar(TOWER_PITCH, a)
         tools.append(cyl(INS_M3[0], top - INS_M3[1], top + 1, x, y, 48))
         tools.append(cyl(AXLE_R, top - INS_M3[1] - 4.0, top, x, y, 48))
-    # the three foot bolts, headed from above, down into the sole plate
+    # the three foot bolts, headed from above, down into the pucks
     for a in FOOT_PHI:
         x, y, _ = polar(FOOT_R, a)
         tools.append(cyl(BOLT_R, -BASE_T - 1, 1.0, x, y, 48))
@@ -1166,7 +1169,7 @@ def motor_prims(specimen=SPECIMEN):
 # Everything that carries a wire stands still: the gearmotor and both
 # sensors are on the stator, so no cable winds as the ring turns. One
 # 6-pin cable (motor +/-, encoder VCC, A, B, GND) leaves the drive
-# down its post, runs under the base in the gap the sole plate's pads
+# down its post, runs under the base in the gap the pucks
 # leave, and out across the board to a box beside the jig. One USB-C cord
 # from a 5 V wall adapter powers the controller, the H-bridge and the
 # motor. The phone runs on its own battery: it rides the ring, and the
@@ -1207,7 +1210,7 @@ CTRL_BOSSES = ((-CTRL["l"] / 2 + CTRL["wall"] + 2.0, CTRL["w"] / 2 - CTRL["wall"
 
 def _ctrl_frame(specimen=SPECIMEN):
     L = levels(specimen)
-    board = L["base_bot"] - SOLE_PAD[1] - SOLE_T
+    board = L["base_bot"] - PUCK_H
     o = polar(CTRL["r"], CTRL["phi"])
     return o, board
 
@@ -1221,7 +1224,7 @@ def _ctrl_local(m, specimen=SPECIMEN):
 
 def ctrl_box(specimen=SPECIMEN):
     """On the board beside the jig, glued down with the epoxy that holds
-    the sole plate. The XIAO's USB-C faces outward through the wall; the
+    the pucks. The XIAO's USB-C faces outward through the wall; the
     jig's cable comes in through the inner wall past a bar it is tied
     to."""
     l, w, h, t = CTRL["l"], CTRL["w"], CTRL["h"], CTRL["wall"]
@@ -1305,7 +1308,7 @@ def cable_lower(specimen=SPECIMEN):
     L = levels(specimen)
     o, u, t = _driver_frame()
     bore = o + u * (POST_R - GENEVA_C) + t * CABLE_Y
-    under = L["base_bot"] - SOLE_PAD[1] / 2
+    under = L["base_bot"] - CABLE_UNDER
     edge = polar(118.0, (GENEVA_PHI + CTRL["phi"]) / 2)
     inlet, inside, z = _to_box(specimen, CABLE_DY)
     a = _approach(specimen, CABLE_DY)
@@ -1375,7 +1378,7 @@ def pin_proxy(specimen=SPECIMEN):
     return cyl(PIN_R, Z["pin_lo"], Z["crank_hi"] - 0.05, p[0], p[1], 48)
 
 
-# --- the sole plate ------------------------------------------------------
+# --- the pucks -----------------------------------------------------------
 # The base's corners stand 100 mm past the line between two of its feet,
 # on an 8 mm plate: each tower gave 0.11 mm per newton downward and its
 # top 0.021 mm per newton sideways, which tilted the ring and lifted the
@@ -1390,7 +1393,7 @@ CORNER_FEET = ("corner_foot_a", "corner_foot_b", "corner_foot_c")
 
 def corner_feet(specimen=SPECIMEN):
     L = levels(specimen)
-    board = L["base_bot"] - SOLE_PAD[1] - SOLE_T
+    board = L["base_bot"] - PUCK_H
     out = {}
     for n, a in zip(CORNER_FEET, TOWER_PHI):
         x, y, _ = polar(TOWER_PITCH, a)
@@ -1399,23 +1402,28 @@ def corner_feet(specimen=SPECIMEN):
     return out
 
 
-def sole_plate(specimen=SPECIMEN):
-    """Glued to the board; the base bolts down onto its three pads."""
+PUCKS = ("puck_a", "puck_b", "puck_c")
+
+
+def pucks(specimen=SPECIMEN):
+    """One under each foot: bolted to the base, glued to the board. A
+    wider foot for the glue, printed as it stands."""
     L = levels(specimen)
-    pad_top = SOLE_T + SOLE_PAD[1]
-    s = rev([(SOLE_R[0], 0), (SOLE_R[1], 0), (SOLE_R[1], SOLE_T),
-             (SOLE_R[0], SOLE_T)], sections=240)
-    pads, tools = [], []
-    for a in FOOT_PHI:
+    board = L["base_bot"] - PUCK_H
+    out = {}
+    for n, a in zip(PUCKS, FOOT_PHI):
         x, y, _ = polar(FOOT_R, a)
-        pads.append(cyl(SOLE_PAD[0], SOLE_T - 0.5, pad_top, x, y, 96))
-        tools.append(cyl(INS_M3[0], pad_top - INS_M3[1], pad_top + 1,
-                         x, y, 48))
-        # the joint table's millimeter under the insert, for the bolt's tip
-        tools.append(cyl(BOLT_R, pad_top - INS_M3[1] - 1.5, pad_top, x, y, 48))
-    s = cut(union([s] + pads), tools)
-    s.apply_translation([0, 0, L["base_bot"] - pad_top])
-    return s
+        p = rev([(0, 0), (PUCK_FOOT[0], 0), (PUCK_FOOT[0], PUCK_FOOT[1]),
+                 (PUCK_R, PUCK_FOOT[1] + PUCK_FOOT[0] - PUCK_R),
+                 (PUCK_R, PUCK_H), (0, PUCK_H)], sections=96)
+        tools = [cyl(INS_M3[0], PUCK_H - INS_M3[1], PUCK_H + 1, 0, 0, 48),
+                 # the joint table's millimeter under the insert, for the
+                 # bolt's tip
+                 cyl(BOLT_R, PUCK_H - INS_M3[1] - 1.5, PUCK_H, 0, 0, 48)]
+        p = cut(p, tools)
+        p.apply_translation([x, y, board])
+        out[n] = p
+    return out
 
 
 # --- bearing sleeves ---------------------------------------------------
@@ -1866,7 +1874,7 @@ def receiver_for(parts, kind, lens_id=None):
 # azimuth sweep it stands where it does at every stop: that sweep steps
 # the ring 10 degrees at a time, and at each step the lock is in a seat.
 # How it moves between stops is `geneva_sweep`'s question.
-STATOR_SIDE = ("stator", "sole_plate", "driver", "drive_block", "drive_cap",
+STATOR_SIDE = ("stator", "puck_a", "puck_b", "puck_c", "driver", "drive_block", "drive_cap",
                "ctrl_box", "ctrl_lid", "sleeve_a", "sleeve_b", "sleeve_c",
                "mount_screw", "mount_wing_nut", "mount_hex_nut")
 ROTOR_SIDE = ("rotor", "arc")
@@ -1877,7 +1885,7 @@ def assemble(specimen=SPECIMEN):
     """Every printed body, in the world frame, at home: phi = 0 and the
     carriage at theta = 0 (its build pose; the page and the sweeps turn
     it)."""
-    parts = {"stator": stator(specimen), "sole_plate": sole_plate(specimen),
+    parts = {"stator": stator(specimen), **pucks(specimen),
              "driver": driver(specimen), "drive_block": drive_block(specimen),
              "drive_cap": drive_cap(specimen), "ctrl_box": ctrl_box(specimen),
              "ctrl_lid": ctrl_lid(specimen)}
@@ -1945,7 +1953,7 @@ def layout(parts, gap=6.0, pitch=300.0):
     The shop's packer places each body itself; this arrangement only has
     to keep them from overlapping so it can tell them apart."""
     plates = [["stator"], ["rotor"],
-              ["arc", "saddle", "shoe", "receiver", "sole_plate",
+              ["arc", "saddle", "shoe", "receiver", *PUCKS,
                "driver", "drive_block", "drive_cap", "ctrl_box", "ctrl_lid",
                "sleeve_a", "sleeve_b", "sleeve_c"]]
     # Anything assemble() makes that is not named above joins the last
@@ -2333,10 +2341,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
     up_arc = (E @ np.array([0, 0, 1.0, 0]))[:3]   # +v at MOUNT_THETA
     inboard, outboard = (0, -1, 0), (0, 1, 0)
     return [
-        _step("sole", "Sole plate onto the board",
-              "Melt the three M3 inserts into the pads, then glue the plate "
-              "to a heavy board, pads up. Board and glue are not on the BOM.",
-              ["sole_plate"], [(INSERT_M3, 3, sole_ins)], (down, 30.0)),
+        _step("pucks", "Three pucks onto the board",
+              "Melt an M3 insert into each and stand them on the board "
+              "where the base's feet will come. No glue yet: the base "
+              "places them.",
+              list(PUCKS), [(INSERT_M3, 3, sole_ins)], (down, 30.0)),
         _step("stator_inserts", "Inserts into the base",
               "Four M3 inserts: one in the top of each tower, one under "
               "the drive post's socket.",
@@ -2357,16 +2366,19 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "where nothing can be soldered once the base is down.",
               hw=[(HALL_ITEM, 1, home_hall)],
               path=(down, 15.0), against=["stator"]),
-        _step("stator", "Base down onto the sole plate",
-              "The three counterbored holes over the three pads; the mount "
+        _step("stator", "Base down onto the pucks",
+              "The three counterbored holes over the three pucks; the mount "
               "screw rides in it, the home lead trails out.",
               ["stator"], path=(down, 30.0),
               carry=["stator_inserts", "mount_screw", "home_hall"]),
-        _step("feet", "Three bolts down into the sole plate",
-              "From above, through the bore.",
-              hw=[("M3x" + str(length["stator to sole plate"]), 3,
+        _step("feet", "Three bolts down into the pucks",
+              "From above, snug. Then lift the base with the pucks bolted "
+              "under it, put glue under each puck, and set it back down: "
+              "the base is the pucks' template. Board and glue are not on "
+              "the BOM.",
+              hw=[("M3x" + str(length["base to puck"]), 3,
                    [p for f in feet for p in
-                    _bolt_prims(f, length["stator to sole plate"])])],
+                    _bolt_prims(f, length["base to puck"])])],
               path=(down, 20.0)),
     ] + [
         _step(n, "A foot under the base's corner",
@@ -2460,7 +2472,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["drive_cap"], path=(down, 15.0),
               presses=[("drive_cap", "drive_block")]),
         _step("ctrl", "Controller box onto the board",
-              "Glued to the board like the sole plate; the XIAO in its cradle with "
+              "Glued to the board like the pucks; the XIAO in its cradle with "
               "its USB-C through the wall, the DRV8833 beside it: the "
               "resistor in series with the motor's red wire, the capacitor "
               "across the DRV8833's supply, the pull-up on the home "
@@ -3281,12 +3293,12 @@ JOINTS = (
     ("arc bar to rotor pad", BAR_T - CBORE[1], INS_M3[1], 4.0, 3, "M3"),
     ("bearing axle to tower", SLEEVE_H + SLEEVE_FL_H, INS_M3[1], 4.0, 3, "M3"),
     # the head sits in a 5 mm counterbore; under the insert, 1 mm of pad
-    ("stator to sole plate", BASE_T - FOOT_CBORE[1], INS_M3[1], 1.0, 3, "M3"),
+    ("base to puck", BASE_T - FOOT_CBORE[1], INS_M3[1], 1.0, 3, "M3"),
     # down through the drive's arm and post into the base, its tip out
-    # into the gap the sole plate's pads leave under the base
+    # into the gap the pucks leave under the base
     ("drive post to base", driver_levels()["face"] - (levels()["base_top"]
                                                        - POST_SOCKET),
-     INS_M3[1], BASE_T - POST_SOCKET - INS_M3[1] + SOLE_PAD[1] - 0.5, 1, "M3"),
+     INS_M3[1], BASE_T - POST_SOCKET - INS_M3[1] + CABLE_UNDER + 2.0, 1, "M3"),
     # up through the platform into the receiver, so it slides the channel
     ("receiver to platform", PLATFORM_V[1] - PLATFORM_V[0], INS_M3[1],
      RECV_RELIEF, 2, "M3"),
@@ -3301,8 +3313,8 @@ def fasteners(specimen=SPECIMEN):
     L = levels(specimen)
     length = {n: bolt_len(c, i, r) for n, c, i, r, _, _ in JOINTS}
     return [
-        dict(joint="stator to sole plate", side="stator", r=1.5,
-             head_r=HEAD_R, head_h=HEAD_H, len=length["stator to sole plate"],
+        dict(joint="base to puck", side="stator", r=1.5,
+             head_r=HEAD_R, head_h=HEAD_H, len=length["base to puck"],
              at=[[round(float(v), 4) for v in
                   polar(FOOT_R, a, L["base_top"] - FOOT_CBORE[1])]
                  for a in FOOT_PHI]),

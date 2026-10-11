@@ -413,7 +413,7 @@ B.centres.forEach(([x, y], i) => {
   head.position.set(B.tower_r * Math.cos(a), B.tower_r * Math.sin(a), B.z + B.w / 2 + 1.0 + B.head_h / 2);
 });
 // the bolts, each down on its seat with the shank the joint table gives
-// it: the feet into the sole plate, the arc's bar into the rotor's pad
+// it: the feet into the pucks, the arc's bar into the rotor's pad
 for (const f of D.fasteners) {
   const grp = f.side === 'rotor' ? hwRotor : hardware;
   for (const [x, y, z] of f.at) {
@@ -728,7 +728,9 @@ const PART_NAMES = {
   drive_cap: ['Drive cap', 'holds the gearmotor in its pocket; its wires come out through the window'],
   ctrl_box: ['Controller box', 'XIAO ESP32S3 and a DRV8833 on the board beside the jig; one USB-C cord powers it all'],
   ctrl_lid: ['Controller lid', 'two pegs, pressed into the box'],
-  sole_plate: ['Sole plate', 'glued to the board; the base bolts onto its three pads'],
+  puck_a: ['Puck', 'under a foot: bolted to the base, glued to the board'],
+  puck_b: ['Puck', 'under a foot: bolted to the base, glued to the board'],
+  puck_c: ['Puck', 'under a foot: bolted to the base, glued to the board'],
   sleeve_a: ['Eccentric sleeve', 'one of three: bored 1.5 mm off-center, turned to bring its V wheel into the groove'],
   sleeve_b: ['Eccentric sleeve', 'one of three: bored 1.5 mm off-center, turned to bring its V wheel into the groove'],
   sleeve_c: ['Eccentric sleeve', 'one of three: bored 1.5 mm off-center, turned to bring its V wheel into the groove'],

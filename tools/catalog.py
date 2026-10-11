@@ -378,7 +378,7 @@ PARTS = [
        "M5 thumbscrew; a receiver with 40 mm of fore/aft travel carrying "
        "the phone's clamp on its 1/4-20; the Geneva driver, the block that "
        "holds its gearmotor and the block's cap; a controller box and lid; "
-       "a sole plate; three bearing sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
+       "three pucks under its feet; three bearing sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
        "wing nut and a hex nut, all printed in the same cosine thread "
        "the Knot uses. "
        "Hardware: three Delrin V wheels (two 688-2RS in each) on M3 axles, "
@@ -408,8 +408,9 @@ PARTS = [
        "ring of the capture steps a whole number of stops \u2014 10, 10, "
        "20 and 20\u00b0, still 108 frames. "
        "The base bolts down through three counterbored holes reached "
-       "from above into a sole plate that is glued to a heavy board, so "
-       "the board needs no holes and the jig lifts off in a minute. "
+       "from above into three pucks, which are glued to a heavy board "
+       "with the base bolted on, so it places them; the board needs no "
+       "holes and the jig lifts off in a minute. "
        "One camera: an iPhone held landscape in a spring clamp, behind "
        "either of its two lenses. A Sony \u03b11 on an Arca plate was "
        "carried here too and was what the carriage was sized for \u2014 "
@@ -449,6 +450,9 @@ PARTS = [
        "matte black so they drop out of feature matching. One dial: how "
        "far the specimen's center sits above the platform.",
        keys="jig camera scan photogrammetry turntable fossil",
+       # 14.0.0: the sole plate became three pucks, bolted under the
+       # base's feet and glued down with it, so the base is their
+       # template. The base and every other part are unmoved.
        # 13.0.0: fewer things to buy. Every bolt is M3 into one insert:
        # the base's feet and the arc's bar were M4, so their holes,
        # inserts and the sole plate's and pad's bores all moved. Insert
@@ -535,7 +539,7 @@ PARTS = [
        # which took 75 mm off the camera platform, 70 off its channel and
        # both ballast pockets. Nothing cut for any earlier shape meets
        # this one.
-       version="13.0.0",
+       version="14.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

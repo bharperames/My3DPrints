@@ -357,8 +357,8 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
 const GLOW = new THREE.Color(css('--accent'));
 /* ---------- the bench: the shop's graph paper ----------
    The same paper the shop's cards turn on for scale -- 1-inch rulings
-   labelled, half and eighth inches between -- laid as the board the sole
-   plate is glued to. */
+   labelled, half and eighth inches between -- laid as the board the
+   pucks are glued to. */
 const INCH = 25.4;
 function graphTexture(nIn) {
   const px = 96, W = nIn * px;
@@ -389,8 +389,9 @@ function graphTexture(nIn) {
     const g = m.geometry; g.computeBoundingBox();
     all.union(g.boundingBox.clone().applyMatrix4(toWorld[n]));
   }
-  const sole = body.sole_plate.geometry.boundingBox.clone().applyMatrix4(toWorld.sole_plate);
-  const board = sole.min.z;                     // the plate is glued to the board
+  // the pucks are glued to the board: its face is the lowest of them
+  const board = Math.min(...['puck_a', 'puck_b', 'puck_c'].map(n =>
+    body[n].geometry.boundingBox.clone().applyMatrix4(toWorld[n]).min.z));
   const nIn = Math.ceil((Math.max(all.max.x - all.min.x, all.max.y - all.min.y) + 60) / INCH);
   const S = nIn * INCH, tex = graphTexture(nIn);
   // one-sided: from underneath you see straight through to the model
@@ -665,7 +666,7 @@ controls.addEventListener('start', () => { cam = null; });   // the hand wins
 /* click a part and it says what it is: printed parts by name, bought
    parts by the line the BOM gives them */
 const PART = {
-  stator: ['Base', 'bearing towers, pedestal, drive post socket'], sole_plate: ['Sole plate', 'glued to the board; the base bolts onto its pads'],
+  stator: ['Base', 'bearing towers, pedestal, drive post socket'], puck_a: ['Puck', 'under a foot: bolted to the base, glued to the board'], puck_b: ['Puck', 'under a foot: bolted to the base, glued to the board'], puck_c: ['Puck', 'under a foot: bolted to the base, glued to the board'],
   corner_foot_a: ['Corner foot', 'glued to the board under a tower: carries the corner straight down'],
   corner_foot_b: ['Corner foot', 'glued to the board under a tower: carries the corner straight down'],
   corner_foot_c: ['Corner foot', 'glued to the board under a tower: carries the corner straight down'],
