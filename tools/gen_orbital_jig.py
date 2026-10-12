@@ -1405,10 +1405,19 @@ def pin_proxy(specimen=SPECIMEN):
 # top 0.021 mm per newton sideways, which tilted the ring and lifted the
 # lip at the drive. A printed foot under each corner, glued to the board
 # with the base sitting on it, carries the corner straight down: 0.0001
-# and 0.0005 mm per newton in the same plate model. The glue takes up any
-# height difference while it cures, so nothing is forced, and the base
-# still lifts off: the feet hold it up, the three bolts hold it down.
+# and 0.0005 mm per newton in the same plate model.
+#
+# Six supports would undo the three-point stance if they were set by the
+# board, so they are not: the pucks locate the base, and each corner foot
+# stops a millimeter short of it, a gap that epoxy fills with the base
+# bolted down on its pucks and tape on its underside. The fill takes
+# whatever height that corner sits at, so no warp in the board reaches
+# the base, and the tape lets the base lift off. A foot drawn to touch
+# could not do that: a board a few tenths high under one corner would
+# bottom the foot and bend the corner up against the bolts, and one a few
+# tenths low would leave it carrying nothing.
 CORNER_FOOT_R = 12.0
+CORNER_GAP = 1.0                      # under the base, for the epoxy shim
 CORNER_FEET = ("corner_foot_a", "corner_foot_b", "corner_foot_c")
 
 
@@ -1418,8 +1427,8 @@ def corner_feet(specimen=SPECIMEN):
     out = {}
     for n, a in zip(CORNER_FEET, TOWER_PHI):
         x, y, _ = polar(TOWER_PITCH, a)
-        # a twentieth short of the base: the glue under it fills the rest
-        out[n] = cyl(CORNER_FOOT_R, board, L["base_bot"] - 0.05, x, y, 96)
+        out[n] = cyl(CORNER_FOOT_R, board, L["base_bot"] - CORNER_GAP,
+                     x, y, 96)
     return out
 
 
@@ -2397,10 +2406,15 @@ def assembly_steps(parts, specimen=SPECIMEN):
               path=(down, 20.0)),
     ] + [
         _step(n, "A foot under the base's corner",
-              "Slid in under the tower from outside, a dab of glue under it, "
-              "onto the board. The base sits on the three feet while the "
-              "glue cures, so they set at exactly its height and push "
-              "nothing out of true; the base still lifts off.",
+              "With the pucks' glue: slid in under the tower from outside, "
+              "a dab of glue under it, onto the board; it stops 1 mm short "
+              "of the base. Once both have cured, undo the three bolts, lift "
+              "the base, put packing tape on its underside over each foot "
+              "and a blob of epoxy on each foot's top, then set the base "
+              "back and bolt it down. The epoxy cures into a shim at the "
+              "height that corner already sits, so the three-point stance "
+              "stays the only thing that locates the base, and the tape "
+              "lets it lift off.",
               [n], path=(tuple(-np.asarray(polar(1.0, a))), 30.0))
         for n, a in zip(CORNER_FEET, TOWER_PHI)
     ] + [
