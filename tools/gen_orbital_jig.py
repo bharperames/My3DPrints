@@ -1400,38 +1400,13 @@ def pin_proxy(specimen=SPECIMEN):
 
 
 # --- the pucks -----------------------------------------------------------
-# The base's corners stand 100 mm past the line between two of its feet,
-# on an 8 mm plate: each tower gave 0.11 mm per newton downward and its
-# top 0.021 mm per newton sideways, which tilted the ring and lifted the
-# lip at the drive. A printed foot under each corner, glued to the board
-# with the base sitting on it, carries the corner straight down: 0.0001
-# and 0.0005 mm per newton in the same plate model.
-#
-# Six supports would undo the three-point stance if they were set by the
-# board, so they are not: the pucks locate the base, and each corner foot
-# stops a millimeter short of it, a gap that epoxy fills with the base
-# bolted down on its pucks and tape on its underside. The fill takes
-# whatever height that corner sits at, so no warp in the board reaches
-# the base, and the tape lets the base lift off. A foot drawn to touch
-# could not do that: a board a few tenths high under one corner would
-# bottom the foot and bend the corner up against the bolts, and one a few
-# tenths low would leave it carrying nothing.
-CORNER_FOOT_R = 12.0
-CORNER_GAP = 1.0                      # under the base, for the epoxy shim
-CORNER_FEET = ("corner_foot_a", "corner_foot_b", "corner_foot_c")
-
-
-def corner_feet(specimen=SPECIMEN):
-    L = levels(specimen)
-    board = L["base_bot"] - PUCK_H
-    out = {}
-    for n, a in zip(CORNER_FEET, TOWER_PHI):
-        x, y, _ = polar(TOWER_PITCH, a)
-        out[n] = cyl(CORNER_FOOT_R, board, L["base_bot"] - CORNER_GAP,
-                     x, y, 96)
-    return out
-
-
+# Nothing stands under the base's corners. The plate model gave each
+# tower 0.11 mm per newton downward, cantilevered 100 mm past the line
+# between two feet, and 12.0.0 glued a foot under each; but the printed
+# base proved rigid in the hand, and the tolerance stack with the corners'
+# 0.1-0.2 mm of flex put back still clears the lock in all but 2 builds in
+# 10,000. Six supports would also have let the board, not the three
+# pucks, decide where the base sits.
 PUCKS = ("puck_a", "puck_b", "puck_c")
 
 
@@ -1916,7 +1891,6 @@ def assemble(specimen=SPECIMEN):
     parts.update(sleeves_in_place(specimen))
     parts["driver_shim"] = driver_shim(specimen)
     parts["rotor"] = rotor(specimen)
-    parts.update(corner_feet(specimen))
     parts["arc"] = arc()
     parts["saddle"] = saddle()
     parts["shoe"] = shoe()
@@ -2404,20 +2378,6 @@ def assembly_steps(parts, specimen=SPECIMEN):
                    [p for f in feet for p in
                     _bolt_prims(f, length["base to puck"])])],
               path=(down, 20.0)),
-    ] + [
-        _step(n, "A foot under the base's corner",
-              "With the pucks' glue: slid in under the tower from outside, "
-              "a dab of glue under it, onto the board; it stops 1 mm short "
-              "of the base. Once both have cured, undo the three bolts, lift "
-              "the base, put packing tape on its underside over each foot "
-              "and a blob of epoxy on each foot's top, then set the base "
-              "back and bolt it down. The epoxy cures into a shim at the "
-              "height that corner already sits, so the three-point stance "
-              "stays the only thing that locates the base, and the tape "
-              "lets it lift off.",
-              [n], path=(tuple(-np.asarray(polar(1.0, a))), 30.0))
-        for n, a in zip(CORNER_FEET, TOWER_PHI)
-    ] + [
         _step("bearings", "Sleeves and bearings onto the towers",
               "A V wheel on each sleeve, its two 688s pressed into it in "
               "place of the kit's 625s. All three sleeves are "

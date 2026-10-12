@@ -33,8 +33,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_twenty_two_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 24)
+    def test_twenty_one_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 21)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -241,21 +241,6 @@ class TestCornerFeet(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.parts = J.assemble(J.SPECIMEN)
-
-    def test_each_foot_stands_under_its_tower_and_just_short_of_the_base(self):
-        L = J.levels(J.SPECIMEN)
-        board = L["base_bot"] - J.PUCK_H
-        for n, a in zip(J.CORNER_FEET, J.TOWER_PHI):
-            m = self.parts[n]
-            c = m.bounds.mean(0)[:2]
-            self.assertLess(np.linalg.norm(c - J.polar(J.TOWER_PITCH, a)[:2]), 0.01)
-            self.assertAlmostEqual(m.bounds[0][2], board, places=6)
-            gap = L["base_bot"] - m.bounds[1][2]
-            self.assertTrue(0.0 < gap <= 0.1, gap)
-
-
-class TestPrintSettings(unittest.TestCase):
-    """The file and the shop's plates print the jig as its card says."""
 
     def test_the_card_and_the_generator_name_the_same_settings(self):
         import catalog
@@ -472,9 +457,7 @@ class TestRealDrive(unittest.TestCase):
 
     def test_the_base_stands_on_its_three_pucks_and_nothing_else(self):
         """Each puck under its foot bolt, its top at the base's underside
-        and its foot on the board; nothing else under the base reaches
-        the board's side of the gap but the corner feet, which stand
-        short of it."""
+        and its foot on the board."""
         L = J.levels(J.SPECIMEN)
         for n, a in zip(J.PUCKS, J.FOOT_PHI):
             m = self.parts[n]
