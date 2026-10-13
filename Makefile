@@ -29,10 +29,11 @@ PY := $(HOME)/.claude/skills/3d-print-check/.venv/bin/python
 # knot_page.py is in here because the assembly page reads what it writes.
 # It was run by hand, so changing the Knot rebuilt the printed 3MF and left
 # the animation showing the previous one -- convincingly, because it still
-# looked like a Knot. It takes 1.3 s. Nothing the UI reads should depend on
+# looked like a Knot. It takes 1.3 s. jig_mat.py is here for the same reason: the
+# assembly page links the parts mat it writes, which follows the steps. Nothing the UI reads should depend on
 # somebody remembering a command.
 build:
-	cd tools && $(PY) build_designs.py && $(PY) extract_meta.py && $(PY) previews.py && $(PY) versions.py && $(PY) knot_page.py && $(PY) build_local.py
+	cd tools && $(PY) build_designs.py && $(PY) extract_meta.py && $(PY) previews.py && $(PY) versions.py && $(PY) knot_page.py && $(PY) jig_mat.py && $(PY) build_local.py
 
 .PHONY: test
 test:
