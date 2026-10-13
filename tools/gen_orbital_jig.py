@@ -191,7 +191,10 @@ RING_RO, RING_RI, RING_T = 121.0, 90.0, 18.0
 # rides inside V-slot's 6.2 mm opening and only the flanks touch -- and
 # 12.0.0 to 17.0.0 drew it with a 1 mm tip, which cut the ring a groove
 # 3.8 mm wide that the real 5.9 mm flat bridged without entering.
-WHEEL = dict(r=11.95, w=10.2, tip=2.95, side_r=9.8)    # tip: half the flat
+# Brett's wheels (sold as SIMAX3D rollers, the Creality pattern) measure a
+# 6.2 mm flat in 10.2 with calipers, 2026-10-13: the same 45 degree
+# flanks, the whole section 0.15 wider a side. Drawn to his.
+WHEEL = dict(r=11.95, w=10.2, tip=3.1, side_r=9.95)    # tip: half the flat
 WHEEL_ITEM = "Solid V wheel, Delrin (OpenBuilds type: 23.9 OD, 10.23 wide)"
 WHEEL_BRG_ITEM = "688-2RS bearing (8 x 16 x 5), two in each V wheel"
 WHEEL_E = 1.4           # how far the V's tip enters the groove

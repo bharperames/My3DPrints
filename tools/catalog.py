@@ -546,7 +546,7 @@ PARTS = [
        # 17.0.0: the corner feet are gone. The printed base is rigid in
        # the hand, and with the corners' flex put back the tolerance stack
        # still clears the lock in all but 2 builds in 10,000.
-       version="18.0.0",
+       version="19.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face
