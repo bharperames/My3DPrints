@@ -243,8 +243,12 @@ INSERT_L = 5.7          # the insert's own length: all the thread there is
 # stopped; with a washer an M3x8 was still long and an M3x6 pulled up
 # tight. So a puck's usable thread is PUCK_THREAD, measured -- not the
 # insert's 5.7 -- and the joint table uses it there.
+# On the practice piece's post the same M3x10 went 4.4 mm in. Where a
+# bolt stops is what limits it, not the drawn bore: INSERT_STOP for every
+# blind insert, the first puck's own figure for the pucks.
 ENGAGE_MIN = 2.5        # five turns of M3; the puck joint, proven, has this
 PUCK_THREAD = 3.6
+INSERT_STOP = 4.4
 WASHER_M3 = (7.0, 0.5)  # DIN 125 M3 flat washer: OD, thickness
 WASHER_ITEM = "M3 flat washer (DIN 125, 7 OD x 0.5)"
 AXLE_HEAD = (2.75, 3.0)               # M3 socket head
@@ -2378,7 +2382,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
               against=list(PUCKS)),
         _step("stator_inserts", "Inserts into the base",
               "Four M3 inserts: one in the top of each tower, one under "
-              "the drive post's socket.",
+              "the drive post's socket. Its bolt runs right through, so "
+              "once it is cool clear the melt pushed under it: a 2.5 mm "
+              "drill down through the insert, by hand.",
               hw=[(INSERT_M3, 4, tower_ins + post_ins)],
               path=(down, 15.0), against=["stator"]),
         _step("pucks", "Pucks up under the base",
@@ -3323,8 +3329,8 @@ def fits_plate(m, bed=246.0, height=250.0):
 # on the built rotor: 11.00 mm of hole on each bolt axis, 0.00 beside it.
 JOINTS = (
     # name, crosses, insert depth, relief, count
-    ("arc bar to rotor pad", BAR_T - CBORE[1], INSERT_L, None, 3, "M3"),
-    ("bearing axle to tower", SLEEVE_H + SLEEVE_FL_H, INSERT_L, None, 3, "M3"),
+    ("arc bar to rotor pad", BAR_T - CBORE[1], INSERT_STOP, None, 3, "M3"),
+    ("bearing axle to tower", SLEEVE_H + SLEEVE_FL_H, INSERT_STOP, None, 3, "M3"),
     # the head sits on a washer in a 5 mm counterbore
     ("base to puck", BASE_T - FOOT_CBORE[1] + WASHER_M3[1], PUCK_THREAD,
      None, 3, "M3"),
@@ -3334,7 +3340,7 @@ JOINTS = (
                                                        - POST_SOCKET),
      INS_M3[1], BASE_T - POST_SOCKET - INS_M3[1] + CABLE_UNDER + 2.0, 1, "M3"),
     # up through the platform into the receiver, so it slides the channel
-    ("receiver to platform", PLATFORM_V[1] - PLATFORM_V[0], INSERT_L,
+    ("receiver to platform", PLATFORM_V[1] - PLATFORM_V[0], INSERT_STOP,
      None, 2, "M3"),
 )
 _STOCK = (6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 35)   # the VIGRUE kit, and McMaster's 35
