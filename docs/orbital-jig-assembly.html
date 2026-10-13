@@ -109,7 +109,7 @@
 <header>
   <h1>Orbital scanning jig — assembly</h1>
   <span class="sub" id="sub">loading…</span>
-  <span class="links"><a href="../models/custom/orbital-jig-parts-mat.pdf" target="_blank">parts mat to print →</a><a href="orbital-jig.html">the capture →</a><a href="../index.html">← the shop</a></span>
+  <span class="links"><a id="matLink" href="../models/custom/orbital-jig-parts-mat.pdf" target="_blank">parts mat to print →</a><a href="orbital-jig.html">the capture →</a><a href="../index.html">← the shop</a></span>
 </header>
 <div class="wrap">
   <div id="view"><div id="hud">fetching the printed file…</div><div id="pick"></div>
@@ -193,6 +193,8 @@ if (!res.ok) {
 const buf = await res.arrayBuffer();
 const files = unzipSync(new Uint8Array(buf));
 const D = JSON.parse(new TextDecoder().decode(files['Metadata/orbital_jig.json']));
+// the mat is rebuilt in place: ask for it fresh, not the browser's copy
+document.getElementById('matLink').href += '?t=' + Date.now();
 const A = D.assembly;
 const STEPS = A.steps;
 const model = new ThreeMFLoader().parse(buf);
