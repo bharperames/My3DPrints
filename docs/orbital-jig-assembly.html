@@ -282,6 +282,8 @@ function style(m) {
   mat.opacity = op;
   mat.depthWrite = op >= 1;
   mat.polygonOffset = true; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 1;
+  mat.depthTest = !u.inside;
+  m.renderOrder = u.inside ? 10 : 0;
   // blending and wireframe are compiled into the shader: a change of
   // either needs the material rebuilt, or the old one keeps drawing
   const key = `${mat.transparent}|${mat.wireframe}`;
@@ -423,6 +425,7 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
   const knurled = kind === 'brass' && p.kind === 'ring';
   const m = makeMesh(knurled ? insertGeom(p) : primGeom(p), hardwareMaterial(kind), knurled ? 80 : 25);
   m.userData.base = p.M ? new THREE.Matrix4().set(...p.M) : new THREE.Matrix4();
+  m.userData.unit = p.unit ?? j;
   return m;
 })));
 
@@ -582,7 +585,7 @@ function poseAll(k, f) {
       let M = m.userData.base.clone();
       // the bearings ride their eccentrics in
       if (st.id === 'bearings' && preload >= 0) {
-        const t = STEPS[preload].turn[j];
+        const t = STEPS[preload].turn[m.userData.unit];
         const g = k < preload ? 0 : k === preload ? ease(f) : 1;
         if (t) M = aboutZ(t.axis[0], t.axis[1], t.deg * g).multiply(M);
       }
@@ -591,6 +594,9 @@ function poseAll(k, f) {
       const moving = ridesWith(i, k) || (st.turn && i === k)
         || (st.id === 'bearings' && k === preload);
       mark(m, moving, f, !st.path && i === k ? Math.max(0.05, f) : 1);
+      // a bench piece riding in with its part (the nut, sealed in the
+      // saddle) is drawn through it, so it is not lost from view
+      m.userData.inside = i !== k && ridesWith(i, k);
     });
   });
   for (const m of allMeshes) style(m);

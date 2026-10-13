@@ -571,6 +571,24 @@ class TestAssembly(unittest.TestCase):
         bad = {s["id"] for s in a["steps"] if s["fouls"]}
         self.assertIn("rotor", bad)
 
+    def test_a_nut_trap_with_no_mouth_would_be_caught(self):
+        """Negative control: the 20.0.0 saddle. Its trap opened into the
+        arm's wedge, which sealed it; the nut slid its 20 mm inside the
+        34 mm void and the sweep, asking only what it hit, passed it.
+        Brett found it on the printed part."""
+        h0, (nw, nt) = J.PLATE_H[0], J.NUT
+        s = J.saddle()
+        s.apply_transform(np.linalg.inv(J.M_ARC))
+        void = J.box((J.CLAMP_R - nw / 2, -30.0, h0 + 3.2),
+                     (J.CLAMP_R + nw / 2, nw / 2, h0 + 3.2 + nt))
+        mouth = J.box((J.CLAMP_R - nw / 2, -nw / 2, h0 + 3.2),
+                      (J.CLAMP_R + nw / 2, 40.0, h0 + 3.2 + nt))
+        sealed = J.cut(J.union([s, J.cut(mouth, [void])]), [void])
+        sealed.apply_transform(J.M_ARC)
+        a = J.assembly_sweep(dict(self.parts, saddle=sealed), step=2.0)
+        bad = {s["id"] for s in a["steps"] if s["fouls"]}
+        self.assertIn("nut", bad)
+
     def test_turned_out_each_bearing_clears_the_ring_by_the_face_gap(self):
         clear = min(np.linalg.norm(c) for c in J.bearing_centres(True)) \
             - J.BRG_R - J.RING_RO

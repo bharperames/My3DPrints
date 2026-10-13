@@ -1651,10 +1651,15 @@ def saddle():
                (PLATFORM_U[1], PLATFORM_V[1], hy + PLATFORM_HW))
     s = union([s, arm, wedge, plat])
     tools = [screw_hole(h0 - 6.0, h1 + 1.0)]
-    # square nut trap, open toward down-arc so the nut slides in
+    # square nut trap, open up-arc so the nut slides in and stops over the
+    # screw hole. Until 21.0.0 it opened down-arc, and the wedge under the
+    # arm, added after it, sealed its mouth: Brett's printed saddle has the
+    # trap as a closed void. The sweep slid the nut 20 mm along a 34 mm
+    # void and never touched it -- assembly_sweep now asks where a piece
+    # starts as well as what it hits.
     nw, nt = NUT
-    tools.append(box((CLAMP_R - nw / 2, -30.0, h0 + 3.2),
-                     (CLAMP_R + nw / 2, nw / 2, h0 + 3.2 + nt)))
+    tools.append(box((CLAMP_R - nw / 2, -nw / 2, h0 + 3.2),
+                     (CLAMP_R + nw / 2, 40.0, h0 + 3.2 + nt)))
     # fore/aft channel: two slots the receiver's screws ride in
     u0, u1, w, dy = CHANNEL
     for y in (hy - dy, hy + dy):
@@ -2260,7 +2265,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
     bars = [[x, Y_ARC, LEG_BOTTOM + BAR_T - CBORE[1]] for x in BOLTS_X]
 
     def bearings(retracted):
-        return [q for c in bearing_centres(retracted)
+        # each ring says which wheel it is: the page turns a wheel's
+        # rings together, about that wheel's own eccentric
+        return [dict(q, unit=k) for k, c in enumerate(bearing_centres(retracted))
                 for q in _wheel_rings(c, L["brg_z"])]
     # how far each eccentric turns between standing out and standing in
     turn = []
@@ -2546,8 +2553,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
                     _bolt_prims(b, length["arc bar to rotor pad"])])],
               path=(down, 25.0)),
         _step("nut", "Square nut into the saddle",
-              "On the bench: slid up into its trap.",
-              hw=[("M5 square nut", 1, nut)], path=(up_arc, 20.0),
+              "On the bench: flat, into the slot in the clamp plate's up-arc "
+              "end, pushed in until it stops over the screw hole.",
+              hw=[("M5 square nut", 1, nut)], path=(-up_arc, 40.0),
               against=["saddle"], at=E),
         _step("saddle", "Saddle onto the arc, inboard",
               "Half way up the arc, its lips over the arc's inner and outer faces.",
@@ -2639,6 +2647,27 @@ def _presses(pair, st, movers, stat, T):
     return False
 
 
+RUN_IN_REACH = 60.0      # clear run a hand needs to hold a piece and place it
+
+
+def _run_in(path, movers, stat):
+    """How far back along its path a step's pieces must go to stand
+    clear of the box round everything they are fitted against: the
+    path's own travel says where it starts, not that it can get there."""
+    if not stat or not movers:
+        return 0.0
+    lo = np.min([m.bounds[0] for m in stat.values()], axis=0)
+    hi = np.max([m.bounds[1] for m in stat.values()], axis=0)
+    d = np.asarray(path["dir"], float)
+    mlo = np.min([m.bounds[0] for m in movers.values()], axis=0)
+    mhi = np.max([m.bounds[1] for m in movers.values()], axis=0)
+    # moved by -d t, the boxes part on axis i once t passes this; parting
+    # on any one axis is enough
+    ts = [(mhi[i] - lo[i]) / d[i] if d[i] > 0 else (hi[i] - mlo[i]) / -d[i]
+          for i in range(3) if abs(d[i]) > 1e-9]
+    return max(0.0, min(ts))
+
+
 def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
     """Every step's pieces along their path against what is in place --
     printed bodies and the hardware fitted before them. Returns per-step
@@ -2699,6 +2728,20 @@ def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
                 for ph in np.arange(0.0, 360.0, 5.0):
                     if not hits(_path_pose(st["path"], 0.05, ph)):
                         phase = float(ph)
+                        break
+            # where it comes from: a piece that starts sealed inside what it
+            # goes into -- a nut in a trap with no mouth -- can slide its
+            # whole path without touching anything. Run the path back on
+            # until it is clear of everything it is fitted against.
+            if not st["path"].get("spin"):
+                # ...or for a hand's reach: the arc's bolts go in under the
+                # arc itself, 108 mm overhead, and that is room enough
+                far = min(_run_in(st["path"], movers, stat),
+                          st["path"]["travel"] + RUN_IN_REACH)
+                for t in np.arange(st["path"]["travel"] + step, far + step, step):
+                    hit = hits(_path_pose(st["path"], float(t), phase))
+                    if hit:
+                        fouls.append((round(float(t), 2), ["cannot be brought in: "] + hit))
                         break
             for t in list(np.arange(st["path"]["travel"], 0.05, -step)) + [0.05]:
                 hit = hits(_path_pose(st["path"], float(t), phase))

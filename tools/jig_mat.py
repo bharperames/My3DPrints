@@ -367,7 +367,14 @@ def printed(mesh):
     eye = n if lo >= hi else -n                 # rests on the bigger flat
     # the frame projected() draws the outline in, so the lines land on it
     to_2d = trimesh.geometry.plane_transform(origin=None, normal=eye)
-    outline = projected(m, normal=eye, ignore_sign=False, rpad=1e-4, tol_dot=1e-3)
+    try:
+        outline = projected(m, normal=eye, ignore_sign=False, rpad=1e-4, tol_dot=1e-3)
+    except Exception:
+        # shapely trips on a slot's faces lying exactly edge-on; the
+        # shadow of every triangle, merged, is the same outline
+        P = trimesh.transform_points(m.vertices, to_2d)[:, :2]
+        tris = [Polygon(P[f]) for f in m.faces]
+        outline = unary_union([t.buffer(1e-4) for t in tris if t.area > 1e-9]).buffer(-1e-4)
     if outline is None:
         return None
     if outline.geom_type == "MultiPolygon":
