@@ -183,7 +183,7 @@ RING_RO, RING_RI, RING_T = 121.0, 90.0, 18.0
 # its V faces, and the ring has no axial play at all. The wheel holds two
 # 16 x 5 mm bearings; 688-2RS (8 x 16 x 5) in place of the kit's 625s gives
 # it an 8 mm bore, so it rides the same printed eccentric sleeve the 608
-# did. The V's tip enters the groove WHEEL_E, and the groove runs 0.4
+# did. The V's tip enters the groove WHEEL_E, and the groove runs RACE_RELIEF
 # deeper so the tip never bottoms: only the faces touch.
 # The profile is OpenBuilds' own STEP of the Solid V (printables 459179):
 # 10.2 wide, a 5.9 mm flat at the OD between 45 degree flanks that run
@@ -201,6 +201,13 @@ WHEEL_E = 1.4           # how far the V's tip enters the groove
 RACE_FLANK = WHEEL_E    # (named for what it was: the groove's depth at the V)
 RACE_R = RING_RO - WHEEL_E            # where the wheel's tip runs
 RACE_PLAY = 0.0         # axial: the V seats on both faces
+# Under the wheel's flat, the groove runs this much deeper than the flat
+# rides. Only the flanks may touch; depth there costs nothing -- the
+# flanks' contact is unchanged and the ring has 31 mm of section behind
+# it -- and covers a printed floor that comes out shallow, an edge left
+# soft by the molding, and a flat measured on the wide side. 0.4 until
+# 19.0.0.
+RACE_RELIEF = 1.0
 BRG_R, BRG_W, BRG_BORE = WHEEL["r"], WHEEL["w"], 8.0
 BRG_PITCH = RACE_R + BRG_R            # a wheel seated in the groove
 PRELOAD = 0.85          # how much further in an eccentric can still go
@@ -1493,12 +1500,13 @@ def sleeves_in_place(specimen=SPECIMEN, retracted=False):
 # --- rotor ring with its boss ------------------------------------------
 def ring_profile():
     """The ring in section, with a 90 degree V groove on its OD whose
-    faces are the wheel's V faces seated, and 0.4 of relief at the root."""
+    faces are the wheel's V faces seated, and RACE_RELIEF under its flat."""
     t, e, tip = RING_T, WHEEL_E, WHEEL["tip"]
     zc = t / 2.0
-    root = RING_RO - e - 0.4
+    d = RACE_RELIEF
+    root = RING_RO - e - d
     return [(RING_RI, 0), (RING_RO, 0), (RING_RO, zc - tip - e),
-            (root, zc - tip + 0.4), (root, zc + tip - 0.4),
+            (root, zc - tip + d), (root, zc + tip - d),
             (RING_RO, zc + tip + e), (RING_RO, t), (RING_RI, t)]
 
 
