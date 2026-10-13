@@ -794,7 +794,7 @@ function insertSeats(i) {
       const c = new THREE.Vector3(...p.c).applyMatrix4(hwOf[i][j].userData.base);
       const dir = new THREE.Vector3(...st.path.dir).multiplyScalar(-1).normalize();
       // the stand-in ring is drawn flush with the surface
-      out.push({ top: c.addScaledVector(dir, p.h / 2), out: dir, count: h.qty });
+      out.push({ top: c.addScaledVector(dir, p.h / 2), out: dir, count: h.qty, mesh: hwOf[i][j] });
     }
     j++;
   }
@@ -838,6 +838,7 @@ const SINK = [
     t => ({ lift: 0, raise: 24, heat: 1 })],
 ];
 let howT = 0, howStep = -1, howPicked = false;
+let howLift = null;          // where the inset has its insert, for the main view to match
 function scriptFor(i) { return i === firstInsertStep ? SETUP.concat(SINK) : SINK; }
 function howtoAt(script, t) {
   const total = script.reduce((a, s) => a + s[0], 0);
@@ -858,7 +859,7 @@ function renderHowto(dt) {
   const on = seat && STEPS[k].path;
   howto.style.display = on ? 'block' : 'none';
   marker.visible = false;                          // never in the inset itself
-  if (!on) { howStep = -1; return; }
+  if (!on) { howStep = -1; howLift = null; return; }
   const script = scriptFor(k);
   const total = script.reduce((a, s) => a + s[0], 0);
   // choose the insert once the camera has arrived, and again each time round
@@ -895,6 +896,7 @@ function renderHowto(dt) {
   tipMat.emissive.setRGB(0.55 * heat, 0.12 * heat, 0.0);
   insertMesh.visible = !setup;
   placeAlong(insertMesh, top, out, lift - INSERT.l);
+  howLift = { seat, lift: setup ? INSERT.l + 14 : lift };
   // look across the axis, from the side the main camera is on
   const side = camera.position.clone().sub(top).projectOnPlane(out);
   if (side.lengthSq() < 1e-6) side.set(1, 0, 0).projectOnPlane(out);
@@ -995,6 +997,13 @@ renderer.setAnimationLoop(now => {
     }
   }
   poseAll(k, Math.min(1, f));
+  // the marked insert moves as the inset's does, not on the step's own clock
+  if (howLift && seats[k] === howLift.seat) {
+    const { seat, lift } = howLift, m = seat.mesh;
+    m.matrix.makeTranslation(seat.out.x * lift, seat.out.y * lift, seat.out.z * lift).multiply(m.userData.base);
+    m.matrixWorldNeedsUpdate = true;
+    m.visible = true;
+  }
   controls.update();
   renderer.render(scene, camera);
   renderHowto(dt);
