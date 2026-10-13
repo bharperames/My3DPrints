@@ -58,8 +58,10 @@ FILL = "#e6e9ee"               # light: a steel part reads against it
 EDGE = "#1b2230"
 DIM = "#2a3b55"
 PT = 25.4 / 72                 # mm per point
-FS = 6.5                       # label size, points
+FS = 9.0                       # label size, points
+DFS = 8.0                      # dimension size, points
 LINE_H = FS * PT * 1.35
+DIM_OFF = 3.5                  # a dimension line's distance from the part
 
 
 class Drawing:
@@ -93,15 +95,30 @@ class Drawing:
     def bounds(self):
         return self.outline.bounds
 
-    def at_origin(self):
-        """Moved so nothing -- outline or dimension -- falls left of or
-        above the origin."""
-        x0, y0, _, _ = self.bounds
+    def extent(self):
+        """Bounds of everything drawn: outline, dimension lines and their
+        figures, which sit outside the line, away from the part."""
+        x0, y0, x1, y1 = self.bounds
+        X0, Y0, X1, Y1 = x0, y0, x1, y1
+        th = DFS * PT * 1.25
         for ax, a, b, at, t in self.dims:
-            if ax == "y":
-                x0 = min(x0, at - 2.5)
+            if ax == "x":
+                if at >= y1:
+                    Y1 = max(Y1, at + 0.7 + th)
+                else:
+                    Y0 = min(Y0, at - 0.7 - th)
+                X0, X1 = min(X0, a, (a + b) / 2 - text_w(t, DFS) / 2), max(X1, b, (a + b) / 2 + text_w(t, DFS) / 2)
             else:
-                y0 = min(y0, at - 3.0)
+                if at >= x1:
+                    X1 = max(X1, at + 0.8 + text_w(t, DFS))
+                else:
+                    X0 = min(X0, at - 0.8 - text_w(t, DFS))
+                Y0, Y1 = min(Y0, a - th / 2), max(Y1, b + th / 2)
+        return X0, Y0, X1, Y1
+
+    def at_origin(self):
+        """Moved so nothing drawn falls left of or above the origin."""
+        x0, y0, _, _ = self.extent()
         return self.moved(-x0, -y0)
 
 
@@ -399,8 +416,8 @@ def entries():
 
 
 # --- layout ------------------------------------------------------------------
-def text_w(s):
-    return len(s) * FS * PT * 0.56 + 1.0
+def text_w(s, size=FS):
+    return len(s) * size * PT * 0.58 + 1.0
 
 
 def block(g):
@@ -424,21 +441,22 @@ def block(g):
         qty_draw = 1
     else:
         qty_draw = qty
+    # the first piece carries the dimensions; the rest sit beside it
+    _, _, W1, H1 = d.extent()
     _, _, w, h = d.bounds
     stack = w > 45 and qty_draw > 1
-    pad_r = 7.0 if d.dims else 0
-    pad_b = 6.0 if d.dims else 0
-    sp = 3.0 + (pad_r if not stack else 0)
-    pw = w if stack else qty_draw * w + (qty_draw - 1) * sp
-    ph = qty_draw * (h + (pad_b if stack else 0)) + (qty_draw - 1) * 3 if stack else h
-    bw = max(pw + pad_r, tw)
-    bh = ph + pad_b + 1 + 2 * LINE_H
-    return bw, bh, ("draw", d, qty_draw, stack, sp, pad_b, lab, scale != 1.0)
+    if stack:
+        pw, ph = W1, H1 + (qty_draw - 1) * (h + 3)
+    else:
+        pw, ph = W1 + (qty_draw - 1) * (w + 3), H1
+    bw = max(pw, tw)
+    bh = ph + 1.5 + 2 * LINE_H
+    return bw, bh, ("draw", d, qty_draw, stack, (W1, H1), lab, scale != 1.0)
 
 
 def layout(es):
     W = PAGE[0] - 2 * MARGIN
-    pages, ops, y = [], [], MARGIN + 8
+    pages, ops, y = [], [], MARGIN + 10
     bottom = PAGE[1] - MARGIN - 9
     for e in es:
         rows, row, x, rh = [], [], 0.0, 0.0
@@ -452,12 +470,12 @@ def layout(es):
             rh = max(rh, h)
         if row:
             rows.append((row, rh))
-        need = 7 + sum(r[1] + 4 for r in rows)
+        need = 9 + sum(r[1] + 4 for r in rows)
         if y + need > bottom and ops:
             pages.append(ops)
-            ops, y = [], MARGIN + 8
+            ops, y = [], MARGIN + 10
         ops.append(("head", y, e["n"], e["title"]))
-        y += 7
+        y += 9
         for row, rh in rows:
             for x, spec in row:
                 ops.append(("item", MARGIN + x, y, spec))
@@ -491,30 +509,32 @@ def draw(ax, d, x, y, dims=True, small=False):
                                          linestyles=(0, (1.2, 0.8))))
     if not dims:
         return
+    px0, py0, px1, py1 = d.bounds
     for axis, a, b, at, t in d.dims:
         if axis == "x":
-            x0, x1 = a, b
-            ext_from = max(0, min(at - 3.5, at))
-            ax.plot([x0, x0], [at - 2.2, at + 0.8], color=DIM, lw=0.25)
-            ax.plot([x1, x1], [at - 2.2, at + 0.8], color=DIM, lw=0.25)
-            arrow(ax, (x0, at), (x1, at))
-            ax.text((x0 + x1) / 2, at - 0.5, t, fontsize=5.5, color=DIM, ha="center",
-                    va="bottom", bbox=dict(facecolor="white", edgecolor="none", pad=0.3))
+            below = at >= py1
+            s = 1 if below else -1
+            ax.plot([a, a], [at - s * 2.5, at + s * 0.8], color=DIM, lw=0.3)
+            ax.plot([b, b], [at - s * 2.5, at + s * 0.8], color=DIM, lw=0.3)
+            arrow(ax, (a, at), (b, at))
+            ax.text((a + b) / 2, at + s * 0.7, t, fontsize=DFS, color=DIM, ha="center",
+                    va="top" if below else "bottom")
         else:
-            ax.plot([at - 2.2, at + 0.8], [a, a], color=DIM, lw=0.25)
-            ax.plot([at - 2.2, at + 0.8], [b, b], color=DIM, lw=0.25)
+            right = at >= px1
+            s = 1 if right else -1
+            ax.plot([at - s * 2.5, at + s * 0.8], [a, a], color=DIM, lw=0.3)
+            ax.plot([at - s * 2.5, at + s * 0.8], [b, b], color=DIM, lw=0.3)
             arrow(ax, (at, a), (at, b))
-            ax.text(at + 0.6, (a + b) / 2, t, fontsize=5.5, color=DIM, ha="left",
-                    va="center", rotation=0,
-                    bbox=dict(facecolor="white", edgecolor="none", pad=0.3))
+            ax.text(at + s * 0.8, (a + b) / 2, t, fontsize=DFS, color=DIM,
+                    ha="left" if right else "right", va="center")
 
 
 def frame(ax, page, pages):
     ax.text(MARGIN, MARGIN - 3, "Orbital scanning jig — parts mat",
-            fontsize=11, weight="bold", color=INK, va="baseline")
-    ax.text(MARGIN, MARGIN + 2, "Every part at full size, in the order it goes in. "
+            fontsize=13, weight="bold", color=INK, va="baseline")
+    ax.text(MARGIN, MARGIN + 2.5, "Every part at full size, in the order it goes in. "
             "Lay each one on its drawing; one that does not cover it is the wrong part.",
-            fontsize=7, color=INK, va="baseline")
+            fontsize=8.5, color=INK, va="baseline")
     ax.text(PAGE[0] - MARGIN, MARGIN - 3, f"page {page} of {pages}",
             fontsize=8, color=INK, ha="right", va="baseline")
     y = PAGE[1] - MARGIN + 2
@@ -522,8 +542,8 @@ def frame(ax, page, pages):
     for k in range(11):
         ax.plot([MARGIN + 10 * k] * 2, [y, y - 2.2], color=INK, lw=0.5)
     ax.text(MARGIN + 103, y + 1.5,
-            "100 mm. Measure it: if it is not, reprint at Actual size (100%).",
-            fontsize=7, color=INK, va="baseline")
+            "100 mm. If it measures otherwise, reprint at Actual size.",
+            fontsize=8.5, color=INK, va="baseline")
 
 
 def render(pages, out):
@@ -540,9 +560,9 @@ def render(pages, out):
             for op in ops:
                 if op[0] == "head":
                     _, y, n, title = op
-                    ax.text(MARGIN, y + 3.5, f"Step {n}", fontsize=9, weight="bold",
+                    ax.text(MARGIN, y + 4.2, f"Step {n}", fontsize=11.5, weight="bold",
                             color=INK, va="baseline")
-                    ax.text(MARGIN + 16, y + 3.5, title, fontsize=9, color=INK,
+                    ax.text(MARGIN + 21, y + 4.2, title, fontsize=11.5, color=INK,
                             va="baseline")
                 elif op[0] == "rule":
                     ax.plot([MARGIN, PAGE[0] - MARGIN], [op[1]] * 2, color="#7d8796", lw=0.3)
@@ -557,16 +577,20 @@ def render(pages, out):
                             ax.text(x + 2, y + 1 + (i + 0.8) * LINE_H, s, fontsize=FS,
                                     color=INK, va="baseline", weight="bold" if i == 0 else "normal")
                         continue
-                    _, d, n, stack, sp, pad_b, lab, small = spec
-                    _, _, w, h = d.bounds
-                    for i in range(n):
-                        dx, dy = (0, i * (h + pad_b + 3)) if stack else (i * (w + sp), 0)
-                        draw(ax, d, x + dx, y + dy, dims=(i == 0))
+                    _, d, n, stack, (W1, H1), lab, small = spec
+                    bx0, by0, bx1, by1 = d.bounds
+                    w, h = bx1 - bx0, by1 - by0
+                    draw(ax, d, x, y)
+                    for i in range(1, n):
+                        if stack:
+                            draw(ax, d, x, y + H1 + 3 + (i - 1) * (h + 3) - by0, dims=False)
+                        else:
+                            draw(ax, d, x + W1 + 3 + (i - 1) * (w + 3) - bx0, y, dims=False)
                     if small:
-                        ax.add_patch(Rectangle((x - 1.5, y - 1.5), w + 3, h + 3, fill=False,
+                        ax.add_patch(Rectangle((x + bx0 - 1.5, y + by0 - 1.5), w + 3, h + 3, fill=False,
                                                edgecolor=EDGE, lw=0.4, linestyle=(0, (3, 2))))
-                    ph = n * (h + pad_b + 3) - 3 - pad_b if stack else h
-                    ty = y + ph + pad_b + 1
+                    ph = H1 + (n - 1) * (h + 3) if stack else H1
+                    ty = y + ph + 1.5
                     for i, s in enumerate(lab):
                         ax.text(x, ty + (i + 0.8) * LINE_H, s, fontsize=FS, color=INK,
                                 va="baseline", weight="bold" if i == 0 else "normal")
