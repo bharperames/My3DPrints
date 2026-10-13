@@ -2360,15 +2360,23 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "On the bench: one M3 insert melted into the top of each.",
               hw=[(INSERT_M3, 3, sole_ins)], path=(down, 15.0),
               against=list(PUCKS)),
-        _step("pucks", "Three pucks onto the board",
-              "Stand them on the board where the base's feet will come. "
-              "No glue yet: the base places them.",
-              list(PUCKS), path=(down, 30.0), carry=["puck_inserts"]),
         _step("stator_inserts", "Inserts into the base",
               "Four M3 inserts: one in the top of each tower, one under "
               "the drive post's socket.",
               hw=[(INSERT_M3, 4, tower_ins + post_ins)],
               path=(down, 15.0), against=["stator"]),
+        _step("pucks", "Pucks up under the base",
+              "On the bench: an insert-side-up puck under each of the three "
+              "counterbored holes at the base's corners.",
+              list(PUCKS), path=(up, 20.0), against=["stator"],
+              carry=["puck_inserts"]),
+        _step("feet", "Three bolts down into the pucks",
+              "From above, through the counterbores, snug. The base now "
+              "stands on its own three feet.",
+              hw=[("M3x" + str(length["base to puck"]), 3,
+                   [p for f in feet for p in
+                    _bolt_prims(f, length["base to puck"])])],
+              path=(down, 20.0), against=["stator", "pucks"]),
         _step("mount_screw", "Mount screw up through the pedestal",
               "On the bench, from underneath: push a 7 mm drill through the "
               "thin skin over the hex pocket first; the hex head drops into its "
@@ -2384,20 +2392,14 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "where nothing can be soldered once the base is down.",
               hw=[(HALL_ITEM, 1, home_hall)],
               path=(down, 15.0), against=["stator"]),
-        _step("stator", "Base down onto the pucks",
-              "The three counterbored holes over the three pucks; the mount "
-              "screw rides in it, the home lead trails out.",
+        _step("stator", "Base onto the board",
+              "Scuff the pucks' undersides, put glue under each and set the "
+              "base down on the board: the base holds the pucks where they "
+              "belong while it cures. The home lead trails out. Board and "
+              "glue are not on the BOM.",
               ["stator"], path=(down, 30.0),
-              carry=["stator_inserts", "mount_screw", "home_hall"]),
-        _step("feet", "Three bolts down into the pucks",
-              "From above, snug. Then lift the base with the pucks bolted "
-              "under it, put glue under each puck, and set it back down: "
-              "the base is the pucks' template. Board and glue are not on "
-              "the BOM.",
-              hw=[("M3x" + str(length["base to puck"]), 3,
-                   [p for f in feet for p in
-                    _bolt_prims(f, length["base to puck"])])],
-              path=(down, 20.0)),
+              carry=["stator_inserts", "pucks", "feet", "mount_screw",
+                     "home_hall"]),
         _step("bearings", "Sleeves and bearings onto the towers",
               "A V wheel on each sleeve, its two 688s pressed into it in "
               "place of the kit's 625s. All three sleeves are "

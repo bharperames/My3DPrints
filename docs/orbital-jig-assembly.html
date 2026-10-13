@@ -429,6 +429,13 @@ STEPS.forEach((st, i) => st.bodies.forEach(b => stepOfBody[b] = i));
 const carrier = {};                       // bench step id -> the step that carries it
 STEPS.forEach((st, i) => st.carry.forEach(id => carrier[id] = i));
 const idx = Object.fromEntries(STEPS.map((s, i) => [s.id, i]));
+// does step i's work move during step k: its own, or carried there --
+// by a carrier, or by whatever carries that (the pucks' inserts ride the
+// pucks onto the base, and the base onto the board)
+function ridesWith(i, k) {
+  for (let j = i; j !== undefined; j = carrier[STEPS[j].id]) if (j === k) return true;
+  return false;
+}
 const preload = STEPS.findIndex(s => s.turn);
 const checked = A.checked ? Object.fromEntries(A.checked.steps.map(s => [s.id, s])) : {};
 const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
@@ -476,10 +483,7 @@ function offsetFor(i, k, f) {
   const st = STEPS[i];
   // a bench step's pieces ride with the step that carries them
   const c = carrier[st.id];
-  if (c !== undefined && k <= c && k > i) {
-    if (k < c) return new THREE.Matrix4();
-    return STEPS[c].path ? pathMatrix(STEPS[c].path, distAt(STEPS[c], f)) : new THREE.Matrix4();
-  }
+  if (c !== undefined && k > i) return k < c ? new THREE.Matrix4() : offsetFor(c, k, f);
   if (i < k || !st.path) return new THREE.Matrix4();
   return pathMatrix(st.path, distAt(st, f));
 }
@@ -516,7 +520,7 @@ function poseAll(k, f) {
     const O = benchOn ? new THREE.Matrix4() : offsetFor(i, k, f);
     m.matrix.copy(O.multiply(M).multiply(toWorld[n]));
     m.matrixWorldNeedsUpdate = true;
-    const moving = i === k || carrier[st.id] === k;
+    const moving = ridesWith(i, k);
     mark(m, moving && !benchOn, f, !st.path && i === k && !spare(i) ? f : undefined);
   }
   STEPS.forEach((st, i) => {
@@ -532,7 +536,7 @@ function poseAll(k, f) {
       }
       m.matrix.copy(O.clone().multiply(M));
       m.matrixWorldNeedsUpdate = true;
-      const moving = i === k || carrier[st.id] === k || (st.turn && i === k)
+      const moving = ridesWith(i, k) || (st.turn && i === k)
         || (st.id === 'bearings' && k === preload);
       mark(m, moving, f, !st.path && i === k ? Math.max(0.05, f) : 1);
     });
@@ -609,7 +613,7 @@ function frameStep(i) {
   poseAll(i, 1);
   for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === i) add(m);
   hwOf[i].forEach(add);
-  STEPS.forEach((st, j) => { if (carrier[st.id] === i) { hwOf[j].forEach(add);
+  STEPS.forEach((st, j) => { if (j !== i && ridesWith(j, i)) { hwOf[j].forEach(add);
     for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === j) add(m); } });
   poseAll(k, Math.min(1, f));
   if (box.isEmpty()) { cam = null; return; }
