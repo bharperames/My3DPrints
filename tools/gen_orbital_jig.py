@@ -192,9 +192,11 @@ RING_RO, RING_RI, RING_T = 121.0, 90.0, 18.0
 # 12.0.0 to 17.0.0 drew it with a 1 mm tip, which cut the ring a groove
 # 3.8 mm wide that the real 5.9 mm flat bridged without entering.
 # Brett's wheels (sold as SIMAX3D rollers, the Creality pattern) measure a
-# 6.2 mm flat in 10.2 with calipers, 2026-10-13: the same 45 degree
-# flanks, the whole section 0.15 wider a side. Drawn to his.
-WHEEL = dict(r=11.95, w=10.2, tip=3.1, side_r=9.95)    # tip: half the flat
+# 6.2 mm flat in 10.2 with calipers, 2026-10-13, and a 19.6 face -- the
+# STEP's own: flanks 2.0 long and 2.2 deep, 47.7 degrees to the axis. The
+# groove stays 45: 2.7 degrees steeper, the wheel bears at the edges of its
+# flat, and the race coupon seated it with ~1 mm under the flat. Drawn to his.
+WHEEL = dict(r=11.95, w=10.2, tip=3.1, side_r=9.8)     # tip: half the flat
 WHEEL_ITEM = "Solid V wheel, Delrin (OpenBuilds type: 23.9 OD, 10.23 wide)"
 WHEEL_BRG_ITEM = "688-2RS bearing (8 x 16 x 5), two in each V wheel"
 WHEEL_E = 1.4           # how far the V's tip enters the groove
@@ -1513,9 +1515,7 @@ def ring_profile():
 def wheel_profile():
     """The V wheel in section about its own axis, mid-plane at z = 0."""
     r, hw, tip, sr = WHEEL["r"], WHEEL["w"] / 2.0, WHEEL["tip"], WHEEL["side_r"]
-    zv = tip + (r - sr)                     # where the V meets the hub
-    return [(0, -hw), (sr, -hw), (sr, -zv), (r, -tip), (r, tip), (sr, zv),
-            (sr, hw), (0, hw)]
+    return [(0, -hw), (sr, -hw), (r, -tip), (r, tip), (sr, hw), (0, hw)]
 
 
 def rotor(specimen=SPECIMEN):
@@ -1720,7 +1720,7 @@ def _wheel_rings(c, z):
     """A V wheel as stepped rings for the page and the drop-in sweep: they
     circumscribe the true profile, so a sweep that clears them clears it."""
     r, tip, sr = WHEEL["r"], WHEEL["tip"], WHEEL["side_r"]
-    zv = tip + (r - sr)
+    zv = WHEEL["w"] / 2.0                   # the flanks run out at the faces
     bands = [(WHEEL["w"] / 2.0, sr), (zv, sr + (r - sr) * 0.45),
              (tip + (r - sr) * 0.55, r - (r - sr) * 0.25), (tip + 0.3, r)]
     return [dict(kind="ring", c=[float(c[0]), float(c[1]), z], axis=[0, 0, 1],
