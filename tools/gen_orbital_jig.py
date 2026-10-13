@@ -2319,7 +2319,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
         # open to the bolt's major diameter
         bolt_r = {INS_M3: 1.5}[ins]
         q = dict(kind="ring", c=list(map(float, c)), axis=list(axis),
-                 ro=ins[0] - 0.05, ri=bolt_r + 0.05, h=ins[1] - 1.0)
+                 ro=ins[0] - 0.05, ri=bolt_r + 0.05, h=ins[1] - 1.0,
+                 mouth=1)      # its open end faces +axis
         if M is not None:
             q["M"] = M
         return q
@@ -2342,7 +2343,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
                 r=2.0, h=60.0, M=CR)]
     usb_dir = (np.asarray(CR).reshape(4, 4)[:3, :3] @ np.array([-1.0, 0, 0])).tolist()
     recv_ins = _moved([dict(kind="ring", axis=[0, 0, 1], ro=ins3[0] - 0.05,
-                            ri=1.55, h=ins3[1] - 1.0,
+                            ri=1.55, h=ins3[1] - 1.0, mouth=-1,
                             c=list(_arc_to_world(RECV_U, PLATFORM_V[1]
                                                  + (ins3[1] - 1.0) / 2, y)))
                        for y in (CAM_Y - Y_ARC - CHANNEL[3],

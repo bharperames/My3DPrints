@@ -35,7 +35,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.collections import LineCollection
 from matplotlib.patches import Polygon as MPoly, Rectangle
-from shapely.geometry import Polygon, Point, box as sbox
+from shapely.geometry import LineString, Polygon, Point, box as sbox
 from shapely.ops import unary_union
 from shapely import affinity
 import trimesh
@@ -202,14 +202,30 @@ def dowel(length, d):
 
 
 def insert(length=5.7, d=4.6):
-    r = d / 2
-    o = sbox(0, -r, length, r)
-    lines = [[(length * 0.12, -r), (length * 0.12, r)], [(length * 0.88, -r), (length * 0.88, r)]]
-    for k in range(5):                                         # the knurl
-        x = length * (0.18 + 0.13 * k)
-        lines.append([(x, -r), (x + length * 0.1, r)])
-    return Drawing(o, lines, dims=[("x", 0, length, r + 3, _fmt(length)),
-                                   ("y", -r, r, length + 3, f"Ø{_fmt(d)}")])
+    """A ruthex M3 x 5.7 on its side, the plain pilot (the end that goes
+    in first) at the left: two knurled bands twisted opposite ways, a
+    groove between them, a chamfer at the mouth."""
+    R, pilot, g0, g1, ch = d / 2, 1.3, 3.05, 3.5, 0.3
+    rp, rg = R - 0.22, R - 0.42
+    o = Polygon([(0, -rp + 0.2), (0.3, -rp), (pilot, -rp), (pilot, -R), (g0, -R),
+                 (g0, -rg), (g1, -rg), (g1, -R), (length - ch, -R),
+                 (length, -R + ch), (length, R - ch), (length - ch, R),
+                 (g1, R), (g1, rg), (g0, rg), (g0, R), (pilot, R), (pilot, rp),
+                 (0.3, rp), (0, rp - 0.2)])
+    lines = [[(0.3, -rp), (0.3, rp)], [(length - ch, -R), (length - ch, R)]]
+    for (x0, x1, s) in ((pilot, g0, 1), (g1, length - ch, -1)):   # the knurl
+        step, run = 0.42, R * 2 * 0.45
+        x = x0 - run
+        while x < x1:
+            a, b = (x, -R), (x + run, R)
+            if s < 0:
+                a, b = (x, R), (x + run, -R)
+            seg = LineString([a, b]).intersection(sbox(x0, -R, x1, R))
+            if not seg.is_empty and seg.length > 0.2:
+                lines.append(list(seg.coords))
+            x += step
+    return Drawing(o, lines, dims=[("x", 0, length, R + 3, _fmt(length)),
+                                   ("y", -R, R, length + 3, f"Ø{_fmt(d)}")])
 
 
 def thumbscrew(length=J.THUMB_LEN):
@@ -273,7 +289,7 @@ BOUGHT = [
      lambda m: f"VIGRUE M3 kit, the M3x{m.group(1)} cell",
      lambda m: socket_screw(float(m.group(1))), ""),
     (r"heat-set insert", "M3 heat-set insert", "ruthex box, M3 x 5.7 row",
-     lambda m: insert(), "check the length"),
+     lambda m: insert(), "plain end goes in first"),
     (r"flat washer", "M3 flat washer", "VIGRUE M3 kit, the washer cell",
      lambda m: disc(J.WASHER_M3[0], 3.2, t=J.WASHER_M3[1]), "flat"),
     (r"disc magnet", "Ø3 x 2 N52 magnet", "MEALOS 3 x 2 mm",
