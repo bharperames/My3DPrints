@@ -793,11 +793,17 @@ const SETUP = [
   [2.2, `Switch on and set ${TEMP}; wait for it to get there.`, t => ({ stock: -1, adapter: 1, tip: 1, heat: t })],
 ];
 const SINK = [
-  [1.8, 'An insert on the tip’s pin, the iron square over the hole.', t => ({ lift: 22 * (1 - easeIO(t)) + INSERT.l, heat: 1 })],
-  [3.8, 'Let it sink: light pressure, 3–5 seconds. If you have to push, it is too cold.', t => ({ lift: INSERT.l * (1 - t), heat: 1 })],
+  [1.8, 'Set an insert upright on the hole; it rests in the mouth. If one end tapers, that end goes down.',
+    t => ({ lift: INSERT.l + 14 * (1 - easeIO(t)), raise: 40, heat: 1 })],
+  [1.4, 'Bring the hot tip straight down until its pin is inside the insert.',
+    t => ({ lift: INSERT.l, raise: 40 * (1 - easeIO(t)), heat: 1 })],
+  [3.8, 'Let it sink: light pressure, 3\u20135 seconds. If you have to push, it is too cold.',
+    t => ({ lift: INSERT.l * (1 - t), heat: 1 })],
   [1.0, 'Stop flush with the surface, square to it.', t => ({ lift: 0, heat: 1 })],
-  [1.6, 'Lift straight up without twisting; the insert stays.', t => ({ lift: 0, raise: 24 * easeIO(t), heat: 1 })],
-  [1.8, 'Let it cool a few seconds before the next. A screw should turn into it by hand.', t => ({ lift: 0, raise: 24, heat: 1 })],
+  [1.6, 'Lift the iron straight up: its pin slides out, the insert stays in the part.',
+    t => ({ lift: 0, raise: 24 * easeIO(t), heat: 1 })],
+  [1.8, 'Let it cool a few seconds before the next. A screw should turn into it by hand.',
+    t => ({ lift: 0, raise: 24, heat: 1 })],
 ];
 let howT = 0, howStep = -1;
 function scriptFor(i) { return i === firstInsertStep ? SETUP.concat(SINK) : SINK; }
