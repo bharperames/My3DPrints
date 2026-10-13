@@ -41,14 +41,22 @@
   #pick b { font-weight:650; } #pick .sub { color:var(--ink-soft); font-size:11.5px; }
   #hud .n { font-variant-numeric:tabular-nums; color:var(--ink-soft); }
   /* the heat-set inset: a cutaway through the step's first insert hole */
-  #howto { position:absolute; right:12px; bottom:12px; width:360px; display:none;
+  #howto { position:absolute; right:12px; bottom:12px; width:400px; display:none;
     border:1px solid var(--line); border-radius:8px; overflow:hidden; pointer-events:none;
     background:transparent; }
   #howto .stage { height:270px; }
-  #howto .cap { font-size:12px; line-height:1.4; padding:7px 10px 8px;
+  #howto .head { font-size:12.5px; line-height:1.35; padding:7px 10px 6px;
+    background:color-mix(in srgb,var(--surface) 94%,transparent); border-bottom:1px solid var(--line); }
+  #howto .head b { font-weight:650; display:block; }
+  #howto .head span { color:var(--ink-soft); font-size:11.5px; }
+  /* every stage listed, the one playing marked: the text holds still and
+     only the highlight moves */
+  #howto ol { margin:0; padding:7px 10px 8px 28px; font-size:11.5px; line-height:1.38;
     background:color-mix(in srgb,var(--surface) 94%,transparent); border-top:1px solid var(--line); }
-  #howto .cap b { font-weight:650; display:block; font-size:11.5px; color:var(--ink-soft); }
-  @media (max-width: 900px) { #howto { width:min(360px, calc(100% - 24px)); } }
+  #howto li { color:var(--ink-soft); padding:1px 0; }
+  #howto li.on { color:var(--ink); font-weight:600; }
+  #howto li.on::marker { color:var(--accent); }
+  @media (max-width: 900px) { #howto { width:min(400px, calc(100% - 24px)); } }
   aside { width:430px; flex:0 0 430px; overflow:auto; padding:14px 16px 28px;
     border-left:1px solid var(--line); background:var(--surface); }
   @media (max-width: 900px) { aside { width:auto; flex:none; border-left:0; border-top:1px solid var(--line); } }
@@ -113,7 +121,7 @@
 </header>
 <div class="wrap">
   <div id="view"><div id="hud">fetching the printed file…</div><div id="pick"></div>
-    <div id="howto"><div class="stage" id="howtoStage"></div><div class="cap"><b id="howtoHead"></b><span id="howtoCap"></span></div></div></div>
+    <div id="howto"><div class="head"><b id="howtoHead"></b><span id="howtoKit"></span></div><div class="stage" id="howtoStage"></div><ol id="howtoList"></ol></div></div>
   <aside>
     <div class="bar sticky">
       <button id="play" class="primary">▶ Assemble</button>
@@ -733,7 +741,8 @@ const INSERT = { d: 4.6, l: 5.7, bore: 2.5 };
 const insertSteps = STEPS.map((st, i) => st.hardware.some(h => /insert/i.test(h.item)) ? i : -1).filter(i => i >= 0);
 const firstInsertStep = insertSteps[0];
 const howto = document.getElementById('howto'), howtoStage = document.getElementById('howtoStage');
-const howtoHead = document.getElementById('howtoHead'), howtoCap = document.getElementById('howtoCap');
+const howtoHead = document.getElementById('howtoHead'), howtoKit = document.getElementById('howtoKit');
+const howtoList = document.getElementById('howtoList');
 const metal = (c, r = 0.35, m = 0.9) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m });
 const lathe = (pts, seg = 48) => new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), seg).rotateX(Math.PI / 2);
 const iron = new THREE.Group(), tipM3 = new THREE.Group(), adapter = new THREE.Group(), stockTip = new THREE.Group();
@@ -811,15 +820,21 @@ function renderHowto(dt) {
   const on = seat && STEPS[k].path;
   howto.style.display = on ? 'block' : 'none';
   if (!on) { howStep = -1; return; }
-  if (howStep !== k) { howStep = k; howT = 0; }
   const script = scriptFor(k);
+  if (howStep !== k) {
+    howStep = k; howT = 0;
+    howtoHead.textContent = `Melting in ${seat.count} heat-set insert${seat.count > 1 ? 's' : ''}`;
+    howtoKit.textContent = k === firstInsertStep
+      ? 'Pinecil \u00b7 ruthex Pinecil adapter \u00b7 ruthex 7X M3 tip \u00b7 ruthex M3 x 5.7 insert'
+      : `The M3 tip on and at ${TEMP}, as in step ${firstInsertStep + 1} \u00b7 ruthex M3 x 5.7 insert`;
+    howtoList.innerHTML = script.map(s => `<li>${s[1]}</li>`).join('');
+  }
   const setupLen = k === firstInsertStep ? SETUP.reduce((a, s) => a + s[0], 0) : 0;
   howT += dt;
   // once through the setup, then the sinking on a loop
   const t = howT < setupLen ? howT : setupLen + ((howT - setupLen) % SINK.reduce((a, s) => a + s[0], 0));
-  const { cap, pose } = howtoAt(script, t);
-  howtoHead.textContent = `Heat-set inserts × ${seat.count} — Pinecil, ruthex M3 tip, ruthex M3 x 5.7`;
-  howtoCap.textContent = cap;
+  const { pose, n } = howtoAt(script, t);
+  [...howtoList.children].forEach((li, i) => li.classList.toggle('on', i === n));
   const { top, out } = seat;
   // the insert's top rides `lift` above its seat; the iron's shoulder on it
   const lift = pose.lift ?? 30, raise = pose.raise ?? 0;
@@ -854,7 +869,7 @@ function renderHowto(dt) {
   // own inserts hidden, cut through the axis
   const W = howtoStage.clientWidth, H = howtoStage.clientHeight;
   const vh = view.clientHeight, vw = view.clientWidth;
-  const x = vw - 12 - W - 1, y = 12 + (howto.clientHeight - H) + 1;
+  const x = vw - 12 - W - 1, y = 12 + 1 + howtoList.offsetHeight;
   insetCam.aspect = W / H; insetCam.updateProjectionMatrix();
   poseAll(k, 1);                // the parts seated, wherever the main view has them
   const swapped = [];

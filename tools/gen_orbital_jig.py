@@ -2345,11 +2345,14 @@ def assembly_steps(parts, specimen=SPECIMEN):
     up_arc = (E @ np.array([0, 0, 1.0, 0]))[:3]   # +v at MOUNT_THETA
     inboard, outboard = (0, -1, 0), (0, 1, 0)
     return [
+        _step("puck_inserts", "Inserts into the pucks",
+              "On the bench: one M3 insert melted into the top of each.",
+              hw=[(INSERT_M3, 3, sole_ins)], path=(down, 15.0),
+              against=list(PUCKS)),
         _step("pucks", "Three pucks onto the board",
-              "Melt an M3 insert into each and stand them on the board "
-              "where the base's feet will come. No glue yet: the base "
-              "places them.",
-              list(PUCKS), [(INSERT_M3, 3, sole_ins)], (down, 30.0)),
+              "Stand them on the board where the base's feet will come. "
+              "No glue yet: the base places them.",
+              list(PUCKS), path=(down, 30.0), carry=["puck_inserts"]),
         _step("stator_inserts", "Inserts into the base",
               "Four M3 inserts: one in the top of each tower, one under "
               "the drive post's socket.",
