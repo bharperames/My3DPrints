@@ -660,6 +660,13 @@ class TestFasteners(unittest.TestCase):
         for name, crosses, ins, relief, n, gauge in J.JOINTS:
             L = J.bolt_len(crosses, ins, relief)
             self.assertIsNotNone(L, f"{name}: no stock length fits")
+            if relief is None:
+                # blind: ends inside the insert, clear of the melt under it
+                self.assertGreaterEqual(L - crosses, J.ENGAGE_MIN,
+                                        f"{name}: {gauge}x{L} too little thread")
+                self.assertLessEqual(L - crosses, ins,
+                                     f"{name}: {gauge}x{L} reaches past the insert")
+                continue
             self.assertGreaterEqual(L - crosses, ins,
                                     f"{name}: {gauge}x{L} leaves threads unused")
             self.assertLessEqual(L - crosses, ins + relief,

@@ -235,6 +235,18 @@ LOBE_REACH = 142.0      # how far the base's corner lobes reach
 # out of the way has somewhere to go besides up round the screw.
 INS_M3 = (2.0, 6.7)     # bore radius, depth
 INSERT_M3 = "M3 heat-set insert, M3 x 5.7 (\u00d84.0 hole)"
+INSERT_L = 5.7          # the insert's own length: all the thread there is
+# A bolt into a blind insert ends inside it. The melt the knurl pushes
+# down fills the bore under the insert; a bolt that reaches past the
+# insert's end meets that plug and stops before it clamps. Brett's
+# base-to-puck M3x10, 2026-10-13: alone in a puck it went 3.6 mm in and
+# stopped; with a washer an M3x8 was still long and an M3x6 pulled up
+# tight. So a puck's usable thread is PUCK_THREAD, measured -- not the
+# insert's 5.7 -- and the joint table uses it there.
+ENGAGE_MIN = 2.5        # five turns of M3; the puck joint, proven, has this
+PUCK_THREAD = 3.6
+WASHER_M3 = (7.0, 0.5)  # DIN 125 M3 flat washer: OD, thickness
+WASHER_ITEM = "M3 flat washer (DIN 125, 7 OD x 0.5)"
 AXLE_HEAD = (2.75, 3.0)               # M3 socket head
 HEAD_R, HEAD_H = AXLE_HEAD
 
@@ -2233,7 +2245,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
     Z = driver_levels(specimen)
     length = {n: bolt_len(c, i, r) for n, c, i, r, _, _ in JOINTS}
     down, up = (0, 0, -1), (0, 0, 1)
-    feet = [polar(FOOT_R, a, L["base_top"] - FOOT_CBORE[1]) for a in FOOT_PHI]
+    feet = [polar(FOOT_R, a, L["base_top"] - FOOT_CBORE[1] + WASHER_M3[1])
+            for a in FOOT_PHI]
+    washers = [dict(kind="ring", c=list(map(float, f - [0, 0, WASHER_M3[1] / 2])),
+                    axis=[0, 0, 1], ro=WASHER_M3[0] / 2, ri=1.6, h=WASHER_M3[1])
+               for f in map(np.asarray, feet)]
     towers = [polar(TOWER_PITCH, a)[:2] for a in TOWER_PHI]
     top_of = {n: parts[n].bounds[1][2] for n in SLEEVES}
     axles = [[T[0], T[1], top_of[n]] for n, T in zip(SLEEVES, towers)]
@@ -2371,9 +2387,10 @@ def assembly_steps(parts, specimen=SPECIMEN):
               list(PUCKS), path=(up, 20.0), against=["stator"],
               carry=["puck_inserts"]),
         _step("feet", "Three bolts down into the pucks",
-              "From above, through the counterbores, snug. The base now "
-              "stands on its own three feet.",
-              hw=[("M3x" + str(length["base to puck"]), 3,
+              "From above, a washer under each head, down the counterbores; "
+              "snug. The base now stands on its own three feet.",
+              hw=[(WASHER_ITEM, 3, washers),
+                  ("M3x" + str(length["base to puck"]), 3,
                    [p for f in feet for p in
                     _bolt_prims(f, length["base to puck"])])],
               path=(down, 20.0), against=["stator", "pucks"]),
@@ -3292,9 +3309,11 @@ def fits_plate(m, bed=246.0, height=250.0):
     return (e[2] <= height) and ((e[0] <= bed and e[1] <= bed))
 
 
-# Every threaded joint, as a stack: how much printed part the bolt has to
-# cross before it reaches the insert, how deep the insert is, and how much
-# relief is bored under it. The length follows from those three, so it
+# Every threaded joint, as a stack: how much the bolt has to cross before
+# it reaches the insert (printed part, and a washer where there is one),
+# how much thread the insert holds, and -- only where the bolt runs out
+# through it into open air -- the relief under it. relief None is a blind
+# joint: the bolt ends inside the insert (ENGAGE_MIN). The length follows from those three, so it
 # cannot drift away from the geometry the way a typed list did.
 #
 # It had. The BOM said M4x16 for all eight M4 bolts, and at the arc bar
@@ -3304,20 +3323,21 @@ def fits_plate(m, bed=246.0, height=250.0):
 # on the built rotor: 11.00 mm of hole on each bolt axis, 0.00 beside it.
 JOINTS = (
     # name, crosses, insert depth, relief, count
-    ("arc bar to rotor pad", BAR_T - CBORE[1], INS_M3[1], 4.0, 3, "M3"),
-    ("bearing axle to tower", SLEEVE_H + SLEEVE_FL_H, INS_M3[1], 4.0, 3, "M3"),
-    # the head sits in a 5 mm counterbore; under the insert, 1 mm of pad
-    ("base to puck", BASE_T - FOOT_CBORE[1], INS_M3[1], 1.0, 3, "M3"),
+    ("arc bar to rotor pad", BAR_T - CBORE[1], INSERT_L, None, 3, "M3"),
+    ("bearing axle to tower", SLEEVE_H + SLEEVE_FL_H, INSERT_L, None, 3, "M3"),
+    # the head sits on a washer in a 5 mm counterbore
+    ("base to puck", BASE_T - FOOT_CBORE[1] + WASHER_M3[1], PUCK_THREAD,
+     None, 3, "M3"),
     # down through the drive's arm and post into the base, its tip out
     # into the gap the pucks leave under the base
     ("drive post to base", driver_levels()["face"] - (levels()["base_top"]
                                                        - POST_SOCKET),
      INS_M3[1], BASE_T - POST_SOCKET - INS_M3[1] + CABLE_UNDER + 2.0, 1, "M3"),
     # up through the platform into the receiver, so it slides the channel
-    ("receiver to platform", PLATFORM_V[1] - PLATFORM_V[0], INS_M3[1],
-     RECV_RELIEF, 2, "M3"),
+    ("receiver to platform", PLATFORM_V[1] - PLATFORM_V[0], INSERT_L,
+     None, 2, "M3"),
 )
-_STOCK = (6, 8, 10, 12, 16, 20, 25, 30, 35)
+_STOCK = (6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 35)   # the VIGRUE kit, and McMaster's 35
 
 
 def fasteners(specimen=SPECIMEN):
@@ -3330,7 +3350,7 @@ def fasteners(specimen=SPECIMEN):
         dict(joint="base to puck", side="stator", r=1.5,
              head_r=HEAD_R, head_h=HEAD_H, len=length["base to puck"],
              at=[[round(float(v), 4) for v in
-                  polar(FOOT_R, a, L["base_top"] - FOOT_CBORE[1])]
+                  polar(FOOT_R, a, L["base_top"] - FOOT_CBORE[1] + WASHER_M3[1])]
                  for a in FOOT_PHI]),
         dict(joint="arc bar to rotor pad", side="rotor", r=1.5,
              head_r=HEAD_R, head_h=HEAD_H, len=length["arc bar to rotor pad"],
@@ -3339,7 +3359,14 @@ def fasteners(specimen=SPECIMEN):
 
 
 def bolt_len(crosses, insert, relief):
-    """Shortest stock length that fills the insert without bottoming."""
+    """Blind (relief None): the longest stock length that ends inside the
+    insert with ENGAGE_MIN of thread. Through: the shortest that fills the
+    insert and stays inside the relief."""
+    if relief is None:
+        for L in sorted(_STOCK, reverse=True):
+            if crosses + ENGAGE_MIN <= L <= crosses + insert:
+                return L
+        return None
     lo, hi = crosses + insert, crosses + insert + relief
     for L in _STOCK:
         if lo <= L <= hi:
@@ -3355,7 +3382,7 @@ def inserts():
            CABLE_ITEM: 1,
            "Seeed Studio XIAO ESP32S3": 1, MOTOR_R_ITEM: 1, CAP_ITEM: 1,
            PULLUP_ITEM: 1,
-           SETSCREW_ITEM: 1, NUT_ITEM: 1,
+           SETSCREW_ITEM: 1, NUT_ITEM: 1, WASHER_ITEM: 3,
            "Pololu #2130 DRV8833 dual motor driver carrier": 1,
            "USB-C cable and 5 V 2 A USB power adapter": 1,
            WHEEL_ITEM: 3, WHEEL_BRG_ITEM: 6, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,

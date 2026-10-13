@@ -274,6 +274,8 @@ BOUGHT = [
      lambda m: socket_screw(float(m.group(1))), ""),
     (r"heat-set insert", "M3 heat-set insert", "ruthex box, M3 x 5.7 row",
      lambda m: insert(), "check the length"),
+    (r"flat washer", "M3 flat washer", "VIGRUE M3 kit, the washer cell",
+     lambda m: disc(J.WASHER_M3[0], 3.2, t=J.WASHER_M3[1]), "flat"),
     (r"disc magnet", "Ø3 x 2 N52 magnet", "MEALOS 3 x 2 mm",
      lambda m: disc(J.MAGNET[0], t=J.MAGNET[1]), "on its face"),
     (r"steel dowel", "Ø3 x 16 dowel pin", "McMaster 91595A116",
