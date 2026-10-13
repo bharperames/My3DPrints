@@ -780,6 +780,60 @@ const capScene = new THREE.Scene();
 capScene.add(capPlane, new THREE.HemisphereLight(0xffffff, 0x404050, 1.6));
 { const l = new THREE.DirectionalLight(0xffffff, 1.0); l.position.set(0.7, -0.9, 1.3); capScene.add(l); }
 const cutHost = { step: -1 };
+/* Melting: vapour off the softened plastic, and the plastic round the
+   insert glowing while it is soft. Only in the inset. */
+const puffTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.45, 'rgba(255,255,255,0.45)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+const PUFFS = 70;
+const puffGeo = new THREE.BufferGeometry();
+puffGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PUFFS * 3), 3));
+puffGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(PUFFS * 4), 4));
+const puffs = new THREE.Points(puffGeo, new THREE.PointsMaterial({ map: puffTex, size: 5,
+  vertexColors: true, transparent: true, depthWrite: false }));
+puffs.frustumCulled = false; puffs.visible = false; scene.add(puffs);
+const puffState = Array.from({ length: PUFFS }, () => ({ age: 1e9, life: 1, p: new THREE.Vector3(), v: new THREE.Vector3() }));
+let puffDue = 0;
+const meltRing = new THREE.Mesh(new THREE.RingGeometry(INSERT.d / 2 - 0.1, INSERT.d / 2 + 1.6, 64),
+  new THREE.MeshBasicMaterial({ color: '#ffb04a', transparent: true, depthWrite: false,
+    clippingPlanes: [clip], side: THREE.DoubleSide }));
+meltRing.matrixAutoUpdate = false; meltRing.visible = false; scene.add(meltRing);
+function stepMelt(dt, top, out, melt) {
+  const u = new THREE.Vector3(1, 0, 0).projectOnPlane(out);
+  if (u.lengthSq() < 1e-6) u.set(0, 1, 0).projectOnPlane(out);
+  u.normalize();
+  const w = new THREE.Vector3().crossVectors(out, u);
+  puffDue += dt * 34 * melt;                       // puffs a second, while it is soft
+  const pos = puffGeo.attributes.position.array, col = puffGeo.attributes.color.array;
+  puffState.forEach((q, i) => {
+    if (q.age >= q.life && puffDue >= 1) {
+      puffDue -= 1;
+      // off the plastic round the tip, outside its shoulder, so they show
+      const a = Math.random() * 2 * Math.PI, r = 3.8 + Math.random() * 2.2;
+      q.p.copy(top).addScaledVector(u, r * Math.cos(a)).addScaledVector(w, r * Math.sin(a)).addScaledVector(out, 0.3);
+      q.v.copy(out).multiplyScalar(4 + Math.random() * 4)
+        .addScaledVector(u, Math.cos(a) * 1.6 + (Math.random() - 0.5) * 2)
+        .addScaledVector(w, Math.sin(a) * 1.6 + (Math.random() - 0.5) * 2);
+      q.age = 0; q.life = 1.4 + Math.random() * 1.0;
+    }
+    q.age += dt;
+    const live = q.age < q.life;
+    if (live) q.p.addScaledVector(q.v, dt);
+    const f = live ? q.age / q.life : 1;
+    pos.set([q.p.x, q.p.y, q.p.z], i * 3);
+    // grey, not white: white vapour vanishes against the inset's light ground
+    col.set([0.5, 0.52, 0.56, live ? 0.75 * Math.min(1, f * 5) * (1 - f) : 0], i * 4);
+  });
+  puffDue = Math.min(puffDue, 3);
+  puffGeo.attributes.position.needsUpdate = true; puffGeo.attributes.color.needsUpdate = true;
+  placeAlong(meltRing, top, out, 0.06);
+  meltRing.material.opacity = 0.85 * melt;
+}
 /* In the main view, a ring pulses round the hole the inset is cut
    through, drawn over everything so a ghosted part does not hide it. */
 const marker = new THREE.Mesh(new THREE.TorusGeometry(9, 1.0, 12, 64),
@@ -833,10 +887,10 @@ const SINK = [
   [1.4, 'Bring the hot tip straight down until its pin is inside the insert.',
     t => ({ lift: INSERT.l, raise: 40 * (1 - easeIO(t)), heat: 1 })],
   [3.8, 'Let it sink: light pressure, 3\u20135 seconds. If you have to push, it is too cold.',
-    t => ({ lift: INSERT.l * (1 - t), heat: 1 })],
-  [1.0, 'Stop flush with the surface, square to it.', t => ({ lift: 0, heat: 1 })],
+    t => ({ lift: INSERT.l * (1 - t), heat: 1, melt: Math.min(1, t * 4) })],
+  [1.0, 'Stop flush with the surface, square to it.', t => ({ lift: 0, heat: 1, melt: 1 - 0.3 * t })],
   [1.6, 'Lift the iron straight up: its pin slides out, the insert stays in the part.',
-    t => ({ lift: 0, raise: 24 * easeIO(t), heat: 1 })],
+    t => ({ lift: 0, raise: 24 * easeIO(t), heat: 1, melt: 0.7 * (1 - t) })],
   [1.8, 'Let it cool a few seconds before the next. A screw should turn into it by hand.',
     t => ({ lift: 0, raise: 24, heat: 1 })],
 ];
@@ -900,6 +954,7 @@ function renderHowto(dt) {
   insertMesh.visible = !setup;
   placeAlong(insertMesh, top, out, lift - INSERT.l);
   howLift = { seat, lift: setup ? INSERT.l + 14 : lift };
+  stepMelt(dt, top, out, setup ? 0 : (pose.melt ?? 0));
   // look across the axis, from the side the main camera is on
   const side = camera.position.clone().sub(top).projectOnPlane(out);
   if (side.lengthSq() < 1e-6) side.set(1, 0, 0).projectOnPlane(out);
@@ -940,7 +995,7 @@ function renderHowto(dt) {
   }
   const hidden = hwOf[k].filter(m => m.visible);
   hidden.forEach(m => m.visible = false);
-  iron.visible = true;
+  iron.visible = true; puffs.visible = !setup; meltRing.visible = !setup;
   const bg = scene.background;
   scene.background = INSET_BG;
   renderer.localClippingEnabled = true;
@@ -974,7 +1029,7 @@ function renderHowto(dt) {
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, vw, vh);
   scene.background = bg;
-  iron.visible = false; insertMesh.visible = false;
+  iron.visible = false; insertMesh.visible = false; puffs.visible = false; meltRing.visible = false;
   hidden.forEach(m => m.visible = true);
   for (const [m, mat, e] of swapped) { m.material = mat; if (m.children[0]) m.children[0].visible = e; }
   // the main view's marker, for the next frame
