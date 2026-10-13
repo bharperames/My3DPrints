@@ -777,26 +777,45 @@ const capScene = new THREE.Scene();
 capScene.add(capPlane, new THREE.HemisphereLight(0xffffff, 0x404050, 1.6));
 { const l = new THREE.DirectionalLight(0xffffff, 1.0); l.position.set(0.7, -0.9, 1.3); capScene.add(l); }
 const cutHost = { step: -1 };
+/* In the main view, a ring pulses round the hole the inset is cut
+   through, drawn over everything so a ghosted part does not hide it. */
+const marker = new THREE.Mesh(new THREE.TorusGeometry(9, 1.0, 12, 64),
+  new THREE.MeshBasicMaterial({ color: css('--accent'), transparent: true, depthTest: false }));
+marker.renderOrder = 10; marker.matrixAutoUpdate = false; marker.visible = false;
+scene.add(marker);
+let markT = 0;
 const Z = new THREE.Vector3(0, 0, 1);
-/* where the step's first insert seats: its top face, and the way out */
-function insertSeat(i) {
-  const st = STEPS[i];
+/* where each of the step's inserts seats: its top face, and the way out */
+function insertSeats(i) {
+  const st = STEPS[i], out = [];
   let j = 0;
-  for (const h of st.hardware) {
-    for (const p of h.prims) {
-      if (/insert/i.test(h.item)) {
-        const base = hwOf[i][j].userData.base;
-        const c = new THREE.Vector3(...p.c).applyMatrix4(base);
-        const out = new THREE.Vector3(...st.path.dir).multiplyScalar(-1).normalize();
-        // the stand-in ring is drawn flush with the surface
-        return { top: c.clone().addScaledVector(out, p.h / 2), out, count: h.qty };
-      }
-      j++;
+  for (const h of st.hardware) for (const p of h.prims) {
+    if (/insert/i.test(h.item)) {
+      const c = new THREE.Vector3(...p.c).applyMatrix4(hwOf[i][j].userData.base);
+      const dir = new THREE.Vector3(...st.path.dir).multiplyScalar(-1).normalize();
+      // the stand-in ring is drawn flush with the surface
+      out.push({ top: c.addScaledVector(dir, p.h / 2), out: dir, count: h.qty });
     }
+    j++;
   }
-  return null;
+  return out;
 }
-const seats = Object.fromEntries(insertSteps.map(i => [i, insertSeat(i)]));
+const seatsOf = Object.fromEntries(insertSteps.map(i => [i, insertSeats(i)]));
+const seats = {};
+/* The inset shows one of the step's inserts: one the main view can see,
+   not one under the inset's own panel or off the edge. */
+function pickSeat(i) {
+  const v = view.getBoundingClientRect(), p = howto.getBoundingClientRect();
+  const ok = s => {
+    const q = s.top.clone().project(camera);
+    const x = v.left + (q.x + 1) / 2 * v.width, y = v.top + (1 - q.y) / 2 * v.height;
+    const inView = q.z < 1 && x > v.left + 20 && x < v.right - 20 && y > v.top + 40 && y < v.bottom - 20;
+    const underPanel = x > p.left - 30 && x < p.right + 30 && y > p.top - 30 && y < p.bottom + 30;
+    return inView && !underPanel;
+  };
+  return seatsOf[i].find(ok) || seatsOf[i][0];
+}
+for (const i of insertSteps) seats[i] = seatsOf[i][0];
 /* the script: [seconds, caption, pose(t in 0..1)] */
 const TEMP = '230 °C';
 const SETUP = [
@@ -818,7 +837,7 @@ const SINK = [
   [1.8, 'Let it cool a few seconds before the next. A screw should turn into it by hand.',
     t => ({ lift: 0, raise: 24, heat: 1 })],
 ];
-let howT = 0, howStep = -1;
+let howT = 0, howStep = -1, howPicked = false;
 function scriptFor(i) { return i === firstInsertStep ? SETUP.concat(SINK) : SINK; }
 function howtoAt(script, t) {
   const total = script.reduce((a, s) => a + s[0], 0);
@@ -838,10 +857,15 @@ function renderHowto(dt) {
   const seat = seats[k];
   const on = seat && STEPS[k].path;
   howto.style.display = on ? 'block' : 'none';
+  marker.visible = false;                          // never in the inset itself
   if (!on) { howStep = -1; return; }
   const script = scriptFor(k);
+  const total = script.reduce((a, s) => a + s[0], 0);
+  // choose the insert once the camera has arrived, and again each time round
+  if (howStep === k && Math.floor((howT + dt) / total) > Math.floor(howT / total)) howPicked = false;
+  if (howStep === k && !cam && !howPicked) { seats[k] = pickSeat(k); howPicked = true; }
   if (howStep !== k) {
-    howStep = k; howT = 0;
+    howStep = k; howT = 0; howPicked = false;
     howtoHead.textContent = `Melting in ${seat.count} heat-set insert${seat.count > 1 ? 's' : ''}`;
     howtoKit.textContent = k === firstInsertStep
       ? 'Pinecil \u00b7 ruthex Pinecil adapter \u00b7 ruthex 7X M3 tip \u00b7 ruthex M3 x 5.7 insert'
@@ -948,6 +972,13 @@ function renderHowto(dt) {
   iron.visible = false; insertMesh.visible = false;
   hidden.forEach(m => m.visible = true);
   for (const [m, mat, e] of swapped) { m.material = mat; if (m.children[0]) m.children[0].visible = e; }
+  // the main view's marker, for the next frame
+  markT += dt;
+  const pulse = 0.5 + 0.5 * Math.sin(markT * 2 * Math.PI * 1.2);
+  placeAlong(marker, top, out, 0.4);
+  marker.matrix.multiply(new THREE.Matrix4().makeScale(1 + 0.35 * pulse, 1 + 0.35 * pulse, 1));
+  marker.material.opacity = 0.45 + 0.55 * pulse;
+  marker.visible = true;
   poseAll(k, Math.min(1, f));
 }
 
