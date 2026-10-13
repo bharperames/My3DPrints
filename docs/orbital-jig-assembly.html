@@ -875,8 +875,10 @@ function renderHowto(dt) {
   const side = camera.position.clone().sub(top).projectOnPlane(out);
   if (side.lengthSq() < 1e-6) side.set(1, 0, 0).projectOnPlane(out);
   side.normalize();
-  const look = top.clone().addScaledVector(out, setup ? 70 : 8);
-  insetCam.position.copy(look).addScaledVector(side, setup ? 170 : 62).addScaledVector(out, setup ? 10 : 14);
+  // the tip going on: the whole iron in frame, handle and all, not a tip
+  // moving on its own
+  const look = top.clone().addScaledVector(out, setup ? 108 : 8);
+  insetCam.position.copy(look).addScaledVector(side, setup ? 330 : 62).addScaledVector(out, setup ? 20 : 14);
   insetCam.up.copy(out);                           // the iron upright, whatever the part's pose
   insetCam.lookAt(look);
   clip.setFromNormalAndCoplanarPoint(side.clone().negate(), top);
