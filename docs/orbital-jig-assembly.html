@@ -747,7 +747,10 @@ const metal = (c, r = 0.35, m = 0.9) => new THREE.MeshStandardMaterial({ color: 
 const lathe = (pts, seg = 48) => new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), seg).rotateX(Math.PI / 2);
 const iron = new THREE.Group(), tipM3 = new THREE.Group(), adapter = new THREE.Group(), stockTip = new THREE.Group();
 // along local +z, the working end at z = 0
-const BRASS = metal('#c9a227', 0.3, 0.95), COPPER = metal('#b8743a', 0.35, 0.9), STEEL = metal('#b9bec6', 0.3, 0.9);
+// A metal reads by what it reflects, and the inset has nothing round it to
+// reflect: at a metalness near 1 the brass rendered black. Mostly
+// diffuse, in the metal's own colour, they read as what they are.
+const BRASS = metal('#d8ad45', 0.38, 0.35), COPPER = metal('#c47a3c', 0.4, 0.3), STEEL = metal('#c3c8cf', 0.35, 0.3);
 const HANDLE = new THREE.MeshStandardMaterial({ color: '#2b2f36', roughness: 0.6, metalness: 0.1 });
 const tipMat = COPPER.clone();
 // the M3 tip: a pilot that enters the insert, a shoulder that bears on it
