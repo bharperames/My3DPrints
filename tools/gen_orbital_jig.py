@@ -2936,7 +2936,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
     towers = [polar(TOWER_PITCH, a)[:2] for a in TOWER_PHI]
     top_of = {n: parts[n].bounds[1][2] for n in SLEEVES}
     axles = [[T[0], T[1], top_of[n]] for n, T in zip(SLEEVES, towers)]
-    bars = [[x, Y_ARC, LEG_BOTTOM + BAR_T - CBORE[1]] for x in BOLTS_X]
+    # each head on a washer in its counterbore, as at the feet: the Ø8
+    # counterbore takes the 7 mm washer, and a head on bare PETG creeps
+    bars = [[x, Y_ARC, LEG_BOTTOM + BAR_T - CBORE[1] + WASHER_M3[1]] for x in BOLTS_X]
+    bar_washers = [dict(kind="ring", c=[float(x), float(Y_ARC),
+                                        LEG_BOTTOM + BAR_T - CBORE[1] + WASHER_M3[1] / 2],
+                        axis=[0, 0, 1], ro=WASHER_M3[0] / 2, ri=1.6, h=WASHER_M3[1])
+                   for x in BOLTS_X]
 
     def bearings(retracted, rings):
         # each ring says which wheel it is: the page turns a wheel's
@@ -3318,8 +3324,10 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "The bar keys into the pad's slot.",
               ["arc"], path=(down, 40.0)),
         _step("arc_bolts", "Three bolts down through the bar",
-              "Into the pad's inserts.",
-              hw=[("M3x" + str(length["arc bar to rotor pad"]), 3,
+              "A washer under each head, down the counterbores into the "
+              "pad's inserts.",
+              hw=[(WASHER_ITEM, 3, bar_washers),
+                  ("M3x" + str(length["arc bar to rotor pad"]), 3,
                    [p for b in bars for p in
                     _bolt_prims(b, length["arc bar to rotor pad"])])],
               path=(down, 25.0)),
@@ -4147,7 +4155,8 @@ def fits_plate(m, bed=246.0, height=250.0):
 # on the built rotor: 11.00 mm of hole on each bolt axis, 0.00 beside it.
 JOINTS = (
     # name, crosses, insert depth, relief, count
-    ("arc bar to rotor pad", BAR_T - CBORE[1], INSERT_STOP, None, 3, "M3"),
+    ("arc bar to rotor pad", BAR_T - CBORE[1] + WASHER_M3[1], INSERT_STOP, None, 3,
+     "M3"),
     ("bearing axle to tower", SLEEVE_H + SLEEVE_FL_H, INSERT_STOP, None, 3, "M3"),
     # the head sits on a washer in a 5 mm counterbore
     ("base to puck", BASE_T - FOOT_CBORE[1] + WASHER_M3[1], PUCK_THREAD,
@@ -4206,7 +4215,7 @@ def inserts():
            CABLE_ITEM: 1,
            "Seeed Studio XIAO ESP32S3": 1, MOTOR_R_ITEM: 1, CAP_ITEM: 1,
            PULLUP_ITEM: 1,
-           SETSCREW_ITEM: 1, NUT_ITEM: 1, WASHER_ITEM: 3,
+           SETSCREW_ITEM: 1, NUT_ITEM: 1, WASHER_ITEM: 6,
            "Pololu #2130 DRV8833 dual motor driver carrier": 1,
            "USB-C cable and 5 V 2 A USB power adapter": 1,
            WHEEL_BRG_ITEM: 6, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
