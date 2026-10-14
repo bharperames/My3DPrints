@@ -36,9 +36,14 @@
     border:1px solid var(--line); border-radius:6px; padding:6px 10px;
     max-width:min(620px, calc(100% - 24px)); line-height:1.45; }
   #hud b { font-weight:650; }
-  #pick { position:absolute; left:12px; bottom:12px; font-size:12.5px; display:none; max-width:min(420px, calc(100% - 24px));
-    background:color-mix(in srgb,var(--surface) 92%,transparent); border:1px solid var(--line); border-radius:6px; padding:7px 11px; }
-  #pick b { font-weight:650; } #pick .sub { color:var(--ink-soft); font-size:11.5px; }
+  /* the picked part: its name, and the whole of it drawn alone */
+  #pick { position:absolute; left:12px; bottom:12px; font-size:20px; line-height:1.3; display:none;
+    max-width:min(840px, calc(100% - 24px)); align-items:center; gap:16px;
+    background:color-mix(in srgb,var(--surface) 92%,transparent); border:1px solid var(--line); border-radius:10px; padding:12px 18px 12px 12px; }
+  #pick canvas { flex:0 0 auto; width:220px; height:170px; border-radius:6px; background:var(--surface-2); }
+  #pick b { font-weight:650; font-size:25px; display:block; } #pick .sub { color:var(--ink-soft); font-size:18px; margin-top:4px; }
+  @media (max-width: 900px) { #pick { font-size:16px; } #pick b { font-size:19px; } #pick .sub { font-size:15px; }
+    #pick canvas { width:130px; height:100px; } }
   #hud .n { font-variant-numeric:tabular-nums; color:var(--ink-soft); }
   /* the heat-set inset: a cutaway through the step's first insert hole */
   #howto { position:absolute; right:12px; bottom:12px; width:400px; display:none;
@@ -398,10 +403,16 @@ function primGeom(p) {
     const hole = new THREE.Path(); hole.absarc(0, 0, p.ri, 0, Math.PI * 2, true); sh.holes.push(hole);
     g = new THREE.ExtrudeGeometry(sh, { depth: p.h, bevelEnabled: false, curveSegments: 48 }).translate(0, 0, -p.h / 2);
   } else {
-    g = new THREE.CylinderGeometry(p.r, p.r, p.h, 32).rotateX(Math.PI / 2);   // along z
+    // along z, a corner on +x: a hex head's corners are placed below
+    g = new THREE.CylinderGeometry(p.r, p.r, p.h, p.sides || 32, 1, false, Math.PI / 2).rotateX(Math.PI / 2);
   }
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...p.axis).normalize());
-  g.applyQuaternion(q).translate(...p.c);
+  const z = new THREE.Vector3(...p.axis).normalize();
+  if (p.corner) {
+    // a hex head: its corners where the pocket's are, so the flats meet
+    const x = new THREE.Vector3(...p.corner).projectOnPlane(z).normalize();
+    g.applyMatrix4(new THREE.Matrix4().makeBasis(x, new THREE.Vector3().crossVectors(z, x), z));
+  } else g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), z));
+  g.translate(...p.c);
   return g;
 }
 /* what each step's bought parts are made of */
@@ -781,9 +792,40 @@ renderer.domElement.addEventListener('pointerup', e => {
   const hit = picker.intersectObjects(allMeshes.filter(m => m.visible), false)[0];
   if (!hit) { pickEl.style.display = 'none'; return; }
   const [name, note] = hit.object.userData.label || ['', ''];
-  pickEl.innerHTML = `<b>${name}</b>${note ? `<div class="sub">${note}</div>` : ''}`;
-  pickEl.style.display = 'block';
+  pickEl.innerHTML = `<div><b>${name}</b>${note ? `<div class="sub">${note}</div>` : ''}</div>`;
+  pickEl.prepend(thumb.domElement);
+  pickEl.style.display = 'flex';
+  drawThumb(hit.object);
 });
+/* The thumbnail: the picked part alone, whole, from where the camera
+   looks at it -- in its own renderer, so the scene is left as it is. */
+const thumb = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+thumb.setPixelRatio(Math.min(devicePixelRatio, 2));
+const thumbScene = new THREE.Scene();
+thumbScene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 1.9));
+{ const l = new THREE.DirectionalLight(0xffffff, 1.35); l.position.set(0.7, -0.9, 1.3); thumbScene.add(l);
+  const l2 = new THREE.DirectionalLight(0xffffff, 0.6); l2.position.set(-0.8, 0.6, 0.4); thumbScene.add(l2); }
+const thumbCam = new THREE.PerspectiveCamera(30, 1, 0.1, 5000);
+function drawThumb(src) {
+  const w = thumb.domElement.clientWidth || 220, h = thumb.domElement.clientHeight || 170;
+  thumb.setSize(w, h, false);
+  thumbScene.children.filter(o => o.userData.thumb).forEach(o => thumbScene.remove(o));
+  const mat = src.userData.mat.clone(); mat.transparent = false; mat.opacity = 1; mat.clippingPlanes = null;
+  mat.depthTest = true;
+  const m = new THREE.Mesh(src.geometry, mat);
+  m.add(new THREE.LineSegments(new THREE.EdgesGeometry(src.geometry, 25),
+    new THREE.LineBasicMaterial({ color: src.userData.edge || '#333' })));
+  m.matrixAutoUpdate = false; m.matrix.copy(src.matrixWorld); m.userData.thumb = true;
+  thumbScene.add(m); m.updateMatrixWorld(true);
+  const sph = new THREE.Box3().setFromObject(m).getBoundingSphere(new THREE.Sphere());
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  thumbCam.aspect = w / h;
+  const fit = sph.radius / Math.sin(THREE.MathUtils.degToRad(thumbCam.fov / 2) * Math.min(1, thumbCam.aspect));
+  thumbCam.position.copy(sph.center).addScaledVector(dir, fit * 0.8);
+  thumbCam.up.copy(camera.up); thumbCam.near = fit / 50; thumbCam.far = fit * 4;
+  thumbCam.lookAt(sph.center); thumbCam.updateProjectionMatrix();
+  thumb.render(thumbScene, thumbCam);
+}
 const modesEl = document.getElementById('modes');
 modesEl.innerHTML = MODES.map(([id, label]) =>
   `<button data-mode="${id}" class="${id === mode ? 'on' : ''}">${label}</button>`).join('');
@@ -933,6 +975,23 @@ function pickSeat(i) {
   return seatsOf[i].find(ok) || seatsOf[i][0];
 }
 for (const i of insertSteps) seats[i] = seatsOf[i][0];
+/* The camera's 1/4-20 is not an insert: a hex-head bolt dropped into a
+   hex pocket. A step that fits one gets it in the inset too, after its
+   inserts -- the same cutaway, no iron. `top` is the head's face. */
+function studSeat(i) {
+  const st = STEPS[i];
+  let j = 0;
+  for (const h of st.hardware) {
+    if (/hex head/i.test(h.item) && st.path) {
+      const p = h.prims[0], out = new THREE.Vector3(...st.path.dir).multiplyScalar(-1).normalize();
+      const top = new THREE.Vector3(...p.c).applyMatrix4(hwOf[i][j].userData.base).addScaledVector(out, p.h / 2);
+      return { top, out, meshes: [hwOf[i][j], hwOf[i][j + 1]], stud: true };
+    }
+    j += h.prims.length;
+  }
+  return null;
+}
+const studOf = STEPS.map((st, i) => studSeat(i));
 /* the script: [seconds, caption, pose(t in 0..1)] */
 const TEMP = '230 °C';
 const SETUP = [
@@ -954,9 +1013,27 @@ const SINK = [
   [1.8, 'Let it cool a few seconds before the next. A screw should turn into it by hand.',
     t => ({ lift: 0, raise: 24, heat: 1 })],
 ];
+/* `stud` is how far the bolt stands off seated, along the way out of its
+   pocket; `turn` how far its head is turned off the pocket's flats. The
+   part is upside down on the bench, so the bolt drops in head up. */
+const STUD_OFF = 30;
+const STUD = [
+  [2.6, 'No iron for the 1/4-20: it is a hex-head bolt, not an insert. Part still upside down, the bolt over its bore, shank first.',
+    t => ({ stud: STUD_OFF + 12 * (1 - easeIO(t)), turn: 30 })],
+  [1.8, 'Turn it until the head’s flats line up with the hex pocket’s.',
+    t => ({ stud: STUD_OFF, turn: 30 * (1 - easeIO(t)) })],
+  [2.4, 'Drop it in: the shank down the bore, the head into the pocket, just under the surface.',
+    t => ({ stud: STUD_OFF * (1 - easeIO(t)), turn: 0 })],
+  [2.8, 'The pocket’s flats hold the head, so it cannot turn when the clamp spins on; 5 mm of thread stands out of the top.',
+    t => ({ stud: 0, turn: 0 })],
+  [2.2, 'Nothing holds it in yet: the platform does, once the receiver is on it.',
+    t => ({ stud: 0, turn: 0 })],
+];
 let howT = 0, howStep = -1, howPicked = false;
 let howLift = null;          // where the inset has its insert, for the main view to match
-function scriptFor(i) { return i === firstInsertStep ? SETUP.concat(SINK) : SINK; }
+function scriptFor(i) {
+  return (i === firstInsertStep ? SETUP : []).concat(seats[i] ? SINK : [], studOf[i] ? STUD : []);
+}
 function howtoAt(script, t) {
   const total = script.reduce((a, s) => a + s[0], 0);
   let tt = t % total, ci = 0;
@@ -971,9 +1048,17 @@ function placeAlong(o, origin, out, dz, spin = 0) {
   o.matrix.compose(origin.clone().addScaledVector(out, dz), q, new THREE.Vector3(1, 1, 1));
   o.matrixWorldNeedsUpdate = true;
 }
+/* the stud `lift` out of its pocket and turned `turn` degrees about its axis */
+function studPose(m, seat, lift, turn) {
+  const { top, out } = seat;
+  m.matrix.makeTranslation(-top.x, -top.y, -top.z)
+    .premultiply(new THREE.Matrix4().makeRotationAxis(out, turn * Math.PI / 180))
+    .premultiply(new THREE.Matrix4().makeTranslation(top.x + out.x * lift, top.y + out.y * lift, top.z + out.z * lift))
+    .multiply(m.userData.base);
+  m.matrixWorldNeedsUpdate = true;
+}
 function renderHowto(dt) {
-  const seat = seats[k];
-  const on = seat && STEPS[k].path;
+  const on = (seats[k] || studOf[k]) && STEPS[k].path;
   howto.style.display = on ? 'block' : 'none';
   marker.visible = false;                          // never in the inset itself
   if (!on) { howStep = -1; howLift = null; return; }
@@ -984,15 +1069,20 @@ function renderHowto(dt) {
   if (howStep === k && !cam && !howPicked) { seats[k] = pickSeat(k); howPicked = true; }
   if (howStep !== k) {
     howStep = k; howT = 0; howPicked = false;
-    howtoHead.textContent = `Melting in ${seat.count} heat-set insert${seat.count > 1 ? 's' : ''}`;
-    howtoKit.textContent = k === firstInsertStep
+    const n = seats[k] && seats[k].count, both = n && studOf[k];
+    howtoHead.textContent = (n ? `Melting in ${n} heat-set insert${n > 1 ? 's' : ''}` : '')
+      + (both ? ', then the 1/4-20 stud' : studOf[k] ? 'The 1/4-20 stud into its hex pocket' : '');
+    howtoKit.textContent = (!n ? '' : k === firstInsertStep
       ? 'Pinecil \u00b7 ruthex Pinecil adapter \u00b7 ruthex 7X M3 tip \u00b7 ruthex M3 x 5.7 insert'
-      : `The M3 tip on and at ${TEMP}, as in step ${firstInsertStep + 1} \u00b7 ruthex M3 x 5.7 insert`;
+      : `The M3 tip on and at ${TEMP}, as in step ${firstInsertStep + 1} \u00b7 ruthex M3 x 5.7 insert`)
+      + (studOf[k] ? `${n ? ' \u00b7 ' : ''}1/4-20 x 1/2 in hex head bolt` : '');
     howtoList.innerHTML = script.map(s => `<li>${s[1]}</li>`).join('');
   }
   howT += dt;
   const { pose, n } = howtoAt(script, howT);       // the whole list, then again from 1
   [...howtoList.children].forEach((li, i) => li.classList.toggle('on', i === n));
+  const stud = pose.stud !== undefined;
+  const seat = stud ? studOf[k] : seats[k];
   const { top, out } = seat;
   // the insert's top rides `lift` above its seat; the iron's shoulder on it
   const lift = pose.lift ?? 30, raise = pose.raise ?? 0;
@@ -1011,18 +1101,21 @@ function renderHowto(dt) {
   const heat = pose.heat ?? 0;
   tipMat.emissive = tipMat.emissive || new THREE.Color();
   tipMat.emissive.setRGB(0.55 * heat, 0.12 * heat, 0.0);
-  insertMesh.visible = !setup;
+  insertMesh.visible = !setup && !stud;
   placeAlong(insertMesh, top, out, lift - INSERT.l);
-  howLift = { seat, lift: setup ? INSERT.l + 14 : lift };
-  stepMelt(dt, top, out, setup ? 0 : (pose.melt ?? 0));
+  howLift = stud ? { seat, lift: pose.stud, turn: pose.turn }
+    : { seat, lift: setup ? INSERT.l + 14 : lift };
+  stepMelt(dt, top, out, setup || stud ? 0 : (pose.melt ?? 0));
   // look across the axis, from the side the main camera is on
   const side = camera.position.clone().sub(top).projectOnPlane(out);
   if (side.lengthSq() < 1e-6) side.set(1, 0, 0).projectOnPlane(out);
   side.normalize();
   // the tip going on: the whole iron in frame, handle and all, not a tip
   // moving on its own
-  const look = top.clone().addScaledVector(out, setup ? 108 : 8);
-  insetCam.position.copy(look).addScaledVector(side, setup ? 330 : 62).addScaledVector(out, setup ? 20 : 14);
+  // the stud: the bolt's whole length, and the pocket it drops into
+  const look = top.clone().addScaledVector(out, setup ? 108 : stud ? 8 : 8);
+  insetCam.position.copy(look).addScaledVector(side, setup ? 330 : stud ? 120 : 62)
+    .addScaledVector(out, setup ? 20 : stud ? 30 : 14);
   insetCam.up.copy(out);                           // the iron upright, whatever the part's pose
   insetCam.lookAt(look);
   clip.setFromNormalAndCoplanarPoint(side.clone().negate(), top);
@@ -1034,7 +1127,13 @@ function renderHowto(dt) {
   const x = vw - 12 - W - 1, y = 12 + 1 + howtoList.offsetHeight;
   insetCam.aspect = W / H; insetCam.updateProjectionMatrix();
   poseAll(k, 1);                // the parts seated, wherever the main view has them
-  const parts = allMeshes.filter(m => m.visible && !hwOf[k].includes(m));
+  // a bench step works on its own part, in the hand: only it, not the
+  // jig it will later go onto -- the receiver upside down had the
+  // platform drawn over its pocket
+  const bench = STEPS[k].against && STEPS[k].against.map(n => body[n]);
+  const parts = allMeshes.filter(m => m.visible && !hwOf[k].includes(m) && (!bench || bench.includes(m)));
+  const offBench = bench ? allMeshes.filter(m => m.visible && !parts.includes(m) && !hwOf[k].includes(m)) : [];
+  offBench.forEach(m => m.visible = false);
   // the part the insert goes into: its colour fills the cut
   if (cutHost.step !== k) {
     const probe = top.clone().addScaledVector(out, -2.0);
@@ -1053,9 +1152,10 @@ function renderHowto(dt) {
     m.material = u.insetMat;
     if (m.children[0]) m.children[0].visible = false;
   }
-  const hidden = hwOf[k].filter(m => m.visible);
+  const hidden = hwOf[k].filter(m => m.visible && !(stud && seat.meshes.includes(m)));
   hidden.forEach(m => m.visible = false);
-  iron.visible = true; puffs.visible = !setup; meltRing.visible = !setup;
+  if (stud) for (const m of seat.meshes) { studPose(m, seat, pose.stud, pose.turn); m.visible = true; }
+  iron.visible = !stud; puffs.visible = !setup && !stud; meltRing.visible = !setup && !stud;
   const bg = scene.background;
   scene.background = INSET_BG;
   renderer.localClippingEnabled = true;
@@ -1091,6 +1191,7 @@ function renderHowto(dt) {
   scene.background = bg;
   iron.visible = false; insertMesh.visible = false; puffs.visible = false; meltRing.visible = false;
   hidden.forEach(m => m.visible = true);
+  offBench.forEach(m => m.visible = true);
   for (const [m, mat, e] of swapped) { m.material = mat; if (m.children[0]) m.children[0].visible = e; }
   // the main view's marker, for the next frame
   markT += dt;
@@ -1116,7 +1217,9 @@ renderer.setAnimationLoop(now => {
   }
   poseAll(k, Math.min(1, f));
   // the marked insert moves as the inset's does, not on the step's own clock
-  if (howLift && seats[k] === howLift.seat) {
+  if (howLift && howLift.seat.stud && studOf[k] === howLift.seat) {
+    for (const m of howLift.seat.meshes) { studPose(m, howLift.seat, howLift.lift, howLift.turn); m.visible = true; }
+  } else if (howLift && seats[k] === howLift.seat) {
     const { seat, lift } = howLift, m = seat.mesh;
     m.matrix.makeTranslation(seat.out.x * lift, seat.out.y * lift, seat.out.z * lift).multiply(m.userData.base);
     m.matrixWorldNeedsUpdate = true;
@@ -1137,6 +1240,8 @@ window.__assembly = {
   bounds(n) { const m = body[n]; m.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(m); return { min: b.min.toArray(), max: b.max.toArray(), visible: m.visible }; },
   hwVisible(i) { return hwOf[i].map(m => m.visible); },
+  hwBounds(i) { return hwOf[i].map(m => { m.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(m); return [b.min.toArray(), b.max.toArray()]; }); },
   setMode(m) { mode = m; poseAll(k, Math.min(1, f)); },
   get camBusy() { return !!cam; },
   get camState() { return camera.position.distanceTo(controls.target); },

@@ -524,6 +524,7 @@ RECV_RELIEF = 4.0       # past the M3 inserts, for the screw's tip
 QTR_R = 3.4                           # 1/4"-20 clearance, radius
 QTR_HEAD = (7.0 / 16 * 25.4, 4.14)    # 7/16 across flats; ASME's tallest head
 QTR_HEX = (QTR_HEAD[0] + 0.4, QTR_HEAD[1] + 0.3)   # its pocket: flats, depth
+QTR_HEAD_REAL = 3.97                   # McMaster 92245A537's STEP: what is drawn
 QTR_LEN = 0.5 * 25.4                  # under the head: 5.1 mm stands proud
 QTR_ITEM = "1/4-20 x 1/2 in hex head cap screw (the clamp's stud)"
 
@@ -2173,13 +2174,22 @@ def _prim_mesh(p):
                                          height=p["h"], sections=96)
         else:
             m = trimesh.creation.cylinder(radius=p["r"], height=p["h"],
-                                          sections=48)
+                                          sections=p.get("sides", 48))
         if p.get("flat"):
             # a D-shaft: the flat faces +y before the primitive is placed
             keep = box((-p["r"] - 1, -p["r"] - 1, -p["h"]),
                        (p["r"] + 1, p["flat"] - p["r"], p["h"]))
             m = trimesh.boolean.intersection([m, keep], engine="manifold")
-        m.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], ax))
+        if p.get("corner") is not None:
+            # a hex head: a corner, which trimesh puts on +x, turned to
+            # `corner` so the flats line up with the pocket's
+            z = ax / np.linalg.norm(ax)
+            x = np.asarray(p["corner"], float)
+            x = x - z * (x @ z); x /= np.linalg.norm(x)
+            R = np.eye(4); R[:3, :3] = np.c_[x, np.cross(z, x), z]
+            m.apply_transform(R)
+        else:
+            m.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], ax))
         m.apply_translation(p["c"])
     if p.get("M") is not None:
         m.apply_transform(np.asarray(p["M"], float).reshape(4, 4))
@@ -2374,10 +2384,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
                                                axis=(0, 0, -1))], E)
     # its shank stops at the receiver's top here: it really runs on into
     # the clamp's socket, which the clamp's box stand-in does not have
-    stud = _moved(_bolt_prims(
-        _arc_to_world(RECV_U, PLATFORM_V[1] + QTR_HEX[1], hy),
-        QTR_LEN, r=3.175, head_r=QTR_HEAD[0] / 2.0,
-        head_h=QTR_HEAD[1], axis=(0, 0, -1)), E)
+    # its head a hexagon, corners where the pocket's are, so the page
+    # shows why it cannot turn
+    stud = _bolt_prims(_arc_to_world(RECV_U, PLATFORM_V[1] + QTR_HEX[1], hy),
+                       QTR_LEN, r=3.175, head_r=QTR_HEAD[0] / np.sqrt(3.0),
+                       head_h=QTR_HEAD_REAL, axis=(0, 0, -1))
+    stud[0].update(sides=6, corner=(M_ARC[:3, :3] @ [1.0, 0, 0]).tolist())
+    stud = _moved(stud, E)
     cfg = camera_config(CAMERA_DEFAULT)
     cam = _moved([dict(kind="box", lo=list(lo), hi=list(hi))
                   for grp in cfg["boxes"].values() for lo, hi in grp], E)
