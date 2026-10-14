@@ -268,14 +268,16 @@ const INK_ON_DARK = new THREE.Color('#d9e2ec'), XRAY_INK = new THREE.Color('#245
 const HLR_FACE = () => new THREE.MeshBasicMaterial({ color: '#ffffff' });
 const XRAY_FACE = () => new THREE.MeshBasicMaterial({ color: '#6f9be0', transparent: true,
   opacity: 0.14, depthWrite: false });
-function inkFor(u) {               // CAD edges: dark ink, light on a dark part
-  const hsl = {}; u.mat.color.getHSL(hsl);
+function inkFor(mat) {             // CAD edges: dark ink, light on a dark part
+  const hsl = {}; mat.color.getHSL(hsl);
   return hsl.l < 0.32 ? INK_ON_DARK : INK;
 }
 function style(m) {
   const u = m.userData;
+  // a part joined into an assembly wears the assembly's colour
+  const own = u.joined ? u.asmMat : u.mat;
   const want = mode === 'hlr' ? (u.hlrMat ||= HLR_FACE())
-    : mode === 'xray' ? (u.xrayMat ||= XRAY_FACE()) : u.mat;
+    : mode === 'xray' ? (u.xrayMat ||= XRAY_FACE()) : own;
   if (m.material !== want) { m.material = want; u.key = null; }
   const mat = m.material;
   const ghost = !!u.ghost, fade = u.fade ?? 1, glow = u.glow || 0;
@@ -300,7 +302,7 @@ function style(m) {
       && !(ghost && mode === 'edges');
     e.material.color.copy(glow > 0.05 && mode !== 'edges' ? GLOW
       : mode === 'hlr' ? (ghost ? INK_SOFT : INK)
-      : mode === 'xray' ? XRAY_INK : inkFor(u));
+      : mode === 'xray' ? XRAY_INK : inkFor(own));
   }
 }
 
@@ -503,6 +505,23 @@ function ridesWith(i, k) {
   return false;
 }
 const preload = STEPS.findIndex(s => s.turn);
+/* Parts built up on the bench and then fitted as one -- the base with
+   its pucks, bolts and mount screw; the drive -- become one colour from
+   the step that joins them, and stay it: the assembly reads as one
+   thing. Only where it joins printed parts from more than one step. */
+const ASSEMBLY_COLORS = ['#3e9c82', '#c08a3a', '#7a6cc4', '#c25a68'];
+const assemblyOf = {};
+let nAssemblies = 0;
+STEPS.forEach((st, c) => {
+  if (!st.carry.length) return;
+  // printed parts brought in from other steps: three pucks set down
+  // side by side are not an assembly
+  const brought = STEPS.flatMap((s, i) => i !== c && ridesWith(i, c) ? s.bodies : []);
+  if (!brought.length) return;
+  const members = st.bodies.concat(brought);
+  const color = ASSEMBLY_COLORS[nAssemblies++ % ASSEMBLY_COLORS.length];
+  for (const n of members) assemblyOf[n] = { step: c, color };
+});
 const checked = A.checked ? Object.fromEntries(A.checked.steps.map(s => [s.id, s])) : {};
 const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
 
@@ -588,6 +607,10 @@ function poseAll(k, f) {
     m.matrixWorldNeedsUpdate = true;
     const moving = ridesWith(i, k);
     mark(m, moving && !benchOn, f, !st.path && i === k && !spare(i) ? f : undefined);
+    const a = assemblyOf[n];
+    m.userData.joined = !!a && k >= a.step && !benchOn;
+    if (a && !m.userData.asmMat) m.userData.asmMat = petgMaterial('grey', n).clone();
+    if (a) m.userData.asmMat.color.set(a.color);
   }
   STEPS.forEach((st, i) => {
     const O = offsetFor(i, k, f);
