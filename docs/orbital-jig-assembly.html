@@ -262,6 +262,7 @@ const MODES = [['shaded', 'Shaded'], ['edges', 'Shaded + edges'], ['hlr', 'Hidde
 let mode = 'edges';
 const INK = new THREE.Color('#141f2e'), INK_SOFT = new THREE.Color('#a9b9cc');
 const INK_ON_DARK = new THREE.Color('#d9e2ec'), XRAY_INK = new THREE.Color('#2457b0');
+const HIDDEN_INK = new THREE.Color('#5d6b7d');    // dashed, behind a ghost's own faces
 /* hidden line draws white faces -- a drawing, not the paper seen through
    the parts -- and X-ray is blue glass, so neither reads like the half-
    transparent ghosts the steps use for context */
@@ -291,6 +292,11 @@ function style(m) {
   mat.polygonOffset = true; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 1;
   mat.depthTest = !u.inside;
   m.renderOrder = u.inside ? 10 : 0;
+  // A ghost -- the part a bench step builds onto -- is drawn as a hidden-
+  // line drawing over faint glass: its faces write depth, so its edges
+  // can be told apart, solid where seen and dashed where behind.
+  const hl = ghost && mode === 'edges' && m.visible;
+  if (hl) { mat.depthWrite = true; m.renderOrder = 1; }
   // blending and wireframe are compiled into the shader: a change of
   // either needs the material rebuilt, or the old one keeps drawing
   const key = `${mat.transparent}|${mat.wireframe}`;
@@ -298,8 +304,16 @@ function style(m) {
   if (mat.emissive) mat.emissive.copy(GLOW).multiplyScalar(glow);
   const e = m.children[0];
   if (e) {
-    e.visible = m.visible && (mode === 'edges' || mode === 'xray' || mode === 'hlr')
-      && !(ghost && mode === 'edges');
+    e.visible = m.visible && (mode === 'edges' || mode === 'xray' || mode === 'hlr');
+    e.material.transparent = hl; e.renderOrder = hl ? 2 : 0;
+    if (hl && !u.hidEdges) {
+      u.hidEdges = new THREE.LineSegments(e.geometry, new THREE.LineDashedMaterial({
+        color: HIDDEN_INK, dashSize: 0.9, gapSize: 0.6, depthFunc: THREE.GreaterDepth,
+        transparent: true, opacity: 0.95 }));
+      u.hidEdges.computeLineDistances(); u.hidEdges.renderOrder = 2;
+      m.add(u.hidEdges);
+    }
+    if (u.hidEdges) u.hidEdges.visible = hl;
     e.material.color.copy(glow > 0.05 && mode !== 'edges' ? GLOW
       : mode === 'hlr' ? (ghost ? INK_SOFT : INK)
       : mode === 'xray' ? XRAY_INK : inkFor(own));
@@ -1184,9 +1198,9 @@ function renderHowto(dt) {
     // opaque and cut; only the parts are cut, the iron and the insert stay whole
     u.insetMat ||= (() => { const c = u.mat.clone(); c.transparent = false;
       c.opacity = 1; c.clippingPlanes = [clip]; return c; })();
-    swapped.push([m, m.material, m.children[0] && m.children[0].visible]);
+    swapped.push([m, m.material, m.children.map(c => c.visible)]);
     m.material = u.insetMat;
-    if (m.children[0]) m.children[0].visible = false;
+    m.children.forEach(c => c.visible = false);
   }
   const hidden = hwOf[k].filter(m => m.visible && !(stud && seat.meshes.includes(m)));
   hidden.forEach(m => m.visible = false);
@@ -1228,7 +1242,7 @@ function renderHowto(dt) {
   iron.visible = false; insertMesh.visible = false; puffs.visible = false; meltRing.visible = false;
   hidden.forEach(m => m.visible = true);
   offBench.forEach(m => m.visible = true);
-  for (const [m, mat, e] of swapped) { m.material = mat; if (m.children[0]) m.children[0].visible = e; }
+  for (const [m, mat, e] of swapped) { m.material = mat; m.children.forEach((c, i) => c.visible = e[i]); }
   // the main view's marker, for the next frame
   markT += dt;
   const pulse = 0.5 + 0.5 * Math.sin(markT * 2 * Math.PI * 1.2);
