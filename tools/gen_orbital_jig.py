@@ -196,7 +196,15 @@ RING_RO, RING_RI, RING_T = 121.0, 90.0, 18.0
 # STEP's own: flanks 2.0 long and 2.2 deep, 47.7 degrees to the axis. The
 # groove stays 45: 2.7 degrees steeper, the wheel bears at the edges of its
 # flat, and the race coupon seated it with ~1 mm under the flat. Drawn to his.
-WHEEL = dict(r=11.95, w=10.2, tip=3.1, side_r=9.8)     # tip: half the flat
+# 32.0.0: the wheel is printed now, so it no longer has to be the POM
+# one. Drawn at 47 degrees to the axis against the groove's 45, it touched
+# the groove only at the two corners of its flat -- and the lower corner
+# is the edge of the overhang it prints as, the roughest edge on the part
+# (Brett's photos, 2026-10-14). Its flanks are 45 now, the groove's own,
+# through the same flat: it seats where it did, on a band of flank 2 mm
+# wide each side instead of an edge. The ring stays as printed.
+WHEEL = dict(r=11.95, w=10.2, tip=3.1)     # tip: half the flat
+WHEEL["side_r"] = WHEEL["r"] - (WHEEL["w"] / 2 - WHEEL["tip"])   # 45 degrees
 # Printed, from 22.0.0. The POM wheels came with two 625s each (5 mm bore),
 # pressed in, and the printed sleeves are 7.95: the plan was to swap the
 # 625s for 688s, and Brett's 625s would not come out by hand. So the
@@ -234,7 +242,14 @@ RING_GAP = 8.0          # ring underside above the base top: the tip of
 TOWER_R, BOSS_R, BOSS_H = 7.0, 4.8, 1.0   # the boss bears on a 688's inner race only
 # Ø7.95, not 7.9: a printed shaft comes out at about its drawn size, so
 # 7.9 sat in the 608's 8 mm bore with a tenth of play
-SLEEVE_R, SLEEVE_H, SLEEVE_FL_R, SLEEVE_FL_H = 3.975, WHEEL["w"] - 0.2, 5.75, 1.0
+# The flange is a 10 mm hex, 3 tall, held in a wrench while the axle bolt
+# tightens. Round and 1.0 tall until 31.0.0, it turned with the bolt head
+# -- the inner races under it turn freely -- and walked each wheel back
+# off the race as it was tightened. The hex's corners are where the round
+
+SLEEVE_R, SLEEVE_H, SLEEVE_FL_H = 3.975, WHEEL["w"] - 0.2, 3.0
+SLEEVE_HEX = 10.0       # across flats
+SLEEVE_FL_R = SLEEVE_HEX / np.sqrt(3.0)   # across corners, /2
 # One thread through the whole jig: every bolt is an M3, into one insert,
 # turned with one key. The base's feet and the arc's bar were M4; at M3
 # the bar's three still hold the arc a hundred times over, and the
@@ -1311,9 +1326,20 @@ CTRL_INLET_Y = -12.0              # off centre: clear of the lid's boss
 # bracket it -- 2.55 would not go in, 2.1 is free -- and 2.25 is between,
 # toward the end that went on (2.3 the model calls tight in 1 print in
 # 125). 30% longer, 5.2, for more grip.
-CTRL_PEG = (2.6, 2.25, 5.2)
-CTRL_BOSSES = ((-CTRL["l"] / 2 + CTRL["wall"] + 2.0, CTRL["w"] / 2 - CTRL["wall"] - 2.0),
-               (CTRL["l"] / 2 - CTRL["wall"] - 2.0, -CTRL["w"] / 2 + CTRL["wall"] + 2.0))
+# 30.0.0: the 2.25 pegs held the lid on at a perfect friction fit, and one
+# snapped off at its root the first time the lid came off: a thin PETG
+# peg printed upright, its layers across it. A peg that is pulled and
+# levered gets 3.5 at least (bending goes as d^3: 3.8x the 2.25), a fillet
+# at its root and a chamfer at its tip, and the fit comes from the bore --
+# the same 0.35 the 2.25 had in its 2.6. The boss grows with it, 1.3 of
+# wall round the bore, and sits 0.5 deeper into its corner so the tray's
+# notch round it still clears R1.
+CTRL_PEG = (3.85, 3.5, 5.2)
+CTRL_PEG_FILLET, CTRL_PEG_TIP = 0.6, 0.4
+CTRL_BOSS_R = 3.2
+_BOSS_IN = CTRL["wall"] + 1.5
+CTRL_BOSSES = ((-CTRL["l"] / 2 + _BOSS_IN, CTRL["w"] / 2 - _BOSS_IN),
+               (CTRL["l"] / 2 - _BOSS_IN, -CTRL["w"] / 2 + _BOSS_IN))
 
 
 def _ctrl_frame(specimen=SPECIMEN):
@@ -1339,7 +1365,7 @@ def ctrl_box(specimen=SPECIMEN):
     b = box((-l / 2, -w / 2, 0), (l / 2, w / 2, h))
     # the lid's bosses run into the walls: tangent to them, the faces fold
     # into non-manifold edges on the way out to the 3MF
-    bosses = [cyl(2.5, t - 0.5, h, x, y, 32) for x, y in CTRL_BOSSES]
+    bosses = [cyl(CTRL_BOSS_R, t - 0.5, h, x, y, 48) for x, y in CTRL_BOSSES]
     tools = [box((-l / 2 + t, -w / 2 + t, t), (l / 2 - t, w / 2 - t, h + 1))]
     b = cut(b, tools)
     b = union([b] + bosses)
@@ -1356,19 +1382,34 @@ def ctrl_box(specimen=SPECIMEN):
                     (l / 2 + 1, XIAO_Y + 6.4, uz + 3.5)))
     # the cable's way in, low on the inner wall, and the tie bar beside it
     cut2.append(box((-l / 2 - 1, CTRL_INLET_Y - 3.5, t),
-                    (-l / 2 + t + 1, CTRL_INLET_Y + 3.5, t + 2 * CABLE_R + 1.5)))
+                    (-l / 2 + t + 1, CTRL_INLET_Y + 3.5,
+                     t + TRAY_T + 1.4 + CABLE_R + 0.2)))
     # the lid's pegs press into the bosses, printed into printed like the
     # drive's lid
+    # and a 45-degree mouth, the lead-in, which also clears the peg's fillet.
+    # Its facets must not line up with the boss's and bore's 48: at 48 the
+    # three meet the top face in slivers the 3MF folds non-manifold.
+    mouth = CTRL_PEG[0] / 2 + CTRL_PEG_FILLET + 0.2
     for x, y in CTRL_BOSSES:
-        cut2.append(cyl(CTRL_PEG[0] / 2, h - CTRL_PEG[2] - 2.0, h + 1, x, y, 32))
+        cut2.append(cyl(CTRL_PEG[0] / 2, h - CTRL_PEG[2] - 2.0, h + 1, x, y, 48))
+        cut2.append(cone(mouth + 1.0, h + 1.0, h - mouth, x, y, 64))
     return _ctrl_local(cut(b, cut2), specimen)
 
 
 def ctrl_lid(specimen=SPECIMEN):
     l, w, h = CTRL["l"], CTRL["w"], CTRL["h"]
     lid = box((-l / 2, -w / 2, h), (l / 2, w / 2, h + CTRL["lid"]))
-    pegs = [cyl(CTRL_PEG[1] / 2, h - CTRL_PEG[2], h + 0.5, x, y, 32)
-            for x, y in CTRL_BOSSES]
+    r, f, c = CTRL_PEG[1] / 2, CTRL_PEG_FILLET, CTRL_PEG_TIP
+    z0 = h - CTRL_PEG[2]
+    # turned from its profile: chamfered tip, straight shank, a 45-degree
+    # fillet into the lid's underside
+    prof = [(0, z0), (r - c, z0), (r, z0 + c), (r, h - f), (r + f, h),
+            (r + f, h + 0.5), (0, h + 0.5)]
+    pegs = []
+    for x, y in CTRL_BOSSES:
+        p = trimesh.creation.revolve(prof, sections=48)
+        p.apply_translation([x, y, 0])
+        pegs.append(p)
     return _ctrl_local(union([lid] + pegs), specimen)
 
 
@@ -1389,9 +1430,13 @@ def ctrl_lid(specimen=SPECIMEN):
 #
 # Nothing is soldered in the tray: each joint is made in the air, with the
 # iron nowhere near the PETG, and pressed down into its channel when cool.
-TRAY_T = 1.2            # the plate, on the box's floor
+TRAY_T = 2.0            # the plate, on the box's floor (1.2 until 30.0.0: it flexed)
 TRAY_GAP = 0.3          # all round inside the box's walls and bosses
 TRAY_FIT = 0.25         # each board's window, per side
+# The tray's notches round the lid's two bosses: a snug fit, so the
+# bosses, in opposite corners, wedge the tray and it stays put unglued.
+# Until 30.0.0 it was 0.4 per side and the tray sat loose.
+TRAY_BOSS_FIT = 0.15
 # The first print (26.0.0) drew its labels in bold Arial 2.8 tall, 0.4
 # proud, with 0.6 strokes: one nozzle line and a smear, and the letters
 # came out as blobs. Now every mark is straight strokes 0.8 wide -- two
@@ -1454,7 +1499,8 @@ INLET_X = -CTRL["l"] / 2 + 4.0             # where the cables' wires fan out
 RISE_X = {"cable": -27.6, "lead": -26.6}
 
 # Every wire inside the box: its color, the net, the two ends, the step
-# that solders it, the height it runs at and the corners of its run. The
+# that solders it, the height it runs at over the tray's plate (so a
+# thicker plate carries every wire up with it) and the corners of its run. The
 # motor's cable keeps all six of its own wires; the 38 cm cut off its far
 # end gives the home sensor's three (blue, green and white: the colors of
 # the motor-cable wires on the same nets) and the rest are the jumpers
@@ -1464,39 +1510,39 @@ RISE_X = {"cable": -27.6, "lead": -26.6}
 # the bundle; ("xiao", pad); ("drv", row, pin[, from +x under C1]);
 # ("joint", net, end of its channel, offset across it).
 WIRES = (
-    ("W1", "red", "M1", ("cable", 5), ("joint", "M1", 1, 0.0), "j_m1", 9.5,
+    ("W1", "red", "M1", ("cable", 5), ("joint", "M1", 1, 0.0), "j_m1", 6.3,
      ((-27.6, 10.6), (-1.4, 10.6))),
-    ("W2", "black", "M2", ("cable", 4), ("drv", "power", "AOUT2"), "motor_wires", 7.5,
+    ("W2", "black", "M2", ("cable", 4), ("drv", "power", "AOUT2"), "motor_wires", 4.3,
      ((-27.6, 1.27),)),
-    ("W3", "yellow", "encoder A", ("cable", 2), ("xiao", "D3"), "motor_wires", 10.5,
+    ("W3", "yellow", "encoder A", ("cable", 2), ("xiao", "D3"), "motor_wires", 7.3,
      ((-27.6, 11.5), (19.26, 11.5))),
-    ("W4", "white", "encoder B", ("cable", 1), ("xiao", "D4"), "motor_wires", 11.3,
+    ("W4", "white", "encoder B", ("cable", 1), ("xiao", "D4"), "motor_wires", 8.1,
      ((-27.6, 12.3), (16.72, 12.3))),
-    ("W5", "blue", "3V3", ("cable", 3), ("joint", "3V3", -1, -0.9), "j_home", 8.0,
+    ("W5", "blue", "3V3", ("cable", 3), ("joint", "3V3", -1, -0.9), "j_home", 4.8,
      ((-27.6, -15.85),)),
-    ("W6", "green", "GND", ("cable", 0), ("joint", "GND", -1, -0.9), "j_gnd", 7.2,
+    ("W6", "green", "GND", ("cable", 0), ("joint", "GND", -1, -0.9), "j_gnd", 4.0,
      ((-27.6, -17.0), (12.4, -17.0))),
-    ("W7", "blue", "3V3", ("lead", 0), ("joint", "3V3", -1, 0.9), "j_home", 8.9,
+    ("W7", "blue", "3V3", ("lead", 0), ("joint", "3V3", -1, 0.9), "j_home", 5.7,
      ((-26.6, -15.85),)),
-    ("W8", "green", "GND", ("lead", 1), ("joint", "GND", -1, 0.9), "j_gnd", 8.1,
+    ("W8", "green", "GND", ("lead", 1), ("joint", "GND", -1, 0.9), "j_gnd", 4.9,
      ((-26.6, -16.2), (12.4, -16.2))),
-    ("W9", "white", "home", ("lead", 2), ("joint", "D5", -1, 0.9), "j_home", 10.0,
+    ("W9", "white", "home", ("lead", 2), ("joint", "D5", -1, 0.9), "j_home", 6.8,
      ((-26.6, 4.6),)),
-    ("W10", "red", "5V", ("xiao", "5V"), ("drv", "power", "VIN", 1), "jumpers", 12.0,
+    ("W10", "red", "5V", ("xiao", "5V"), ("drv", "power", "VIN", 1), "jumpers", 8.8,
      ((26.88, -11.6), (-15.38, -11.6))),
-    ("W11", "black", "GND", ("xiao", "GND"), ("joint", "GND", 1, 0.0), "j_gnd", 7.0,
+    ("W11", "black", "GND", ("xiao", "GND"), ("joint", "GND", 1, 0.0), "j_gnd", 3.8,
      ((24.34, -14.0),)),
-    ("W12", "black", "GND", ("joint", "GND", -1, 0.0), ("drv", "logic", "GND"), "j_gnd", 9.8,
+    ("W12", "black", "GND", ("joint", "GND", -1, 0.0), ("drv", "logic", "GND"), "j_gnd", 6.6,
      ((-8.92, -14.0),)),
-    ("W13", "blue", "3V3", ("joint", "3V3", 1, 0.9), ("xiao", "3V3"), "j_home", 9.2,
+    ("W13", "blue", "3V3", ("joint", "3V3", 1, 0.9), ("xiao", "3V3"), "j_home", 6.0,
      ((21.8, -11.55),)),
-    ("W14", "white", "home", ("joint", "D5", 1, 0.9), ("xiao", "D5"), "j_home", 8.0,
+    ("W14", "white", "home", ("joint", "D5", 1, 0.9), ("xiao", "D5"), "j_home", 4.8,
      ((14.18, 7.8),)),
-    ("W15", "yellow", "AIN1", ("xiao", "D0"), ("drv", "logic", "AIN1"), "jumpers", 12.8,
+    ("W15", "yellow", "AIN1", ("xiao", "D0"), ("drv", "logic", "AIN1"), "jumpers", 9.6,
      ((26.88, 13.2), (-8.92, 13.2))),
-    ("W16", "yellow", "AIN2", ("xiao", "D1"), ("drv", "logic", "AIN2"), "jumpers", 13.7,
+    ("W16", "yellow", "AIN2", ("xiao", "D1"), ("drv", "logic", "AIN2"), "jumpers", 10.5,
      ((24.34, 14.0), (-8.92, 14.0))),
-    ("W17", "yellow", "nFAULT", ("xiao", "D8"), ("drv", "logic", "FLT"), "jumpers", 11.0,
+    ("W17", "yellow", "nFAULT", ("xiao", "D8"), ("drv", "logic", "FLT"), "jumpers", 7.8,
      ((6.0, -10.0), (6.0, 8.89))),
 )
 # Pololu's cable, pin 1 to 6 (and the encoder's pins, the same order)
@@ -1640,7 +1686,7 @@ def tray_layout():
     xi, yi = l / 2 - t - TRAY_GAP, w / 2 - t - TRAY_GAP
     plate = Polygon([(-xi, -yi), (xi, -yi), (xi, yi), (-xi, yi)])
     for x, y in CTRL_BOSSES:
-        plate = plate.difference(Point(x, y).buffer(2.5 + TRAY_GAP + 0.1, 48))
+        plate = plate.difference(Point(x, y).buffer(CTRL_BOSS_R + TRAY_BOSS_FIT, 64))
     # the XIAO's window, open to the wall it butts against
     x0 = XIAO_X1 - XIAO[0] - TRAY_FIT
     plate = plate.difference(Polygon([(x0, -XIAO[1] / 2 - TRAY_FIT),
@@ -1891,7 +1937,10 @@ def _end(spec, lane=None):
         c, s = xiao_pad(spec[1])
         zt = _floor() + 0.02 + XIAO[2]
         p = np.array([c[0], s * (XIAO[1] / 2 - 0.8), zt + 0.04 + WIRE_R])
-        return ([p, np.array([c[0], s * 10.0, p[2]])],
+        # the board lies in its window on the box's floor, below the
+        # tray's top: up off its pad, then out over the window's edge
+        up = np.array([c[0], p[1], max(p[2], _plate_top() + WIRE_R + 0.3)])
+        return ([p, up, np.array([c[0], s * 10.0, up[2]])],
                 [_cylp((c[0], s * (XIAO[1] / 2 - 0.7), zt + 0.3), (0, 0, 1), 0.7, 0.6,
                        "solder", sides=24)])
     if kind == "drv":
@@ -1919,6 +1968,7 @@ def wire_path(wid):
     pa, _ = _end(a)
     pb, _ = _end(b)
     ra, rb = pa[-1], pb[-1]
+    lane += _plate_top()        # the table gives it over the tray's plate
     mid = [np.array([ra[0], ra[1], lane])]
     mid += [np.array([x, y, lane]) for x, y in via]
     mid += [np.array([rb[0], rb[1], lane])]
@@ -2104,13 +2154,16 @@ def sleeve(ecc=0.0):
     """A top hat the 608 rides on: Ø7.9 through the 8 mm bore, a flange
     the bolt head clamps onto the inner race. `ecc` offsets the bolt bore
     for the preload sleeve; two notches on its flange say which it is."""
+    # a corner points the way the bore is off; turned to face out from the
+    # ring's center, its wheel is furthest in
+    top = SLEEVE_H + SLEEVE_FL_H
     s = union([cyl(SLEEVE_R, 0, SLEEVE_H, 0, 0, 96),
-               cyl(SLEEVE_FL_R, SLEEVE_H, SLEEVE_H + SLEEVE_FL_H, 0, 0, 96)])
-    tools = [cyl(AXLE_R, -1, SLEEVE_H + SLEEVE_FL_H + 1, ecc, 0, 48)]
+               cyl(SLEEVE_FL_R, SLEEVE_H, top, 0, 0, 6)])
+    tools = [cyl(AXLE_R, -1, top + 1, ecc, 0, 48)]
     if ecc:
         for sgn in (1, -1):
-            tools.append(box((-0.6, sgn * 4.2 - 1.0, SLEEVE_H + 0.4),
-                             (0.6, sgn * 4.2 + 1.0 + 3, SLEEVE_H + 2)))
+            tools.append(box((-0.6, sgn * 3.6 - 1.0, top - 0.6),
+                             (0.6, sgn * 3.6 + 1.0 + 3, top + 1)))
     return cut(s, tools)
 
 
@@ -2172,7 +2225,7 @@ def wheel():
     """A printed V wheel: the profile the ring's groove was cut for, a
     plain bore two 688s press into, one from each face, and a chamfer at
     each mouth -- all one revolved section. Prints flat on a face; the
-    lower flank is a 47 degree overhang."""
+    lower flank is a 45 degree overhang."""
     r, hw, tip, sr = WHEEL["r"], WHEEL["w"] / 2.0, WHEEL["tip"], WHEEL["side_r"]
     rb, m = WHEEL_BORE_R, WHEEL_MOUTH
     return rev([(rb + m, -hw), (sr, -hw), (r, -tip), (r, tip), (sr, hw),
@@ -3159,7 +3212,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "Each printed sleeve down through its wheel's two 688s, flange "
               "on top. The bolt hole is off center in all three: turn each "
               "sleeve until its wheel sits as far out as it goes, so the "
-              "ring can drop in between them.", list(SLEEVES),
+              "ring can drop in between them. The flange is a 10 mm hex: "
+              "that is what turns it.", list(SLEEVES),
               path=(down, 25.0), alt="retracted"),
         _step("axles", "Axle bolts, finger tight",
               "Down through each sleeve into its tower's insert.",
@@ -3182,9 +3236,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["rotor"], path=(down, 40.0),
               carry=["rotor_inserts", "ring_magnet"]),
         _step("preload", "Turn the eccentrics in and tighten",
-              "In turn, a little each time, so the ring stays centred, "
-              "until every bearing meets the race and the ring turns "
-              "without play; then the three axles.",
+              "With a 10 mm wrench on each sleeve's hex, in turn, a little "
+              "each time, so the ring stays centered, until every bearing "
+              "meets the race and the ring turns without play -- fully in "
+              "is a little tight, so stop just short of it. Then tighten "
+              "each axle bolt with the wrench still holding its sleeve: "
+              "left free, the sleeve turns with the bolt's head and walks "
+              "its wheel back off the race.",
               check="race", turn=turn),
         _step("pin", "Pin into the crank",
               "On the bench, in a vise: the \u00d83 x 16 dowel pressed down "
