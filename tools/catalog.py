@@ -550,7 +550,10 @@ PARTS = [
        # was sealed by the arm's wedge, so a 20.0.0 saddle has no way in.
        # 22.0.0: the V wheels are printed, three new bodies, two 688s
        # pressed into each. The bought POM wheels' 625s would not come out.
-       version="22.0.0",
+       # 23.0.0: the home sensor's leads go down a slot along its pocket's
+       # edge, where they leave the package; the XIAO's cradle is its
+       # board's length, so the plug cannot push it back.
+       version="23.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

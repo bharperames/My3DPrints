@@ -133,7 +133,7 @@ def fit_rows(parts):
         # printed holes run a little small, and the maker's figure already
         # allows for that. One insert, M3, everywhere
         ("M3 insert bore against its maker's 4.0", "vhole", "stator", 2 * J.INS_M3[0], (4.0, 0, 0), (-0.35, 0.10), J.INSERT_M3),
-        ("Hall leads through the base", "vhole", "stator", 2 * J.HALL_HOLE_R, (2.97, -0.05, 0.05), clear, "three leads at 1.27"),
+        ("Hall leads down their slot", "rect", "stator", J.HALL_SLOT[0], (2.97, -0.05, 0.05), clear, "three leads at 1.27"),
         ("Motor cable down the post's bore", "vhole", "drive_block", 2 * (J.CABLE_R + 0.6), (2.6, -0.2, 0.2), clear, "six loose wires"),
     ]
     for name, kind, part, hole, mate, acc, note in extra:

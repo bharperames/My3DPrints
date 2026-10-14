@@ -432,8 +432,18 @@ MAGNET = (3.0, 2.0)     # Ø3 x 2 N52 disc, either face to its sensor
 # the XIAO's 5 V pin, its open-collector output pulled up to 3V3.
 HALL_ITEM = "Honeywell SS451A omnipolar Hall switch"
 HALL = (4.06, 3.05, 1.57)
-HALL_LEADS = (0.25, 1.27)   # its three leads: radius, pitch
-HALL_HOLE_R = 1.8           # the hole its leads go through: 3 x 1.27 pitch
+HALL_LEADS = (0.22, 1.27)   # its three leads: half their 0.43 width, pitch
+# Its three leads leave the package's bottom edge, in the plane of its
+# face, not its underside. Lying face up -- it senses through that face,
+# and the magnet passes overhead -- they point out sideways at mid-
+# thickness, and are bent 90 degrees down at the body's edge. Until
+# 23.0.0 they were drawn straight down out of the middle of its
+# underside, into a Ø3.6 hole under the pocket's centre: the real leads
+# met the pocket's wall 0.2 mm out, and the outer two the solid floor.
+# So a slot along that edge of the pocket, straight down through the
+# base, takes them: they run out of the pocket and down it.
+HALL_SLOT = (4.0, 1.5)      # along the leads' row, and out from the body
+HALL_BEND = 0.4             # how far out of the body each lead turns down
 HOME = dict(r=100.0, phi=85.0, boss_r=5.5, gap=3.0)   # the ring's home sensor
 
 Y_ARC = -60.0           # the arc's plane, off the meridian
@@ -866,7 +876,12 @@ def stator(specimen=SPECIMEN):
     pk.apply_transform(rot(HOME["phi"], [0, 0, 1]))
     pk.apply_translation([hx, hy_, 0])
     tools.append(pk)
-    tools.append(cyl(HALL_HOLE_R, -BASE_T - 1, top, hx, hy_, 32))
+    # the leads' slot, on the pocket's +y side, down through the base
+    y0 = HALL[1] / 2 - 0.3
+    slot = box((-HALL_SLOT[0] / 2, y0, -BASE_T - 1), (HALL_SLOT[0] / 2, y0 + HALL_SLOT[1], top + 1.0))
+    slot.apply_transform(rot(HOME["phi"], [0, 0, 1]))
+    slot.apply_translation([hx, hy_, 0])
+    tools.append(slot)
     # The specimen mount: a plain bore straight through the pedestal and
     # the base, for the printed screw that clamps the rod field plate on
     # top. Neither the platform nor the plate is threaded -- the thread
@@ -1312,13 +1327,16 @@ def ctrl_box(specimen=SPECIMEN):
     tools = [box((-l / 2 + t, -w / 2 + t, t), (l / 2 - t, w / 2 - t, h + 1))]
     b = cut(b, tools)
     b = union([b] + bosses)
-    xs, xd = 10.0, -14.0              # where the two boards sit, along x
+    xd = -14.0                        # where the DRV8833 sits, along x
     cut2 = []
     # the XIAO in a slip-fit cradle against the outer wall. Its USB-C
     # opening takes the plug's overmold (12.35 x 6.5 at most, by the USB-C
     # spec), not just the receptacle: through a 2 mm wall a receptacle-
     # sized hole stopped the overmold with the plug 4.6 of its 6.6 mm in
-    cut2.append(box((xs - XIAO[0] / 2, XIAO_Y - XIAO[1] / 2 - SLIP / 2, t - 0.01),
+    # The cradle is the board's own length, against the wall: until
+    # 23.0.0 it ran 30.5 for a 21 mm board, and pushing the plug in could
+    # slide the board 9.5 mm back from its port's opening.
+    cut2.append(box((l / 2 - t - XIAO[0] - SLIP, XIAO_Y - XIAO[1] / 2 - SLIP / 2, t - 0.01),
                     (l / 2 - t + 0.01, XIAO_Y + XIAO[1] / 2 + SLIP / 2, t + 1.2)))
     uz = t + 1.0 + 3.26 / 2                       # the receptacle's centre
     cut2.append(box((l / 2 - t - 0.5, XIAO_Y - 6.4, uz - 3.5),
@@ -2382,13 +2400,18 @@ def assembly_steps(parts, specimen=SPECIMEN):
     HM[:3, 3] = [hm[0], hm[1], 0]
     HM = (HM @ rot(HOME["phi"], [0, 0, 1])).ravel().tolist()
     htop = L["base_top"] + RING_GAP - HOME["gap"]
-    # face up in its boss; its leads go straight down through the base
+    # face up in its boss; its leads out of its +y edge at mid-thickness,
+    # bent down at HALL_BEND and on down the slot through the base
     home_hall = [dict(kind="box", lo=[-HALL[0] / 2, -HALL[1] / 2, htop - HALL[2]],
                       hi=[HALL[0] / 2, HALL[1] / 2, htop], M=HM)]
-    hz0, hz1 = L["base_bot"] - 3.0, htop - HALL[2]
-    home_hall += [dict(kind="cyl", c=[x, 0.0, (hz0 + hz1) / 2], axis=[0, 0, 1],
-                       r=HALL_LEADS[0], h=hz1 - hz0, M=HM)
-                  for x in (-HALL_LEADS[1], 0.0, HALL_LEADS[1])]
+    lr_, zl = HALL_LEADS[0], htop - HALL[2] / 2
+    yb = HALL[1] / 2 + HALL_BEND
+    hz0 = L["base_bot"] - 3.0
+    for x in (-HALL_LEADS[1], 0.0, HALL_LEADS[1]):
+        home_hall += [dict(kind="box", lo=[x - lr_, HALL[1] / 2, zl - lr_],
+                           hi=[x + lr_, yb + lr_, zl + lr_], M=HM),
+                      dict(kind="box", lo=[x - lr_, yb - lr_, hz0],
+                           hi=[x + lr_, yb + lr_, zl - lr_], M=HM)]
     # its real 2.0, pushed up into its 2.1 pocket short of the top
     ring_mag = [dict(kind="cyl", c=[hm[0], hm[1], L["ring_bot"] + 0.05 + MAGNET[1] / 2],
                      axis=[0, 0, 1], r=MAGNET[0] / 2, h=MAGNET[1])]
@@ -2497,8 +2520,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "reachable.", ["mount_screw"], path=(up, 60.0),
               against=["stator"]),
         _step("home_hall", "Home sensor into its boss",
-              "On the bench: face up, its leads down through the base. "
-              "Its lead is the motor cable's spare: cut the cable 37 cm from "
+              "On the bench: bend its three leads 90 degrees down, as "
+              "close to the body as they will go, away from the printed "
+              "face. Set it in the pocket printed face up, the leads down "
+              "the slot beside it and out under the base. "
+              "Its wiring is the motor cable's spare: cut the cable 37 cm from "
               "its plug and take three of the six wires off the loose 38 cm. "
               "Splice them onto the sensor's leads underneath now and sleeve "
               "each joint -- the splice ends up in the gap under the base, "
