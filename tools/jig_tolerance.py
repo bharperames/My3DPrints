@@ -92,12 +92,12 @@ def fit_rows(parts):
     # not luck; the limit here is a press a bench vise still makes
     vise = (-0.40, 0.0)
     pp = (-0.40, 0.02)                # printed into printed: both yield
-    # The controller's lid only has to go on and lift off. Drawn as `pp`
+    # The controller's lid: snug, pushed home by hand. Drawn as `pp`
     # (0.05 under its bore) its printed pegs would not go into the bosses
     # at all -- this model called that a press a vise makes; the print
-    # said no. So it is held to what it must do: go in, and not fall out
-    # of a box that sits on the bench.
-    lid = (0.0, 0.8)
+    # said no. At 0.5 under they went in and sat loose. So a hand press,
+    # 0.1 at most, up to a fit that still holds it on.
+    lid = (-0.10, 0.6)
     spec = [
         # name in fits(),                            kind,   part,          mate,                      works if, note
         ("Geneva pin in the crank",                  "vhole", "driver",      (3.0, 0.002, 0.008),       vise,    "dowel, m6, pressed in a vise"),

@@ -1307,7 +1307,11 @@ CTRL_INLET_Y = -12.0              # off centre: clear of the lid's boss
 # will not go on is a reprint.
 # 25.0.0: 0.5 under, because the tolerance model still gave 2.25 a 5%
 # chance of a peg that will not go in -- and that model passed the 2.55.
-CTRL_PEG = (2.6, 2.1, 4.0)
+# 27.0.0: Brett's 2.1 pegs went in and sat loose, so the two prints
+# bracket it -- 2.55 would not go in, 2.1 is free -- and 2.25 is between,
+# toward the end that went on (2.3 the model calls tight in 1 print in
+# 125). 30% longer, 5.2, for more grip.
+CTRL_PEG = (2.6, 2.25, 5.2)
 CTRL_BOSSES = ((-CTRL["l"] / 2 + CTRL["wall"] + 2.0, CTRL["w"] / 2 - CTRL["wall"] - 2.0),
                (CTRL["l"] / 2 - CTRL["wall"] - 2.0, -CTRL["w"] / 2 + CTRL["wall"] + 2.0))
 
@@ -1388,9 +1392,13 @@ def ctrl_lid(specimen=SPECIMEN):
 TRAY_T = 1.2            # the plate, on the box's floor
 TRAY_GAP = 0.3          # all round inside the box's walls and bosses
 TRAY_FIT = 0.25         # each board's window, per side
-TRAY_RAISE = 0.4        # labels, outlines and symbols, stood up off it
-TRAY_LINE = 0.6         # the stroke of an outline or a symbol
-TRAY_CAP = 2.8          # label cap height: the gazebo's 3.4 printed clean
+# The first print (26.0.0) drew its labels in bold Arial 2.8 tall, 0.4
+# proud, with 0.6 strokes: one nozzle line and a smear, and the letters
+# came out as blobs. Now every mark is straight strokes 0.8 wide -- two
+# lines of the 0.4 nozzle -- in a block letter of strokes, 0.8 proud.
+TRAY_RAISE = 0.8        # labels, outlines and symbols, stood up off it
+TRAY_LINE = 0.8         # every stroke: an outline, a symbol, a letter
+TRAY_CAP = 3.6          # a block letter's height
 TROUGH = (4.0, 1.2, 3.0)  # a joint's channel: inside width, wall, height
 DRV_RIM = (1.0, 1.2)    # the wall round the DRV8833: thickness, height
 DRV_SLOT = 2.0          # the slot under each of its rows of holes
@@ -1435,10 +1443,11 @@ C1_STANDOFF = 3.0                # its legs, so a wire passes under it
 # Where things sit on the tray (box frame, mm)
 TROUGHS = {"GND": ((14.0, -14.0), "x", 8.5),
            "3V3": ((1.0, -13.15), "y", 8.5),
-           "D5": ((1.0, 4.95), "y", 8.5),
+           "D5": ((1.0, 6.2), "y", 6.0),
            "M1": ((-3.0, 14.4), "x", 6.4)}
-R1_BOX = ((-20.5, 11.7), (-6.8, 17.4))     # its outline; the body along x
-R2_BOX = ((-3.0, -8.3), (5.0, 0.1))        # along y, between 3V3 and D5
+R1_BOX = ((-24.6, 11.7), (-6.8, 17.4))     # its outline; the body along x
+R1_X = -13.95                              # the body's centre, in the outline
+R2_BOX = ((-3.4, -8.3), (5.0, 2.6))        # along y, between 3V3 and D5
 C1_MARK = (-24.0, -7.6)                    # its symbol, beside where it stands
 INLET_X = -CTRL["l"] / 2 + 4.0             # where the cables' wires fan out
 # where each cable's wires rise from it, clear of the marks beside them
@@ -1472,7 +1481,7 @@ WIRES = (
     ("W8", "green", "GND", ("lead", 1), ("joint", "GND", -1, 0.9), "j_gnd", 8.1,
      ((-26.6, -16.2), (12.4, -16.2))),
     ("W9", "white", "home", ("lead", 2), ("joint", "D5", -1, 0.9), "j_home", 10.0,
-     ((-26.6, 3.35),)),
+     ((-26.6, 4.6),)),
     ("W10", "red", "5V", ("xiao", "5V"), ("drv", "power", "VIN", 1), "jumpers", 12.0,
      ((26.88, -11.6), (-15.38, -11.6))),
     ("W11", "black", "GND", ("xiao", "GND"), ("joint", "GND", 1, 0.0), "j_gnd", 7.0,
@@ -1482,7 +1491,7 @@ WIRES = (
     ("W13", "blue", "3V3", ("joint", "3V3", 1, 0.9), ("xiao", "3V3"), "j_home", 9.2,
      ((21.8, -11.55),)),
     ("W14", "white", "home", ("joint", "D5", 1, 0.9), ("xiao", "D5"), "j_home", 8.0,
-     ((14.18, 6.55),)),
+     ((14.18, 7.8),)),
     ("W15", "yellow", "AIN1", ("xiao", "D0"), ("drv", "logic", "AIN1"), "jumpers", 12.8,
      ((26.88, 13.2), (-8.92, 13.2))),
     ("W16", "yellow", "AIN2", ("xiao", "D1"), ("drv", "logic", "AIN2"), "jumpers", 13.7,
@@ -1532,11 +1541,53 @@ def _joint_z():
     return _plate_top() + TRAY_RAISE + 1.1
 
 
-def _glyph(text, cap, at, angle=0.0):
-    """A label's outline, its cap `cap`, centred on `at`."""
-    import gen_dice_cage as D
-    g = D._raw_glyph(text)
-    g = affinity.scale(g, cap, cap, origin=(0, 0)).buffer(0.06, join_style=2)
+# A block letter as strokes in a unit cell, x 0..1 across, y 0..1 up
+# (the descender of a mu below 0). Three rows -- foot, middle, top -- so
+# the gaps between strokes stay a full stroke wide or more at TRAY_CAP.
+_BLOCK = {
+    "0": [[(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)]],
+    "1": [[(0.2, 0.8), (0.55, 1), (0.55, 0)]],
+    "3": [[(0, 1), (1, 1), (1, 0), (0, 0)], [(0.25, 0.5), (1, 0.5)]],
+    "4": [[(0, 1), (0, 0.45), (1, 0.45)], [(0.75, 1), (0.75, 0)]],
+    "5": [[(1, 1), (0, 1), (0, 0.5), (1, 0.5), (1, 0), (0, 0)]],
+    "7": [[(0, 1), (1, 1), (0.45, 0)]],
+    "D": [[(0, 0), (0, 1), (0.6, 1), (1, 0.65), (1, 0.35), (0.6, 0), (0, 0)]],
+    "G": [[(1, 1), (0, 1), (0, 0), (1, 0), (1, 0.5), (0.45, 0.5)]],
+    "N": [[(0, 0), (0, 1), (1, 0), (1, 1)]],
+    "V": [[(0, 1), (0.5, 0), (1, 1)]],
+    "M": [[(0, 0), (0, 1), (0.5, 0.45), (1, 1), (1, 0)]],
+    "K": [[(0, 0), (0, 1)], [(1, 1), (0, 0.4)], [(0.35, 0.6), (1, 0)]],
+    "F": [[(1, 1), (0, 1), (0, 0)], [(0, 0.5), (0.75, 0.5)]],
+    "\u00b5": [[(0, -0.3), (0, 0.7)], [(0, 0), (1, 0), (1, 0.7)]],
+    "\u03a9": [[(0, 0), (0.3, 0), (0.3, 0.25), (0, 0.5), (0, 1), (1, 1),
+                 (1, 0.5), (0.7, 0.25), (0.7, 0), (1, 0)]],
+    "+": [[(0, 0.5), (1, 0.5)], [(0.5, 0.05), (0.5, 0.95)]],
+}
+_BLOCK_W = {".": 0.25, "\u03a9": 0.85, "1": 0.45}
+
+
+def _glyph(text, cap, at, angle=0.0, w=TRAY_LINE):
+    """A label in block letters, `cap` tall, centred on `at`."""
+    h = cap - w                       # stroke centres, so the ink is `cap`
+    out, x = [], 0.0
+    for ch in text:
+        cw = _BLOCK_W.get(ch, 0.62) * cap
+        if ch == ".":
+            out.append(Polygon([(x, 0), (x + w, 0), (x + w, w), (x, w)]))
+        else:
+            sx = cw - w
+            strokes = unary_union(
+                [LineString([(x + w / 2 + u * sx, w / 2 + v * h) for u, v in line])
+                 .buffer(w / 2, cap_style=3, join_style=2, mitre_limit=1.5)
+                 for line in _BLOCK[ch]])
+            # trimmed to its own cell: a square end on a diagonal pokes out
+            lo = -0.3 * h if ch == "\u00b5" else 0.0
+            out.append(strokes.intersection(
+                Polygon([(x, lo), (x + cw, lo), (x + cw, cap), (x, cap)])))
+        x += cw + 0.22 * cap
+    g = unary_union(out)
+    x0, y0, x1, y1 = g.bounds
+    g = affinity.translate(g, -(x0 + x1) / 2, -(y0 + y1) / 2)
     g = affinity.rotate(g, angle, origin=(0, 0))
     return affinity.translate(g, at[0], at[1])
 
@@ -1572,8 +1623,8 @@ def _cap_sym(c, plus_dir):
            for a in np.linspace(-1.2, 1.2, 13)]
     parts.append(_stroke(arc))
     p = c + u * (gap + 0.9) + v * 1.9
-    parts += [_stroke([p - u * 0.8, p + u * 0.8], 0.5),
-              _stroke([p - v * 0.8, p + v * 0.8], 0.5)]
+    parts += [_stroke([p - u * 1.0, p + u * 1.0]),
+              _stroke([p - v * 1.0, p + v * 1.0])]
     return unary_union(parts)
 
 
@@ -1630,18 +1681,19 @@ def tray_layout():
     val = affinity.translate(val, ax1 - pad - val.bounds[2], 0.0)
     sl = val.bounds[0] - 0.5 - (ax0 + pad)
     assert sl >= 3.0, f"no room for R1's symbol: {sl:.2f}"
-    marks.append(("R1 symbol", _resistor_sym((ax0 + pad + sl / 2, cy), sl, peaks=2)))
+    marks.append(("R1 symbol", _resistor_sym((ax0 + pad + sl / 2, cy), sl, amp=1.3,
+                                             peaks=2)))
     marks.append(("R1 value", val))
     # R2, the home sensor's 10 kohm pull-up, along y
     (bx0, by0), (bx1, by1) = R2_BOX
     marks.append(("R2 outline", _outline(*R2_BOX)))
     ry = (by0 + by1) / 2
-    marks.append(("R2 symbol", _resistor_sym((bx0 + 1.9, ry), 6.4, 90.0, 0.8)))
-    marks.append(("R2 value", _glyph("10k", TRAY_CAP, (bx1 - 2.3, ry), 90.0)))
+    marks.append(("R2 symbol", _resistor_sym((bx0 + 2.2, ry), 6.4, 90.0, 0.8)))
+    marks.append(("R2 value", _glyph("10K", TRAY_CAP, (bx1 - 2.7, ry), 90.0)))
     # C1 stands on the DRV8833, + to VIN: its symbol and value beside it
     vin, gnd = drv_hole("power", "VIN"), drv_hole("power", "GND")
     marks.append(("C1 symbol", _cap_sym((C1_MARK[0], (vin[1] + gnd[1]) / 2), (0.0, 1.0))))
-    marks.append(("C1 value", _glyph("100\u00b5F", TRAY_CAP, (-27.6, -0.8), 90.0)))
+    marks.append(("C1 value", _glyph("100\u00b5F", TRAY_CAP, (-27.3, 2.2), 90.0)))
     return dict(plate=plate, rim=rim, walls=unary_union(walls), marks=marks)
 
 
@@ -1752,7 +1804,7 @@ def _bands(c, axis, r, length, colors):
 def _r1_geom():
     (ax0, ay0), (ax1, ay1) = R1_BOX
     zc = _plate_top() + TRAY_RAISE + 0.05 + R1_DIM[1] / 2
-    c = np.array([(ax0 + ax1) / 2 - 0.3, (ay0 + ay1) / 2, zc])
+    c = np.array([R1_X, (ay0 + ay1) / 2, zc])
     return c
 
 
