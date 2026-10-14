@@ -378,10 +378,10 @@ PARTS = [
        "M5 thumbscrew; a receiver with 40 mm of fore/aft travel carrying "
        "the phone's clamp on its 1/4-20; the Geneva driver, the block that "
        "holds its gearmotor and the block's cap; a controller box and lid; "
-       "three pucks under its feet; three bearing sleeves; and the specimen mount \u2014 a \u00d86 screw with both a "
+       "three pucks under its feet; three bearing sleeves; three V wheels; and the specimen mount \u2014 a \u00d86 screw with both a "
        "wing nut and a hex nut, all printed in the same cosine thread "
        "the Knot uses. "
-       "Hardware: three Delrin V wheels (two 688-2RS in each) on M3 axles, "
+       "Hardware: two 688-2RS pressed into each printed V wheel, on M3 axles; the wheels "
        "seated on both faces of a V groove in the ring, so it has no axial "
        "play to rock in; each riding a printed "
        "sleeve bored 1.5 mm off-center: turned out, every bearing "
@@ -548,7 +548,9 @@ PARTS = [
        # still clears the lock in all but 2 builds in 10,000.
        # 21.0.0: the saddle's square-nut trap opens up-arc. Its old mouth
        # was sealed by the arm's wedge, so a 20.0.0 saddle has no way in.
-       version="21.0.0",
+       # 22.0.0: the V wheels are printed, three new bodies, two 688s
+       # pressed into each. The bought POM wheels' 625s would not come out.
+       version="22.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

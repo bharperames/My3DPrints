@@ -197,7 +197,23 @@ RING_RO, RING_RI, RING_T = 121.0, 90.0, 18.0
 # groove stays 45: 2.7 degrees steeper, the wheel bears at the edges of its
 # flat, and the race coupon seated it with ~1 mm under the flat. Drawn to his.
 WHEEL = dict(r=11.95, w=10.2, tip=3.1, side_r=9.8)     # tip: half the flat
-WHEEL_ITEM = "Solid V wheel, Delrin (OpenBuilds type: 23.9 OD, 10.23 wide)"
+# Printed, from 22.0.0. The POM wheels came with two 625s each (5 mm bore),
+# pressed in, and the printed sleeves are 7.95: the plan was to swap the
+# 625s for 688s, and Brett's 625s would not come out by hand. So the
+# wheel is printed to the same profile -- the race, towers and sleeves
+# all stay as printed -- with a Ø16 bore the two 688s press into, one
+# from each face. They stack 10.0 in its 10.2, so each sits 0.1 under its
+# face.
+#
+# A plain bore, drawn Ø16.15 so it prints near Ø16: snug, pushed in by
+# hand or in a vise. Not crush ribs -- Brett has had PETG ribs that did
+# not crush and stopped a part going in at all. The fit is biased loose
+# because loose has a remedy and tight does not: a bearing that turns in
+# its bore gets a drop of CA or J-B Weld on its outer ring. Each mouth is
+# chamfered so the bearing starts square.
+WHEEL_BORE_R = 8.075
+WHEEL_MOUTH = 0.5       # 45 degree chamfer at each face of the bore
+WHEELS = ("wheel_a", "wheel_b", "wheel_c")
 WHEEL_BRG_ITEM = "688-2RS bearing (8 x 16 x 5), two in each V wheel"
 WHEEL_E = 1.4           # how far the V's tip enters the groove
 RACE_FLANK = WHEEL_E    # (named for what it was: the groove's depth at the V)
@@ -1535,6 +1551,28 @@ def wheel_profile():
     return [(0, -hw), (sr, -hw), (r, -tip), (r, tip), (sr, hw), (0, hw)]
 
 
+def wheel():
+    """A printed V wheel: the profile the ring's groove was cut for, a
+    plain bore two 688s press into, one from each face, and a chamfer at
+    each mouth -- all one revolved section. Prints flat on a face; the
+    lower flank is a 47 degree overhang."""
+    r, hw, tip, sr = WHEEL["r"], WHEEL["w"] / 2.0, WHEEL["tip"], WHEEL["side_r"]
+    rb, m = WHEEL_BORE_R, WHEEL_MOUTH
+    return rev([(rb + m, -hw), (sr, -hw), (r, -tip), (r, tip), (sr, hw),
+                (rb + m, hw), (rb, hw - m), (rb, -hw + m)], sections=360)
+
+
+def wheels_in_place(specimen=SPECIMEN, retracted=False):
+    """The wheels where their sleeves put them: on the race, or turned out."""
+    L = levels(specimen)
+    out = {}
+    for n, (x, y) in zip(WHEELS, bearing_centres(retracted)):
+        w = wheel()
+        w.apply_translation([x, y, L["brg_z"]])
+        out[n] = w
+    return out
+
+
 def rotor(specimen=SPECIMEN):
     L = levels(specimen)
     zb, zt, zp = L["ring_bot"], L["ring_top"], L["pad_top"]
@@ -1738,15 +1776,13 @@ def bearing_proxies(specimen=SPECIMEN, retracted=False):
     return out
 
 
-def _wheel_rings(c, z):
-    """A V wheel as stepped rings for the page and the drop-in sweep: they
-    circumscribe the true profile, so a sweep that clears them clears it."""
-    r, tip, sr = WHEEL["r"], WHEEL["tip"], WHEEL["side_r"]
-    zv = WHEEL["w"] / 2.0                   # the flanks run out at the faces
-    bands = [(WHEEL["w"] / 2.0, sr), (zv, sr + (r - sr) * 0.45),
-             (tip + (r - sr) * 0.55, r - (r - sr) * 0.25), (tip + 0.3, r)]
-    return [dict(kind="ring", c=[float(c[0]), float(c[1]), z], axis=[0, 0, 1],
-                 ro=float(ro), ri=BRG_BORE / 2.0, h=float(2 * hz)) for hz, ro in bands]
+def _wheel_688s(c, z):
+    """The two 688s in a wheel's Ø16 bore, one from each face. They sit
+    on the tower's boss, where the sleeve's foot does, and stack to the
+    sleeve's 10.0 under its flange: 0.1 below the wheel's middle."""
+    z0 = z - BRG_W / 2.0
+    return [dict(kind="ring", c=[float(c[0]), float(c[1]), z0 + dz], axis=[0, 0, 1],
+                 ro=8.0, ri=BRG_BORE / 2.0, h=5.0) for dz in (2.5, 7.5)]
 
 
 def mount_thread():
@@ -1928,6 +1964,7 @@ def assemble(specimen=SPECIMEN):
              "drive_cap": drive_cap(specimen), "ctrl_box": ctrl_box(specimen),
              "ctrl_lid": ctrl_lid(specimen)}
     parts.update(sleeves_in_place(specimen))
+    parts.update(wheels_in_place(specimen))
     parts["driver_shim"] = driver_shim(specimen)
     parts["rotor"] = rotor(specimen)
     parts["arc"] = arc()
@@ -1992,7 +2029,7 @@ def layout(parts, gap=6.0, pitch=300.0):
     plates = [["stator"], ["rotor"],
               ["arc", "saddle", "shoe", "receiver", *PUCKS,
                "driver", "drive_block", "drive_cap", "ctrl_box", "ctrl_lid",
-               "sleeve_a", "sleeve_b", "sleeve_c"]]
+               "sleeve_a", "sleeve_b", "sleeve_c", *WHEELS]]
     # Anything assemble() makes that is not named above joins the last
     # plate rather than being dropped. These lists were written when
     # there were ten bodies; adding the mount's screw and wing nut to
@@ -2274,11 +2311,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
     axles = [[T[0], T[1], top_of[n]] for n, T in zip(SLEEVES, towers)]
     bars = [[x, Y_ARC, LEG_BOTTOM + BAR_T - CBORE[1]] for x in BOLTS_X]
 
-    def bearings(retracted):
+    def bearings(retracted, rings):
         # each ring says which wheel it is: the page turns a wheel's
         # rings together, about that wheel's own eccentric
         return [dict(q, unit=k) for k, c in enumerate(bearing_centres(retracted))
-                for q in _wheel_rings(c, L["brg_z"])]
+                for q in rings(c, L["brg_z"])]
     # how far each eccentric turns between standing out and standing in
     turn = []
     for n, T, Bo, Bi in zip(SLEEVES, towers, bearing_centres(True),
@@ -2288,6 +2325,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
         turn.append(dict(body=n, axis=[float(T[0]), float(T[1])],
                          deg=round(float(np.degrees(wrapdeg(a1 - a0))), 4),
                          bearing=n))
+    # the wheels turn with their sleeves, after them so a 688's `unit`
+    # still finds its own sleeve's turn
+    turn += [dict(t, body=w) for t, w in zip(turn, WHEELS)]
     o, u, _ = _driver_frame()
     pin_xy = o - u * GENEVA_A
     pin = [dict(kind="cyl", c=[pin_xy[0], pin_xy[1],
@@ -2444,13 +2484,20 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["stator"], path=(down, 30.0),
               carry=["stator_inserts", "pucks", "feet", "mount_screw",
                      "home_hall"]),
-        _step("bearings", "Sleeves and bearings onto the towers",
-              "A V wheel on each sleeve, its two 688s pressed into it in "
-              "place of the kit's 625s. All three sleeves are "
-              "eccentric: turn each so its bearing stands back from where "
-              "the ring will be.", list(SLEEVES),
-              [(WHEEL_ITEM, 3, bearings(True)), (WHEEL_BRG_ITEM, 6, [])], (down, 25.0),
-              alt="retracted"),
+        _step("bearings", "Two 688s into each printed wheel, onto the towers",
+              "On the bench, in a vise or under a flat block: a 688 pressed "
+              "into each face of a wheel, pushing on the bearing's outer "
+              "ring only, until it sits just under the face. The ribs in "
+              "the bore take the press. Then sit each wheel on a tower.",
+              list(WHEELS),
+              [(WHEEL_BRG_ITEM, 6, bearings(True, _wheel_688s))],
+              (down, 25.0), alt="retracted"),
+        _step("sleeves", "Sleeves down through the wheels",
+              "Each printed sleeve down through its wheel's two 688s, flange "
+              "on top. The bolt hole is off center in all three: turn each "
+              "sleeve until its wheel sits as far out as it goes, so the "
+              "ring can drop in between them.", list(SLEEVES),
+              path=(down, 25.0), alt="retracted"),
         _step("axles", "Axle bolts, finger tight",
               "Down through each sleeve into its tower's insert.",
               hw=[("M3x" + str(length["bearing axle to tower"]), 3,
@@ -2687,7 +2734,8 @@ def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
     fouls, and whether the steps install every printed body exactly once
     and add up to the BOM."""
     steps = assembly_steps(parts, specimen)
-    alts = {"retracted": sleeves_in_place(specimen, retracted=True)}
+    alts = {"retracted": {**sleeves_in_place(specimen, retracted=True),
+                          **wheels_in_place(specimen, retracted=True)}}
     installed, bench, out = {}, {}, []
     for st in steps:
         at = None if st["at"] is None else np.asarray(st["at"]).reshape(4, 4)
@@ -2777,12 +2825,12 @@ def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
                 fouls.append((0.0, hit))
         if st["turn"]:
             # the eccentrics come in: sleeves and bearings to where they run
-            for n in SLEEVES:
+            # the 688s go with their wheels: inside them, never a fit's
+            # question for what comes after
+            for n in SLEEVES + WHEELS:
                 installed[n] = parts[n]
-            for k in [k for k in installed if k.startswith(WHEEL_ITEM + "#")]:
+            for k in [k for k in installed if k.startswith(WHEEL_BRG_ITEM + "#")]:
                 del installed[k]
-            for i, b in enumerate(bearing_proxies(specimen)):
-                installed[f"{WHEEL_ITEM}#{i}"] = b
         if st["check"] == "race":
             r = race_contact(parts["rotor"], specimen)
             if not all(x["gap"] < 0.05 and x["pressed_collides"] for x in r):
@@ -3448,7 +3496,7 @@ def inserts():
            SETSCREW_ITEM: 1, NUT_ITEM: 1, WASHER_ITEM: 3,
            "Pololu #2130 DRV8833 dual motor driver carrier": 1,
            "USB-C cable and 5 V 2 A USB power adapter": 1,
-           WHEEL_ITEM: 3, WHEEL_BRG_ITEM: 6, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
+           WHEEL_BRG_ITEM: 6, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
            QTR_ITEM: 1,
            f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)": 1,
            "phone spring clamp, 1/4-20 socket": 1, PLATE_ITEM: 1}

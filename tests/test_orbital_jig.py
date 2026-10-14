@@ -33,8 +33,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_twenty_one_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 21)
+    def test_twenty_four_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 24)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -229,9 +229,23 @@ class TestVWheels(unittest.TestCase):
 
     def test_the_wheel_takes_688s_on_the_same_sleeve(self):
         bom = J.inserts()
-        self.assertEqual(bom[J.WHEEL_ITEM], 3)
         self.assertEqual(bom[J.WHEEL_BRG_ITEM], 6)
         self.assertEqual(J.BRG_BORE, 8.0)
+
+    def test_the_printed_wheel_bore_is_drawn_for_a_snug_688(self):
+        """Measured off the built wheel, at mid-depth of each bearing: a
+        plain bore a little over the 688's Ø16, to print near it."""
+        w = J.wheel()
+        for z in (-2.6, 2.6):
+            sec = w.section(plane_origin=[0, 0, z], plane_normal=[0, 0, 1])
+            loops = [np.asarray(L)[:, :2] for L in sec.discrete]
+            inner = min(loops, key=lambda L: np.abs(L).max())
+            r = np.hypot(inner[:, 0], inner[:, 1])
+            self.assertGreater(r.min(), 8.0)
+            self.assertLess(r.max(), 8.1)
+        # the profile the race was cut for is unchanged
+        self.assertAlmostEqual(w.bounds[1][0], J.WHEEL["r"], delta=0.01)
+        self.assertAlmostEqual(w.extents[2], J.WHEEL["w"], delta=0.01)
 
 
 class TestCornerFeet(unittest.TestCase):
