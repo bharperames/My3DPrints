@@ -1222,7 +1222,12 @@ def motor_prims(specimen=SPECIMEN):
     M = (M @ rot(GENEVA_PHI, [0, 0, 1])).ravel().tolist()
     w, d = MOTOR["w"] / 2, MOTOR["d"] / 2
     e0 = Z["face"] + MOTOR["gearbox"] + MOTOR["body"]
-    return [dict(kind="box", lo=[-d, -w, Z["face"]], hi=[d, w, e0], M=M),
+    g1 = Z["face"] + MOTOR["gearbox"]
+    # the gearbox's plates are a 10 x 12 rectangle; the motor's can is
+    # round, Ø12, with two flats 10 apart
+    return [dict(kind="box", lo=[-d, -w, Z["face"]], hi=[d, w, g1], M=M),
+            dict(kind="cyl", c=[0, 0, (g1 + e0) / 2], axis=[0, 0, 1], r=w,
+                 h=e0 - g1, flats=d, M=M),
             dict(kind="box", lo=[-MOTOR["enc_d"] / 2, -MOTOR["enc_w"] / 2, e0],
                  hi=[MOTOR["enc_d"] / 2, MOTOR["enc_w"] / 2, Z["motor_top"]], M=M),
             dict(kind="cyl", c=[0, 0, Z["face"] - MOTOR["bush_h"] / 2],
@@ -2217,6 +2222,11 @@ def _prim_mesh(p):
             keep = box((-p["r"] - 1, -p["r"] - 1, -p["h"]),
                        (p["r"] + 1, p["flat"] - p["r"], p["h"]))
             m = trimesh.boolean.intersection([m, keep], engine="manifold")
+        if p.get("flats"):
+            # a motor can: two flats, `flats` either side of the axis on x
+            keep = box((-p["flats"], -p["r"] - 1, -p["h"]),
+                       (p["flats"], p["r"] + 1, p["h"]))
+            m = trimesh.boolean.intersection([m, keep], engine="manifold")
         if p.get("corner") is not None:
             # a hex head: a corner, which trimesh puts on +x, turned to
             # `corner` so the flats line up with the pocket's
@@ -2338,6 +2348,16 @@ def assembly_steps(parts, specimen=SPECIMEN):
     DR = np.eye(4)
     DR[:3, 3] = [o[0], o[1], 0]
     DR = (DR @ rot(GENEVA_PHI, [0, 0, 1])).ravel().tolist()
+    # the set screw on the shaft's flat, through the nut in its slot: in
+    # the driver's frame, the flat facing +y
+    zm = (Zd["crank_lo"] + Zd["crank_hi"]) / 2
+    yf = MOTOR["shaft_flat"] - MOTOR["shaft_d"] / 2
+    yn = yf + DBORE_CLR / 2 + 1.8
+    setscrew = [dict(kind="cyl", c=[0.0, yf + 0.05 + 4.0, zm], axis=[0, 1, 0], r=1.5,
+                     h=8.0, M=DR)]
+    crank_nut = [dict(kind="cyl", c=[0.0, yn + 0.15 + NUT_T / 2, zm], axis=[0, 1, 0],
+                      r=NUT_AF / np.sqrt(3), h=NUT_T, sides=6, corner=[1.0, 0, 0],
+                      M=DR)]
     lr, lp = HALL_LEADS
     post_screw = [dict(q, M=DR) for q in _bolt_prims(
         [POST_R - GENEVA_C, SCREW_Y, Zd["face"]], length["drive post to base"],
@@ -2350,8 +2370,10 @@ def assembly_steps(parts, specimen=SPECIMEN):
     CR[:3, 3] = [co[0], co[1], board]
     CR = (CR @ rot(CTRL["phi"], [0, 0, 1])).ravel().tolist()
     t_ = CTRL["wall"]
-    xiao = [dict(kind="box", lo=[10.0 - XIAO[0] / 2, XIAO_Y - XIAO[1] / 2, t_],
-                 hi=[CTRL["l"] / 2 - t_ - 0.2, XIAO_Y + XIAO[1] / 2, t_ + XIAO[2]], M=CR)]
+    # its real 21 mm, pushed out against the wall its port goes through
+    xe = CTRL["l"] / 2 - t_ - 0.2
+    xiao = [dict(kind="box", lo=[xe - XIAO[0], XIAO_Y - XIAO[1] / 2, t_],
+                 hi=[xe, XIAO_Y + XIAO[1] / 2, t_ + XIAO[2]], M=CR)]
 
     drv = [dict(kind="box", lo=[-14.0 - DRV8833[0] / 2, -DRV8833[1] / 2, t_],
                 hi=[-14.0 + DRV8833[0] / 2, DRV8833[1] / 2, t_ + DRV8833[2]], M=CR)]
@@ -2367,8 +2389,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
     home_hall += [dict(kind="cyl", c=[x, 0.0, (hz0 + hz1) / 2], axis=[0, 0, 1],
                        r=HALL_LEADS[0], h=hz1 - hz0, M=HM)
                   for x in (-HALL_LEADS[1], 0.0, HALL_LEADS[1])]
-    ring_mag = [dict(kind="cyl", c=[hm[0], hm[1], L["ring_bot"] + MAGNET[1] / 2],
-                     axis=[0, 0, 1], r=MAGNET[0] / 2, h=MAGNET[1] - 0.1)]
+    # its real 2.0, pushed up into its 2.1 pocket short of the top
+    ring_mag = [dict(kind="cyl", c=[hm[0], hm[1], L["ring_bot"] + 0.05 + MAGNET[1] / 2],
+                     axis=[0, 0, 1], r=MAGNET[0] / 2, h=MAGNET[1])]
     # heat-set inserts, drawn a hair inside their bores so the sweep sees
     # them seat; in life they melt in a little proud of that
     def insert(c, ins, axis=(0, 0, 1), M=None):
@@ -2394,9 +2417,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
 
     # the USB-C plug in the XIAO's port, its cord running off the board
     pz = t_ + 1.0 + 3.26 / 2
-    usb = [dict(kind="box", lo=[CTRL["l"] / 2 - t_ + 0.5, XIAO_Y - 4.1, pz - 1.3],
-                hi=[CTRL["l"] / 2 + 12.0, XIAO_Y + 4.1, pz + 1.3], M=CR),
-           dict(kind="cyl", c=[CTRL["l"] / 2 + 42.0, XIAO_Y, pz], axis=[1, 0, 0],
+    # what shows is the overmold, 12 x 6.4 and 20 long, from the port's
+    # mouth out through the wall; the metal shell is inside the receptacle
+    usb = [dict(kind="box", lo=[CTRL["l"] / 2 - t_, XIAO_Y - 6.0, pz - 3.2],
+                hi=[CTRL["l"] / 2 - t_ + 20.0, XIAO_Y + 6.0, pz + 3.2], M=CR),
+           dict(kind="cyl", c=[CTRL["l"] / 2 - t_ + 50.0, XIAO_Y, pz], axis=[1, 0, 0],
                 r=2.0, h=60.0, M=CR)]
     usb_dir = (np.asarray(CR).reshape(4, 4)[:3, :3] @ np.array([-1.0, 0, 0])).tolist()
     recv_ins = _moved([dict(kind="ring", axis=[0, 0, 1], ro=ins3[0] - 0.05,
@@ -2413,9 +2438,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
                        hi=[CLAMP_R + 4.0, 4.0, zn + 2.0], M=M_ARC.ravel().tolist(),
                        hole=dict(c=[CLAMP_R, 0.0, zn], axis=[0, 0, 1],
                                  r=2.55, h=6.0))], E)
-    thumb = _moved(_bolt_prims(_arc_to_world(CLAMP_R, 0.0, SHOE_H[0]), THUMB_LEN,
-                               r=2.5, head_r=7.0, head_h=6.0,
-                               axis=(0, -1, 0)), E)
+    # McMaster 92595A314's STEP: a Ø10.9 hub 13 tall, wings 26 across
+    seat = _arc_to_world(CLAMP_R, 0.0, SHOE_H[0])
+    thumb = _bolt_prims(seat, THUMB_LEN, r=2.5, head_r=5.45, head_h=13.0,
+                        axis=(0, -1, 0))
+    thumb.append(dict(kind="box", lo=[seat[0] - 1.25, seat[1] - 13.0, seat[2] - 13.0],
+                      hi=[seat[0] + 1.25, seat[1] - 1.5, seat[2] + 13.0]))
+    thumb = _moved(thumb, E)
     v0 = PLATFORM_V[0]
     recv_screws = _moved([p for y in (hy - CHANNEL[3], hy + CHANNEL[3])
                           for p in _bolt_prims(_arc_to_world(RECV_U, v0, y),
@@ -2555,7 +2584,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "through the crank's side, and pull the shim out. The pin "
               "goes with it.",
               ["driver"], path=(up, 15.0), against=["drive_block", "motor"],
-              carry=["pin"], hw=[(SETSCREW_ITEM, 1, []), (NUT_ITEM, 1, [])]),
+              carry=["pin"], hw=[(SETSCREW_ITEM, 1, setscrew), (NUT_ITEM, 1, crank_nut)]),
         _step("drive", "The drive down onto the base",
               "As one unit: the cable's loose end through the base's hole, "
               "the lock and pin down through a seat in the lip, the post's "

@@ -404,6 +404,18 @@ function primGeom(p) {
     const sh = new THREE.Shape(); sh.absarc(0, 0, p.ro, 0, Math.PI * 2, false);
     const hole = new THREE.Path(); hole.absarc(0, 0, p.ri, 0, Math.PI * 2, true); sh.holes.push(hole);
     g = new THREE.ExtrudeGeometry(sh, { depth: p.h, bevelEnabled: false, curveSegments: 48 }).translate(0, 0, -p.h / 2);
+  } else if (p.flat || p.flats) {
+    // a D-shaft's flat (+y), or a motor can's two (on x): the circle with
+    // its points pushed in onto the flats
+    const sh = new THREE.Shape();
+    for (let i = 0; i <= 96; i++) {
+      const a = i / 96 * 2 * Math.PI;
+      let x = p.r * Math.cos(a), y = p.r * Math.sin(a);
+      if (p.flat) y = Math.min(y, p.flat - p.r);
+      if (p.flats) x = Math.max(-p.flats, Math.min(p.flats, x));
+      i ? sh.lineTo(x, y) : sh.moveTo(x, y);
+    }
+    g = new THREE.ExtrudeGeometry(sh, { depth: p.h, bevelEnabled: false }).translate(0, 0, -p.h / 2);
   } else {
     // along z, a corner on +x: a hex head's corners are placed below
     g = new THREE.CylinderGeometry(p.r, p.r, p.h, p.sides || 32, 1, false, Math.PI / 2).rotateX(Math.PI / 2);
@@ -1262,10 +1274,10 @@ window.__assembly = {
   run() { playing = true; setPlay(); },
   // world-space bounds of a body as the page has posed it
   bounds(n) { const m = body[n]; m.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(m); return { min: b.min.toArray(), max: b.max.toArray(), visible: m.visible }; },
+    const b = new THREE.Box3().setFromObject(m, true); return { min: b.min.toArray(), max: b.max.toArray(), visible: m.visible }; },
   hwVisible(i) { return hwOf[i].map(m => m.visible); },
   hwBounds(i) { return hwOf[i].map(m => { m.updateMatrixWorld(true);
-    const b = new THREE.Box3().setFromObject(m); return [b.min.toArray(), b.max.toArray()]; }); },
+    const b = new THREE.Box3().setFromObject(m, true); return [b.min.toArray(), b.max.toArray()]; }); },
   setMode(m) { mode = m; poseAll(k, Math.min(1, f)); },
   get camBusy() { return !!cam; },
   get camState() { return camera.position.distanceTo(controls.target); },
