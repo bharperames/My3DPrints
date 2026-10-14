@@ -33,8 +33,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_twenty_four_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 24)
+    def test_twenty_five_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 25)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):

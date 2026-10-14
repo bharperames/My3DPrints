@@ -457,7 +457,8 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
     return m;
   }
   const list = MATS[st.id];
-  const kind = /insert/i.test(h.item) ? 'brass'                // heat-set inserts
+  const kind = p.mat ? p.mat                                    // it says what it is
+    : /insert/i.test(h.item) ? 'brass'                          // heat-set inserts
     : list ? (list[j] || list[list.length - 1])
     : p.kind === 'cyl' && j % 2 === 0 ? 'dark' : 'steel';     // bolt heads, shanks
   // an insert's knurl would draw a line on every ridge: only its steps
@@ -815,6 +816,7 @@ const PART = {
   driver: ['Geneva driver', 'on the gearmotor\u2019s D-shaft; one turn, one 10° stop'],
   drive_block: ['Drive block', 'holds the gearmotor; its cable runs down the post'], drive_cap: ['Drive cap', 'covers the wiring bay'],
   ctrl_box: ['Controller box', 'XIAO ESP32S3 and DRV8833'], ctrl_lid: ['Controller lid', ''],
+  ctrl_tray: ['Controller tray', 'both boards and every joint, each place labeled'],
   sleeve_a: ['Eccentric sleeve', 'turned to bring its V wheel into the groove'], sleeve_b: ['Eccentric sleeve', 'turned to bring its V wheel into the groove'],
   sleeve_c: ['Eccentric sleeve', 'turned to bring its V wheel into the groove'], wheel_a: ['V wheel', 'printed; two 688s pressed into its ribbed bore'],
   wheel_b: ['V wheel', 'printed; two 688s pressed into its ribbed bore'], wheel_c: ['V wheel', 'printed; two 688s pressed into its ribbed bore'], mount_screw: ['Mount screw', 'printed Ø6; its hex head captive under the base'],

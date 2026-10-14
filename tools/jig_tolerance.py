@@ -92,6 +92,12 @@ def fit_rows(parts):
     # not luck; the limit here is a press a bench vise still makes
     vise = (-0.40, 0.0)
     pp = (-0.40, 0.02)                # printed into printed: both yield
+    # The controller's lid only has to go on and lift off. Drawn as `pp`
+    # (0.05 under its bore) its printed pegs would not go into the bosses
+    # at all -- this model called that a press a vise makes; the print
+    # said no. So it is held to what it must do: go in, and not fall out
+    # of a box that sits on the bench.
+    lid = (0.0, 0.8)
     spec = [
         # name in fits(),                            kind,   part,          mate,                      works if, note
         ("Geneva pin in the crank",                  "vhole", "driver",      (3.0, 0.002, 0.008),       vise,    "dowel, m6, pressed in a vise"),
@@ -105,7 +111,7 @@ def fit_rows(parts):
         ("Encoder along its pocket",                 "rect",  "drive_block", (13.0, -0.15, 0.15),       (0.0, 0.75), ""),
         ("Lid's key in the plug's channel",          "rect",  "drive_block", ("p", None),               pp,      "printed key"),
         ("Lid's peg in the access bore",             "vhole", "drive_block", ("p", None),               pp,      "printed peg"),
-        ("Controller lid's peg in its boss",         "vhole", "ctrl_box",    ("p", None),               pp,      "printed peg"),
+        ("Controller lid's peg in its boss",         "vhole", "ctrl_box",    ("p", None),               lid,     "printed peg, loose"),
         ("Home magnet in the ring",                  "vhole", "rotor",       (3.0, -0.10, 0.10),        (0.0, 0.55), "glued; small discs run +-0.1"),
         ("Home sensor in its boss",                  "rect",  "stator",      (4.06, -0.10, 0.10),       (0.0, 0.65), "SS451A body"),
         ("Drive post in its socket",                 "rect",  "stator",      ("p", None),               run,     "printed post"),

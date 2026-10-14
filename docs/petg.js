@@ -28,7 +28,7 @@ export const GROUPS = {
   drive:    { name: 'Drive',      parts: ['driver', 'drive_block', 'drive_cap'] },
   small:    { name: 'Sleeves & mount', parts: ['sleeve_a', 'sleeve_b', 'sleeve_c',
               'mount_screw', 'mount_wing_nut', 'mount_hex_nut'] },
-  ctrl:     { name: 'Controller', parts: ['ctrl_box', 'ctrl_lid'] },
+  ctrl:     { name: 'Controller', parts: ['ctrl_box', 'ctrl_tray', 'ctrl_lid'] },
   plate:    { name: 'Rod field plate', parts: ['rod_plate', 'rod_field_jig'] },
 };
 
@@ -58,6 +58,31 @@ export const HARDWARE = {
   pcb:    { color: '#1f6b4a', rough: 0.55, metal: 0.10 },
   cable:  { color: '#30343a', rough: 0.60, metal: 0.00 },
   phone:  { color: '#5a626b', rough: 0.35, metal: 0.40 },
+  // the controller: boards, their parts, the wires and what joins them
+  pcb_black: { color: '#1b1d20', rough: 0.55, metal: 0.10 },   // the XIAO
+  pcb_green: { color: '#1f6b3a', rough: 0.55, metal: 0.10 },   // Pololu's
+  gold:      { color: '#d4a94e', rough: 0.25, metal: 0.95 },   // pads, ENIG
+  shield:    { color: '#cfd3d8', rough: 0.30, metal: 0.90 },
+  plastic:   { color: '#26282c', rough: 0.50, metal: 0.00 },   // IC bodies, plugs
+  ceramic:   { color: '#b59a74', rough: 0.60, metal: 0.00 },   // SMD caps
+  solder:    { color: '#d9dde2', rough: 0.18, metal: 1.00 },
+  shrink:    { color: '#18191b', rough: 0.70, metal: 0.00 },
+  r_body_blue: { color: '#7fa3c0', rough: 0.55, metal: 0.00 }, // 2 W metal oxide
+  r_body_tan:  { color: '#d6bf91', rough: 0.55, metal: 0.00 }, // carbon film
+  cap_sleeve:  { color: '#1d1f24', rough: 0.45, metal: 0.10 },
+  cap_stripe:  { color: '#a9b0b8', rough: 0.45, metal: 0.10 },
+  wire_red:    { color: '#d42a2a', rough: 0.50, metal: 0.00 },
+  wire_black:  { color: '#1e1f22', rough: 0.50, metal: 0.00 },
+  wire_yellow: { color: '#f2c414', rough: 0.50, metal: 0.00 },
+  wire_white:  { color: '#efefea', rough: 0.50, metal: 0.00 },
+  wire_blue:   { color: '#2563d4', rough: 0.50, metal: 0.00 },
+  wire_green:  { color: '#1f9a48', rough: 0.50, metal: 0.00 },
+  band_yellow: { color: '#f2c414', rough: 0.50, metal: 0.00 },
+  band_violet: { color: '#7d3fc2', rough: 0.50, metal: 0.00 },
+  band_gold:   { color: '#c9a45a', rough: 0.30, metal: 0.80 },
+  band_brown:  { color: '#6b3e1f', rough: 0.50, metal: 0.00 },
+  band_black:  { color: '#151515', rough: 0.50, metal: 0.00 },
+  band_orange: { color: '#e8761a', rough: 0.50, metal: 0.00 },
 };
 
 const KEY = 'jig.petg.v2';      // v1 remembered the old, too-dark black
