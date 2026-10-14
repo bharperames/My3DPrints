@@ -1295,7 +1295,11 @@ CTRL_INLET_Y = -12.0              # off centre: clear of the lid's boss
 # its size -- drawn at the drive lid's press it came out 4.6% too tight to
 # push home; drawn so, it prints at that lid's own -0.19. Nothing pulls on
 # this lid; it only has to stay put and come off for the wiring.
-CTRL_PEG = (2.6, 2.55, 4.0)
+# 24.0.0: Brett's printed pegs would not go into the bosses at all, at
+# 0.05 under the bore. 0.35 under now, biased loose: a lid that sits a
+# little free still covers the box and lifts off for the wiring; one that
+# will not go on is a reprint.
+CTRL_PEG = (2.6, 2.25, 4.0)
 CTRL_BOSSES = ((-CTRL["l"] / 2 + CTRL["wall"] + 2.0, CTRL["w"] / 2 - CTRL["wall"] - 2.0),
                (CTRL["l"] / 2 - CTRL["wall"] - 2.0, -CTRL["w"] / 2 + CTRL["wall"] + 2.0))
 
@@ -3110,7 +3114,7 @@ def fits(parts, specimen=SPECIMEN):
         hole_d(parts["ctrl_box"], cp[:2], cp[2], CTRL_PEG[0] / 2),
         shaft_d(parts["ctrl_lid"], cp[:2], cp[2], CTRL_PEG[1] / 2), "slip",
         kind="printed in printed",
-        note="a slip as drawn; the bore prints 0.2 small, so it presses")
+        note="drawn loose; the bore prints 0.2 small, so it closes to a snug slip")
     hm = polar(HOME["r"], HOME["phi"])
     row("Home magnet in the ring",
         hole_d(parts["rotor"], hm, L["ring_bot"] + 1.0, MAGNET[0] / 2),
