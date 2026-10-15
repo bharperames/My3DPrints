@@ -372,7 +372,8 @@ DRIVER_LEADIN = 0.8                   # chamfer where its bores meet the plate:
 # A real part, drawn from its maker's drawing: Pololu #994, the 298:1
 # Micro Metal Gearmotor HP 6V (Pololu, micro-metal-gearmotor-dimensions,
 # 2024-04-03). 100 rpm and 4.0 kg.cm at 6 V, 1.6 A stalled; run from USB
-# at 5 V it turns about 83 rpm, so a frame's driver turn takes 0.7 s, and
+# at 5 V through its 4.7 ohm it turns about 73 rpm free (firmware/sim, from
+# those same numbers), so a frame's driver turn takes about 0.83 s, and
 # the Geneva multiplies its torque by twelve or more at the ring -- some
 # twenty times what the ring needs.
 #

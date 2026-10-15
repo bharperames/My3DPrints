@@ -568,6 +568,8 @@ PARTS = [
                             "sparse_infill_pattern": "gyroid"}),
        pages=[dict(label="Run the 108-frame capture",
                    href="docs/orbital-jig.html"),
+              dict(label="Run the jig: the controller, real or simulated",
+                   href="docs/orbital-jig-run.html"),
               dict(label="Assemble it, step by step",
                    href="docs/orbital-jig-assembly.html"),
               dict(label="Drives, mounts and the app: the study",

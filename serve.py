@@ -124,6 +124,23 @@ def _genus(m):
 # handler already serves them -- there is nothing to mount. This used to
 # be an APPS table pointing at a checkout in the developer's home
 # directory, which made a card's link work on exactly one machine.
+# The orbital jig's controller, real or simulated: one per server, made
+# on first use, and never reloaded -- it holds a USB port or a running
+# simulator, and the capture under way on it.
+_JIG = None
+_JIG_LOCK = threading.Lock()
+
+
+def _jig():
+    global _JIG
+    with _JIG_LOCK:
+        if _JIG is None:
+            sys.path.insert(0, os.path.join(ROOT, "tools"))
+            import jig_control
+            _JIG = jig_control.Jig()
+        return _JIG
+
+
 class Handler(SimpleHTTPRequestHandler):
     # Pages here are edited and reloaded all day, and SimpleHTTPRequestHandler
     # sends no Cache-Control at all -- so a browser falls back to heuristic
@@ -183,8 +200,57 @@ class Handler(SimpleHTTPRequestHandler):
                                 "bytes": len(body),
                                 "path": full})
 
+    def _jig_cmd(self):
+        """The page's buttons: connect, a command to the program, a
+        control to the simulator, the capture's start/continue/stop, the
+        settings, and loading the program onto the XIAO."""
+        import jig_control as jc
+        jig = _jig()
+        try:
+            b = self._read_json()
+            op = b.get("op")
+            if op == "connect":
+                mode = b.get("mode", "sim")
+                kw = {}
+                if mode == "sim":
+                    kw = dict(speed=float(b.get("speed", 1)), bench=bool(b.get("bench")))
+                    if b.get("start_psi") is not None:
+                        kw["start_psi"] = float(b["start_psi"])
+                    extra = {}
+                    if b.get("pull_g") is not None:
+                        extra["ring_drag_nm"] = jc.drag_from_pull(float(b["pull_g"]))
+                    kw["extra"] = extra
+                jig.connect(mode, **kw)
+            elif op == "disconnect":
+                jig.disconnect()
+            elif op == "send":
+                jig.send(str(b["line"])[:80])
+            elif op == "control":
+                jig.control(str(b["line"])[:80])
+            elif op == "capture":
+                jig.start_capture()
+            elif op == "continue":
+                jig.proceed()
+            elif op == "stop":
+                jig.abort()
+            elif op == "settings":
+                for k in ("settle_s", "after_shot_s"):
+                    if k in b:
+                        jig.settings[k] = max(0.0, min(30.0, float(b[k])))
+            elif op == "flash":
+                return self._json(200, {"ok": True, "log": jc.flash()})
+            elif op == "ports":
+                return self._json(200, {"ok": True, "port": jc.find_port()})
+            else:
+                return self._json(400, {"ok": False, "error": "unknown op"})
+            return self._json(200, {"ok": True})
+        except Exception as e:  # noqa: BLE001 -- the page shows why
+            return self._json(500, {"ok": False, "error": str(e)[-1500:]})
+
     def do_POST(self):
         url = urlparse(self.path)
+        if url.path == "/jig/cmd":
+            return self._jig_cmd()
         if url.path == "/shop/receive":
             return self._receive(url)
         if url.path in ("/shop/layout", "/shop/build"):
@@ -315,6 +381,17 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == "/jig/state":
+            q = parse_qs(url.query)
+            since = int(q.get("since", ["0"])[0])
+            ts = q.get("trace_since", [None])[0]
+            return self._json(200, _jig().state(since, int(ts) if ts else None))
+        if url.path == "/jig/specs":
+            import jig_control as jc  # noqa: F401 -- _jig() put tools/ on the path
+            _jig()
+            return self._json(200, dict(specs=jc.SPECS, rings=jc.RINGS, arc_leg_mm=jc.ARC_LEG_R * 1000,
+                                        geneva=dict(n=jc.J.GENEVA_N, c=jc.J.GENEVA_C, a=jc.J.GENEVA_A),
+                                        home=jc.J.HOME, wires=[list(w[:5]) for w in jc.J.WIRES]))
         if url.path == "/socket":
             return self._socket(parse_qs(url.query))
         if url.path == "/diff":

@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbital jig — run it</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📷</text></svg>">
+<style>
+  /* The shop's own dark tokens, the same as the capture and assembly pages. */
+  :root {
+    --bg:#14181A; --surface:#1D2327; --surface-2:#232B2F;
+    --ink:#EAF1EF; --ink-soft:#AFBEBB; --line:#313B40; --edge:#4A5A62;
+    --accent:#5FA893; --accent-ink:#14201C;
+    --good:#7CC287; --warn:#E7B75E; --risk:#E08578;
+    --w-red:#E0645A; --w-black:#8A949A; --w-yellow:#E3C44E; --w-white:#E8EEF0;
+    --w-blue:#5E9BE0; --w-green:#62B86F; --off:#3A464C;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.5 "Source Sans 3",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); background:var(--surface);
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; letter-spacing:-0.01em; }
+  h2 { font-size:13.5px; margin:0 0 8px; font-weight:650; display:flex; align-items:baseline; gap:10px; }
+  h2 .sub { font-weight:400; }
+  .sub { color:var(--ink-soft); font-size:12.5px; }
+  header a { color:var(--accent); text-decoration:none; font-size:12.5px; }
+  header a:hover { text-decoration:underline; }
+  header .links { margin-left:auto; display:flex; gap:14px; }
+  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:0; min-height:calc(100vh - 58px); }
+  @media (max-width: 1100px) { .wrap { grid-template-columns:1fr; } }
+  main { padding:14px 16px 28px; display:grid; gap:14px; align-content:start; min-width:0; }
+  aside { padding:14px 16px 28px; border-left:1px solid var(--line); background:var(--surface); }
+  @media (max-width: 1100px) { aside { border-left:0; border-top:1px solid var(--line); } }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:12px 14px; min-width:0; }
+  .row2 { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:14px; }
+  @media (max-width: 800px) { .row2 { grid-template-columns:1fr; } }
+  .bar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:6px 0 10px; }
+  button, select, input { font:inherit; font-size:12.5px; }
+  button { padding:6px 12px; border-radius:6px; border:1px solid var(--edge); background:var(--surface);
+    color:var(--ink); cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; }
+  button.danger { border-color:var(--risk); color:var(--risk); }
+  button:disabled { opacity:.4; cursor:default; border-color:var(--edge); }
+  .seg { display:inline-flex; border:1px solid var(--edge); border-radius:6px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; padding:5px 10px; }
+  .seg button.on { background:var(--accent); color:var(--accent-ink); font-weight:600; }
+  label.chk { display:inline-flex; gap:5px; align-items:center; color:var(--ink-soft); font-size:12.5px; cursor:pointer; }
+  input[type=number] { width:62px; background:var(--surface-2); color:var(--ink); border:1px solid var(--edge);
+    border-radius:5px; padding:3px 6px; }
+  input[type=range] { accent-color:var(--accent); }
+  .status { font-size:12.5px; color:var(--ink-soft); }
+  .status b { color:var(--ink); font-weight:600; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11.5px; border:1px solid var(--edge); }
+  .pill.good { color:var(--good); border-color:var(--good); }
+  .pill.warn { color:var(--warn); border-color:var(--warn); }
+  .pill.risk { color:var(--risk); border-color:var(--risk); }
+  svg text { font-family:inherit; }
+  #circuit { width:100%; height:auto; display:block; }
+  #geneva { width:100%; height:auto; display:block; }
+  .meters { display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:8px; margin-top:8px; }
+  .meter { background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:6px 9px; }
+  .meter .k { font-size:11.5px; color:var(--ink-soft); }
+  .meter .v { font-size:17px; font-variant-numeric:tabular-nums; font-weight:600; }
+  .meter .v small { font-size:11.5px; color:var(--ink-soft); font-weight:400; }
+  #scope { width:100%; height:330px; display:block; background:var(--surface-2); border-radius:6px; }
+  .prog { list-style:none; margin:0; padding:0; font-size:12.5px; }
+  .prog li { padding:3px 8px; border-left:3px solid transparent; color:var(--ink-soft); }
+  .prog li.on { border-left-color:var(--accent); color:var(--ink); background:var(--surface-2); font-weight:600; }
+  .prog li code { font-size:11.5px; color:var(--ink-soft); font-weight:400; }
+  #log { height:210px; overflow:auto; font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:var(--surface-2); border-radius:6px; padding:6px 8px; }
+  #log .mac { color:var(--w-blue); } #log .xiao { color:var(--ink); } #log .sim { color:var(--ink-soft); }
+  #log .err { color:var(--risk); }
+  .stage { font-size:15px; font-weight:600; margin:6px 0 2px; }
+  #msg { font-size:13px; color:var(--ink-soft); min-height:2.6em; }
+  #msg.failed { color:var(--risk); }
+  .rings { display:grid; gap:6px; margin:10px 0; }
+  .ringrow { display:grid; grid-template-columns:118px 1fr; gap:8px; align-items:center; font-size:12px; }
+  .dots { display:flex; flex-wrap:wrap; gap:2px; }
+  .dot { width:8px; height:8px; border-radius:2px; background:var(--off); }
+  .dot.done { background:var(--accent); } .dot.now { background:var(--warn); }
+  table.specs { width:100%; border-collapse:collapse; font-size:11.5px; }
+  table.specs td { padding:3px 4px; border-top:1px solid var(--line); vertical-align:top; }
+  table.specs td.n { white-space:nowrap; font-variant-numeric:tabular-nums; }
+  table.specs tr.est td { color:var(--warn); }
+  details summary { cursor:pointer; font-weight:600; font-size:13px; margin:14px 0 6px; }
+  .note { font-size:12px; color:var(--ink-soft); margin:6px 0; }
+  .faults { display:flex; flex-wrap:wrap; gap:6px; }
+  hr { border:0; border-top:1px solid var(--line); margin:14px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Orbital jig — run it</h1>
+  <span class="sub">The XIAO's own program, on the real controller or on simulated parts</span>
+  <span class="links">
+    <a href="orbital-jig.html">The capture, planned</a>
+    <a href="orbital-jig-assembly.html">Assembly</a>
+  </span>
+</header>
+<div class="wrap">
+<main>
+  <section class="card">
+    <h2>Controller <span class="sub" id="connStatus">not connected</span></h2>
+    <div class="bar">
+      <span class="seg" id="modeSeg">
+        <button data-mode="sim" class="on">Simulated</button>
+        <button data-mode="xiao">Real XIAO on USB</button>
+      </span>
+      <button class="primary" id="connect">Connect</button>
+      <button id="disconnect" disabled>Disconnect</button>
+      <span id="simOpts" class="bar" style="margin:0">
+        <span class="sub">speed</span>
+        <span class="seg" id="speedSeg">
+          <button data-speed="0.25">¼×</button><button data-speed="1" class="on">1×</button>
+          <button data-speed="4">4×</button><button data-speed="20">20×</button>
+        </span>
+        <label class="chk" title="The gearmotor alone on the bench: nothing on its shaft, the Hall switch loose on its lead"><input type="checkbox" id="bench"> bench: motor alone</label>
+      </span>
+      <span id="xiaoOpts" class="bar" style="margin:0;display:none">
+        <button id="flash" title="Compile the program and load it onto the XIAO plugged into this Mac">Load the program onto the XIAO</button>
+        <span class="sub" id="portStatus"></span>
+      </span>
+    </div>
+    <div class="bar">
+      <span class="sub">by hand:</span>
+      <button data-cmd="hello">hello</button>
+      <button data-cmd="spin 3" title="Three driver turns: the bench test">spin 3</button>
+      <button data-cmd="home">home</button>
+      <button data-cmd="step 1">step 1</button>
+      <button data-cmd="step 2">step 2</button>
+      <button data-cmd="shoot">shoot</button>
+      <button data-cmd="hall">hall</button>
+      <button class="danger" data-cmd="stop">stop</button>
+      <button id="wave" title="Pass the magnet over the switch by hand (bench)">wave the magnet</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>The circuit <span class="sub">every wire as the tray lays it out, lit by what it carries</span></h2>
+    <svg id="circuit" viewBox="0 0 960 450" role="img" aria-label="Wiring diagram with live pin states"></svg>
+    <div class="meters" id="meters"></div>
+  </section>
+
+  <div class="row2">
+    <section class="card">
+      <h2>Signals <span class="sub" id="scopeNote"></span></h2>
+      <div class="bar">
+        <span class="sub">window</span>
+        <span class="seg" id="winSeg">
+          <button data-win="30">30 s</button><button data-win="5" class="on">5 s</button>
+          <button data-win="1">1 s</button><button data-win="0.05" title="Wide enough to see each encoder edge, at 1× or slower">50 ms</button>
+        </span>
+        <label class="chk"><input type="checkbox" id="freeze"> hold</label>
+      </div>
+      <canvas id="scope"></canvas>
+    </section>
+    <section class="card">
+      <h2>The Geneva <span class="sub" id="genevaNote"></span></h2>
+      <svg id="geneva" viewBox="-30 -30 60 60" role="img" aria-label="Geneva driver and the ring's lip"></svg>
+    </section>
+  </div>
+
+  <div class="row2">
+    <section class="card">
+      <h2>What the program is doing</h2>
+      <ul class="prog" id="prog"></ul>
+      <p class="note" id="progNote"></p>
+    </section>
+    <section class="card">
+      <h2>Serial <span class="sub">Mac to XIAO, and back</span></h2>
+      <div id="log"></div>
+    </section>
+  </div>
+</main>
+
+<aside>
+  <h2>Capture</h2>
+  <div class="stage" id="stage">Not running</div>
+  <div id="msg">Connect, then Start. The phone pairs once in Settings &rsaquo; Bluetooth as "Orbital Jig"; keep the Camera app open in Photo mode with the screen awake.</div>
+  <div class="bar">
+    <button class="primary" id="start" disabled>Start the 108 frames</button>
+    <button id="continue" disabled>Continue</button>
+    <button class="danger" id="stopRun" disabled>Stop</button>
+  </div>
+  <div class="rings" id="rings"></div>
+  <div class="bar">
+    <span class="sub">settle</span><input type="number" id="settle" min="0" max="30" step="0.1" value="1.0"><span class="sub">s</span>
+    <span class="sub">after shot</span><input type="number" id="after" min="0" max="30" step="0.1" value="1.0"><span class="sub">s</span>
+  </div>
+  <p class="note">Settle: how long the arc is left to stop swaying after the ring stops, before the shutter. After shot: time for the phone to take and save the picture before the ring moves.</p>
+
+  <div id="simPanel">
+    <hr>
+    <h2>The simulated jig</h2>
+    <div class="bar">
+      <span class="sub">ring drag: pull at the arc's leg</span>
+      <input type="range" id="pull" min="0" max="1500" step="10" value="300">
+      <span id="pullV" class="sub"></span>
+    </div>
+    <p class="note" id="pullNote"></p>
+    <div class="faults">
+      <button data-ctl="jam 1" title="Something stops the ring the next time the pin drives it">jam the ring</button>
+      <button data-ctl="jam 0">clear the jam</button>
+      <button data-ctl="slip 60" title="The driver slips 60 degrees on the motor's shaft">set screw slips 60°</button>
+      <button data-ctl="resistor 0" title="Take the 4.7 ohm out of the motor's circuit">no resistor</button>
+      <button data-ctl="resistor 4.7">resistor back</button>
+      <button data-ctl="magnet 0">no magnet</button>
+      <button data-ctl="magnet 1">magnet back</button>
+      <button data-ctl="phone 0">phone off</button>
+      <button data-ctl="phone 1">phone on</button>
+      <button data-ctl="swap_motor 1" title="The motor's two wires the other way round">motor wires swapped</button>
+    </div>
+    <details>
+      <summary>What the simulation is made of</summary>
+      <p class="note">From the parts' datasheets and the generator. Amber rows are estimates nobody has measured or published: the first numbers to replace with a measurement.</p>
+      <table class="specs" id="specs"></table>
+      <p class="note" id="model"></p>
+    </details>
+  </div>
+</aside>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+async function post(body) {
+  const r = await fetch('/jig/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({ ok: false, error: 'no answer from the server' }));
+  if (!j.ok) logLine('err', j.error || 'failed');
+  return j;
+}
+
+// --- state ----------------------------------------------------------------
+let SPEC = null, mode = 'sim', speed = 1, since = 0, S = null;
+const samples = [];                 // {t, s} from the simulator
+const marks = [];                   // {t, mark}
+const pinEvents = [];               // {t, pin, v}
+const shots = [];                   // {t, ...}
+let lastSample = null, lastMark = '';
+const KEEP_MS = 65000;
+
+// --- the program's outline: the marks it passes, in order -------------------
+const OUTLINE = [
+  ['idle: waiting for a command', 'loop()'],
+  ['spin: whole turns, nothing on the shaft', 'cmdSpin()'],
+  ['home: on the magnet already, back off it', 'cmdHome()'],
+  ['home: forward until the magnet comes and goes', 'cmdHome()'],
+  ["home: back to the lock's centre, between the two edges", 'cmdHome()'],
+  ['step: one driver turn per stop', 'cmdStep()'],
+  ['brake: let it come to rest, learn the overrun', 'moveTo()'],
+  ['shoot: volume-up to the phone', 'shutter()'],
+];
+function drawOutline() {
+  $('#prog').innerHTML = OUTLINE.map(([m, f]) =>
+    `<li data-m="${m}">${m} <code>${f}</code></li>`).join('');
+}
+
+// --- the circuit ------------------------------------------------------------
+// The tray's wiring as a schematic: each wire straight from pin to pin,
+// shared nets (3V3, GND) closed with a tag where a line would cross another.
+const C = {};
+function buildCircuit() {
+  const svg = $('#circuit');
+  svg.innerHTML = '';
+  const T = (x, y, text, o = {}) => {
+    const t = el('text', { x, y, fill: css(o.color || '--ink-soft'), 'font-size': o.size || 11.5,
+                           'text-anchor': o.anchor || 'start', 'font-weight': o.weight || 400 }, svg);
+    t.textContent = text;
+    return t;
+  };
+  const box = (x, y, w, h, title, sub) => {
+    el('rect', { x, y, width: w, height: h, rx: 8, fill: css('--surface-2'), stroke: css('--edge') }, svg);
+    T(x + 10, y + 20, title, { color: '--ink', size: 14, weight: 650 });
+    if (sub) T(x + 10, y + 36, sub);
+  };
+  const pin = (x, y, name, side) => {
+    el('circle', { cx: x, cy: y, r: 3.2, fill: css('--edge') }, svg);
+    T(x + (side === 'L' ? 8 : -8), y + 4, name, { anchor: side === 'L' ? 'start' : 'end' });
+  };
+  const wire = (pts, color, id, dash) => {
+    const d = 'M' + pts.map(p => p.join(',')).join(' L');
+    el('path', { d, fill: 'none', stroke: css('--off'), 'stroke-width': 6, 'stroke-linejoin': 'round',
+                 'stroke-linecap': 'round', opacity: 0.5 }, svg);
+    C[id] = el('path', { d, fill: 'none', stroke: css(color), 'stroke-width': 2.6, 'stroke-linejoin': 'round',
+                         'stroke-linecap': 'round', 'stroke-dasharray': dash || '' }, svg);
+  };
+  const tag = (x, y, net, color, anchor = 'start') => {
+    T(x + (anchor === 'start' ? 6 : -6), y + 4, net, { color, weight: 600, anchor });
+  };
+  const resistor = (x0, y0, x1, y1, label, lx, ly) => {
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, horiz = y0 === y1;
+    el('rect', Object.assign(horiz ? { x: mx - 17, y: my - 6, width: 34, height: 12, rx: 3 }
+                                   : { x: mx - 6, y: my - 17, width: 12, height: 34, rx: 3 },
+                             { fill: '#8C6B3C' }), svg);
+    if (label) T(lx, ly, label, { color: '--ink', weight: 600 });
+  };
+
+  // the parts
+  box(20, 40, 160, 300, 'Gearmotor', 'Pololu #5173, encoder');
+  box(20, 352, 160, 86, 'Home switch', 'SS451A');
+  box(380, 184, 150, 166, 'DRV8833', 'Pololu #2130');
+  box(720, 40, 170, 350, 'XIAO ESP32S3', 'Seeed');
+  box(720, 400, 170, 38, 'iPhone', '');
+  T(935, 215, 'USB-C to the Mac', { anchor: 'middle' }).setAttribute('transform', 'rotate(90 935 215)');
+  el('line', { x1: 890, y1: 215, x2: 915, y2: 215, stroke: css('--edge'), 'stroke-width': 6 }, svg);
+
+  // rows: one height per net, so every run is straight
+  const Y = { encB: 98, encA: 118, vcc: 138, gnd: 158, v5: 180, vin: 244, gndD: 268, ain1: 252, ain2: 282, flt: 312,
+              m2: 296, m1: 324, hv: 396, hg: 414, ho: 432, d5: 372 };
+  // gearmotor's six, cable pin order from the top
+  pin(180, Y.encB, 'enc B', 'R'); pin(180, Y.encA, 'enc A', 'R'); pin(180, Y.vcc, 'enc VCC', 'R');
+  pin(180, Y.gnd, 'GND', 'R'); pin(180, Y.m2, 'M2 −', 'R'); pin(180, Y.m1, 'M1 +', 'R');
+  pin(180, Y.hv, 'VCC', 'R'); pin(180, Y.hg, 'GND', 'R'); pin(180, Y.ho, 'OUT', 'R');
+  // DRV8833: power row on the left, logic row on the right
+  pin(380, Y.vin, 'VIN', 'L'); pin(380, Y.gndD, 'GND', 'L'); pin(380, Y.m2, 'AOUT2', 'L'); pin(380, Y.m1, 'AOUT1', 'L');
+  pin(530, Y.ain1, 'AIN1', 'R'); pin(530, Y.ain2, 'AIN2', 'R'); pin(530, Y.flt, 'FLT', 'R');
+  // XIAO pads
+  pin(720, Y.encB, 'D4', 'L'); pin(720, Y.encA, 'D3', 'L'); pin(720, Y.vcc, '3V3', 'L'); pin(720, Y.gnd, 'GND', 'L');
+  pin(720, Y.v5, '5V', 'L'); pin(720, Y.ain1, 'D0', 'L'); pin(720, Y.ain2, 'D1', 'L'); pin(720, Y.flt, 'D8', 'L');
+  pin(720, Y.d5, 'D5', 'L');
+
+  // encoder and its supply: straight across, over the driver board
+  wire([[180, Y.encB], [720, Y.encB]], '--w-white', 'encB');
+  wire([[180, Y.encA], [720, Y.encA]], '--w-yellow', 'encA');
+  wire([[180, Y.vcc], [720, Y.vcc]], '--w-blue', 'encV');
+  wire([[180, Y.gnd], [720, Y.gnd]], '--w-green', 'gnd');
+  // the driver's supply and ground
+  wire([[720, Y.v5], [360, Y.v5], [360, Y.vin], [380, Y.vin]], '--w-red', 'vin');
+  wire([[380, Y.gndD], [340, Y.gndD], [340, Y.gnd]], '--w-black', 'gnd2');
+  // the motor, M1 through the 4.7 ohm
+  wire([[180, Y.m2], [380, Y.m2]], '--w-black', 'm2');
+  wire([[180, Y.m1], [380, Y.m1]], '--w-red', 'm1');
+  resistor(250, Y.m1, 310, Y.m1, '4.7 Ω', 260, Y.m1 + 22);
+  // the three signals
+  wire([[530, Y.ain1], [720, Y.ain1]], '--w-yellow', 'ain1');
+  wire([[530, Y.ain2], [720, Y.ain2]], '--w-yellow', 'ain2');
+  wire([[530, Y.flt], [720, Y.flt]], '--w-yellow', 'flt');
+  // the home switch: its output to D5, pulled up by the 10 k
+  wire([[180, Y.ho], [640, Y.ho], [640, Y.d5], [720, Y.d5]], '--w-white', 'home');
+  wire([[640, Y.d5], [640, 330]], '--w-blue', 'pull');
+  resistor(640, 330, 640, 370, '', 0, 0);
+  tag(634, 340, '10 kΩ to 3V3', '--w-blue', 'end');
+  wire([[180, Y.hv], [222, Y.hv]], '--w-blue', 'homeV'); tag(222, Y.hv, '3V3', '--w-blue');
+  wire([[180, Y.hg], [222, Y.hg]], '--w-green', 'homeG'); tag(222, Y.hg, 'GND', '--w-green');
+  // Bluetooth
+  wire([[805, 390], [805, 400]], '--w-blue', 'ble', '3 3');
+
+  C.lbl = {};
+  const lbl = (id, x, y, anchor = 'middle') => { C.lbl[id] = T(x, y, '', { color: '--ink', weight: 600, anchor }); };
+  lbl('ain1', 625, Y.ain1 - 6); lbl('ain2', 625, Y.ain2 - 6); lbl('flt', 625, Y.flt - 6);
+  lbl('i', 215, Y.m1 - 8); lbl('home', 430, Y.ho - 7); lbl('enc', 450, 64);
+  lbl('ble', 882, 424, 'end'); lbl('drv', 455, 344); lbl('dev', 805, 352);
+}
+
+function lit(id, on, strong = 1) {
+  const p = C[id]; if (!p) return;
+  p.setAttribute('opacity', on ? Math.max(0.35, Math.min(1, strong)) : 0.22);
+  p.setAttribute('stroke-width', on ? 2.6 + 2.4 * Math.min(1, strong) : 2.2);
+}
+function txt(id, t, color) {
+  const e = C.lbl[id]; if (!e) return;
+  e.textContent = t;
+  if (color) e.setAttribute('fill', css(color));
+}
+
+function updateCircuit() {
+  const s = lastSample && lastSample.s;
+  const connected = S && S.connected;
+  const sim = S && S.mode === 'sim';
+  if (!s) {
+    for (const k of ['m1', 'm2', 'encA', 'encB', 'encV', 'gnd', 'gnd2', 'home', 'homeV', 'homeG', 'pull', 'vin', 'ain1', 'ain2', 'flt', 'ble'])
+      lit(k, connected && ['vin', 'gnd', 'gnd2', 'encV', 'homeV', 'homeG', 'pull'].includes(k), 0.5);
+    if (S && S.mode === 'xiao') {
+      txt('dev', S.dev && S.dev.fw ? `program ${S.dev.fw}` : '');
+      txt('ble', S.phone ? 'phone linked' : 'no phone', S.phone ? '--good' : '--ink-soft');
+    }
+    return;
+  }
+  const [a1, a2, A, B, home, flt] = s.p;
+  const i = s.i;
+  const driving = a1 !== a2, braking = a1 && a2;
+  lit('vin', true, 0.5 + Math.abs(i));
+  for (const k of ['gnd', 'gnd2', 'encV', 'homeV', 'homeG', 'pull']) lit(k, true, 0.5);
+  lit('ain1', a1, 1); lit('ain2', a2, 1);
+  txt('ain1', a1 ? 'AIN1 high' : 'AIN1 low', a1 ? '--w-yellow' : '--ink-soft');
+  txt('ain2', a2 ? 'AIN2 high' : 'AIN2 low', a2 ? '--w-yellow' : '--ink-soft');
+  const cur = Math.min(1, Math.abs(i) / 0.6);
+  for (const k of ['m1', 'm2']) lit(k, Math.abs(i) > 0.005, cur);
+  txt('i', `${(i * 1000).toFixed(0)} mA`, Math.abs(i) > 0.5 ? '--warn' : '--ink');
+  lit('encA', A, 1); lit('encB', B, 1);
+  txt('enc', `count ${s.enc}`, '--ink-soft');
+  lit('home', home === 0, 1);
+  txt('home', home === 0 ? 'magnet: low' : `${s.b.toFixed(0)} G`, home === 0 ? '--w-white' : '--ink-soft');
+  lit('flt', flt === 0, 1);
+  txt('flt', flt === 0 ? 'FAULT' : 'nFAULT high', flt === 0 ? '--risk' : '--ink-soft');
+  txt('drv', driving ? (a1 ? 'forward' : 'reverse') : braking ? 'brake' : 'coast',
+      driving ? '--accent' : '--ink-soft');
+  const shutterOn = shots.length && (lastSample.t - shots[shots.length - 1].t) < 300;
+  lit('ble', s.phone, shutterOn ? 1 : 0.4);
+  txt('ble', !s.phone ? 'no phone' : shutterOn ? 'volume-up!' : 'linked', s.phone ? (shutterOn ? '--warn' : '--good') : '--ink-soft');
+  txt('dev', s.homed ? `homed · stop ${s.stop}` : 'not homed', s.homed ? '--good' : '--ink-soft');
+}
+
+function updateMeters() {
+  const s = lastSample && lastSample.s;
+  const lim = SPEC ? SPEC.specs.find(x => x.key === 'limit_kgcm').value : 2;
+  const m = s ? [
+    ['motor current', (s.i * 1000).toFixed(0), 'mA'],
+    ['driver', Math.abs(s.rpm).toFixed(1), 'rpm'],
+    ['through the gearbox', s.gear.toFixed(2), `kg·cm / ${lim}`],
+    ['ring', (((s.th % 360) + 360) % 360).toFixed(2), '°'],
+    ['driver angle', s.psi.toFixed(1), '°'],
+    ['field at the switch', s.b.toFixed(0), 'G'],
+    ['encoder count', s.enc, ''],
+    ['photos', shots.length, ''],
+  ] : [['state', S && S.connected ? (S.mode === 'xiao' ? 'real XIAO' : 'starting') : 'not connected', '']];
+  $('#meters').innerHTML = m.map(([k, v, u]) =>
+    `<div class="meter"><div class="k">${k}</div><div class="v">${v} <small>${u}</small></div></div>`).join('');
+}
+
+// --- the Geneva: the driver over the ring's lip, near where it stands -------
+function updateGeneva() {
+  const svg = $('#geneva');
+  if (!SPEC) return;
+  const s = lastSample && lastSample.s;
+  const { n, c, a } = SPEC.geneva;
+  const th = s ? s.th : 0, psi = s ? s.psi : 180;
+  const step = 360 / n;
+  svg.innerHTML = '';
+  // the view: the driver at the centre, the ring's axis straight down at -c
+  const g = el('g', { transform: `translate(0 ${c})` }, svg);   // ring axis at the origin of g
+  const rad = d => d * Math.PI / 180;
+  const P = (r, deg) => [r * Math.sin(rad(deg)), -r * Math.cos(rad(deg))];  // 0 deg = up, toward the driver
+  // the lip: an annulus from the slots' mouth out, slots every 10 degrees,
+  // a seat for the lock between each pair
+  const mouth = c * Math.cos(Math.PI / n), outer = c + a + 6;
+  const lip = el('g', { transform: `rotate(${-th})` }, g);
+  el('path', { d: arcPath(mouth, outer, -40, 40), fill: '#4F9A88', opacity: 0.55, stroke: '#4F9A88' }, lip);
+  for (let k = -4; k <= 4; k++) {
+    const ang = (k + 0.5) * step;
+    const [x0, y0] = P(mouth - 1, ang), [x1, y1] = P(c + a + 0.6, ang);
+    el('line', { x1: x0, y1: y0, x2: x1, y2: y1, stroke: css('--surface-2'), 'stroke-width': 3.4, 'stroke-linecap': 'round' }, lip);
+    const [sx, sy] = P(c, k * step);
+    el('circle', { cx: sx, cy: sy, r: 3.2, fill: css('--surface-2') }, lip);
+  }
+  // the driver: crank, lock, pin. psi = 180 is the lock at home, the pin toward the axis
+  const dr = el('g', { transform: `translate(0 ${-c}) rotate(${-(psi - 180)})` }, g);
+  el('circle', { cx: 0, cy: 0, r: a + 4, fill: 'none', stroke: css('--ink-soft'), 'stroke-dasharray': '1 1', 'stroke-width': 0.3 }, dr);
+  // the lock: a disc with its bite on the pin's side
+  el('path', { d: 'M -3 0 A 3 3 0 1 0 3 0 A 3.4 3.4 0 0 1 -3 0 Z', fill: css('--w-black'), transform: 'rotate(180)' }, dr);
+  el('line', { x1: 0, y1: 0, x2: 0, y2: a, stroke: css('--ink-soft'), 'stroke-width': 0.6 }, dr);
+  el('circle', { cx: 0, cy: a, r: 1.5, fill: css('--hw') || '#B4BCC3', stroke: css('--ink'), 'stroke-width': 0.3 }, dr);
+  el('circle', { cx: 0, cy: 0, r: 1.5, fill: css('--ink-soft') }, dr);
+  // labels
+  const lab = (x, y, text) => { const e = el('text', { x, y, fill: css('--ink-soft'), 'font-size': 1.9 }, svg); e.textContent = text; };
+  lab(-28, -26, "Green: the ring's lip, a slot and a seat every 10°.");
+  lab(-28, -23.5, 'Light: the pin, which drives. Dark: the lock, which holds.');
+  lab(-28, 23, '↓ the ring\'s axis, 73 mm below the driver');
+  const t = el('text', { x: -28, y: 27, fill: css('--ink'), 'font-size': 2.2 }, svg);
+  const inLock = s ? Math.abs(s.g) < 1e-6 : true;
+  t.textContent = `ring ${(((th % 360) + 360) % 360).toFixed(2)}°  ·  driver ${psi.toFixed(0)}°  ·  ${inLock ? 'locked' : 'pin driving'}`;
+  $('#genevaNote').textContent = s ? (inLock ? 'the lock holds the ring' : `the pin drives it: ×${(1 / Math.max(s.g, 1e-6)).toFixed(1)}`) : '';
+}
+function arcPath(r0, r1, a0, a1) {
+  const P = (r, deg) => [r * Math.sin(deg * Math.PI / 180), -r * Math.cos(deg * Math.PI / 180)];
+  const [x0, y0] = P(r1, a0), [x1, y1] = P(r1, a1), [x2, y2] = P(r0, a1), [x3, y3] = P(r0, a0);
+  return `M${x0},${y0} A${r1},${r1} 0 0 1 ${x1},${y1} L${x2},${y2} A${r0},${r0} 0 0 0 ${x3},${y3} Z`;
+}
+
+// --- the signals ------------------------------------------------------------
+let win = 5;
+const CH = [
+  { k: 'AIN1', idx: 0, color: '--w-yellow' }, { k: 'AIN2', idx: 1, color: '--w-yellow' },
+  { k: 'enc A', idx: 2, color: '--w-yellow', enc: 1 }, { k: 'enc B', idx: 3, color: '--w-white', enc: 2 },
+  { k: 'HOME', idx: 4, color: '--w-white', inv: true }, { k: 'nFAULT', idx: 5, color: '--risk', inv: true },
+  { k: 'shutter', shutter: true, color: '--w-blue' },
+];
+const AN = [
+  { k: 'current', f: s => s.i, max: 1.3, unit: 'A', color: '--w-red' },
+  { k: 'gearbox', f: s => s.gear, max: 3.2, unit: 'kg·cm', color: '--accent', limit: 2 },
+  { k: 'driver', f: s => Math.abs(s.rpm), max: 90, unit: 'rpm', color: '--w-blue' },
+];
+function drawScope() {
+  const cv = $('#scope'), dpr = devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  const x = cv.getContext('2d');
+  x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.clearRect(0, 0, W, H);
+  x.font = '11px -apple-system, sans-serif';
+  if (!samples.length) {
+    x.fillStyle = css('--ink-soft');
+    x.fillText(S && S.mode === 'xiao' ? 'The real XIAO reports what it did, not its pins: these traces are the simulation\'s.' : 'Connect to see the pins.', 12, 22);
+    return;
+  }
+  const L = 64, R = W - 8;
+  const t1 = samples[samples.length - 1].t, t0 = t1 - win * 1000;
+  const X = t => L + (t - t0) / (t1 - t0) * (R - L);
+  const rowH = 20, top = 8;
+  // grid
+  x.strokeStyle = css('--line'); x.lineWidth = 1;
+  const tick = win >= 30 ? 5000 : win >= 5 ? 1000 : win >= 1 ? 100 : 5;
+  for (let t = Math.ceil(t0 / tick) * tick; t <= t1; t += tick) {
+    x.beginPath(); x.moveTo(X(t), top); x.lineTo(X(t), H - 16); x.stroke();
+  }
+  x.fillStyle = css('--ink-soft');
+  x.fillText(`${win >= 1 ? win + ' s' : (win * 1000) + ' ms'} · grid ${tick >= 1000 ? tick / 1000 + ' s' : tick + ' ms'}`, L, H - 3);
+  // digital rows
+  const vis = samples.filter(q => q.t >= t0 - 50);
+  CH.forEach((ch, r) => {
+    const y0 = top + r * rowH, yHi = y0 + 3, yLo = y0 + rowH - 5;
+    x.fillStyle = css('--ink-soft'); x.fillText(ch.k, 6, y0 + 13);
+    x.strokeStyle = css(ch.color); x.lineWidth = 1.4; x.beginPath();
+    if (ch.shutter) {
+      x.moveTo(L, yLo); x.lineTo(R, yLo); x.stroke();
+      for (const sh of shots) if (sh.t >= t0) {
+        x.fillStyle = css(ch.color); x.fillRect(X(sh.t), yHi, Math.max(2, X(sh.t + 60) - X(sh.t)), yLo - yHi);
+      }
+      return;
+    }
+    let first = true, lv = null;
+    const put = (t, v) => {
+      const yy = v ? yHi : yLo;
+      if (first) { x.moveTo(X(Math.max(t, t0)), yy); first = false; }
+      else { x.lineTo(X(t), lv ? yHi : yLo); x.lineTo(X(t), yy); }
+      lv = v;
+    };
+    for (const q of vis) {
+      if (ch.enc && win <= 0.2 && q.s.e && q.s.e.length) {
+        for (const e of q.s.e) put(e[0], e[ch.enc]);
+      } else {
+        let v = q.s.p[ch.idx];
+        put(q.t, v);
+      }
+    }
+    if (!first) x.lineTo(R, lv ? yHi : yLo);
+    x.stroke();
+  });
+  // analog rows
+  const aTop = top + CH.length * rowH + 6, aH = (H - 20 - aTop) / AN.length;
+  AN.forEach((an, r) => {
+    const y0 = aTop + r * aH, y1 = y0 + aH - 6;
+    const Y = v => y1 - Math.max(0, Math.min(1, v / an.max)) * (y1 - y0);
+    x.fillStyle = css('--ink-soft'); x.fillText(an.k, 6, y0 + 12);
+    x.fillText(`${an.max} ${an.unit}`, 6, y0 + 25);
+    if (an.limit) {
+      x.strokeStyle = css('--risk'); x.setLineDash([4, 3]); x.beginPath();
+      x.moveTo(L, Y(an.limit)); x.lineTo(R, Y(an.limit)); x.stroke(); x.setLineDash([]);
+      x.fillStyle = css('--risk'); x.fillText('gearbox limit', R - 80, Y(an.limit) - 3);
+    }
+    x.strokeStyle = css(an.color); x.lineWidth = 1.5; x.beginPath();
+    vis.forEach((q, k) => { const yy = Y(an.f(q.s)); k ? x.lineTo(X(q.t), yy) : x.moveTo(X(q.t), yy); });
+    x.stroke();
+  });
+  // the program's marks along the bottom of the digital rows
+  x.fillStyle = css('--accent');
+  for (const m of marks) if (m.t >= t0 && !m.mark.startsWith('idle')) {
+    x.fillRect(X(m.t), top, 1, CH.length * rowH);
+  }
+  $('#scopeNote').textContent = speed > 2 ? 'encoder edges are drawn one by one at 1× and slower' : '';
+}
+
+// --- the capture panel ------------------------------------------------------
+function drawRings() {
+  if (!SPEC) return;
+  const run = S && S.run;
+  let k = 0;
+  const done = run ? run.done : 0;
+  $('#rings').innerHTML = SPEC.rings.map(r => {
+    let dots = '';
+    for (let f = 0; f < r.frames; f++, k++) {
+      const cls = k < done ? 'done' : (run && run.ring === r.ring && run.frame === f + 1 && run.state === 'frame') ? 'now' : '';
+      dots += `<span class="dot ${cls}"></span>`;
+    }
+    return `<div class="ringrow"><span>${r.ring}. ${r.name} <span class="sub">${r.elev}° · ${r.frames}</span></span><span class="dots">${dots}</span></div>`;
+  }).join('');
+}
+function updateRun() {
+  const run = S && S.run;
+  const active = run && !['done', 'failed', 'stopped'].includes(run.state);
+  $('#start').disabled = !(S && S.connected) || active;
+  $('#continue').disabled = !(active && run.state === 'elevation');
+  $('#stopRun').disabled = !active;
+  const names = { starting: 'Starting', checking: 'Checking the controller', phone: 'Waiting for the phone',
+    homing: 'Finding home', elevation: 'Set the elevation', frame: 'Shooting', done: 'Done',
+    failed: 'Stopped: something is wrong', stopped: 'Stopped' };
+  $('#stage').textContent = run ? (names[run.state] || run.state) + (run.state === 'frame' || run.state === 'done' ? ` — ${run.done} of ${run.frames}` : '') : 'Not running';
+  if (run) { $('#msg').textContent = run.message; $('#msg').className = run.state === 'failed' ? 'failed' : ''; }
+  drawRings();
+}
+
+// --- the log ----------------------------------------------------------------
+function logLine(cls, text) {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = text;
+  const L = $('#log');
+  const stick = L.scrollTop + L.clientHeight >= L.scrollHeight - 4;
+  L.appendChild(d);
+  while (L.childNodes.length > 400) L.removeChild(L.firstChild);
+  if (stick) L.scrollTop = L.scrollHeight;
+}
+function describe(d) {
+  if (d.src === 'mac') {
+    if (d.ev === 'sent') return ['mac', `→ ${d.line}`];
+    if (d.ev === 'run') return null;
+    return ['mac', `· ${d.ev}${d.mode ? ' ' + d.mode : ''}${d.port ? ' ' + d.port : ''}`];
+  }
+  if (d.src === 'sim') {
+    if (d.mark || d.pin) return null;
+    if (d.shot) return ['sim', `  phone: photo ${d.shot} at ring ${d.th.toFixed(2)}°${d.ring_moving ? ' — RING MOVING' : ''}`];
+    if (d.control) return ['sim', `  sim: ${d.control} ${d.v}`];
+    if (d.jam) return ['err', '  sim: the ring jams'];
+    if (d.shutter_up) return null;
+    return null;
+  }
+  const { src, seq, ...rest } = d;
+  return [d.ev === 'error' ? 'err' : 'xiao', '← ' + JSON.stringify(rest)];
+}
+
+// --- polling ----------------------------------------------------------------
+let polling = false;
+async function poll() {
+  if (polling) return;
+  polling = true;
+  try {
+    const r = await fetch(`/jig/state?since=${since}`);
+    S = await r.json();
+    for (const d of S.log) {
+      if (d.mark) { marks.push(d); lastMark = d.mark; }
+      if (d.pin) pinEvents.push(d);
+      if (d.shot) shots.push(d);
+      if (d.model) showModel(d.model);
+      const line = describe(d);
+      if (line) logLine(line[0], line[1]);
+    }
+    if (!$('#freeze').checked) for (const d of S.trace) samples.push(d);
+    else for (const d of S.trace) lastSample = d;
+    if (S.trace.length && !$('#freeze').checked) lastSample = S.trace[S.trace.length - 1];
+    since = S.seq;
+    const cut = (samples.length ? samples[samples.length - 1].t : 0) - KEEP_MS;
+    while (samples.length && samples[0].t < cut) samples.shift();
+    while (marks.length > 2000) marks.shift();
+    if (S.model) showModel(S.model);
+    $('#connStatus').textContent = S.connected ? (S.mode === 'sim' ? 'simulated' : `real XIAO on ${S.port}`) +
+      (S.dev && S.dev.fw ? ` · program ${S.dev.fw}` : '') : 'not connected';
+    $('#connect').disabled = !!S.connected;
+    $('#disconnect').disabled = !S.connected;
+    document.querySelectorAll('#prog li').forEach(li => li.classList.toggle('on', li.dataset.m === lastMark));
+    $('#progNote').textContent = S.mode === 'sim' ? 'Marked in the program as it runs: the same file the XIAO runs, compiled for the Mac.' :
+      S.mode === 'xiao' ? 'The real XIAO answers commands; the simulation is what shows its insides.' : '';
+    updateRun();
+  } catch (e) {
+    $('#connStatus').textContent = 'the shop server is not answering (make serve)';
+  } finally {
+    polling = false;
+  }
+}
+function frame() {
+  updateCircuit(); updateMeters(); updateGeneva();
+  if (!$('#freeze').checked) drawScope();
+  requestAnimationFrame(frame);
+}
+
+let modelShown = false;
+function showModel(m) {
+  if (modelShown) return;
+  modelShown = true;
+  $('#model').textContent = `Derived: winding ${m.Rm.toFixed(2)} Ω, back-EMF ${m.kt.toFixed(3)} V·s/rad at the output, ` +
+    `gearbox efficiency ${(m.eta * 100).toFixed(0)}% (from the stall torque), the magnet's field ${m.B0.toFixed(0)} G ` +
+    `straight under it; the switch operates ${m.d_operate_mm.toFixed(2)} mm off its axis and releases at ${m.d_release_mm.toFixed(2)} mm.`;
+}
+
+// --- controls -----------------------------------------------------------------
+function seg(id, attr, cb) {
+  document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll(`#${id} button`).forEach(o => o.classList.toggle('on', o === b));
+    cb(b.dataset[attr]);
+  }));
+}
+seg('modeSeg', 'mode', m => {
+  mode = m;
+  $('#simOpts').style.display = m === 'sim' ? '' : 'none';
+  $('#xiaoOpts').style.display = m === 'xiao' ? '' : 'none';
+  $('#simPanel').style.display = m === 'sim' ? '' : 'none';
+  $('#wave').style.display = m === 'sim' ? '' : 'none';
+  if (m === 'xiao') post({ op: 'ports' }).then(j => {
+    $('#portStatus').textContent = j.port ? `found ${j.port}` : 'no XIAO on USB yet';
+  });
+});
+seg('speedSeg', 'speed', v => { speed = +v; if (S && S.mode === 'sim') post({ op: 'control', line: `speed ${v}` }); });
+seg('winSeg', 'win', v => { win = +v; });
+$('#connect').addEventListener('click', async () => {
+  samples.length = 0; marks.length = 0; shots.length = 0; modelShown = false; lastSample = null;
+  const body = { op: 'connect', mode };
+  if (mode === 'sim') Object.assign(body, { speed, bench: $('#bench').checked, pull_g: +$('#pull').value,
+                                           start_psi: Math.round(Math.random() * 360) });
+  logLine('mac', mode === 'sim' ? '· starting the simulated jig' : '· opening the XIAO\'s port');
+  await post(body);
+});
+$('#disconnect').addEventListener('click', () => post({ op: 'disconnect' }));
+document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => post({ op: 'send', line: b.dataset.cmd })));
+document.querySelectorAll('[data-ctl]').forEach(b => b.addEventListener('click', () => post({ op: 'control', line: b.dataset.ctl })));
+$('#wave').addEventListener('click', () => post({ op: 'control', line: 'wave' }));
+$('#start').addEventListener('click', () => post({ op: 'capture' }));
+$('#continue').addEventListener('click', () => post({ op: 'continue' }));
+$('#stopRun').addEventListener('click', () => post({ op: 'stop' }));
+$('#flash').addEventListener('click', async () => {
+  $('#flash').disabled = true;
+  $('#portStatus').textContent = 'compiling and loading — about a minute';
+  const j = await post({ op: 'flash' });
+  $('#flash').disabled = false;
+  $('#portStatus').textContent = j.ok ? 'loaded' : 'did not load: see the log';
+  if (j.log) logLine(j.ok ? 'mac' : 'err', j.log.split('\n').slice(-4).join(' / '));
+});
+for (const id of ['settle', 'after']) $('#' + id).addEventListener('change', () =>
+  post({ op: 'settings', settle_s: +$('#settle').value, after_shot_s: +$('#after').value }));
+function pullText() {
+  const g = +$('#pull').value;
+  $('#pullV').textContent = `${g} g`;
+  if (!SPEC) return;
+  const nm = g / 1000 * 9.80665 * SPEC.arc_leg_mm / 1000;
+  $('#pullNote').textContent = `${g} g pulled level at the arc's leg, ${SPEC.arc_leg_mm.toFixed(0)} mm from the centre: ` +
+    `${(nm / 0.0980665).toFixed(1)} kg·cm of drag on the ring. Put your pull test's steady reading here.`;
+}
+$('#pull').addEventListener('input', pullText);
+$('#pull').addEventListener('change', () => {
+  if (!SPEC || !(S && S.mode === 'sim')) return;
+  const nm = +$('#pull').value / 1000 * 9.80665 * SPEC.arc_leg_mm / 1000;
+  post({ op: 'control', line: `drag ${nm}` });
+});
+
+async function init() {
+  drawOutline();
+  buildCircuit();
+  try {
+    SPEC = await (await fetch('/jig/specs')).json();
+    $('#specs').innerHTML = SPEC.specs.map(s =>
+      `<tr class="${s.source.startsWith('estimate') ? 'est' : ''}"><td>${s.key}</td><td class="n">${+s.value.toPrecision(4)} ${s.unit}</td><td>${s.source}</td></tr>`).join('');
+    pullText();
+    drawRings();
+  } catch (e) {
+    $('#connStatus').textContent = 'open this page through the shop (make serve), not as a file';
+  }
+  setInterval(poll, 150);
+  poll();
+  requestAnimationFrame(frame);
+}
+init();
+</script>
+</body>
+</html>
