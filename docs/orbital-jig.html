@@ -1083,8 +1083,10 @@ vfbox.classList.toggle('off', !document.getElementById('t-vf').checked);
     const g = await new GLTFLoader().parseAsync(wf.buffer.slice(wf.byteOffset, wf.byteOffset + wf.byteLength), '');
     const vol = g.scene;
     vol.traverse(o => { if (o.isMesh) {
-      o.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(css('--r2')), transparent: true,
-        opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, roughness: 0.6 });
+      // self-lit: a tint that reads on the dark ground from any side, not a
+      // surface the scene's lights shade toward black
+      o.material = new THREE.MeshBasicMaterial({ color: new THREE.Color(css('--r2')), transparent: true,
+        opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
       o.userData.noHLR = true;
     } });
     vol.userData.noHLR = true;
