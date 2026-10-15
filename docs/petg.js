@@ -125,9 +125,30 @@ export function petgMaterial(filamentKey, partName = '') {
     clearcoat: f.coat, clearcoatRoughness: 0.35,
   });
 }
+/* Metal shows what it reflects: with nothing round it, steel renders
+   near black. The pages hand over a small studio -- a grey room, two soft
+   light panels -- for the bought parts to reflect; the printed PETG keeps
+   the page's own lighting, so a chosen filament reads as itself. */
+let HW_ENV = null;
+export function studioEnvironment(renderer) {
+  const pm = new THREE.PMREMGenerator(renderer);
+  const room = new THREE.Scene();
+  room.add(new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10),
+    new THREE.MeshBasicMaterial({ color: 0x5a6068, side: THREE.BackSide })));
+  for (const [pos, size, k] of [[[0, 0, 4.9], [8, 8], 3.0], [[4.9, 0, 1], [5, 6], 1.6], [[-4.9, 2, 0], [4, 4], 0.8]]) {
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(...size),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k), side: THREE.DoubleSide }));
+    p.position.set(...pos); p.lookAt(0, 0, 0);
+    room.add(p);
+  }
+  HW_ENV = pm.fromScene(room, 0.03).texture;
+  pm.dispose();
+  return HW_ENV;
+}
 export function hardwareMaterial(kind) {
   const h = HARDWARE[kind] || HARDWARE.steel;
-  return new THREE.MeshStandardMaterial({ color: new THREE.Color(h.color), roughness: h.rough, metalness: h.metal });
+  return new THREE.MeshStandardMaterial({ color: new THREE.Color(h.color), roughness: h.rough,
+    metalness: h.metal, envMap: HW_ENV, envMapIntensity: HW_ENV ? 1.0 : 0 });
 }
 /* Edges that show on dark filament as well as light. */
 export function edgeColor(material) {

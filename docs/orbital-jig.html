@@ -173,6 +173,7 @@
       <label><input type="checkbox" id="t-rays"> keep rays</label>
       <label><input type="checkbox" id="t-vf" checked> viewfinder</label>
       <label><input type="checkbox" id="t-hw" checked> hardware &amp; camera</label>
+      <label id="l-work"><input type="checkbox" id="t-work"> working volume</label>
     </div>
     <h3 class="pk-h">Filament</h3>
     <div id="petg"></div>
@@ -227,10 +228,11 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { HiddenLine } from './hlr.js';
 import { toCreasedNormals, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { unzipSync } from '../vendor/libs/fflate.module.js';
 import { petgMaterial, hardwareMaterial, edgeColor, groupOfPart, loadChoice,
-         buildPicker, PICKER_CSS } from './petg.js';
+         buildPicker, PICKER_CSS, studioEnvironment } from './petg.js';
 document.head.insertAdjacentHTML('beforeend', `<style>${PICKER_CSS}</style>`);
 const petg = loadChoice();
 
@@ -292,6 +294,26 @@ if (!res.ok) {
 const buf = await res.arrayBuffer();
 const files = unzipSync(new Uint8Array(buf));
 const D = JSON.parse(new TextDecoder().decode(files['Metadata/orbital_jig.json']));
+/* The bought parts McMaster drew, carried in the archive as GLBs: each
+   one merged into a single geometry in its own frame, placed by its
+   primitive's matrix. */
+const VENDOR = {};
+{
+  const gl = new GLTFLoader();
+  for (const [k, bytes] of Object.entries(files)) {
+    const hit = k.match(/^Metadata\/hardware\/(.+)\.glb$/);
+    if (!hit) continue;
+    const g = await gl.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    g.scene.updateMatrixWorld(true);
+    const gs = [];
+    g.scene.traverse(o => { if (o.isMesh) {
+      let q = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      for (const n of Object.keys(q.attributes)) if (n !== 'position' && n !== 'normal') q.deleteAttribute(n);
+      gs.push(q.index ? q.toNonIndexed() : q);
+    } });
+    VENDOR[hit[1]] = mergeGeometries(gs);
+  }
+}
 const model = new ThreeMFLoader().parse(buf);
 
 /* The specimen mount is its own design -- the rod field plate with the
@@ -314,10 +336,14 @@ const R = D.R, DEG = Math.PI / 180;
 /* ---------- scene, z-up like the spec ---------- */
 const view = document.getElementById('view');
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+studioEnvironment(renderer);            // what the bought metal parts reflect
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 view.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(css('--surface-2'));
+// hidden line is drawn from normals and depth, not from crease edges: see hlr.js
+const hlr = new HiddenLine(renderer, { paper: css('--surface-2') });
+const draw = cam => mode === 'hlr' ? hlr.render(scene, cam, [overlay]) : renderer.render(scene, cam);
 const camera = new THREE.PerspectiveCamera(38, 1, 1, 4000);
 camera.up.set(0, 0, 1);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -438,6 +464,13 @@ if (printed.driver) driverGroup.add(printed.driver);
    boards stand still; the pin turns with the driver;
    the home magnet turns with the ring */
 function primGeom(p) {
+  if (p.kind === 'vendor') {
+    const base = VENDOR[p.id];
+    if (base) return base.clone().applyMatrix4(new THREE.Matrix4().set(...p.V));
+    // its mesh is not on this machine: the shank as a plain cylinder
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...p.axis).normalize());
+    return new THREE.CylinderGeometry(p.r, p.r, p.h, 32).rotateX(Math.PI / 2).applyQuaternion(q).translate(...p.c);
+  }
   if (p.kind === 'mesh') {
     // a bought part modeled whole (the phone's clamp): flat-shaded facets
     const g = new THREE.BufferGeometry();
@@ -498,12 +531,12 @@ function poseDriver(psi) {
   driverGroup.matrix.copy(T);
   driverGroup.matrixWorldNeedsUpdate = true;
 }
-// thumbscrew just outside the arc's box, knob outboard
-const T = D.thumbscrew;
-const shaft = addBody('thumbscrew', new THREE.CylinderGeometry(T.r, T.r, T.y1 - T.y0, 24), hwCarriage, '--hw', HW);
-shaft.position.set(T.u, (T.y0 + T.y1) / 2, 0);
-const knob = addBody('knob', new THREE.CylinderGeometry(T.knob_r, T.knob_r, T.knob_h, 20), hwCarriage, '--cam', HW);
-knob.position.set(T.u, T.y0 - T.knob_h / 2 + 0.5, 0);
+// the carriage's hardware, as the assembly fits it: the wing thumbscrew
+// just outside the arc's box, the receiver's screws, the clamp's 1/4-20
+for (const p of D.carriage_hw) {
+  const m = addBody(p.name, primGeom(p), hwCarriage, '--hw', { hw: p.mat, hardware: true });
+  m.matrixAutoUpdate = false; m.matrix.set(...p.M);
+}
 // No ballast. There were two stacks of washers, one on the ring and one
 // in the carriage's boss, and both were sized against a Sony a1. With a
 // phone the carriage's centre of mass sits 27 mm past the thumbscrew --
@@ -1040,6 +1073,31 @@ document.getElementById('t-hw').onchange = e => { hardware.visible = hwRotor.vis
 const vfbox = document.getElementById('vfbox');
 document.getElementById('t-vf').onchange = e => { vfbox.classList.toggle('off', !e.target.checked); };
 vfbox.classList.toggle('off', !document.getElementById('t-vf').checked);
+/* The working volume: every point the 1x lens sees from at least the
+   share of the 108 frames the generator was asked for, with the jig's
+   own shadows -- traced against every body, the plate and its nut. */
+{
+  const wf = files['Metadata/working_volume.glb'], W = D.working_volume;
+  const box = document.getElementById('t-work');
+  if (wf && W) {
+    const g = await new GLTFLoader().parseAsync(wf.buffer.slice(wf.byteOffset, wf.byteOffset + wf.byteLength), '');
+    const vol = g.scene;
+    vol.traverse(o => { if (o.isMesh) {
+      o.material = new THREE.MeshStandardMaterial({ color: new THREE.Color(css('--r2')), transparent: true,
+        opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, roughness: 0.6 });
+      o.userData.noHLR = true;
+    } });
+    vol.userData.noHLR = true;
+    vol.visible = false;
+    scene.add(vol);
+    const a = W.at_share, e = W.every_frame;
+    document.getElementById('l-work').title =
+      `Seen from at least ${a.frames_needed} of ${W.frames} frames: ${a.across_at_focus_mm} mm across at the focal height, ` +
+      `${a.tall_on_axis_mm} mm tall on the axis, ${a.volume_cm3} cm\u00b3. From every frame: ${e.across_at_focus_mm} mm across, ` +
+      `${e.volume_cm3} cm\u00b3.` + (a.specimen_outside_pct != null ? ` The tooth: ${a.specimen_outside_pct}% outside.` : '');
+    box.onchange = ev => { vol.visible = ev.target.checked; };
+  } else box.disabled = true;
+}
 
 document.getElementById('sub').textContent =
   `${TOTAL} frames on a ${R} mm shell · focal point ${specimen} mm above the platform · ` +
@@ -1132,7 +1190,7 @@ function makeThumbs() {
   camera.lookAt(mid);
   for (const [id] of MODES) {
     mode = id; applyView();
-    renderer.render(scene, camera);
+    draw(camera);
     modePop.querySelector(`[data-mode="${id}"] .thumb`).style.backgroundImage = `url(${renderer.domElement.toDataURL('image/png')})`;
   }
   mode = keep; applyView(); setCurrent();
@@ -1172,7 +1230,7 @@ function tick(now) {
   const W = renderer.domElement.width / renderer.getPixelRatio(), H = renderer.domElement.height / renderer.getPixelRatio();
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, W, H);
-  renderer.render(scene, camera);
+  draw(camera);
   if (!vfbox.classList.contains('off')) {
     // the camera's own view: from the pupil, along v_forward, up along the arc
     const phi = S.phi * DEG, th = S.theta * DEG;
@@ -1181,7 +1239,7 @@ function tick(now) {
     renderer.setScissorTest(true);
     renderer.setViewport(vfRect.x, vfRect.y, vfRect.w, vfRect.h);
     renderer.setScissor(vfRect.x, vfRect.y, vfRect.w, vfRect.h);
-    renderer.render(scene, vf);
+    draw(vf);
     renderer.setScissorTest(false);
     overlay.visible = ov;
   }

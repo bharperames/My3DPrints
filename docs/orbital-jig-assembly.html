@@ -115,6 +115,7 @@
 {"imports":{"three":"../vendor/three.module.js",
 "three/addons/controls/OrbitControls.js":"../vendor/controls/OrbitControls.js",
 "three/addons/loaders/3MFLoader.js":"../vendor/loaders/3MFLoader.js",
+"three/addons/loaders/GLTFLoader.js":"../vendor/loaders/GLTFLoader.js",
 "three/addons/utils/BufferGeometryUtils.js":"../vendor/utils/BufferGeometryUtils.js"}}
 </script>
 </head>
@@ -183,9 +184,11 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import { toCreasedNormals, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { HiddenLine } from './hlr.js';
 import { unzipSync } from '../vendor/libs/fflate.module.js';
 import { petgMaterial, hardwareMaterial, edgeColor, groupOfPart, loadChoice,
-         buildPicker, PICKER_CSS } from './petg.js';
+         buildPicker, PICKER_CSS, studioEnvironment } from './petg.js';
 document.head.insertAdjacentHTML('beforeend', `<style>${PICKER_CSS}</style>`);
 const petg = loadChoice();
 
@@ -206,6 +209,26 @@ if (!res.ok) {
 const buf = await res.arrayBuffer();
 const files = unzipSync(new Uint8Array(buf));
 const D = JSON.parse(new TextDecoder().decode(files['Metadata/orbital_jig.json']));
+/* The bought parts McMaster drew, carried in the archive as GLBs: each
+   one merged into a single geometry in its own frame, placed by its
+   primitive's matrix. */
+const VENDOR = {};
+{
+  const gl = new GLTFLoader();
+  for (const [k, bytes] of Object.entries(files)) {
+    const hit = k.match(/^Metadata\/hardware\/(.+)\.glb$/);
+    if (!hit) continue;
+    const g = await gl.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+    g.scene.updateMatrixWorld(true);
+    const gs = [];
+    g.scene.traverse(o => { if (o.isMesh) {
+      let q = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      for (const n of Object.keys(q.attributes)) if (n !== 'position' && n !== 'normal') q.deleteAttribute(n);
+      gs.push(q.index ? q.toNonIndexed() : q);
+    } });
+    VENDOR[hit[1]] = mergeGeometries(gs);
+  }
+}
 // the mat is rebuilt in place: ask for it fresh, not the browser's copy
 document.getElementById('matLink').href += '?t=' + Date.now();
 const A = D.assembly;
@@ -217,10 +240,13 @@ document.getElementById('theta').textContent = A.theta;
 /* ---------- scene ---------- */
 const view = document.getElementById('view');
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, stencil: true });
+studioEnvironment(renderer);            // what the bought metal parts reflect
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 view.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(css('--surface-2'));
+// hidden line is drawn from normals and depth, not from crease edges: see hlr.js
+const hlr = new HiddenLine(renderer);
 const camera = new THREE.PerspectiveCamera(36, 1, 1, 4000);
 camera.up.set(0, 0, 1);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -409,6 +435,13 @@ function insertGeom(p) {
 }
 /* hardware from the same primitives the generator swept */
 function primGeom(p) {
+  if (p.kind === 'vendor') {
+    const base = VENDOR[p.id];
+    if (base) return base.clone().applyMatrix4(new THREE.Matrix4().set(...p.V));
+    // its mesh is not on this machine: the shank as a plain cylinder
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...p.axis).normalize());
+    return new THREE.CylinderGeometry(p.r, p.r, p.h, 32).rotateX(Math.PI / 2).applyQuaternion(q).translate(...p.c);
+  }
   if (p.kind === 'mesh') {
     // a bought part modeled whole (the phone's clamp): flat-shaded facets
     const g = new THREE.BufferGeometry();
@@ -1288,7 +1321,12 @@ renderer.setAnimationLoop(now => {
     m.visible = true;
   }
   controls.update();
-  renderer.render(scene, camera);
+  if (mode === 'hlr') {
+    // dark ink on the light mat's ground, light ink on the dark one
+    const hsl = {}; scene.background.getHSL(hsl);
+    hlr.setColors(hsl.l > 0.5 ? '#1f252d' : '#dfe7ee', scene.background);
+    hlr.render(scene, camera, [marker]);
+  } else renderer.render(scene, camera);
   renderHowto(dt);
 });
 
