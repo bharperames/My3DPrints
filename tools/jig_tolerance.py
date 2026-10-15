@@ -52,6 +52,10 @@ PART_SIGMA = 0.05       # mm on the diameter, shared by a part's holes
 FEAT_SIGMA = 0.03       # mm, each hole on its own
 RECT_LOSS, RECT_SIGMA = 0.10, 0.05
 SHAFT_GAIN, SHAFT_SIGMA = 0.03, 0.03
+# measured on the jig: how much deeper a printed V wheel seats in its
+# printed groove than drawn, and how much that varies print to print
+WHEEL_SEAT_LOSS = 0.80
+WHEEL_SEAT_SIGMA = 0.10
 SHRINK_MU, SHRINK_SIGMA = -0.0035, 0.0012   # common to the whole print
 DIFF_SIGMA = 0.0007                          # each part's own, on top
 Z_SIGMA = 0.05
@@ -326,7 +330,13 @@ def simulate(n=100000, seed=1, window=None, scatter=1.0):
     race = J.RACE_R * (1 + s["rotor"]) + rng.normal(0, 0.03, n)
     od = J.RING_RO * (1 + s["rotor"]) + SHAFT_GAIN / 2
     tower = J.TOWER_PITCH * (1 + s["stator"]) + rng.normal(0, 0.03, n)
-    brg = J.BRG_R - rng.uniform(0, 0.0045, n)
+    # The wheel is printed PETG now, not a bearing's steel, and Brett's jig
+    # measured how it seats (2026-10-14): drawn to reach 0.85 past the race
+    # turned fully in, the 47 degree wheels were "a little tight" there and
+    # the 45 degree ones "smooth, no room" -- about 0.05 past it. So the
+    # printed wheel in its printed groove seats WHEEL_SEAT_LOSS deeper than
+    # drawn, with a printed part's scatter round that.
+    brg = J.BRG_R - WHEEL_SEAT_LOSS + rng.normal(0, WHEEL_SEAT_SIGMA, n)
     ecc = J.ECC + rng.normal(0, 0.02, n)
     sleeve_play = np.clip(fits["Sleeve in a 688's bore"]["c"], 0, None) / 2
     oor = np.abs(rng.normal(0, RING_OOR_SIGMA, n))

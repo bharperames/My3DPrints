@@ -638,9 +638,14 @@ class TestAssembly(unittest.TestCase):
         self.assertIn("nut", bad)
 
     def test_turned_out_each_bearing_clears_the_ring_by_the_face_gap(self):
+        """As drawn the turned-out wheel clears the ring's edge -- a ring
+        printed true to its drawing still drops in -- and as printed, the
+        wheel seating as deep as Brett's jig measured, by the face gap."""
+        import jig_tolerance as T
         clear = min(np.linalg.norm(c) for c in J.bearing_centres(True)) \
             - J.BRG_R - J.RING_RO
-        self.assertGreaterEqual(clear, 0.4)
+        self.assertGreaterEqual(clear, 0.05)
+        self.assertGreaterEqual(clear + T.WHEEL_SEAT_LOSS, 0.4)
 
     def test_the_eccentrics_absorb_the_big_parts_shrinking_differently(self):
         """Turned fully in, each bearing can still go PRELOAD past the

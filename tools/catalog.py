@@ -556,7 +556,7 @@ PARTS = [
        # board's length, so the plug cannot push it back.
        # 24.0.0: the controller lid's pegs 2.25, not 2.55: Brett's would
        # not go into the bosses.
-       version="34.0.0",
+       version="38.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

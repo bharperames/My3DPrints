@@ -203,7 +203,17 @@ RING_RO, RING_RI, RING_T = 121.0, 90.0, 18.0
 # (Brett's photos, 2026-10-14). Its flanks are 45 now, the groove's own,
 # through the same flat: it seats where it did, on a band of flank 2 mm
 # wide each side instead of an edge. The ring stays as printed.
-WHEEL = dict(r=11.95, w=10.2, tip=3.1)     # tip: half the flat
+# 38.0.0: 0.65 larger. Brett's 45 degree wheels (0.08 layers) ran smooth
+# only with every eccentric turned fully in, leaving nothing to take up
+# wear; the 47 degree ones were a little tight there. Drawn to reach 0.85
+# past the race, the printed wheel in its printed groove reaches about
+# 0.05: it seats 0.8 deeper than drawn (jig_tolerance.WHEEL_SEAT_LOSS).
+# With that in the tolerance model, 0.65 more radius is what reaches the
+# race in all but one build in a thousand, whatever the seed; on Brett's
+# parts it reaches about 0.7 past, to be backed off to run, and that is the take-up. The
+# towers stay where the 11.95 wheel put them (TOWER_PITCH): it is all reach.
+WHEEL = dict(r=12.60, w=10.2, tip=3.1)     # tip: half the flat
+WHEEL_R_TOWERS = 11.95                     # the wheel the printed towers were placed for
 WHEEL["side_r"] = WHEEL["r"] - (WHEEL["w"] / 2 - WHEEL["tip"])   # 45 degrees
 # Printed, from 22.0.0. The POM wheels came with two 625s each (5 mm bore),
 # pressed in, and the printed sleeves are 7.95: the plan was to swap the
@@ -219,7 +229,10 @@ WHEEL["side_r"] = WHEEL["r"] - (WHEEL["w"] / 2 - WHEEL["tip"])   # 45 degrees
 # because loose has a remedy and tight does not: a bearing that turns in
 # its bore gets a drop of CA or J-B Weld on its outer ring. Each mouth is
 # chamfered so the bearing starts square.
-WHEEL_BORE_R = 8.075
+# 38.0.0: Ø16.10. The 0.08-layer wheels' Ø16.15 printed loose enough
+# that their 688s fell out; Brett's first wheel, at 0.2, was a perfect
+# push fit. A twentieth tighter, glue still the remedy if it is loose.
+WHEEL_BORE_R = 8.05
 WHEEL_MOUTH = 0.5       # 45 degree chamfer at each face of the bore
 WHEELS = ("wheel_a", "wheel_b", "wheel_c")
 WHEEL_BRG_ITEM = "688-2RS bearing (8 x 16 x 5), two in each V wheel"
@@ -236,7 +249,6 @@ RACE_PLAY = 0.0         # axial: the V seats on both faces
 RACE_RELIEF = 1.0
 BRG_R, BRG_W, BRG_BORE = WHEEL["r"], WHEEL["w"], 8.0
 BRG_PITCH = RACE_R + BRG_R            # a wheel seated in the groove
-PRELOAD = 0.85          # how much further in an eccentric can still go
 RING_GAP = 8.0          # ring underside above the base top: the tip of
                         # the driver's pin swings through here
 TOWER_R, BOSS_R, BOSS_H = 7.0, 4.8, 1.0   # the boss bears on a 688's inner race only
@@ -257,9 +269,11 @@ SLEEVE_FL_R = SLEEVE_HEX / np.sqrt(3.0)   # across corners, /2
 BOLT_R = 1.7            # M3 clearance, radius
 AXLE_R = 1.7            # the bearing axles' M3 clearance, radius
 ECC = 1.5               # eccentric sleeve offset: 3.0 mm of travel
-# The towers stand where an eccentric turned fully in would push its
-# bearing PRELOAD past the race; turned fully out it stands back ECC.
-TOWER_PITCH = BRG_PITCH + ECC - PRELOAD   # 131.4
+# The towers stand where an eccentric turned fully in pushed the 11.95
+# wheel 0.85 past the race -- printed, so fixed. A wheel's PRELOAD is how
+# far past the race fully in still reaches, as drawn: 1.50 for the 12.60.
+TOWER_PITCH = RACE_R + WHEEL_R_TOWERS + ECC - 0.85   # 132.2
+PRELOAD = BRG_PITCH - (TOWER_PITCH - ECC)
 LOBE_REACH = 142.0      # how far the base's corner lobes reach
 # Named, and drawn to its maker's hole: Ruthex's M3 x 5.7 asks for Ø4.0
 # and 6.7 deep -- a millimeter past its length, so the plastic it melts
@@ -659,12 +673,13 @@ def _portrait(b):
 # beside the saddle, the same load on a quarter less lever. Upside down,
 # because right way up puts the clamp in the ring at the horizon ring.
 #
-# The case: 154.5 long, measured; its other walls are taken as the same
-# 2.25 round the sides and 1.2 over the back and the screen.
-CASE = dict(length=154.5, side=(154.5 - IP17["length"]) / 2.0, back=1.2,
-            front=1.2)
+# The case, measured with the phone in it: 155 x 76 (Brett, 2026-10-14).
+# Over the back and the screen it is taken as 1.2.
+CASE = dict(length=155.0, width=76.0, back=1.2, front=1.2)
+CASE["end"] = (CASE["length"] - IP17["length"]) / 2.0          # 2.50
+CASE["side"] = (CASE["width"] - IP17["width"]) / 2.0           # 2.08
 _CASE_EDGE = -(IP17["main_from_side"] + CASE["side"])         # y, arc side
-_CASE_TOP = -(IP17["main_from_top"] + CASE["side"])           # v, down-arc
+_CASE_TOP = -(IP17["main_from_top"] + CASE["end"])            # v, down-arc
 _U_MID = (_U_BACK + _U_FRONT) / 2.0                            # the phone's mid-depth
 # The clamp, from Brett's ruler photographs and calipers (2026-10-14). In
 # its own frame: X along its length from the end face its socket is in,
@@ -676,7 +691,7 @@ _U_MID = (_U_BACK + _U_FRONT) / 2.0                            # the phone's mid
 # Brett's centre readings of 11.5 and 5.3 give the same 6.8 between.
 ST02S = dict(w=27.0, depth=36.1, up_t=8.6, pad_t=3.0, pad_z=(13.0, 34.0),
              pad_c=25.0, bar_long=11.5, bar_short=9.0, len_long=47.0,
-             len_short=37.0, socket_z=12.05, socket_d=6.35, socket_deep=8.0,
+             len_short=37.0, socket_z=12.05, socket_d=6.35, socket_deep=6.45,
              pin_z=5.25, pin_hole=6.2, pin_deep=10.0, rod_r=1.75, rod_y=8.0,
              screw_r=2.0, knob_r=7.75, knob_h=6.0, knob_ridges=40,
              button=(8.3, 6.1, 3.45), mass_g=50.0)
@@ -685,7 +700,7 @@ ST02S = dict(w=27.0, depth=36.1, up_t=8.6, pad_t=3.0, pad_z=(13.0, 34.0),
 CLAMP_V = _CASE_TOP + 112.0 + 27.5 / 2.0          # its centre along the phone
 CLAMP_FACE_Y = _CASE_EDGE - (ST02S["up_t"] + ST02S["pad_t"])   # its socket end
 CLAMP_BACK_U = _U_MID + ST02S["pad_c"]            # its crossbar's back
-CLAMP_GAP = 76.35                                  # pad to pad: the case's width
+CLAMP_GAP = CASE["width"]                          # pad to pad
 SOCKET_U = CLAMP_BACK_U - ST02S["socket_z"]
 PIN_U = CLAMP_BACK_U - ST02S["pin_z"]
 
@@ -725,7 +740,7 @@ def _clamp_boxes():
 _PHONE_BOXES = [
     # the case, round the phone; the camera plateau stands through it
     ((_U_BACK - CASE["back"], _CASE_EDGE, _CASE_TOP),
-     (_U_FRONT + CASE["front"], _CASE_EDGE + IP17["width"] + 2 * CASE["side"],
+     (_U_FRONT + CASE["front"], _CASE_EDGE + CASE["width"],
       _CASE_TOP + CASE["length"])),
     _portrait(((_U_BACK, _Y_TOP, _V_LO), (_U_FRONT, _Y_BOT, _V_HI))),
     # the plateau, the full width of the back
@@ -773,10 +788,14 @@ MOUNT_V = (-21.5, CLAMP_V + ST02S["w"] / 2.0)      # the saddle's span, to the c
 # pocket at the thumbscrew; the holes drawn snug so they locate it.
 MOUNT_SCREWS = ((163.0, -14.0), (163.0, 14.0))
 MOUNT_SCREW_R = 1.65
-# The 1/4-20 runs QTR_ENGAGE into the clamp's socket. Under its head the
-# seat is what is left of the bolt's 1/2 in: a counterbore from behind
-# takes the rest, wide enough for a 7/16 nut driver round the head.
-QTR_ENGAGE = 5.5
+# The 1/4-20 runs QTR_ENGAGE into the clamp's socket, which is 6.45 deep
+# (Brett's calipers): four threads, and 1.25 short of the bottom, so a
+# bolt a little long or a seat printed a little thin still lets the clamp
+# pull down onto the seat rather than the bolt onto the socket's floor.
+# Under its head the seat is what is left of the bolt's 1/2 in: a
+# counterbore from behind takes the rest, wide enough for a 7/16 nut
+# driver round the head.
+QTR_ENGAGE = 5.2
 MOUNT_UNDER = QTR_LEN - 0.1 - QTR_ENGAGE
 MOUNT_CBORE_R = 9.5
 # A printed pin in the clamp's plain hole sets which way the clamp, and
@@ -2872,6 +2891,25 @@ def layout(parts, gap=6.0, pitch=300.0):
     return out, poses
 
 
+def carriage_hardware(parts, specimen=SPECIMEN):
+    """The bought hardware that rides the carriage, in its frame (the
+    world at theta = 0): taken from the assembly's steps, which pose it
+    at MOUNT_THETA, and carried back down."""
+    steps = {s_["id"]: s_ for s_ in assembly_steps(parts, specimen)}
+    back = np.linalg.inv(elev(MOUNT_THETA))
+    out = []
+    for i, name in (("thumbscrew", "thumbscrew"), ("receiver_screws", "screw"),
+                    ("camera_bolt", "camera bolt")):
+        for h in steps[i]["hardware"]:
+            for k, q in enumerate(h["prims"]):
+                M = back @ np.asarray(q["M"], float).reshape(4, 4)
+                # the thumbscrew's head is what the page's close-up calls its knob
+                nm = "knob" if (i == "thumbscrew" and k == 0) else name
+                out.append(dict(q, M=[round(float(v), 6) for v in M.ravel()],
+                                mat=q.get("mat") or "steel", name=nm))
+    return out
+
+
 def page_hardware(parts, specimen=SPECIMEN):
     """The bought hardware of the drive, where it sits once fitted, for
     the capture page to draw: what stands still, what turns with the
@@ -2957,9 +2995,9 @@ def assembly_meta(specimen, poses, parts, rep=None):
         "motor": _jsonable(MOTOR),
         "arc": dict(ri=ARC_RI, ro=ARC_RO, hw=ARC_HW, slot=SLOT_W,
                     slot_deg=[], box_wall=BOX_WALL, fiducials=list(FIDUCIALS)),
-        "thumbscrew": dict(r=2.5, y0=Y_ARC + SHOE_H[0] - 6.0,
-                           y1=Y_ARC + SHOE_H[0] + THUMB_LEN, knob_r=7.0,
-                           knob_h=6.0, u=CLAMP_R),
+        # the carriage's own hardware, at theta = 0: the wing thumbscrew,
+        # the receiver's two screws and the clamp's 1/4-20
+        "carriage_hw": carriage_hardware(parts, specimen),
         "cameras": {k: dict(c, configs={l["id"]: camera_config(k, l["id"])
                                         for l in c["lenses"]})
                     for k, c in CAMERAS.items()},
@@ -3006,7 +3044,16 @@ def _prim_mesh(p):
         if p.get("M") is not None:
             m.apply_transform(np.asarray(p["M"], float).reshape(4, 4))
         return m
-    if p["kind"] == "mesh":
+    if p["kind"] == "vendor":
+        m = vendor_mesh(p["id"])
+        if m is None:
+            m = trimesh.creation.cylinder(radius=p["r"], height=p["h"], sections=48)
+            m.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], p["axis"]))
+            m.apply_translation(p["c"])
+        else:
+            m = m.copy()
+            m.apply_transform(np.asarray(p["V"], float).reshape(4, 4))
+    elif p["kind"] == "mesh":
         m = trimesh.Trimesh(np.reshape(p["v"], (-1, 3)), np.reshape(p["f"], (-1, 3)),
                             process=False)
     elif p["kind"] == "box":
@@ -3076,6 +3123,73 @@ def _bolt_prims(seat, length, r=1.5, head_r=HEAD_R, head_h=HEAD_H,
                  axis=a.tolist(), r=head_r, h=head_h),
             dict(kind="cyl", c=(seat - a * length / 2).tolist(),
                  axis=a.tolist(), r=r, h=length)]
+
+
+# --- bought hardware, as its maker drew it ----------------------------
+# McMaster-Carr's STEP files, tessellated with OpenCascade at full
+# quality, kept local in models/hardware/mcmaster/<part>.glb and never
+# committed. Each is placed by where its head seats and which way it
+# runs, read off the mesh: `seat` is the point on the axis under the head
+# (or the part's centre), `axis` the way from the shank to the head, and
+# `ref` a direction square to it -- a hex head's corner, a wing's span.
+VENDOR_DIR = os.path.join(HERE, "..", "models", "hardware", "mcmaster")
+VENDOR = {
+    "92245A537": dict(name="1/4-20 x 1/2 hex head screw", seat=(-4.366, 0, 0),
+                      axis=(-1, 0, 0), ref=(0, 1, 0), r=3.175, h=12.7),
+    "92595A314": dict(name="M5 x 40 wing-head thumb screw", seat=(20.0, 0, 0),
+                      axis=(1, 0, 0), ref=(0, 1, 0), r=2.5, h=40.0),
+    "90225A101": dict(name="M5 square nut", seat=(0, 0, 0), axis=(0, 0, 1),
+                      ref=(1, 0, 0), r=4.0, h=4.0),
+    "91292A033": dict(name="M3 x 35 socket head screw", seat=(0, 0, 16.0),
+                      axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=35.0),
+    "91390A101": dict(name="M3 x 8 cup-point set screw", seat=(0, 0, 0),
+                      axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=8.0),
+    "91595A116": dict(name="3 x 16 dowel pin", seat=(0, 0, 0), axis=(0, 0, 1),
+                      ref=(1, 0, 0), r=1.5, h=16.0),
+}
+_VENDOR_CACHE = {}
+# Pairs whose real threads meet: drawn as McMaster models them, a screw
+# slid straight into its nut meets the nut's thread with its own -- it
+# goes in by turning. The sweep lets them through each other; the
+# thumbscrew's reach past the nut is `thumbscrew_reach`'s question.
+THREAD_MATES = {frozenset(("M5 square nut", f"M5x{THUMB_LEN:g} thumbscrew"))}
+
+
+def vendor_path(pid):
+    return os.path.join(VENDOR_DIR, pid + ".glb")
+
+
+def vendor_mesh(pid):
+    """The part as McMaster drew it, in its own frame; None if its mesh is
+    not on this machine."""
+    if pid not in _VENDOR_CACHE:
+        f = vendor_path(pid)
+        _VENDOR_CACHE[pid] = (trimesh.load(f, force="scene").to_geometry()
+                              if os.path.exists(f) else None)
+    return _VENDOR_CACHE[pid]
+
+
+def _frame(axis, ref):
+    z = np.asarray(axis, float); z /= np.linalg.norm(z)
+    x = np.asarray(ref, float); x = x - z * (x @ z); x /= np.linalg.norm(x)
+    return np.c_[x, np.cross(z, x), z]
+
+
+def vendor_prim(pid, seat, axis, ref=None, mat="steel"):
+    """A bought part placed with its seat on `seat`, running `axis` (shank
+    to head) and, if given, its `ref` direction turned to `ref`."""
+    v = VENDOR[pid]
+    a = np.asarray(axis, float) / np.linalg.norm(axis)
+    if ref is None:
+        ref = np.cross(a, [0, 0, 1.0]) if abs(a[2]) < 0.9 else np.array([1.0, 0, 0])
+    R = _frame(a, ref) @ _frame(v["axis"], v["ref"]).T
+    M = np.eye(4); M[:3, :3] = R
+    M[:3, 3] = np.asarray(seat, float) - R @ np.asarray(v["seat"], float)
+    # where its shank runs, for a page or sweep without the mesh
+    c = np.asarray(seat, float) - a * v["h"] / 2
+    return dict(kind="vendor", id=pid, mat=mat, r=v["r"], h=v["h"],
+                c=c.tolist(), axis=a.tolist(),
+                V=[round(float(t), 6) for t in M.ravel()])
 
 
 def _arc_to_world(u, v, h):
@@ -3161,9 +3275,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
     turn += [dict(t, body=w) for t, w in zip(turn, WHEELS)]
     o, u, _ = _driver_frame()
     pin_xy = o - u * GENEVA_A
-    pin = [dict(kind="cyl", c=[pin_xy[0], pin_xy[1],
-                               (Z["pin_lo"] + Z["crank_hi"]) / 2],
-                axis=[0, 0, 1], r=PIN_R, h=Z["crank_hi"] - Z["pin_lo"])]
+    pin = [vendor_prim("91595A116", [pin_xy[0], pin_xy[1],
+                                     (Z["pin_lo"] + Z["crank_hi"]) / 2], [0, 0, 1])]
     Zd = driver_levels(specimen)
     motor = motor_prims(specimen)
     DR = np.eye(4)
@@ -3174,15 +3287,19 @@ def assembly_steps(parts, specimen=SPECIMEN):
     zm = (Zd["crank_lo"] + Zd["crank_hi"]) / 2
     yf = MOTOR["shaft_flat"] - MOTOR["shaft_d"] / 2
     yn = yf + DBORE_CLR / 2 + 1.8
-    setscrew = [dict(kind="cyl", c=[0.0, yf + 0.05 + 4.0, zm], axis=[0, 1, 0], r=1.5,
-                     h=8.0, M=DR)]
+    # its cup on the flat, its hex socket outward
+    setscrew = [dict(vendor_prim("91390A101", [0.0, yf + 0.05 + 4.0, zm], [0, 1, 0]),
+                     M=DR)]
     crank_nut = [dict(kind="cyl", c=[0.0, yn + 0.15 + NUT_T / 2, zm], axis=[0, 1, 0],
                       r=NUT_AF / np.sqrt(3), h=NUT_T, sides=6, corner=[1.0, 0, 0],
                       M=DR)]
     lr, lp = HALL_LEADS
-    post_screw = [dict(q, M=DR) for q in _bolt_prims(
-        [POST_R - GENEVA_C, SCREW_Y, Zd["face"]], length["drive post to base"],
-        r=1.5, head_r=2.75, head_h=3.0)]
+    post_screw = ([dict(vendor_prim("91292A033", [POST_R - GENEVA_C, SCREW_Y, Zd["face"]],
+                                    [0, 0, 1]), M=DR)]
+                  if length["drive post to base"] == 35 else
+                  [dict(q, M=DR) for q in _bolt_prims(
+                      [POST_R - GENEVA_C, SCREW_Y, Zd["face"]],
+                      length["drive post to base"], r=1.5, head_r=2.75, head_h=3.0)])
     cable_in = _tubes(cable_upper(specimen), CABLE_R)
     cable_out = _tubes(cable_lower(specimen), CABLE_R)
     lead = _tubes(home_lead(specimen), LEAD_R)
@@ -3260,16 +3377,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
     E = elev(MOUNT_THETA)
     # a real M5 square nut, 8 x 4, on the floor of its 8.4 pocket
     zn = PLATE_H[0] + NUT_FLOOR + NUT[1] / 2
-    nut = _moved([dict(kind="box", lo=[CLAMP_R - 4.0, -4.0, zn - 2.0],
-                       hi=[CLAMP_R + 4.0, 4.0, zn + 2.0], M=M_ARC.ravel().tolist(),
-                       hole=dict(c=[CLAMP_R, 0.0, zn], axis=[0, 0, 1],
-                                 r=2.55, h=6.0))], E)
-    # McMaster 92595A314's STEP: a Ø10.9 hub 13 tall, wings 26 across
+    nut = _moved([dict(vendor_prim("90225A101", [CLAMP_R, 0.0, zn], [0, 0, 1],
+                                   ref=(1, 0, 0)), M=M_ARC.ravel().tolist())], E)
+    # McMaster 92595A314 as it is drawn: the wing head, the M5 thread
     seat = _arc_to_world(CLAMP_R, 0.0, SHOE_H[0])
-    thumb = _bolt_prims(seat, THUMB_LEN, r=2.5, head_r=5.45, head_h=13.0,
-                        axis=(0, -1, 0))
-    thumb.append(dict(kind="box", lo=[seat[0] - 1.25, seat[1] - 13.0, seat[2] - 13.0],
-                      hi=[seat[0] + 1.25, seat[1] - 1.5, seat[2] + 13.0]))
+    thumb = [vendor_prim("92595A314", seat, (0, -1, 0), ref=(0, 0, 1))]
     thumb = _moved(thumb, E)
     recv_screws = _moved([p for u, v in MOUNT_SCREWS
                           for p in _bolt_prims(_arc_to_world(u, v, MOUNT_FACE),
@@ -3278,10 +3390,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
                                                axis=(0, 1, 0))], E)
     # from behind the seat, through it, QTR_ENGAGE into the clamp's socket;
     # its head a hexagon for the 7/16 wrench
-    qtr = _bolt_prims(_arc_to_world(SOCKET_U, CLAMP_V, MOUNT_FACE - MOUNT_UNDER),
-                      QTR_LEN, r=3.175, head_r=QTR_HEAD[0] / np.sqrt(3.0),
-                      head_h=QTR_HEAD_REAL, axis=(0, -1, 0))
-    qtr[0].update(sides=6, corner=[1.0, 0, 0])
+    # McMaster 92245A537 as it is drawn, its threads and all
+    qseat = _arc_to_world(SOCKET_U, CLAMP_V, MOUNT_FACE - MOUNT_UNDER)
+    qtr = [vendor_prim("92245A537", qseat, (0, -1, 0), ref=(1, 0, 0))]
     qtr = _moved(qtr, E)
     cfg = camera_config(CAMERA_DEFAULT)
     cam = _moved([dict(kind="box", lo=list(lo), hi=list(hi), mat="phone")
@@ -3707,6 +3818,8 @@ def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
                         continue
                     pair = (a[2:], b[2:])
                     if _presses(pair, st, movers, stat, T):
+                        continue
+                    if frozenset(x.split("#")[0] for x in pair) in THREAD_MATES:
                         continue
                     out_.add("|".join(sorted(pair)))
                 return sorted(out_)
@@ -4461,6 +4574,139 @@ def phone_view(parts, specimen=SPECIMEN, kind=CAMERA_DEFAULT, extra=None,
     return out
 
 
+# The working volume: where a specimen can be and still be photographed.
+# A point is seen from a frame if it is inside the 1x lens's frame and
+# nearer the lens than whatever the lens's ray toward it meets first --
+# the plate, the wing nut, the pedestal, the ring. Each frame's "what the
+# lens meets first" is a depth image traced against every body, so the
+# shadows are the real parts' shadows. A point seen from at least
+# WORK_SHARE of the 108 frames is inside the working volume.
+WORK_SHARE = 0.80
+WORK_GRID = 2.0                       # mm between the points tested
+WORK_BOX = ((-90.0, 90.0), (-90.0, 90.0), (-72.0, 110.0))
+WORK_PIX = (90, 120)                  # depth image: across, up the arc
+_WORK_MESH = {}                       # its surface, by specimen, for export
+
+
+def specimen_mesh():
+    """The scanned tooth, posed as the page poses it: glTF y-up turned
+    z-up, centred over the axis, its base on the rods' tips."""
+    path = os.path.join(HERE, "..", "models", "specimen", "meherrin-textured.glb")
+    if not os.path.exists(path):
+        return None
+    m = trimesh.load(path, force="scene").to_geometry()
+    m.apply_transform(rot(90.0, [1, 0, 0]))
+    lo, hi = m.bounds
+    plate_top = levels()["plat"] + PLATE_T
+    m.apply_translation([-(lo[0] + hi[0]) / 2, -(lo[1] + hi[1]) / 2,
+                         plate_top + 13.0 - lo[2]])
+    return m
+
+
+def working_volume(parts, specimen=SPECIMEN, kind=CAMERA_DEFAULT, extra=None):
+    """How many of the protocol's frames see each point of a grid round
+    the focal point, through the 1x lens, with the jig's shadows."""
+    rot_names = set(ROTOR_SIDE) | set(CARRIAGE)
+    stat = [m for n, m in parts.items() if n not in rot_names]
+    stat += list(bought_statics(specimen).values())
+    stat.append(rod_plate(specimen))
+    if extra is not None:
+        stat.append(extra)
+    stat = trimesh.util.concatenate(stat)
+    rotor_fixed = trimesh.util.concatenate([parts[n] for n in ROTOR_SIDE])
+    axes = [np.arange(a, b + 1e-9, WORK_GRID) for a, b in WORK_BOX]
+    X, Y, Z = np.meshgrid(*axes, indexing="ij")
+    P = np.c_[X.ravel(), Y.ravel(), Z.ravel()]
+    count = np.zeros(len(P), np.int16)
+    L = VIEW_LENSES[0]
+    ta, tl = L["tan"]
+    c = np.asarray(CAMERAS[kind]["rings"][L["ring"]]["c"], float)
+    na, nb = WORK_PIX
+    ga, gb = np.meshgrid(np.linspace(-1, 1, na), np.linspace(-1, 1, nb), indexing="ij")
+    frames = 0
+    for p in PROTOCOL:
+        E = elev(p["elev"])
+        moving = [rotor_fixed]
+        for n in CARRIAGE:
+            m = parts[n].copy(); m.apply_transform(E); moving.append(m)
+        cl = clamp_mesh(); cl.apply_transform(E); moving.append(cl)
+        moving = trimesh.util.concatenate(moving)
+        for phi in np.arange(0.0, 360.0, p["step"]):
+            frames += 1
+            Rz = rot(phi, [0, 0, 1])
+            T = Rz @ E
+            o = (T @ np.r_[c, 1.0])[:3]
+            f, ay, av = (T[:3, :3] @ np.eye(3)[:, k] for k in range(3))
+            f = -f
+            D = (f[None] + ga.reshape(-1, 1) * ta * ay[None]
+                 + gb.reshape(-1, 1) * tl * av[None])
+            D /= np.linalg.norm(D, axis=1)[:, None]
+            depth = np.full(len(D), np.inf)
+            Ri = np.linalg.inv(Rz)
+            for mesh, M in ((stat, np.eye(4)), (moving, Ri)):
+                Oo = np.repeat(((M @ np.r_[o, 1.0])[:3])[None], len(D), 0)
+                Dd = (M[:3, :3] @ D.T).T
+                loc, idx, _ = mesh.ray.intersects_location(Oo, Dd, multiple_hits=False)
+                if len(idx):
+                    d = np.linalg.norm(loc - Oo[idx], axis=1)
+                    np.minimum.at(depth, idx, d)
+            depth = depth.reshape(na, nb)
+            # each grid point into this frame: inside it, and nearer than
+            # what the lens meets along that line
+            v = P - o
+            x = v @ f
+            a = (v @ ay) / (x * ta)
+            b = (v @ av) / (x * tl)
+            inside = (x > 1.0) & (np.abs(a) <= 1) & (np.abs(b) <= 1)
+            ia = np.clip(np.rint((a + 1) / 2 * (na - 1)).astype(int), 0, na - 1)
+            ib = np.clip(np.rint((b + 1) / 2 * (nb - 1)).astype(int), 0, nb - 1)
+            dist = np.linalg.norm(v, axis=1)
+            seen = inside & (dist < depth[ia, ib] - 1.0)
+            count += seen
+    shape = X.shape
+    return dict(axes=axes, count=count.reshape(shape), frames=frames)
+
+
+def work_report(wv, need=WORK_SHARE, specimen=None):
+    """The working volume's size, at a share of the frames, and how much
+    of a specimen lies outside it."""
+    k = int(np.ceil(need * wv["frames"]))
+    mask = wv["count"] >= k
+    g = WORK_GRID
+    out = dict(frames_needed=k, volume_cm3=round(float(mask.sum()) * g ** 3 / 1000.0, 1))
+    if mask.any():
+        idx = np.argwhere(mask)
+        lo = [wv["axes"][i][idx[:, i].min()] for i in range(3)]
+        hi = [wv["axes"][i][idx[:, i].max()] for i in range(3)]
+        out["box"] = [[round(float(v), 1) for v in lo], [round(float(v), 1) for v in hi]]
+        # across at the focal height, and how tall on the axis
+        zi = int(np.argmin(np.abs(wv["axes"][2])))
+        sl = mask[:, :, zi]
+        xs = wv["axes"][0][sl.any(axis=1)]
+        out["across_at_focus_mm"] = round(float(xs.max() - xs.min()), 1) if len(xs) else 0.0
+        ci = int(np.argmin(np.abs(wv["axes"][0]))), int(np.argmin(np.abs(wv["axes"][1])))
+        zs = wv["axes"][2][mask[ci[0], ci[1], :]]
+        out["tall_on_axis_mm"] = round(float(zs.max() - zs.min()), 1) if len(zs) else 0.0
+    if specimen is not None:
+        V = specimen.vertices
+        ii = [np.clip(np.rint((V[:, i] - wv["axes"][i][0]) / g).astype(int), 0,
+                      len(wv["axes"][i]) - 1) for i in range(3)]
+        ok = mask[ii[0], ii[1], ii[2]]
+        out["specimen_outside_pct"] = round(100.0 * (1 - float(ok.mean())), 2)
+        out["specimen_min_frames"] = int(wv["count"][ii[0], ii[1], ii[2]].min())
+    return out
+
+
+def work_mesh(wv, need=WORK_SHARE):
+    """The working volume's surface, for the page."""
+    from skimage import measure
+    k = np.ceil(need * wv["frames"])
+    f = np.pad(wv["count"].astype(float), 1, constant_values=0)
+    verts, faces, _, _ = measure.marching_cubes(f, level=k - 0.5, spacing=(WORK_GRID,) * 3)
+    verts += np.array([a[0] for a in wv["axes"]]) - WORK_GRID
+    return trimesh.Trimesh(verts, faces[:, ::-1], process=True)
+
+
 def pupil(theta):
     p = np.array([R, 0.0, CAM_Y - Y_ARC, 1.0])
     w = elev(theta) @ M_ARC @ p
@@ -4585,6 +4831,12 @@ def measure(parts, specimen):
     rep["azimuth_fouls"] = azimuth_sweep(parts, specimen=specimen)
     rep["sightlines"] = sightlines(parts, specimen)
     pv = phone_view(parts, specimen)
+    wv = working_volume(parts, specimen)
+    sp = specimen_mesh() if specimen == SPECIMEN else None
+    rep["working_volume"] = dict(share=WORK_SHARE, frames=wv["frames"],
+                                 at_share=work_report(wv, WORK_SHARE, sp),
+                                 every_frame=work_report(wv, 1.0, sp))
+    _WORK_MESH[specimen] = work_mesh(wv)
     rep["phone_view"] = dict(rays=pv["rays"], blocked=pv["blocked"],
                              blocked_at=pv["blocked_at"][:10],
                              foreground={k: v["foreground"]
@@ -4647,6 +4899,10 @@ def gates(rep):
             ("phone_sees_the_specimen", rep["phone_view"]["blocked"] == 0),
             ("nothing_in_front_of_the_1x",
              rep["phone_view"]["foreground"]["wide"] == 0),
+            # the specimen the jig is built for lies inside the volume seen
+            # from WORK_SHARE of the frames
+            ("specimen_in_the_working_volume",
+             rep["working_volume"]["at_share"].get("specimen_outside_pct", 0.0) == 0.0),
             # what the drive can be off by in life, and it still runs
             ("geneva_runs_off_centre",
              rep["geneva_window"]["control_jams"]
@@ -4686,9 +4942,19 @@ def export(parts, specimen, out, rep=None):
     embed(out, brim=False, per_object={n: dict(BRIM) for n in BRIMMED},
           filament=FILAMENT, overrides=PRINT_SETTINGS)
     meta = assembly_meta(specimen, poses, parts, rep)
+    if rep and "working_volume" in rep:
+        meta["working_volume"] = rep["working_volume"]
     with zipfile.ZipFile(out, "a", zipfile.ZIP_DEFLATED) as z:
         z.writestr("Metadata/orbital_jig.json",
                    json.dumps(meta, separators=(",", ":")))
+        # the working volume's surface, for the capture page to show
+        if specimen in _WORK_MESH:
+            z.writestr("Metadata/working_volume.glb",
+                       _WORK_MESH[specimen].export(file_type="glb"))
+        # the bought parts McMaster drew, for the pages to draw as drawn
+        for pid in VENDOR:
+            if os.path.exists(vendor_path(pid)):
+                z.write(vendor_path(pid), f"Metadata/hardware/{pid}.glb")
     from meshcheck import export_defects
     return export_defects(out), meta
 
