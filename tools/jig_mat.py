@@ -330,7 +330,7 @@ BOUGHT = [
 ]
 
 NAMES = {"stator": "base", "rotor": "ring", "arc": "arc", "saddle": "saddle",
-         "shoe": "shoe", "receiver": "receiver", "ctrl_box": "controller box",
+         "shoe": "shoe", "receiver": "receiver", "qtr_turner": "1/4-20 turner", "ctrl_box": "controller box",
          "ctrl_lid": "controller lid", "ctrl_tray": "controller tray", "drive_block": "drive block",
          "drive_cap": "drive lid", "driver": "driver (crank)",
          "driver_shim": "driver shim", "mount_screw": "mount screw",

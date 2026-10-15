@@ -132,12 +132,19 @@ BASE_ROUND = 6.0
 # The corners, turned 15 degrees: a 250 mm triangle with a side along an
 # axis is 250 mm across the plate, and 241 both ways when turned.
 TOWER_PHI = (75.0, 195.0, 315.0)
-FOOT_PHI = (15.0, 135.0, 255.0)       # mid-edges: a three-point stance
 # The three feet are bolts, down into three pucks glued to a heavy board.
-# They stay at r = 60 because that is inside the ring's bore: a driver
-# reaches every head from above with the jig assembled, so the board
-# needs no holes and nothing is done from underneath.
-FOOT_R = 60.0
+# They stand under the corners, the base's own triangle at 79% of its
+# size (Brett, 2026-10-15): at r = 60 on the mid-edges they made a
+# triangle 104 mm a side, upside down to the base's, and every tower
+# overhung the line between two feet by 102 mm; at r = 114 under the
+# corners it is 197 mm a side and each tower stands 18 mm outboard of
+# its own foot. 114 is as far out as a hex key still reaches a head past
+# the V wheel above it (the wheel's tip is at 119.6): with the ring off,
+# not with it on -- the ring's lip covers r 72.7 to 121. So the feet go
+# in before the ring, and the jig comes off its board with the ring
+# lifted out, which it rarely has to.
+FOOT_PHI = TOWER_PHI
+FOOT_R = 114.0
 FOOT_CBORE = (3.9, 5.0)               # the socket head and its key: radius, depth
 # The pucks: one under each foot, so the base touches the board at three
 # points and nothing else -- a full face would screw any warp in the
@@ -550,6 +557,18 @@ SCREW_R = 2.7           # M5 clearance
 # the thumbscrew clamps saddle to shoe just outside the box's outer face
 CLAMP_R = ARC_RO + LIP_CLR + LIP_T + 0.5 + SCREW_R
 NUT = (8.4, 4.4)        # M5 square nut trap, across and thick
+# The heel. With the thumbscrew the only thing joining saddle and shoe,
+# outboard of everything they bear on, tightening it had nothing to
+# react against: each plate rocked on the box's outer edge, closing
+# over the screw and opening under the box, and Brett's carriage twisted
+# as he turned it. So the shoe carries a wall across to the saddle's
+# face, outboard of the screw: a fulcrum. The screw now sits between it
+# and the nubs, and squeezes both -- the nubs about a quarter of its
+# pull, the heel the rest -- and the plates cannot rock. It stops
+# HEEL_GAP short of the saddle with the nubs touching, so they always
+# bear first and the plates close the last 0.2 by a turn of 0.4 degree.
+HEEL = (CLAMP_R + SCREW_R + 2.0, CLAMP_R + SCREW_R + 8.0)
+HEEL_GAP = 0.2
 # 34.0.0: the platform, its fore/aft channel and the sliding receiver are
 # gone. They were drawn for a clamp guessed as a spring clamp gripping the
 # phone's middle, its socket on a foot under it. Brett's clamp is an
@@ -693,7 +712,7 @@ _U_MID = (_U_BACK + _U_FRONT) / 2.0                            # the phone's mid
 ST02S = dict(w=27.0, depth=36.1, up_t=8.6, pad_t=3.0, pad_z=(13.0, 34.0),
              pad_c=25.0, bar_long=11.5, bar_short=9.0, len_long=47.0,
              len_short=37.0, socket_z=12.05, socket_d=6.35, socket_deep=6.45,
-             pin_z=5.25, pin_hole=6.2, pin_deep=10.0, rod_r=1.75, rod_y=8.0,
+             pin_z=5.25, pin_hole=5.0, pin_deep=10.0, rod_r=1.75, rod_y=8.0,
              screw_r=2.0, knob_r=7.75, knob_h=6.0, knob_ridges=40,
              button=(8.3, 6.1, 3.45), mass_g=50.0)
 # Gripping near the phone's bottom, under Camera Control: 112 of the case
@@ -799,12 +818,16 @@ MOUNT_SCREW_R = 1.65
 QTR_ENGAGE = 5.2
 MOUNT_UNDER = QTR_LEN - 0.1 - QTR_ENGAGE
 MOUNT_CBORE_R = 9.5
+ROOF_STEP = 0.4          # each step of a stepped roof: two 0.2 layers
 # A printed pin in the clamp's plain hole sets which way the clamp, and
-# so the phone, points; the bolt only holds it there. Ø5.8 in the 6.2 is
-# the slip printed pins have needed, and 4.5 times stiffer than the 3.5
-# that a pulled, levered printed pin must at least be. It has no root
-# fillet: the hole's edge sits at its root, 0.1 off the seat.
-MOUNT_PIN = (5.8, 4.0, 0.5)                        # diameter, length, tip chamfer
+# so the phone, points; the bolt only holds it there. The plain hole is
+# about 5.0 by Brett's calipers (2026-10-15), not the 6.2 first read,
+# and his printed 5.8 would not go in; 4.9 is the most he wants in it.
+# A printed shaft comes out a few hundredths over, so this is a close
+# fit with nothing to spare -- what a key wants. Still 3.8 times as
+# stiff as the 3.5 that a pulled, levered printed pin must at least be.
+# No root fillet: the hole's edge sits at its root, 0.1 off the seat.
+MOUNT_PIN = (4.9, 4.0, 0.5)                        # diameter, length, tip chamfer
 FRUSTUM = dict(near=20.0, far=200.0)
 
 
@@ -2435,7 +2458,7 @@ def shoe_body(hband, sign):
     h0, h1 = sorted(hband)
     d = SADDLE_DEG
     r_in = ARC_RI - LIP_CLR - LIP_T
-    plate = sector(r_in, CLAMP_R + SCREW_R + 3.5, h0, h1, -d, d)
+    plate = sector(r_in, HEEL[1], h0, h1, -d, d)
     # lips over the box's inner and outer faces, half its depth each side
     lh = (sign * 1.0, sign * (ARC_HW + NUB_CLR + 1.0))
     # the plate's whole span, so the lips' ends are flush with its ends
@@ -2481,6 +2504,11 @@ def screw_hole(h0, h1):
 
 def shoe():
     s = shoe_body(SHOE_H, -1)
+    # the heel, to HEEL_GAP short of the saddle's face once both plates'
+    # nubs are on the box (each plate closes NUB_CLR)
+    reach = PLATE_H[0] - 2 * NUB_CLR - HEEL_GAP
+    s = union([s, sector(HEEL[0], HEEL[1], SHOE_H[1] - 0.5, reach,
+                         -SADDLE_DEG, SADDLE_DEG)])
     s = cut(s, [screw_hole(SHOE_H[0] - 1.0, SHOE_H[1] + 7.0)])
     s.apply_transform(M_ARC)
     return s
@@ -2501,13 +2529,67 @@ def receiver():
     pin = trimesh.creation.revolve(prof, sections=48)
     pin.apply_translation([PIN_U, CLAMP_V, 0])
     b = union([b, pin])
+    hs = h1 - MOUNT_UNDER                       # the head's seat
     tools = [cyl(QTR_R, h0 - 1, h1 + 1, SOCKET_U, CLAMP_V, 48),
-             cyl(MOUNT_CBORE_R, h0 - 1, h1 - MOUNT_UNDER, SOCKET_U, CLAMP_V, 64)]
+             cyl(MOUNT_CBORE_R, h0 - 1, hs, SOCKET_U, CLAMP_V, 64)]
+    # The seat is the counterbore's roof, printed over air, and the bolt's
+    # hole through it left every bridge line ending on nothing: Brett's
+    # print was a nest of strands. So the roof steps: first two bridges
+    # either side of a slot the hole's width, each landed on the
+    # counterbore's wall at both ends; then two across the slot, landed
+    # on those, leaving a square; then the round hole on solid ground.
+    # Nothing is drilled out, and the head still seats on the first layer.
+    slot = Polygon([(-QTR_R, -MOUNT_CBORE_R - 1), (QTR_R, -MOUNT_CBORE_R - 1),
+                    (QTR_R, MOUNT_CBORE_R + 1), (-QTR_R, MOUNT_CBORE_R + 1)]
+                   ).intersection(Point(0, 0).buffer(MOUNT_CBORE_R, quad_segs=32))
+    for k, poly in enumerate((slot, Polygon([(-QTR_R, -QTR_R), (QTR_R, -QTR_R),
+                                             (QTR_R, QTR_R), (-QTR_R, QTR_R)]))):
+        st = trimesh.creation.extrude_polygon(poly, ROOF_STEP + 0.01)
+        st.apply_translation([SOCKET_U, CLAMP_V, hs - 0.01 + k * ROOF_STEP])
+        tools.append(st)
     for u, v in MOUNT_SCREWS:
         tools.append(cyl(MOUNT_SCREW_R, h0 - 1, h1 + 1, u, v, 32))
     b = cut(b, tools)
     b.apply_transform(M_ARC)
     return b
+
+
+# The turner: a camera mount is screwed on by turning the camera, and
+# this one is the other way round -- the clamp is keyed by its pin and
+# the 1/4-20 turns behind it, where fingers get only its 2 mm of head.
+# So a small knob in the V wheels' shape carries the head in a hex
+# socket: the bolt goes into the clamp by the fingers, and the turner can
+# stay on it. Its stem fills the counterbore, so the socket holds all of
+# the head, and it prints back down, the socket open to the nozzle.
+TURNER = dict(r=11.0, w=8.0, tip=1.5, side_r=9.0)
+TURNER_FIT = 0.2         # the hex socket over the head's flats: snug
+TURNER_STEM = 1.5        # into the 1.86 counterbore
+
+
+def qtr_turner_local():
+    """Built back down at z = 0, the stem and the socket's mouth up."""
+    r, w, tip, sr = TURNER["r"], TURNER["w"], TURNER["tip"], TURNER["side_r"]
+    hw = w / 2.0
+    rs = MOUNT_CBORE_R - 0.4
+    body = rev([(0, 0), (sr, 0), (r, hw - tip), (r, hw + tip), (sr, w),
+                (rs, w), (rs, w + TURNER_STEM), (0, w + TURNER_STEM)],
+               sections=180)
+    af = QTR_HEAD[0] + TURNER_FIT
+    top = w + TURNER_STEM
+    sock = trimesh.creation.cylinder(radius=af / np.sqrt(3.0),
+                                     height=QTR_HEAD[1] + 0.6, sections=6)
+    sock.apply_translation([0, 0, top - (QTR_HEAD[1] + 0.6) / 2.0 + 0.01])
+    return cut(body, [sock])
+
+
+def qtr_turner():
+    """On the 1/4-20's head, its stem in the receiver's counterbore."""
+    t = qtr_turner_local()
+    # its back face 0.1 off the receiver's, the stem in the counterbore
+    t.apply_translation([SOCKET_U, CLAMP_V,
+                         MOUNT_H0 - TURNER["w"] - 0.1])
+    t.apply_transform(M_ARC)
+    return t
 
 
 # --- proxies: hardware and the camera, for the sweeps and the page -----
@@ -2774,7 +2856,7 @@ STATOR_SIDE = ("stator", "puck_a", "puck_b", "puck_c", "driver", "drive_block", 
                "ctrl_box", "ctrl_tray", "ctrl_lid", "sleeve_a", "sleeve_b", "sleeve_c",
                "mount_screw", "mount_wing_nut", "mount_hex_nut")
 ROTOR_SIDE = ("rotor", "arc")
-CARRIAGE = ("saddle", "shoe", "receiver")
+CARRIAGE = ("saddle", "shoe", "receiver", "qtr_turner")
 
 
 def assemble(specimen=SPECIMEN):
@@ -2793,6 +2875,7 @@ def assemble(specimen=SPECIMEN):
     parts["saddle"] = saddle()
     parts["shoe"] = shoe()
     parts["receiver"] = receiver()
+    parts["qtr_turner"] = qtr_turner()
     # Placed, not just built. Everything else assemble() returns is in
     # the world frame, and these two were left in the frame they are
     # drawn in -- which put the screw standing at the focal point, up
@@ -3678,11 +3761,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "the seat, the pin in its plain hole: the clamp goes on only "
               "one way.",
               hw=[(CLAMP_ITEM, 1, cam)], path=(inboard, 30.0)),
-        _step("camera_bolt", "The 1/4-20 from behind",
-              "Through the seat into the clamp's socket, turned with a 7/16 "
-              "wrench or nut driver. The clamp does not turn, so the pin "
-              "says where the phone points, not the thread.",
-              hw=[(QTR_ITEM, 1, qtr)], path=(outboard, 25.0)),
+        _step("camera_bolt", "The 1/4-20 from behind, in its turner",
+              "The bolt's head into the turner's hex socket, then through "
+              "the seat into the clamp's socket, turned by the turner's "
+              "rim, finger tight. The clamp does not turn, so the pin says "
+              "where the phone points, not the thread. The turner stays on.",
+              ["qtr_turner"], hw=[(QTR_ITEM, 1, qtr)], path=(outboard, 25.0),
+              at=E),
         _step("rod_plate", "Rod field plate onto the platform",
               "Printed from its own card. Its plain hole drops over the "
               "mount screw; the carbon rods go in later, cut to the "
@@ -4154,7 +4239,7 @@ def fits(parts, specimen=SPECIMEN):
             if P.contains(Point(PIN_U, CLAMP_V)):
                 pin_d = 2 * np.sqrt(P.area / np.pi)
     row("Receiver's pin in the clamp's plain hole", ST02S["pin_hole"], pin_d,
-        "slip", kind="printed shaft in steel bore",
+        "press", kind="printed shaft in steel bore",
         note="it keys the clamp; the 1/4-20 holds it")
     row("Mount screw through the pedestal",
         hole_d(parts["stator"], (0, 0), L["base_top"] + PED_H / 2,

@@ -556,7 +556,10 @@ PARTS = [
        # board's length, so the plug cannot push it back.
        # 24.0.0: the controller lid's pegs 2.25, not 2.55: Brett's would
        # not go into the bosses.
-       version="38.0.0",
+       # 39.0.0: the feet under the corners at r 114; a heel on the shoe
+       # so the thumbscrew cannot rock the carriage; the receiver's pin
+       # 4.9 and its seat roofed in steps; a turner for the 1/4-20.
+       version="39.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

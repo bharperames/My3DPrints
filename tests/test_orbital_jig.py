@@ -35,8 +35,8 @@ class TestJig(unittest.TestCase):
         failed = [n for n, ok in J.gates(self.rep) if not ok]
         self.assertEqual(failed, [], json.dumps(self.rep, default=str)[:800])
 
-    def test_twenty_five_bodies_all_watertight(self):
-        self.assertEqual(len(self.parts), 25)
+    def test_twenty_six_bodies_all_watertight(self):
+        self.assertEqual(len(self.parts), 26)
         self.assertTrue(all(m.is_watertight for m in self.parts.values()))
 
     def test_every_body_fits_the_plate_with_the_packers_gap(self):
@@ -258,6 +258,14 @@ class TestCornerFeet(unittest.TestCase):
     def setUpClass(cls):
         cls.parts = J.assemble(J.SPECIMEN)
 
+    def test_the_feet_are_the_bases_own_triangle_smaller(self):
+        """Each foot on its tower's radial line, inside it, and the three
+        a triangle the base's shape at most 20 mm short of its corners."""
+        self.assertEqual(tuple(J.FOOT_PHI), tuple(J.TOWER_PHI))
+        self.assertLess(J.FOOT_R + J.FOOT_CBORE[0], J.TOWER_PITCH - J.TOWER_R)
+        rc = J.BASE_SIDE / np.sqrt(3.0)
+        self.assertGreater(J.FOOT_R / rc, 0.75)
+
     def test_the_card_and_the_generator_name_the_same_settings(self):
         import catalog
         card = catalog.find("orbital_jig")
@@ -363,21 +371,32 @@ class TestGeneva(unittest.TestCase):
 
     def test_every_screw_is_reached_from_above(self):
         """The foot bolts, the drive post's screw and the cap's screws:
-        nothing over their heads, so the jig comes off its pucks, and
-        the drive out of it, without lifting anything."""
+        nothing over their heads, so the drive comes out without lifting
+        anything, and the jig off its pucks with only the ring lifted
+        out -- the feet stand under the corners, beneath the ring's lip,
+        and past the V wheels' tips."""
         import trimesh
         others = trimesh.util.concatenate(
             [m for n, m in self.parts.items()
              if n not in ("stator", *J.PUCKS, "drive_block", "drive_cap",
                           "driver")])
+        ring_off = trimesh.util.concatenate(
+            [m for n, m in self.parts.items()
+             if n not in ("stator", *J.PUCKS, "drive_block", "drive_cap",
+                          "driver", *J.ROTOR_SIDE, *J.CARRIAGE)])
         L = J.levels(J.SPECIMEN)
         Z = J.driver_levels(J.SPECIMEN)
         o, u, t = J._driver_frame()
         rays, floor = [], []
+        feet = []
         for a in J.FOOT_PHI:
             for dr in (-J.FOOT_CBORE[0], 0.0, J.FOOT_CBORE[0]):
-                rays.append(J.polar(J.FOOT_R + dr, a, 400.0))
-                floor.append(L["base_top"])
+                feet.append(J.polar(J.FOOT_R + dr, a, 400.0))
+        locs, idx, _ = ring_off.ray.intersects_location(
+            np.array(feet), np.tile([0, 0, -1.0], (len(feet), 1)),
+            multiple_hits=False)
+        for h in locs:
+            self.assertLess(h[2], L["base_top"] + 1e-6, f"over a foot: {h}")
         # the post's screw, down its access bore (lid off)
         post = o + u * (J.POST_R - J.GENEVA_C) + t * J.SCREW_Y + np.array([0, 0, 400.0])
         rays.append(post)
@@ -457,15 +476,17 @@ class TestRealDrive(unittest.TestCase):
     def test_the_clamps_bolt_engages_and_its_pin_keys_it(self):
         """The 1/4-20 from behind: what passes the seat and the 0.1 gap is
         more than three threads and less than the socket is deep. The
-        pin: no thinner than a levered printed pin may be, and a slip in
-        the clamp's plain hole."""
+        pin: no thinner than a levered printed pin may be, and a close
+        fit in the clamp's plain hole."""
         engaged = J.QTR_LEN - J.MOUNT_UNDER - 0.1
         self.assertAlmostEqual(engaged, J.QTR_ENGAGE, places=6)
         self.assertGreater(engaged, 4.0)
         self.assertLess(engaged, J.ST02S["socket_deep"] - 1.0)
         d = J.MOUNT_PIN[0]
         self.assertGreaterEqual(d, 3.5)
-        self.assertLess(d, J.ST02S["pin_hole"] - 0.2)
+        # just under the hole Brett calipered, never bigger
+        self.assertLessEqual(d, J.ST02S["pin_hole"])
+        self.assertGreater(d, J.ST02S["pin_hole"] - 0.15)
         self.assertLess(J.MOUNT_PIN[1], J.ST02S["pin_deep"])
         # the 6.8 between the clamp's two holes, as Brett measured it
         self.assertAlmostEqual(J.PIN_U - J.SOCKET_U, 6.8, places=6)
@@ -527,6 +548,58 @@ class TestRealDrive(unittest.TestCase):
         parts["drive_cap"] = J.box((60.0, -5.0, -60.0), (70.0, 5.0, 30.0))
         self.assertGreater(J.sightlines(parts, J.SPECIMEN)["blocked"], 0)
         self.assertEqual(J.sightlines(self.parts, J.SPECIMEN)["blocked"], 0)
+
+    def test_the_heel_is_a_fulcrum_outboard_of_the_thumbscrew(self):
+        """Saddle and shoe touch nowhere but through the box until the
+        heel closes: drawn, the heel stands the nubs' two clearances plus
+        HEEL_GAP off the saddle, all of it outboard of the screw."""
+        import trimesh
+        cm = trimesh.collision.CollisionManager()
+        cm.add_object("saddle", self.parts["saddle"])
+        d, data = cm.min_distance_single(self.parts["shoe"], return_data=True)
+        self.assertAlmostEqual(d, 2 * J.NUB_CLR + J.HEEL_GAP, places=2)
+        p = np.linalg.inv(J.M_ARC) @ np.append(data.point("__external"), 1.0)
+        self.assertGreater(np.hypot(p[0], p[2]), J.CLAMP_R + J.SCREW_R)
+
+    def test_the_seat_roof_steps_so_every_bridge_lands(self):
+        """Over the counterbore: a slot the hole's width, then a square,
+        then the round hole -- each layer's bridges landed on the last."""
+        from shapely.geometry import Point, Polygon
+        r = self.parts["receiver"].copy()
+        r.apply_transform(np.linalg.inv(J.M_ARC))
+        hs = J.MOUNT_FACE - J.MOUNT_UNDER
+        w = 2 * J.QTR_R
+        want = {-0.2: (2 * J.MOUNT_CBORE_R, 2 * J.MOUNT_CBORE_R),
+                J.ROOF_STEP / 2: (w, 2 * J.MOUNT_CBORE_R),
+                1.5 * J.ROOF_STEP: (w, w)}
+        for dz, (gu, gv) in want.items():
+            sec = r.section(plane_origin=[0, 0, hs + dz], plane_normal=[0, 0, 1])
+            loops = [Polygon(L[:, :2]) for L in sec.discrete]
+            hole = [p for p in loops if p.area < 400
+                    and p.contains(Point(J.SOCKET_U, J.CLAMP_V))]
+            self.assertEqual(len(hole), 1, dz)
+            b = hole[0].bounds
+            self.assertAlmostEqual(b[2] - b[0], gu, delta=0.05)
+            self.assertAlmostEqual(b[3] - b[1], gv, delta=0.05)
+
+    def test_the_turner_holds_the_whole_head_and_rides_clear(self):
+        """Its socket takes the 7/16 head's full height over its flats,
+        and on the bolt it touches neither the receiver nor anything the
+        carriage passes."""
+        import trimesh
+        t = J.qtr_turner_local()
+        self.assertTrue(t.is_watertight)
+        top = t.bounds[1][2]
+        sec = t.section(plane_origin=[0, 0, top - J.QTR_HEAD_REAL + 0.1],
+                        plane_normal=[0, 0, 1])
+        from shapely.geometry import Point, Polygon
+        inner = min((Polygon(L[:, :2]) for L in sec.discrete), key=lambda p: p.area)
+        flats = 2 * inner.exterior.distance(Point(0, 0))
+        self.assertGreater(flats, J.QTR_HEAD[0])
+        self.assertLess(flats, J.QTR_HEAD[0] + 0.3)
+        cm = trimesh.collision.CollisionManager()
+        cm.add_object("receiver", self.parts["receiver"])
+        self.assertGreater(cm.min_distance_single(self.parts["qtr_turner"]), 0.1)
 
     def test_the_thumbscrew_comes_through_its_nut(self):
         self.assertTrue(J.thumbscrew_reach()["through"])
