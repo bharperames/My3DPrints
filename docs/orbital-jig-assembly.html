@@ -409,6 +409,14 @@ function insertGeom(p) {
 }
 /* hardware from the same primitives the generator swept */
 function primGeom(p) {
+  if (p.kind === 'mesh') {
+    // a bought part modeled whole (the phone's clamp): flat-shaded facets
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(p.v, 3));
+    g.setIndex(p.f);
+    const n = g.toNonIndexed(); n.computeVertexNormals();
+    return n;
+  }
   if (p.kind === 'box') {
     const s = p.hi.map((v, i) => v - p.lo[i]);
     return new THREE.BoxGeometry(...s).translate(...p.hi.map((v, i) => (v + p.lo[i]) / 2));
@@ -812,7 +820,7 @@ const PART = {
   stator: ['Base', 'bearing towers, pedestal, drive post socket'], puck_a: ['Puck', 'under a foot: bolted to the base, glued to the board'], puck_b: ['Puck', 'under a foot: bolted to the base, glued to the board'], puck_c: ['Puck', 'under a foot: bolted to the base, glued to the board'],
   rotor: ['Rotor ring', 'rides three V wheels in its V groove; the 36-slot Geneva lip on its bore'], arc: ['Quadrant arc', 'carries the camera through 10–80°'],
   saddle: ['Carriage saddle', 'its lips over the arc\u2019s inner and outer faces'], shoe: ['Carriage shoe', 'the outboard half of the clamp'],
-  receiver: ['Receiver', 'the phone clamp\u2019s 1/4-20, sliding the platform\u2019s channel'],
+  receiver: ['Receiver', 'bolted to the saddle; the clamp\u2019s seat, its pin and the 1/4-20 from behind'],
   driver: ['Geneva driver', 'on the gearmotor\u2019s D-shaft; one turn, one 10° stop'],
   drive_block: ['Drive block', 'holds the gearmotor; its cable runs down the post'], drive_cap: ['Drive cap', 'covers the wiring bay'],
   ctrl_box: ['Controller box', 'XIAO ESP32S3 and DRV8833'], ctrl_lid: ['Controller lid', ''],
@@ -1034,7 +1042,9 @@ function studSeat(i) {
   const st = STEPS[i];
   let j = 0;
   for (const h of st.hardware) {
-    if (/hex head/i.test(h.item) && st.path) {
+    // a hex head dropped into a printed pocket on the bench; the phone
+    // clamp's 1/4-20 goes in from behind on the jig, and is not one
+    if (/hex head/i.test(h.item) && st.path && st.against) {
       const p = h.prims[0], out = new THREE.Vector3(...st.path.dir).multiplyScalar(-1).normalize();
       const top = new THREE.Vector3(...p.c).applyMatrix4(hwOf[i][j].userData.base).addScaledVector(out, p.h / 2);
       return { top, out, meshes: [hwOf[i][j], hwOf[i][j + 1]], stud: true };

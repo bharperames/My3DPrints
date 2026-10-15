@@ -375,8 +375,8 @@ PARTS = [
        "towers; the rotor ring, with a 36-slot Geneva lip on its bore and "
        "a slotted pad; the arc, with its own leg down to that pad; a "
        "two-piece carriage clamped through the arc's 5.4 mm slot by an "
-       "M5 thumbscrew; a receiver with 40 mm of fore/aft travel carrying "
-       "the phone's clamp on its 1/4-20; the Geneva driver, the block that "
+       "M5 thumbscrew; a receiver bolted to the carriage that seats the "
+       "phone's clamp, keyed by a pin, on a 1/4-20 from behind; the Geneva driver, the block that "
        "holds its gearmotor and the block's cap; a controller box and lid; "
        "three pucks under its feet; three bearing sleeves; three V wheels; and the specimen mount \u2014 a \u00d86 screw with both a "
        "wing nut and a hex nut, all printed in the same cosine thread "
@@ -411,14 +411,15 @@ PARTS = [
        "from above into three pucks, which are glued to a heavy board "
        "with the base bolted on, so it places them; the board needs no "
        "holes and the jig lifts off in a minute. "
-       "One camera: an iPhone held landscape in a spring clamp, behind "
+       "One camera: an iPhone held portrait in an ULANZI ST-02S clamp, behind "
        "either of its two lenses. A Sony \u03b11 on an Arca plate was "
        "carried here too and was what the carriage was sized for \u2014 "
        "1.34 kg with its tripod socket 320 mm out, against 0.25 kg of "
-       "phone and clamp at 167. Dropping it took 75 mm off the platform, "
-       "70 mm off the channel, and both ballasts: the carriage's centre "
-       "of mass now sits 6 mm past the thumbscrew, which the carriage's lips "
-       "take as 0.7 N where the \u03b11 asked 110. The rotor's ballast "
+       "phone and clamp at 167. Dropping it took both ballasts, and "
+       "holding the phone portrait beside the saddle took the platform and "
+       "its channel: the carriage's center of mass now sits 15 mm inside "
+       "the thumbscrew, which the carriage's lips take as 1.5 N where the "
+       "\u03b11 asked 110. The rotor's ballast "
        "pocket went too \u2014 it only ever offset 3% of the rotor's own "
        "imbalance, and what actually holds that is the race flanks. "
        "What is lost with it is depth of field, not geometry: a phone at "
@@ -555,7 +556,7 @@ PARTS = [
        # board's length, so the plug cannot push it back.
        # 24.0.0: the controller lid's pegs 2.25, not 2.55: Brett's would
        # not go into the bosses.
-       version="32.0.0",
+       version="34.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

@@ -184,8 +184,9 @@
       transforms the generator wrote into the same archive. Nothing here is
       a copy of the geometry made for the page. The grey parts are stand-ins
       for hardware that is bought, not printed: three V wheels on their
-      M3 axles, the M5 thumbscrew, and the camera — a phone held landscape
-      in a spring clamp on the receiver's 1/4-20, its main lens on the
+      M3 axles, the M5 thumbscrew, and the camera — a phone held portrait
+      in an ULANZI ST-02S clamp, seated on the receiver and keyed by its
+      pin, a 1/4-20 from behind; its main lens on the
       150&nbsp;mm sphere. A Sony α1 on an Arca plate was carried here too,
       and the carriage was sized for it: a 1.34&nbsp;kg body whose tripod
       socket sits 320&nbsp;mm out, against 0.25&nbsp;kg of phone and clamp
@@ -437,6 +438,14 @@ if (printed.driver) driverGroup.add(printed.driver);
    boards stand still; the pin turns with the driver;
    the home magnet turns with the ring */
 function primGeom(p) {
+  if (p.kind === 'mesh') {
+    // a bought part modeled whole (the phone's clamp): flat-shaded facets
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(p.v, 3));
+    g.setIndex(p.f);
+    const n = g.toNonIndexed(); n.computeVertexNormals();
+    return n;
+  }
   if (p.kind === 'box') {
     const sz = p.hi.map((v, i) => v - p.lo[i]);
     return new THREE.BoxGeometry(...sz).translate(...p.hi.map((v, i) => (v + p.lo[i]) / 2));
@@ -538,7 +547,11 @@ function buildCamera(kind, id) {
       const glass = addBody('glass', new THREE.CylinderGeometry(l.r - 1.6, l.r - 1.6, 0.6, 32).rotateZ(Math.PI / 2), camGroup, '--cam', { rough: .05, metal: .9, hardware: true });
       glass.position.set(l.c[0] - 1.3, l.c[1], l.c[2]); glass.userData.camera = true;
     }
-    for (const b of cfg.boxes.clamp) boxMesh('clamp', b, '--hw', HW);
+    // the ST-02S, from its measured blocks, rods, screw, pads and knob
+    for (const p of D.clamp) {
+      const m = addBody('clamp', primGeom(p), camGroup, '--hw', { hw: p.mat, hardware: true });
+      m.userData.camera = true;
+    }
   }
   recvShift.position.x = cfg.receiver_u - D.receiver_u;
   camKind = kind; lensId = lens.id;
@@ -722,7 +735,7 @@ const PART_NAMES = {
   arc: ['Quadrant arc', 'carries the camera through 10–80° of elevation'],
   saddle: ['Carriage saddle', 'clamps round the outside of the arc\u2019s closed box'],
   shoe: ['Carriage shoe', 'the other half of the clamp, inboard of the arc'],
-  receiver: ['Camera receiver', '40 mm of fore/aft travel on a 1/4-20'],
+  receiver: ['Camera receiver', 'bolted to the saddle; the clamp\u2019s end face on its seat, keyed by its pin, a 1/4-20 from behind'],
   driver: ['Geneva driver', 'on the gearmotor\u2019s D-shaft: one turn moves the ring 10° and locks it; a Ø3 steel pin drives'],
   drive_block: ['Drive block', 'holds the Pololu #994 gearmotor shaft-down over the driver; post keyed into the base'],
   drive_cap: ['Drive cap', 'holds the gearmotor in its pocket; its wires come out through the window'],

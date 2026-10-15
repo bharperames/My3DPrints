@@ -58,6 +58,8 @@ export const HARDWARE = {
   pcb:    { color: '#1f6b4a', rough: 0.55, metal: 0.10 },
   cable:  { color: '#30343a', rough: 0.60, metal: 0.00 },
   phone:  { color: '#5a626b', rough: 0.35, metal: 0.40 },
+  anodized: { color: '#3b3e43', rough: 0.55, metal: 0.55 },   // the clamp's bead-blasted aluminum
+  rubber:   { color: '#141516', rough: 0.85, metal: 0.00 },   // its jaw pads
   // the controller: boards, their parts, the wires and what joins them
   pcb_black: { color: '#1b1d20', rough: 0.55, metal: 0.10 },   // the XIAO
   pcb_green: { color: '#1f6b3a', rough: 0.55, metal: 0.10 },   // Pololu's

@@ -15,6 +15,8 @@ from unittest import mock
 import zipfile
 
 import numpy as np
+import trimesh
+import trimesh.collision as tc
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import gen_orbital_jig as J  # noqa: E402
@@ -452,18 +454,22 @@ class TestRealDrive(unittest.TestCase):
         self.assertFalse(rotating & {"drive_block", "drive_cap", "ctrl_box"})
         self.assertIn("drive_block", J.STATOR_SIDE)
 
-    def test_the_clamps_stud_stands_proud_and_cannot_turn(self):
-        """The phone's clamp threads onto the 1/4-20: it needs thread
-        above the receiver's top, but no more than a clamp's socket is
-        deep, and the bolt's head held in a hex it cannot turn in."""
-        proud = J.QTR_LEN - (J.RECV[2] - J.QTR_HEX[1])
-        self.assertGreater(proud, 4.0)      # three threads and more
-        self.assertLess(proud, 6.0)         # a shallow socket still seats
-        r = self.parts["receiver"]
-        # the pocket's flats: a round head would turn, a tight one jams
-        self.assertGreater(J.QTR_HEX[0] - J.QTR_HEAD[0], 0.3)
-        self.assertLess(J.QTR_HEX[0] - J.QTR_HEAD[0], 0.6)
-        self.assertTrue(r.is_watertight)
+    def test_the_clamps_bolt_engages_and_its_pin_keys_it(self):
+        """The 1/4-20 from behind: what passes the seat and the 0.1 gap is
+        more than three threads and less than the socket is deep. The
+        pin: no thinner than a levered printed pin may be, and a slip in
+        the clamp's plain hole."""
+        engaged = J.QTR_LEN - J.MOUNT_UNDER - 0.1
+        self.assertAlmostEqual(engaged, J.QTR_ENGAGE, places=6)
+        self.assertGreater(engaged, 4.0)
+        self.assertLess(engaged, J.ST02S["socket_deep"] - 1.0)
+        d = J.MOUNT_PIN[0]
+        self.assertGreaterEqual(d, 3.5)
+        self.assertLess(d, J.ST02S["pin_hole"] - 0.2)
+        self.assertLess(J.MOUNT_PIN[1], J.ST02S["pin_deep"])
+        # the 6.8 between the clamp's two holes, as Brett measured it
+        self.assertAlmostEqual(J.PIN_U - J.SOCKET_U, 6.8, places=6)
+        self.assertTrue(self.parts["receiver"].is_watertight)
 
     def test_the_cable_fits_under_the_base(self):
         self.assertGreater(J.CABLE_UNDER, J.CABLE_R + 0.5)
@@ -528,6 +534,33 @@ class TestRealDrive(unittest.TestCase):
         with mock.patch.object(J, "THUMB_LEN", 25.0):
             self.assertFalse(J.thumbscrew_reach()["through"])
 
+    def test_the_phone_sees_the_specimen_and_the_test_can_tell(self):
+        """Every lens, every frame: nothing between it and the specimen,
+        nothing in the 1x's foreground -- and a post in the way, or a block
+        just in front of the lens, is seen."""
+        clear = J.phone_view(self.parts, J.SPECIMEN)
+        self.assertEqual(clear["blocked"], 0)
+        self.assertEqual(clear["lenses"]["wide"]["foreground"], 0)
+        post = J.box((60.0, -5.0, -60.0), (70.0, 5.0, 30.0))
+        self.assertGreater(J.phone_view(self.parts, J.SPECIMEN, extra=post)["blocked"], 0)
+        near = J.box((100.0, -6.0, 22.0), (112.0, 6.0, 34.0))
+        hit = J.phone_view(self.parts, J.SPECIMEN, extra=near)
+        self.assertGreater(hit["lenses"]["wide"]["foreground"], 0)
+
+    def test_the_clamp_seats_on_the_receiver_keyed_by_its_pin(self):
+        """The clamp's end face 0.1 off the seat, the pin in its plain hole
+        and the 1/4-20's axis on the socket: drawn together, they do not
+        touch -- and the pin is what would, were the clamp turned."""
+        cm = tc.CollisionManager()
+        cm.add_object("receiver", self.parts["receiver"])
+        clamp = J.clamp_mesh()
+        self.assertFalse(cm.in_collision_single(clamp))
+        turned = clamp.copy()
+        c = J.clamp_to_world(0.0, 0.0, J.ST02S["socket_z"])
+        turned.apply_transform(trimesh.transformations.rotation_matrix(
+            np.pi, [0, 1, 0], c))
+        self.assertTrue(cm.in_collision_single(turned))
+
     def test_the_phone_stands_clear_of_its_carriage(self):
         self.assertGreaterEqual(J.phone_clearance(self.parts), J.PHONE_CLEAR)
 
@@ -586,18 +619,19 @@ class TestAssembly(unittest.TestCase):
         self.assertIn("rotor", bad)
 
     def test_a_nut_trap_with_no_mouth_would_be_caught(self):
-        """Negative control: the 20.0.0 saddle. Its trap opened into the
-        arm's wedge, which sealed it; the nut slid its 20 mm inside the
-        34 mm void and the sweep, asking only what it hit, passed it.
-        Brett found it on the printed part."""
-        h0, (nw, nt) = J.PLATE_H[0], J.NUT
+        """Negative control: a pocket whose mouth is closed. The 20.0.0
+        saddle's trap opened into the arm's wedge, which sealed it; the
+        nut slid inside the void and the sweep, asking only what it hit,
+        passed it. Brett found it on the printed part. Capping today's
+        open pocket over the nut must foul the nut's way in."""
+        h0, nw = J.PLATE_H[0], J.NUT[0]
         s = J.saddle()
         s.apply_transform(np.linalg.inv(J.M_ARC))
-        void = J.box((J.CLAMP_R - nw / 2, -30.0, h0 + 3.2),
-                     (J.CLAMP_R + nw / 2, nw / 2, h0 + 3.2 + nt))
-        mouth = J.box((J.CLAMP_R - nw / 2, -nw / 2, h0 + 3.2),
-                      (J.CLAMP_R + nw / 2, 40.0, h0 + 3.2 + nt))
-        sealed = J.cut(J.union([s, J.cut(mouth, [void])]), [void])
+        nut_top = h0 + J.NUT_FLOOR + J.NUT[1]
+        cap = J.box((J.CLAMP_R - nw / 2 - 0.5, -nw / 2 - 0.5, nut_top + 0.3),
+                    (J.CLAMP_R + nw / 2 + 0.5, nw / 2 + 0.5, J.PLATE_H[1]))
+        cap = J.cut(cap, [J.cyl(J.SCREW_R, h0 - 1, J.PLATE_H[1] + 1, J.CLAMP_R, 0.0, 48)])
+        sealed = J.union([s, cap])
         sealed.apply_transform(J.M_ARC)
         a = J.assembly_sweep(dict(self.parts, saddle=sealed), step=2.0)
         bad = {s["id"] for s in a["steps"] if s["fouls"]}
@@ -777,14 +811,19 @@ class TestOneCameraNoBallast(unittest.TestCase):
         near = J.carriage_moment(self.parts, cam_g=1340.0, cam_u=166.5)
         self.assertLess(near["tongue_couple_n"], J.TONGUE_COUPLE_N)
 
-    def test_the_platform_is_only_as_long_as_the_phone_needs(self):
-        """The receiver, at either end of its travel, must sit on deck."""
-        lo, hi = J.CHANNEL[0], J.CHANNEL[1]
-        half = J.RECV[0] / 2.0
-        self.assertGreaterEqual(lo - half, J.PLATFORM_U[0] - 1e-6)
-        self.assertLessEqual(hi + half, J.PLATFORM_U[1] + 1e-6)
-        # and no longer: deck past the receiver's reach is carried for nothing
-        self.assertLess(J.PLATFORM_U[1] - (hi + half), 2.0)
+    def test_the_receiver_reaches_from_the_saddle_to_the_clamp(self):
+        """Its bar lies on the saddle's inboard face over both screws, and
+        its seat covers the clamp's socket and pin, 0.1 off the end face."""
+        r = self.parts["receiver"].copy()
+        r.apply_transform(np.linalg.inv(J.M_ARC))
+        (u0, v0, h0), (u1, v1, h1) = r.bounds
+        self.assertAlmostEqual(h0, J.PLATE_H[1], places=3)
+        self.assertAlmostEqual(J.MOUNT_FACE, J.CLAMP_FACE_Y - J.Y_ARC - 0.1, places=6)
+        for u, v in J.MOUNT_SCREWS:
+            self.assertTrue(u0 + 3 < u < u1 - 3 and v0 + 3 < v < v1 - 3)
+        for u in (J.SOCKET_U, J.PIN_U):
+            self.assertTrue(u0 + 4 < u < u1 - 4)
+        self.assertGreaterEqual(v1, J.CLAMP_V + 6.0)
 
 
 class TestSpecimenMount(unittest.TestCase):

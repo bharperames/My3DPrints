@@ -535,42 +535,31 @@ SCREW_R = 2.7           # M5 clearance
 # the thumbscrew clamps saddle to shoe just outside the box's outer face
 CLAMP_R = ARC_RO + LIP_CLR + LIP_T + 0.5 + SCREW_R
 NUT = (8.4, 4.4)        # M5 square nut trap, across and thick
-# The platform ran to u = 350 and the channel 208-318 -- 110 mm of travel
-# -- because it had to seat two cameras whose sockets are 90 mm apart: a
-# phone's clamp foot at u = 232, and a Sony a1 behind a 90 mm macro with
-# its tripod socket at 320. There is one camera now, and its foot is at
-# 232 for both of its lenses: the phone's three lens rings differ in y
-# and v, not in u, so changing lens does not move the receiver at all.
-#
-# So the travel is no longer a fit problem, only an adjustment: 40 mm,
-# 215-255, which is 20 either side of where the clamp actually lands.
-# The receiver is 40 long, so at the ends of its travel it reaches
-# u = 195 and 275, and that is the platform.
-#
-# The receiver's top stays at v = -45. That number came from the a1's
-# axis height, but the phone's L-bridge was drawn to meet it and the
-# bridge is the part we do not control; moving the deck would move the
-# pupil off the sphere for the sake of a few millimetres.
-ARM_U, ARM_V = (178.0, 200.0), (-73.0, 20.0)
-PLATFORM_U, PLATFORM_V = (195.0, 275.0), (-73.0, -57.0)
+# 34.0.0: the platform, its fore/aft channel and the sliding receiver are
+# gone. They were drawn for a clamp guessed as a spring clamp gripping the
+# phone's middle, its socket on a foot under it. Brett's clamp is an
+# ULANZI ST-02S screw clamp, gripping the phone near its bottom, its
+# socket on the END of one block -- and a phone held portrait along the
+# arc puts that end face 10 mm from the saddle. So the receiver is now a
+# straight bar bolted to the saddle's inboard face, running up the arc to
+# a seat the clamp's end face sits on (see ST02S and MOUNT below).
 CAM_Y = 0.0
-PLATFORM_HW = 49.2      # platform half-width about the camera's y
-CHANNEL = (215.0, 255.0, 3.4, 12.0)   # fore/aft slots: u0, u1, width, ±y
-RECV = (40.0, 50.0, 12.0)             # receiver: u, y, v
-RECV_U = 232.0          # where the generator poses it; a camera moves it
-RECV_RELIEF = 4.0       # past the M3 inserts, for the screw's tip
-# The phone's clamp screws onto a 1/4-20 stud: a plain hex-head bolt up
-# through the receiver, its head in a hex pocket underneath so it cannot
-# turn while the clamp is spun on. This was a D-ring screw in a 7.6 mm
-# counterbore, which no D-ring head (12-17 mm) fits, under an Arca
-# dovetail left from the Sony; the screw drawn in it stopped flush with
-# the top, with nothing for the clamp to thread onto.
+# The square nut sits in a pocket open on the saddle's inboard face, a
+# floor under it: pushed in from the face, it cannot hide. Until 34.0.0 it
+# slid along a slot from the plate's end, and a wedge added later sealed
+# that slot's mouth: Brett's printed saddle had the nut trap as a void.
+NUT_FLOOR = 1.2
+# The 1/4-20 that holds the clamp: a plain hex-head bolt through the seat
+# from behind, turned with a 7/16 wrench or nut driver while the clamp
+# stays put -- the clamp never turns to tighten, so where its thread stops
+# does not decide where the phone points. The pin in the clamp's second
+# hole decides that.
 QTR_R = 3.4                           # 1/4"-20 clearance, radius
 QTR_HEAD = (7.0 / 16 * 25.4, 4.14)    # 7/16 across flats; ASME's tallest head
-QTR_HEX = (QTR_HEAD[0] + 0.4, QTR_HEAD[1] + 0.3)   # its pocket: flats, depth
 QTR_HEAD_REAL = 3.97                   # McMaster 92245A537's STEP: what is drawn
-QTR_LEN = 0.5 * 25.4                  # under the head: 5.1 mm stands proud
-QTR_ITEM = "1/4-20 x 1/2 in hex head cap screw (the clamp's stud)"
+QTR_LEN = 0.5 * 25.4                  # under the head
+QTR_ITEM = "1/4-20 x 1/2 in hex head cap screw (holds the phone clamp)"
+CLAMP_ITEM = "ULANZI ST-02S phone clamp (1/4-20 socket)"
 
 # --- the specimen mount: a printed screw and wing nut -------------------
 # The rod field plate is the specimen mount, so the only thing the jig
@@ -615,8 +604,8 @@ PLATE_T = 8.0                         # the rod field plate it clamps down
 # are (lo, hi) in the arc frame at theta = 0: x = u radial, y across the
 # meridian, z = v up-arc; the pupil is at (150, 0, 0) for every one.
 #
-# An iPhone 17 Pro held landscape in a spring clamp, its main lens at the
-# pupil. Every number is Apple's dimensional drawing for the 17 Pro
+# An iPhone 17 Pro, its main lens at the pupil, drawn here as if held
+# landscape and turned portrait below (see _portrait). Every number is Apple's dimensional drawing for the 17 Pro
 # (2025-09-09): 150.01 x 71.85 x 8.75 body, the camera plateau 2.55 off
 # the back plate and the lens glass 1.88 off the plateau, 13.18 overall.
 # Of the three lenses, Apple's keepout cones say which is which: 125
@@ -652,50 +641,150 @@ _Y_BOT = _Y_TOP + IP17["length"]                               # 116.40
 _V_HI = IP17["main_from_side"]                                 # 14.37
 _V_LO = _V_HI - IP17["width"]                                  # -57.48
 _LR = IP17["lens_d"] / 2.0
-def _socket_foot(lo, hi, u, y, half=3.6):
-    """A clamp's foot as four blocks round a square hole for its 1/4-20
-    socket, so the stud it threads onto is not read as a collision."""
-    (u0, y0, v0), (u1, y1, v1) = lo, hi
-    return [((u0, y0, v0), (u - half, y1, v1)), ((u + half, y0, v0), (u1, y1, v1)),
-            ((u - half, y0, v0), (u + half, y - half, v1)),
-            ((u - half, y + half, v0), (u + half, y1, v1))]
+def _portrait(b):
+    """A landscape box turned a quarter about the view axis: the phone's
+    length runs along the arc (v), its width across it (y)."""
+    (u0, y0, v0), (u1, y1, v1) = b
+    return ((u0, -v1, y0), (u1, -v0, y1))
+
+
+# Held portrait, upside down, in an ULANZI ST-02S screw clamp -- not the
+# spring clamp, gripping the phone's middle, that was drawn until 34.0.0.
+# The phone's length runs along the arc with its top edge down-arc; the
+# edge Camera Control is on, the main lens 14.37 in from it, faces the
+# arc. So the lens sits on the meridian 16.6 mm in from the case's edge,
+# and the clamp grips near the phone's bottom, up the arc, its socket end
+# toward the saddle (Brett, 2026-10-14). Landscape would put the clamp
+# 90 mm past the meridian at the end of a 130 mm arm; portrait puts it
+# beside the saddle, the same load on a quarter less lever. Upside down,
+# because right way up puts the clamp in the ring at the horizon ring.
+#
+# The case: 154.5 long, measured; its other walls are taken as the same
+# 2.25 round the sides and 1.2 over the back and the screen.
+CASE = dict(length=154.5, side=(154.5 - IP17["length"]) / 2.0, back=1.2,
+            front=1.2)
+_CASE_EDGE = -(IP17["main_from_side"] + CASE["side"])         # y, arc side
+_CASE_TOP = -(IP17["main_from_top"] + CASE["side"])           # v, down-arc
+_U_MID = (_U_BACK + _U_FRONT) / 2.0                            # the phone's mid-depth
+# The clamp, from Brett's ruler photographs and calipers (2026-10-14). In
+# its own frame: X along its length from the end face its socket is in,
+# Y across its 27 mm jaws, Z from the crossbar's back toward the jaw tips.
+# The phone's mid-depth sits where the curved pads' centres are, 25 from
+# the back. The socket and a second, plain 6.2 hole (the lead screw's
+# end, which stops well short of it) are on that end face, 12.05 and 5.25
+# from the back: the walls between them measure 8.9 and 2.1, and
+# Brett's centre readings of 11.5 and 5.3 give the same 6.8 between.
+ST02S = dict(w=27.0, depth=36.1, up_t=8.6, pad_t=3.0, pad_z=(13.0, 34.0),
+             pad_c=25.0, bar_long=11.5, bar_short=9.0, len_long=47.0,
+             len_short=37.0, socket_z=12.05, socket_d=6.35, socket_deep=8.0,
+             pin_z=5.25, pin_hole=6.2, pin_deep=10.0, rod_r=1.75, rod_y=8.0,
+             screw_r=2.0, knob_r=7.75, knob_h=6.0, knob_ridges=40,
+             button=(8.3, 6.1, 3.45), mass_g=50.0)
+# Gripping near the phone's bottom, under Camera Control: 112 of the case
+# above the clamp, the clamp's 27.5, 15 below.
+CLAMP_V = _CASE_TOP + 112.0 + 27.5 / 2.0          # its centre along the phone
+CLAMP_FACE_Y = _CASE_EDGE - (ST02S["up_t"] + ST02S["pad_t"])   # its socket end
+CLAMP_BACK_U = _U_MID + ST02S["pad_c"]            # its crossbar's back
+CLAMP_GAP = 76.35                                  # pad to pad: the case's width
+SOCKET_U = CLAMP_BACK_U - ST02S["socket_z"]
+PIN_U = CLAMP_BACK_U - ST02S["pin_z"]
+
+
+def _clamp_x():
+    """Where each block runs along the clamp, closed on the case."""
+    c = ST02S
+    face = c["up_t"] + c["pad_t"]                  # the long pad's face
+    s1 = face + CLAMP_GAP + c["pad_t"] + c["up_t"]  # the short block's end
+    return dict(long=(0.0, c["len_long"]), short=(s1 - c["len_short"], s1),
+                pad_long=(c["up_t"], face),
+                pad_short=(face + CLAMP_GAP, face + CLAMP_GAP + c["pad_t"]),
+                up_short=(s1 - c["up_t"], s1), end=s1)
+
+
+def clamp_to_world(X, Y, Z):
+    """The clamp's frame into the camera's (world at theta = 0)."""
+    return (CLAMP_BACK_U - Z, CLAMP_FACE_Y + X, CLAMP_V - Y)
+
+
+def _clamp_box(lo, hi):
+    a = np.array(clamp_to_world(*lo)); b = np.array(clamp_to_world(*hi))
+    return (tuple(np.minimum(a, b).round(4)), tuple(np.maximum(a, b).round(4)))
+
+
+def _clamp_boxes():
+    """The clamp as the blocks it is made of, for its mass and centre."""
+    c, x, hw = ST02S, _clamp_x(), ST02S["w"] / 2.0
+    return [_clamp_box((x["long"][0], -hw, 0), (x["long"][1], hw, c["bar_long"])),
+            _clamp_box((0, -hw, 0), (c["up_t"], hw, c["depth"])),
+            _clamp_box((x["short"][0], -hw, 0), (x["short"][1], hw, c["bar_short"])),
+            _clamp_box((x["up_short"][0], -hw, 0), (x["end"], hw, c["depth"])),
+            _clamp_box((x["end"], -c["knob_r"], c["pin_z"] - c["knob_r"]),
+                       (x["end"] + c["knob_h"], c["knob_r"], c["pin_z"] + c["knob_r"]))]
+
+
+_PHONE_BOXES = [
+    # the case, round the phone; the camera plateau stands through it
+    ((_U_BACK - CASE["back"], _CASE_EDGE, _CASE_TOP),
+     (_U_FRONT + CASE["front"], _CASE_EDGE + IP17["width"] + 2 * CASE["side"],
+      _CASE_TOP + CASE["length"])),
+    _portrait(((_U_BACK, _Y_TOP, _V_LO), (_U_FRONT, _Y_BOT, _V_HI))),
+    # the plateau, the full width of the back
+    _portrait(((_U_BACK - IP17["plateau"], _Y_TOP, _V_LO + 1.0),
+               (_U_BACK, IP17["plateau_below_main"], _V_HI - 1.0))),
+    # the three lens rings, as one block
+    _portrait(((_U_GLASS, -19.24 - _LR, -18.01 - _LR),
+               (_U_BACK - IP17["plateau"], _LR, _LR)))]
 
 
 CAMERAS = {
     "iphone": dict(
-        name="iPhone 17 Pro in a spring clamp", receiver_u=232.0,
-        # phone and clamp together. It is here rather than in a test
+        name="iPhone 17 Pro, portrait, in an ULANZI ST-02S clamp",
+        receiver_u=SOCKET_U,
+        # phone, case and clamp together. It is here rather than in a test
         # because it is what decides whether the carriage needs ballast,
         # and `carriage_moment` below turns that into something the
         # suite can fail on.
-        mass_g=IP17["mass_g"] + 50.0,
-        boxes=dict(phone=[((_U_BACK, _Y_TOP, _V_LO), (_U_FRONT, _Y_BOT, _V_HI)),
-                          # the plateau, the full width of the back
-                          ((_U_BACK - IP17["plateau"], _Y_TOP, _V_LO + 1.0),
-                           (_U_BACK, IP17["plateau_below_main"], _V_HI - 1.0)),
-                          # the three lens rings, as one block
-                          ((_U_GLASS, -19.24 - _LR, -18.01 - _LR),
-                           (_U_BACK - IP17["plateau"], _LR, _LR))],
-                   clamp=[((152.0, 25.0, _V_LO - 8.4), (172.0, 65.0, _V_LO)),
-                          ((152.0, 25.0, _V_HI), (172.0, 65.0, _V_HI + 8.4)),
-                          ((_U_FRONT, -15.0, _V_LO - 12.0),
-                           (_U_FRONT + 10.0, 70.0, _V_HI + 12.0)),
-                          # its foot, round the 1/4-20 socket the stud
-                          # threads into (at u 232, y 0)
-                          *_socket_foot((_U_FRONT + 10.0, -15.0, -45.0),
-                                        (247.0, 15.0, -37.0), 232.0, 0.0)]),
+        mass_g=IP17["mass_g"] + 30.0 + ST02S["mass_g"],
+        boxes=dict(phone=_PHONE_BOXES, clamp=_clamp_boxes()),
         # main, ultra wide, 4x telephoto: Apple's centres, re-based on the
-        # main lens
+        # main lens and turned portrait with the phone
         rings=[dict(c=(_U_GLASS, 0.0, 0.0), r=_LR),
-               dict(c=(_U_GLASS, -19.24, 0.0), r=_LR),
-               dict(c=(_U_GLASS, -9.62, -18.01), r=_LR)],
+               dict(c=(_U_GLASS, 0.0, -19.24), r=_LR),
+               dict(c=(_U_GLASS, 18.01, -9.62), r=_LR)],
+        # held portrait, the frame is 3:4: across it (y) is the sensor's
+        # short side, 71.5 and 39.8 degrees being across its long one
         lenses=[dict(id="wide", name="1\u00d7 main, 24 mm eq.",
-                     fov_deg=71.5, aspect=4.0 / 3.0),
+                     fov_deg=56.7, aspect=3.0 / 4.0),
                 dict(id="tele", name="2\u00d7 crop, 48 mm eq.",
-                     fov_deg=39.8, aspect=4.0 / 3.0)],
+                     fov_deg=30.4, aspect=3.0 / 4.0)],
         default_lens="wide"),
 }
 CAMERA_DEFAULT = "iphone"
+
+# The receiver: a straight bar bolted flat to the saddle's inboard face,
+# running up the arc to the seat the clamp's end face stands on. In the
+# saddle's frame (u, v, h): h is off the arc's mid-plane, inboard
+# positive, so the clamp's end face is at h = CLAMP_FACE_Y - Y_ARC.
+MOUNT_H0 = PLATE_H[1]                              # on the saddle's face
+MOUNT_FACE = CLAMP_FACE_Y - Y_ARC - 0.1            # the seat, 0.1 off the clamp
+MOUNT_U = (157.0, 186.0)                           # round the socket and the pin
+MOUNT_V = (-21.5, CLAMP_V + ST02S["w"] / 2.0)      # the saddle's span, to the clamp
+# Two M3 screws into inserts in the saddle's face, clear of the nut's
+# pocket at the thumbscrew; the holes drawn snug so they locate it.
+MOUNT_SCREWS = ((163.0, -14.0), (163.0, 14.0))
+MOUNT_SCREW_R = 1.65
+# The 1/4-20 runs QTR_ENGAGE into the clamp's socket. Under its head the
+# seat is what is left of the bolt's 1/2 in: a counterbore from behind
+# takes the rest, wide enough for a 7/16 nut driver round the head.
+QTR_ENGAGE = 5.5
+MOUNT_UNDER = QTR_LEN - 0.1 - QTR_ENGAGE
+MOUNT_CBORE_R = 9.5
+# A printed pin in the clamp's plain hole sets which way the clamp, and
+# so the phone, points; the bolt only holds it there. Ø5.8 in the 6.2 is
+# the slip printed pins have needed, and 4.5 times stiffer than the 3.5
+# that a pulled, levered printed pin must at least be. It has no root
+# fillet: the hole's edge sits at its root, 0.1 off the seat.
+MOUNT_PIN = (5.8, 4.0, 0.5)                        # diameter, length, tip chamfer
 FRUSTUM = dict(near=20.0, far=200.0)
 
 
@@ -720,15 +809,16 @@ PROTOCOL = [dict(ring=1, name="Horizon", elev=15.0, step=10.0),
 # frustum -- a 68 mm-equivalent macro -- and at 150 mm that frames 86 x 57
 # mm, which a 129 mm tooth overfills from every angle. The camera is a
 # phone now, so the default is its main camera: 24 mm equivalent on a 4:3
-# sensor, 84 degrees across the diagonal, 71.5 across the width, framing
-# 216 x 162 mm at R. The spec's own macro used to stay selectable beside
+# sensor, 84 degrees across the diagonal, 71.5 across its long side,
+# framing 216 x 162 mm at R -- held portrait, 162 across and 216 up the
+# arc, so the angles here are across the short side. The spec's own macro used to stay selectable beside
 # them; it is gone with the body that could have carried it, because a
 # frustum no camera on this jig can produce is not a choice, it is a
 # drawing of somebody else's camera.
 LENSES = [dict(id="wide", name="iPhone 1\u00d7 main (24 mm eq.)",
-               fov_deg=71.5, aspect=4.0 / 3.0),
+               fov_deg=56.7, aspect=3.0 / 4.0),
           dict(id="tele", name="iPhone 2\u00d7 crop (48 mm eq.)",
-               fov_deg=39.8, aspect=4.0 / 3.0)]
+               fov_deg=30.4, aspect=3.0 / 4.0)]
 FRUSTUM = dict(near=20.0, far=200.0, **{k: LENSES[0][k]
                                          for k in ("fov_deg", "aspect")})
 
@@ -2344,43 +2434,20 @@ def shoe_body(hband, sign):
 
 
 def saddle():
+    """The inboard half of the carriage's clamp on the arc. The receiver
+    bolts flat to its inboard face."""
     h0, h1 = PLATE_H
     s = shoe_body(PLATE_H, +1)
-    # arm out past the lens, then the platform across under the camera
-    arm = box((ARM_U[0], ARM_V[0], h0), (ARM_U[1], ARM_V[1], h1))
-    wedge2 = Polygon([(ARC_RI - 2.0, -SADDLE_DEG * np.pi / 180 * 155.0 - 0.0),
-                      (ARM_U[0] + 0.5, -SADDLE_DEG * np.pi / 180 * 155.0),
-                      (ARM_U[0] + 0.5, ARM_V[0])])
-    # the wedge is drawn in (u, v) and extruded across the plate's band,
-    # so the plate's underside becomes a 45 degree slope down onto the arm
-    wedge = trimesh.creation.extrude_polygon(wedge2, h1 - h0)
-    wedge.apply_translation([0, 0, h0])
-    hy = CAM_Y - Y_ARC                     # the camera's y, in h
-    plat = box((PLATFORM_U[0], PLATFORM_V[0], h0),
-               (PLATFORM_U[1], PLATFORM_V[1], hy + PLATFORM_HW))
-    s = union([s, arm, wedge, plat])
     tools = [screw_hole(h0 - 6.0, h1 + 1.0)]
-    # square nut trap, open up-arc so the nut slides in and stops over the
-    # screw hole. Until 21.0.0 it opened down-arc, and the wedge under the
-    # arm, added after it, sealed its mouth: Brett's printed saddle has the
-    # trap as a closed void. The sweep slid the nut 20 mm along a 34 mm
-    # void and never touched it -- assembly_sweep now asks where a piece
-    # starts as well as what it hits.
-    nw, nt = NUT
-    tools.append(box((CLAMP_R - nw / 2, -nw / 2, h0 + 3.2),
-                     (CLAMP_R + nw / 2, 40.0, h0 + 3.2 + nt)))
-    # fore/aft channel: two slots the receiver's screws ride in
-    u0, u1, w, dy = CHANNEL
-    for y in (hy - dy, hy + dy):
-        # one stadium, not a box with two cylinders on its ends: those
-        # are tangent along the box's sides, and 3MF precision folds
-        # tangent faces into non-manifold edges on the way out
-        stadium = LineString([(u0, y), (u1, y)]).buffer(w / 2, quad_segs=12)
-        slot = trimesh.creation.extrude_polygon(
-            stadium, PLATFORM_V[1] - PLATFORM_V[0] + 2)
-        slot.apply_transform(np.array([[1, 0, 0, 0], [0, 0, 1, PLATFORM_V[0] - 1],
-                                       [0, 1, 0, 0], [0, 0, 0, 1]], float))
-        tools.append(slot)
+    # the square nut's pocket, open on the inboard face: the nut drops in
+    # from the face onto a floor, square to the thumbscrew, and once the
+    # receiver is on it cannot fall out
+    nw = NUT[0]
+    tools.append(box((CLAMP_R - nw / 2, -nw / 2, h0 + NUT_FLOOR),
+                     (CLAMP_R + nw / 2, nw / 2, h1 + 1.0)))
+    # the receiver's inserts
+    for u, v in MOUNT_SCREWS:
+        tools.append(cyl(INS_M3[0], h1 - INS_M3[1], h1 + 1.0, u, v, 48))
     s = cut(s, tools)
     s.apply_transform(M_ARC)
     return s
@@ -2400,38 +2467,27 @@ def shoe():
 
 
 def receiver():
-    """A flat top the phone's clamp sits on, a 1/4-20 stud up through the
-    middle from a hex pocket underneath, two M3 inserts underneath for the
-    fore/aft channel."""
-    lu, ly, lv = RECV
-    hy = CAM_Y - Y_ARC
-    v0 = PLATFORM_V[1]
-    r_ = box((RECV_U - lu / 2, v0, hy - ly / 2), (RECV_U + lu / 2, v0 + lv,
-                                                  hy + ly / 2))
-    tools = []
-    # the bore, and the hex pocket: six sections make a hexagon whose
-    # corners sit at the radius, so the flats are at r cos 30
-    for r_h, v_lo, v_hi, n in ((QTR_R, v0 - 1, v0 + lv + 1, 48),
-                               (QTR_HEX[0] / np.sqrt(3), v0 - 1, v0 + QTR_HEX[1], 6)):
-        c = trimesh.creation.cylinder(radius=r_h, height=v_hi - v_lo,
-                                      sections=n)
-        c.apply_transform(rot(90.0, [1, 0, 0]))
-        c.apply_translation([RECV_U, (v_lo + v_hi) / 2, hy])
-        tools.append(c)
-    # the inserts, and relief beyond them for the screw that comes up
-    # through the platform: the assembly sweep found an M3x25 bottoming
-    # 4 mm short of seated in a hole that stopped at the insert
-    for y in (hy - CHANNEL[3], hy + CHANNEL[3]):
-        for r_h, depth in ((INS_M3[0], INS_M3[1]),
-                           (1.7, INS_M3[1] + RECV_RELIEF)):
-            c = trimesh.creation.cylinder(radius=r_h, height=depth + 1,
-                                          sections=48)
-            c.apply_transform(rot(90.0, [1, 0, 0]))
-            c.apply_translation([RECV_U, v0 - 1 + (depth + 1) / 2, y])
-            tools.append(c)
-    r_ = cut(r_, tools)
-    r_.apply_transform(M_ARC)
-    return r_
+    """The phone's mount: a bar from the saddle's inboard face up the arc
+    to the seat the clamp's end face stands on, the pin that keys the
+    clamp, and the hole the 1/4-20 comes through from behind into the
+    clamp's socket. Prints on its back, the pin standing up."""
+    (u0, u1), (v0, v1) = MOUNT_U, MOUNT_V
+    h0, h1 = MOUNT_H0, MOUNT_FACE
+    b = box((u0, v0, h0), (u1, v1, h1))
+    d, L, ch = MOUNT_PIN
+    r = d / 2.0
+    prof = [(0, h1 - 0.5), (r, h1 - 0.5), (r, h1 + L - ch), (r - ch, h1 + L),
+            (0, h1 + L)]
+    pin = trimesh.creation.revolve(prof, sections=48)
+    pin.apply_translation([PIN_U, CLAMP_V, 0])
+    b = union([b, pin])
+    tools = [cyl(QTR_R, h0 - 1, h1 + 1, SOCKET_U, CLAMP_V, 48),
+             cyl(MOUNT_CBORE_R, h0 - 1, h1 - MOUNT_UNDER, SOCKET_U, CLAMP_V, 64)]
+    for u, v in MOUNT_SCREWS:
+        tools.append(cyl(MOUNT_SCREW_R, h0 - 1, h1 + 1, u, v, 32))
+    b = cut(b, tools)
+    b.apply_transform(M_ARC)
+    return b
 
 
 # --- proxies: hardware and the camera, for the sweeps and the page -----
@@ -2528,7 +2584,7 @@ def camera_proxy(kind=CAMERA_DEFAULT, lens_id=None):
     touches, and overlapping boxes answer that as well as a solid."""
     cfg = camera_config(kind, lens_id)
     return trimesh.util.concatenate(
-        [box(lo, hi) for group in cfg["boxes"].values() for lo, hi in group])
+        [box(lo, hi) for lo, hi in cfg["boxes"]["phone"]] + [clamp_mesh()])
 
 
 CLAMP_U = CLAMP_R       # the thumbscrew's axis, where the carriage hangs
@@ -2590,10 +2646,12 @@ def thumbscrew_reach():
     """From the shoe's outer face, does the thumbscrew come through the
     square nut, and stay inside the saddle's screw hole?"""
     tip = SHOE_H[0] + THUMB_LEN
-    nut_top = PLATE_H[0] + 3.2 + NUT[1]
+    nut_top = PLATE_H[0] + NUT_FLOOR + NUT[1]
+    # 2 mm past the nut: every thread of it engaged, with the screw's
+    # chamfered end beyond; and short of the receiver over the pocket
     return dict(tip_h=round(tip, 3), nut_top_h=round(nut_top, 3),
-                hole_end_h=PLATE_H[1] + 1.0,
-                through=bool(nut_top <= tip <= PLATE_H[1] + 1.0))
+                past_nut_mm=round(tip - nut_top, 3), face_h=PLATE_H[1],
+                through=bool(nut_top + 2.0 <= tip < PLATE_H[1]))
 
 
 def camera_cases():
@@ -2602,11 +2660,85 @@ def camera_cases():
 
 
 def receiver_for(parts, kind, lens_id=None):
-    """The receiver slid along the channel to under this camera's socket."""
-    m = parts["receiver"].copy()
-    m.apply_translation([camera_config(kind, lens_id)["receiver_u"] - RECV_U,
-                         0, 0])
-    return m
+    """The receiver, which no longer slides: every lens of the one
+    camera is behind the same socket."""
+    return parts["receiver"].copy()
+
+
+_CLAMP_M = np.array([[0, 0, -1, CLAMP_BACK_U], [1, 0, 0, CLAMP_FACE_Y],
+                     [0, -1, 0, CLAMP_V], [0, 0, 0, 1]], float)
+
+
+def _xcyl(r, x0, x1, y, z, sections=48):
+    """A cylinder along the clamp's X."""
+    c = cyl(r, x0, x1, 0, 0, sections)
+    # cyl runs along z: send z to x (and x to -z)
+    c.apply_transform(np.array([[0, 0, 1, 0], [0, 1, 0, y], [-1, 0, 0, z],
+                                [0, 0, 0, 1]], float))
+    return c
+
+
+def clamp_meshes():
+    """The ST-02S as it is made, by material, in the world at theta = 0:
+    the two anodized blocks (socket and plain hole in the long one's end
+    face, a button on each of its sides), the black pads on the jaws,
+    the two steel guide rods and the lead screw between the blocks, and
+    the knurled knob on the short block's end."""
+    c, x, hw = ST02S, _clamp_x(), ST02S["w"] / 2.0
+    zc = c["pin_z"]                                   # the screw's axis
+    long_ = union([box((x["long"][0], -hw, 0), (x["long"][1], hw, c["bar_long"])),
+                   box((0, -hw, 0), (c["up_t"], hw, c["depth"]))])
+    long_ = cut(long_, [_xcyl(c["socket_d"] / 2 + 0.08, -1, c["socket_deep"], 0,
+                              c["socket_z"]),
+                        _xcyl(c["pin_hole"] / 2, -1, c["pin_deep"], 0, zc)])
+    bx, bz, br = c["button"]
+    buttons = []
+    for sgn in (1, -1):
+        bt = cyl(br, 0, 0.3, 0, 0, 32)
+        bt.apply_transform(rot(-90 * sgn, [1, 0, 0]))
+        bt.apply_translation([x["long"][1] - bx, sgn * hw, bz])
+        buttons.append(bt)
+    short = union([box((x["short"][0], -hw, 0), (x["short"][1], hw, c["bar_short"])),
+                   box((x["up_short"][0], -hw, 0), (x["end"], hw, c["depth"]))])
+    pads = []
+    for (p0, p1), inward in ((x["pad_long"], 1), (x["pad_short"], -1)):
+        pd = box((p0, -hw + 0.8, c["pad_z"][0]), (p1, hw - 0.8, c["pad_z"][1]))
+        # dished to the case's rounded edge: 1.2 deep at the middle
+        face = p1 if inward > 0 else p0
+        rc = 12.0
+        dish = cyl(rc, -hw - 1, hw + 1, 0, 0, 96)
+        dish.apply_transform(rot(90, [1, 0, 0]))
+        dish.apply_translation([face + inward * (rc - 1.2), 0, c["pad_c"]])
+        pads.append(cut(pd, [dish]))
+    x0, x1 = x["long"][1] - 6.0, x["short"][0] + 6.0
+    steel = [_xcyl(c["rod_r"], x0, x1, sgn * c["rod_y"], zc) for sgn in (1, -1)]
+    steel.append(_xcyl(c["screw_r"], x0, x["end"] + 1.0, 0, zc))
+    kr = c["knob_r"]
+    knob = [_xcyl(kr - 0.35, x["end"], x["end"] + c["knob_h"], 0, zc, 64)]
+    for k in range(c["knob_ridges"]):
+        a = 2 * np.pi * k / c["knob_ridges"]
+        knob.append(_xcyl(0.45, x["end"] + 0.3, x["end"] + c["knob_h"] - 0.3,
+                          (kr - 0.45) * np.cos(a), zc + (kr - 0.45) * np.sin(a), 8))
+    out = {"anodized": union([long_, short] + buttons),
+           "rubber": trimesh.util.concatenate(pads),
+           "steel": trimesh.util.concatenate(steel),
+           "dark": trimesh.util.concatenate(knob)}
+    for m in out.values():
+        m.apply_transform(_CLAMP_M)
+    return out
+
+
+def clamp_mesh():
+    """The clamp as one mesh, for the sweeps."""
+    return trimesh.util.concatenate(list(clamp_meshes().values()))
+
+
+def clamp_prims():
+    """The clamp for the pages: one mesh primitive per material."""
+    return [dict(kind="mesh", mat=k,
+                 v=[round(float(t), 3) for t in m.vertices.ravel()],
+                 f=[int(t) for t in m.faces.ravel()])
+            for k, m in clamp_meshes().items()]
 
 
 # --- assembly and layout -----------------------------------------------
@@ -2671,6 +2803,16 @@ def plate_pose(name, mesh):
     if name == "arc":
         return rot(90.0, [1, 0, 0])
     if name == "shoe":
+        return rot(90.0, [1, 0, 0])
+    # on its inboard face, lips up: the nut's pocket and the receiver's
+    # insert holes open onto the plate. It stood on the platform's
+    # underside until 34.0.0, and without the platform it would stand on
+    # the curved end of its plate.
+    if name == "saddle":
+        return rot(-90.0, [1, 0, 0])
+    # on its back, the pin standing up, the 1/4-20's counterbore open
+    # onto the plate
+    if name == "receiver":
         return rot(90.0, [1, 0, 0])
     if name.startswith("sleeve"):
         return rot(180.0, [1, 0, 0])
@@ -2822,8 +2964,8 @@ def assembly_meta(specimen, poses, parts, rep=None):
                                         for l in c["lenses"]})
                     for k, c in CAMERAS.items()},
         "camera_default": CAMERA_DEFAULT, "pupil": [R, CAM_Y, 0.0],
-        "receiver_u": RECV_U,
-        "receiver": dict(u=RECV_U, v=PLATFORM_V[1], size=list(RECV)),
+        "clamp": clamp_prims(),
+        "receiver_u": SOCKET_U,
         "protocol": PROTOCOL, "frustum": FRUSTUM, "lenses": LENSES,
         "frames": sum(int(round(360.0 / p["step"])) for p in PROTOCOL),
         "volume_cm3": {n: round(float(m.volume) / 1000.0, 1)
@@ -2864,7 +3006,10 @@ def _prim_mesh(p):
         if p.get("M") is not None:
             m.apply_transform(np.asarray(p["M"], float).reshape(4, 4))
         return m
-    if p["kind"] == "box":
+    if p["kind"] == "mesh":
+        m = trimesh.Trimesh(np.reshape(p["v"], (-1, 3)), np.reshape(p["f"], (-1, 3)),
+                            process=False)
+    elif p["kind"] == "box":
         m = box(p["lo"], p["hi"])
         if p.get("hole"):
             # a nut: its thread is where the screw's goes, so the stand-in
@@ -3106,16 +3251,15 @@ def assembly_steps(parts, specimen=SPECIMEN):
            dict(kind="cyl", c=[um + 50.0, XIAO_Y, pz], axis=[1, 0, 0],
                 r=2.0, h=60.0, M=CR, mat="cable")]
     usb_dir = (np.asarray(CR).reshape(4, 4)[:3, :3] @ np.array([-1.0, 0, 0])).tolist()
-    recv_ins = _moved([dict(kind="ring", axis=[0, 0, 1], ro=ins3[0] - 0.05,
-                            ri=1.55, h=ins3[1] - 1.0, mouth=-1,
-                            c=list(_arc_to_world(RECV_U, PLATFORM_V[1]
-                                                 + (ins3[1] - 1.0) / 2, y)))
-                       for y in (CAM_Y - Y_ARC - CHANNEL[3],
-                                 CAM_Y - Y_ARC + CHANNEL[3])], elev(MOUNT_THETA))
+    # the receiver's inserts, in the saddle's inboard face
+    saddle_ins = _moved([dict(kind="ring", axis=[0, -1, 0], ro=ins3[0] - 0.05,
+                              ri=1.55, h=ins3[1] - 1.0, mouth=-1,
+                              c=list(_arc_to_world(u, v, PLATE_H[1]
+                                                   - (ins3[1] - 1.0) / 2)))
+                         for u, v in MOUNT_SCREWS], elev(MOUNT_THETA))
     E = elev(MOUNT_THETA)
-    hy = CAM_Y - Y_ARC
-    # a real M5 square nut, 8 x 4, centred in its 8.4 x 4.4 trap
-    zn = PLATE_H[0] + 3.2 + NUT[1] / 2
+    # a real M5 square nut, 8 x 4, on the floor of its 8.4 pocket
+    zn = PLATE_H[0] + NUT_FLOOR + NUT[1] / 2
     nut = _moved([dict(kind="box", lo=[CLAMP_R - 4.0, -4.0, zn - 2.0],
                        hi=[CLAMP_R + 4.0, 4.0, zn + 2.0], M=M_ARC.ravel().tolist(),
                        hole=dict(c=[CLAMP_R, 0.0, zn], axis=[0, 0, 1],
@@ -3127,24 +3271,21 @@ def assembly_steps(parts, specimen=SPECIMEN):
     thumb.append(dict(kind="box", lo=[seat[0] - 1.25, seat[1] - 13.0, seat[2] - 13.0],
                       hi=[seat[0] + 1.25, seat[1] - 1.5, seat[2] + 13.0]))
     thumb = _moved(thumb, E)
-    v0 = PLATFORM_V[0]
-    recv_screws = _moved([p for y in (hy - CHANNEL[3], hy + CHANNEL[3])
-                          for p in _bolt_prims(_arc_to_world(RECV_U, v0, y),
-                                               length["receiver to platform"],
+    recv_screws = _moved([p for u, v in MOUNT_SCREWS
+                          for p in _bolt_prims(_arc_to_world(u, v, MOUNT_FACE),
+                                               length["receiver to saddle"],
                                                r=1.5, head_r=2.75, head_h=3.0,
-                                               axis=(0, 0, -1))], E)
-    # its shank stops at the receiver's top here: it really runs on into
-    # the clamp's socket, which the clamp's box stand-in does not have
-    # its head a hexagon, corners where the pocket's are, so the page
-    # shows why it cannot turn
-    stud = _bolt_prims(_arc_to_world(RECV_U, PLATFORM_V[1] + QTR_HEX[1], hy),
-                       QTR_LEN, r=3.175, head_r=QTR_HEAD[0] / np.sqrt(3.0),
-                       head_h=QTR_HEAD_REAL, axis=(0, 0, -1))
-    stud[0].update(sides=6, corner=(M_ARC[:3, :3] @ [1.0, 0, 0]).tolist())
-    stud = _moved(stud, E)
+                                               axis=(0, 1, 0))], E)
+    # from behind the seat, through it, QTR_ENGAGE into the clamp's socket;
+    # its head a hexagon for the 7/16 wrench
+    qtr = _bolt_prims(_arc_to_world(SOCKET_U, CLAMP_V, MOUNT_FACE - MOUNT_UNDER),
+                      QTR_LEN, r=3.175, head_r=QTR_HEAD[0] / np.sqrt(3.0),
+                      head_h=QTR_HEAD_REAL, axis=(0, -1, 0))
+    qtr[0].update(sides=6, corner=[1.0, 0, 0])
+    qtr = _moved(qtr, E)
     cfg = camera_config(CAMERA_DEFAULT)
-    cam = _moved([dict(kind="box", lo=list(lo), hi=list(hi))
-                  for grp in cfg["boxes"].values() for lo, hi in grp], E)
+    cam = _moved([dict(kind="box", lo=list(lo), hi=list(hi), mat="phone")
+                  for lo, hi in cfg["boxes"]["phone"]] + clamp_prims(), E)
     up_arc = (E @ np.array([0, 0, 1.0, 0]))[:3]   # +v at MOUNT_THETA
     inboard, outboard = (0, -1, 0), (0, 1, 0)
     return [
@@ -3389,38 +3530,47 @@ def assembly_steps(parts, specimen=SPECIMEN):
                    [p for b in bars for p in
                     _bolt_prims(b, length["arc bar to rotor pad"])])],
               path=(down, 25.0)),
+        _step("saddle_inserts", "Inserts into the saddle",
+              "On the bench: two M3 inserts into the saddle's inboard face, "
+              "for the receiver.",
+              hw=[(INSERT_M3, 2, saddle_ins)], path=(inboard, 15.0),
+              against=["saddle"], at=E),
         _step("nut", "Square nut into the saddle",
-              "On the bench: flat, into the slot in the clamp plate's up-arc "
-              "end, pushed in until it stops over the screw hole.",
-              hw=[("M5 square nut", 1, nut)], path=(-up_arc, 40.0),
+              "On the bench: flat, down into the square pocket in the "
+              "saddle's inboard face until it sits on the pocket's floor, "
+              "over the screw hole. The receiver covers it later.",
+              hw=[("M5 square nut", 1, nut)], path=(inboard, 20.0),
               against=["saddle"], at=E),
         _step("saddle", "Saddle onto the arc, inboard",
               "Half way up the arc, its lips over the arc's inner and outer faces.",
-              ["saddle"], path=(inboard, 30.0), carry=["nut"], at=E),
+              ["saddle"], path=(inboard, 30.0), carry=["saddle_inserts", "nut"],
+              at=E),
         _step("shoe", "Shoe onto the arc, outboard", "",
               ["shoe"], path=(outboard, 30.0), at=E),
         _step("thumbscrew", "Thumbscrew through shoe, slot and saddle",
               "Into the square nut.",
               hw=[(f"M5x{THUMB_LEN:g} thumbscrew", 1, thumb)],
               path=(outboard, 50.0)),
-        _step("receiver_prep", "Receiver: inserts and the 1/4-20",
-              "On the bench: two M3 inserts underneath, and the 1/4-20 "
-              "bolt up through the middle, its head in the hex pocket so "
-              "it cannot turn when the clamp is screwed on.",
-              hw=[(INSERT_M3, 2, recv_ins), (QTR_ITEM, 1, stud)],
-              path=(up_arc, 20.0), against=["receiver"], at=E),
-        _step("receiver", "Receiver onto the platform", "",
-              ["receiver"], path=(-up_arc, 20.0), carry=["receiver_prep"],
-              at=E),
-        _step("receiver_screws", "Two screws up through the channel",
-              "Into the receiver's inserts; loose enough to slide it.",
-              hw=[("M3x" + str(length["receiver to platform"]), 2,
-                   recv_screws)], path=(up_arc, 30.0)),
-        _step("camera", "Phone clamp onto the 1/4-20",
-              "Spin its socket down the stud until it sits on the "
-              "receiver's top, turned so the phone lies across the arc.",
-              hw=[("phone spring clamp, 1/4-20 socket", 1, cam)],
-              path=(-up_arc, 30.0)),
+        _step("receiver", "Receiver onto the saddle",
+              "Flat on the saddle's inboard face, its seat up the arc, "
+              "the pin facing away from the arc.",
+              ["receiver"], path=(inboard, 20.0), at=E),
+        _step("receiver_screws", "Two screws into the saddle",
+              "Through the receiver's bar into the saddle's inserts.",
+              hw=[("M3x" + str(length["receiver to saddle"]), 2,
+                   recv_screws)], path=(inboard, 25.0)),
+        _step("camera", "Phone, in its clamp, onto the seat",
+              "The phone in the clamp first: portrait, upside down, the "
+              "clamp near its bottom under Camera Control, the long block "
+              "on the camera's edge. Then the long block's end face onto "
+              "the seat, the pin in its plain hole: the clamp goes on only "
+              "one way.",
+              hw=[(CLAMP_ITEM, 1, cam)], path=(inboard, 30.0)),
+        _step("camera_bolt", "The 1/4-20 from behind",
+              "Through the seat into the clamp's socket, turned with a 7/16 "
+              "wrench or nut driver. The clamp does not turn, so the pin "
+              "says where the phone points, not the thread.",
+              hw=[(QTR_ITEM, 1, qtr)], path=(outboard, 25.0)),
         _step("rod_plate", "Rod field plate onto the platform",
               "Printed from its own card. Its plain hole drops over the "
               "mount screw; the carbon rods go in later, cut to the "
@@ -3867,17 +4017,31 @@ def fits(parts, specimen=SPECIMEN):
     ar = arc_radii(parts["arc"])
     row("Carriage lips on the arc", (ARC_RO + LIP_CLR) - (ARC_RI - LIP_CLR),
         ar[1] - ar[0], "running", note="they slide the arc's length with every ring")
-    hy = CAM_Y - Y_ARC
-    ch = _arc_to_world((CHANNEL[0] + CHANNEL[1]) / 2,
-                       (PLATFORM_V[0] + PLATFORM_V[1]) / 2, hy + CHANNEL[3])
-    row("Receiver screws along the channel",
-        _ray_gap(parts["saddle"], ch, [1, 0, 0]) and
-        _ray_gap(parts["saddle"], ch, [0, 1, 0]), 3.0, "running",
-        note="they slide the channel to set the phone's distance")
-    # above the hex pocket
-    rc = _arc_to_world(RECV_U, PLATFORM_V[1] + QTR_HEX[1] + 2.0, hy)
-    row("1/4-20 through the receiver",
-        hole_d(parts["receiver"], rc, rc[2], QTR_R), 6.35, "clearance")
+    # the receiver's holes run across the arc (world y): measured as the
+    # gap along the two axes square to them
+    def y_hole(m, c):
+        gx, gz = _ray_gap(m, c, [1, 0, 0]), _ray_gap(m, c, [0, 0, 1])
+        return None if gx is None or gz is None else min(gx, gz)
+
+    rq = _arc_to_world(SOCKET_U, CLAMP_V, MOUNT_FACE - 2.0)
+    row("1/4-20 through the receiver", y_hole(parts["receiver"], rq), 6.35,
+        "clearance")
+    rs = _arc_to_world(*MOUNT_SCREWS[0], MOUNT_FACE - 2.0)
+    row("Receiver screw through its bar", y_hole(parts["receiver"], rs), 3.0,
+        "slip", note="drawn snug: the two screws locate the receiver")
+    # the pin, sectioned square to its axis half way along it
+    sec = parts["receiver"].section(
+        plane_origin=_arc_to_world(PIN_U, CLAMP_V, MOUNT_FACE + MOUNT_PIN[1] / 2),
+        plane_normal=[0, 1, 0])
+    pin_d = None
+    if sec is not None:
+        for Lp in sec.discrete:
+            P = Polygon(Lp[:, [0, 2]])
+            if P.contains(Point(PIN_U, CLAMP_V)):
+                pin_d = 2 * np.sqrt(P.area / np.pi)
+    row("Receiver's pin in the clamp's plain hole", ST02S["pin_hole"], pin_d,
+        "slip", kind="printed shaft in steel bore",
+        note="it keys the clamp; the 1/4-20 holds it")
     row("Mount screw through the pedestal",
         hole_d(parts["stator"], (0, 0), L["base_top"] + PED_H / 2,
                MOUNT_BORE_R), MOUNT_D, "clearance",
@@ -4188,6 +4352,115 @@ def sightlines(parts, specimen=SPECIMEN):
     return dict(rays=len(origins), blocked=int(blocked))
 
 
+# The phone's lenses, as the camera app frames them: the 1x and 2x both
+# off the main sensor, and the ultra wide, 120 degrees on its diagonal
+# (13 mm equivalent). Across y and up the arc, held portrait.
+def _fov_pair(diag_or_long, aspect_long=4.0 / 3.0, diag=False):
+    t = np.tan(np.radians(diag_or_long / 2.0))
+    if diag:
+        t_long = t * aspect_long / np.hypot(aspect_long, 1.0)
+    else:
+        t_long = t
+    return t_long / aspect_long, t_long          # tan of half: across, along
+
+
+VIEW_LENSES = (dict(id="wide", ring=0, tan=_fov_pair(71.5)),
+               dict(id="tele", ring=0, tan=_fov_pair(39.8)),
+               dict(id="ultra", ring=1, tan=_fov_pair(120.0, diag=True)))
+# Nearer than this to the lens, a body is in front of everything the
+# specimen can be: in the foreground of the frame, not behind the tooth.
+VIEW_FOREGROUND = R - 75.0
+
+
+def view_targets(specimen=SPECIMEN):
+    """The specimen's likely envelope, as `sightlines` takes it."""
+    z_lo = -specimen + PLATE_T + 13.0
+    t = [[0, 0, z] for z in (z_lo, 0.0, 40.0)]
+    t += [[20 * np.cos(a), 20 * np.sin(a), z]
+          for a in np.radians(np.arange(0, 360, 45)) for z in (z_lo, 0.0)]
+    return np.asarray(t, float)
+
+
+def phone_view(parts, specimen=SPECIMEN, kind=CAMERA_DEFAULT, extra=None,
+               grid=(9, 12)):
+    """From each of the phone's lenses at every frame of the protocol:
+
+    - its rays to the specimen's envelope, against every body in the jig,
+      the clamp, its own carriage and the rod field plate -- `blocked`
+      must be 0;
+    - a grid of rays across each lens's frame, and what the nearest thing
+      each one meets is: a body nearer than VIEW_FOREGROUND is something
+      standing in front of the specimen, and `foreground` counts them.
+
+    The rotor side turns with the frame's azimuth, so the rays are cast
+    into the rotor's frame for it and into the world for the rest.
+    `extra` is a mesh added to the stator side: the negative control."""
+    rot_names = set(ROTOR_SIDE) | set(CARRIAGE)
+    stat = [m for n, m in parts.items() if n not in rot_names]
+    stat += list(bought_statics(specimen).values())
+    stat.append(rod_plate(specimen))
+    if extra is not None:
+        stat.append(extra)
+    stat = trimesh.util.concatenate(stat)
+    rotor_fixed = trimesh.util.concatenate([parts[n] for n in ROTOR_SIDE])
+    cam = CAMERAS[kind]
+    targets = view_targets(specimen)
+    out = dict(rays=0, blocked=0, blocked_at=[], lenses={})
+    gy, gv = grid
+    for L in VIEW_LENSES:
+        out["lenses"][L["id"]] = dict(rays=0, foreground=0, worst=None)
+    for p in PROTOCOL:
+        th = p["elev"]
+        E = elev(th)
+        moving = [rotor_fixed]
+        for n in CARRIAGE:
+            m = parts[n].copy(); m.apply_transform(E); moving.append(m)
+        cl = clamp_mesh(); cl.apply_transform(E); moving.append(cl)
+        moving = trimesh.util.concatenate(moving)
+        for phi in np.arange(0.0, 360.0, p["step"]):
+            Rz = rot(phi, [0, 0, 1])
+            T = Rz @ E
+            for L in VIEW_LENSES:
+                c = np.asarray(cam["rings"][L["ring"]]["c"], float)
+                o = (T @ np.r_[c, 1.0])[:3]
+                fwd = (T[:3, :3] @ [-1.0, 0, 0])
+                ax_y = T[:3, :3] @ [0, 1.0, 0]
+                ax_v = T[:3, :3] @ [0, 0, 1.0]
+                ta, tl = L["tan"]
+                g = [fwd + a * ta * ax_y + b * tl * ax_v
+                     for a in np.linspace(-1, 1, gy) for b in np.linspace(-1, 1, gv)]
+                g = [d / np.linalg.norm(d) for d in g]
+                to_t = [(t - o) for t in targets]
+                dists = [float(np.linalg.norm(d)) for d in to_t]
+                dirs = [d / n for d, n in zip(to_t, dists)] + g
+                lim = dists + [VIEW_FOREGROUND] * len(g)
+                O = np.repeat(o[None], len(dirs), 0)
+                D = np.asarray(dirs)
+                near = np.full(len(dirs), np.inf)
+                Ri = np.linalg.inv(Rz)
+                for mesh, M in ((stat, np.eye(4)), (moving, Ri)):
+                    Oo = (M[:3, :3] @ O.T).T + M[:3, 3]
+                    Dd = (M[:3, :3] @ D.T).T
+                    loc, idx, _ = mesh.ray.intersects_location(Oo, Dd,
+                                                               multiple_hits=False)
+                    for x_, i in zip(loc, idx):
+                        near[i] = min(near[i], float(np.linalg.norm(x_ - Oo[i])))
+                nt = len(targets)
+                hit_t = int(np.sum(near[:nt] < np.asarray(lim[:nt]) - 0.5))
+                hit_g = int(np.sum(near[nt:] < VIEW_FOREGROUND))
+                if L["id"] != "tele":           # the 2x is the 1x's middle
+                    out["rays"] += nt
+                    out["blocked"] += hit_t
+                    if hit_t:
+                        out["blocked_at"].append((L["id"], th, float(phi), hit_t))
+                lv = out["lenses"][L["id"]]
+                lv["rays"] += len(g)
+                lv["foreground"] += hit_g
+                if hit_g and (lv["worst"] is None or hit_g > lv["worst"][2]):
+                    lv["worst"] = (th, float(phi), hit_g)
+    return out
+
+
 def pupil(theta):
     p = np.array([R, 0.0, CAM_Y - Y_ARC, 1.0])
     w = elev(theta) @ M_ARC @ p
@@ -4224,9 +4497,8 @@ JOINTS = (
     ("drive post to base", driver_levels()["face"] - (levels()["base_top"]
                                                        - POST_SOCKET),
      INS_M3[1], BASE_T - POST_SOCKET - INS_M3[1] + CABLE_UNDER + 2.0, 1, "M3"),
-    # up through the platform into the receiver, so it slides the channel
-    ("receiver to platform", PLATFORM_V[1] - PLATFORM_V[0], INSERT_STOP,
-     None, 2, "M3"),
+    # through the receiver's bar into the saddle's face
+    ("receiver to saddle", MOUNT_FACE - MOUNT_H0, INSERT_STOP, None, 2, "M3"),
 )
 _STOCK = (6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 35)   # the VIGRUE kit, and McMaster's 35
 
@@ -4279,7 +4551,7 @@ def inserts():
            WHEEL_BRG_ITEM: 6, f"M5x{THUMB_LEN:g} thumbscrew": 1, "M5 square nut": 1,
            QTR_ITEM: 1,
            f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)": 1,
-           "phone spring clamp, 1/4-20 socket": 1, PLATE_ITEM: 1}
+           CLAMP_ITEM: 1, PLATE_ITEM: 1}
     for _, crosses, ins, relief, n, gauge in JOINTS:
         key = f"{gauge}x{bolt_len(crosses, ins, relief)}"
         out[key] = out.get(key, 0) + n
@@ -4312,6 +4584,12 @@ def measure(parts, specimen):
     rep["elevation_fouls"] = elevation_sweep(parts)
     rep["azimuth_fouls"] = azimuth_sweep(parts, specimen=specimen)
     rep["sightlines"] = sightlines(parts, specimen)
+    pv = phone_view(parts, specimen)
+    rep["phone_view"] = dict(rays=pv["rays"], blocked=pv["blocked"],
+                             blocked_at=pv["blocked_at"][:10],
+                             foreground={k: v["foreground"]
+                                         for k, v in pv["lenses"].items()},
+                             worst={k: v["worst"] for k, v in pv["lenses"].items()})
     vol = sum(float(m.volume) for m in parts.values()) / 1000.0
     rep["volume_cm3"] = round(vol, 1)
     rep["est_g"] = round(vol * PETG_G_PER_CM3, 0)
@@ -4361,6 +4639,14 @@ def gates(rep):
             # the drive stands inside the camera's world: it may not stand
             # between the phone and the specimen in any frame
             ("drive_out_of_every_frame", rep["sightlines"]["blocked"] == 0),
+            # every lens sees the whole specimen from every frame, and
+            # nothing stands in front of it in the 1x's frame (or the 2x's,
+            # its middle). The ultra wide sees the arc and the ring's pad
+            # at its frame's lower corner on the horizon ring: reported,
+            # not gated -- it is beside and below the specimen.
+            ("phone_sees_the_specimen", rep["phone_view"]["blocked"] == 0),
+            ("nothing_in_front_of_the_1x",
+             rep["phone_view"]["foreground"]["wide"] == 0),
             # what the drive can be off by in life, and it still runs
             ("geneva_runs_off_centre",
              rep["geneva_window"]["control_jams"]

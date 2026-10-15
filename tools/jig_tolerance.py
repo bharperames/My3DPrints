@@ -120,8 +120,9 @@ def fit_rows(parts):
         ("Axle bolt through a sleeve",               "vhole", "sleeve_a",    (2.93, -0.05, 0.05),       clear,   "M3 major"),
         ("Sleeve in a 688's bore",                   "steel", "sleeve_a",    ("p", None),               (-0.08, 0.12), "688 bore 8 -0.008"),
         ("Carriage lips on the arc",                 "rect",  "saddle",      ("p", None),               run,     "the arc's 30 mm, printed on its side"),
-        ("Receiver screws along the channel",        "vhole", "saddle",      (2.93, -0.05, 0.05),       run,     "M3 major"),
-        ("1/4-20 through the receiver",              "vhole", "receiver",    (6.30, -0.10, 0.05),       clear,   "1/4-20 major"),
+        ("1/4-20 through the receiver",              "vhole", "receiver",    (6.30, -0.10, 0.05),       clear,   "1/4-20 major; the receiver prints on its back"),
+        ("Receiver screw through its bar",           "vhole", "receiver",    (2.93, -0.05, 0.05),       (-0.15, 0.5), "M3 major, drawn snug to locate it"),
+        ("Receiver's pin in the clamp's plain hole", "steel", "receiver",    ("p", None),               (0.05, 0.6), "the clamp's 6.2, metal"),
         ("Mount screw through the pedestal",         "vhole", "stator",      ("p", None),               clear,   "printed thread"),
         ("Arc's bar in the pad's slot",              "rect",  "rotor",       ("pz", None),              run,     "bar width is a printed height"),
     ]
