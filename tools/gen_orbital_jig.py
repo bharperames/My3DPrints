@@ -288,6 +288,18 @@ LOBE_REACH = 142.0      # how far the base's corner lobes reach
 INS_M3 = (2.0, 6.7)     # bore radius, depth
 INSERT_M3 = "M3 heat-set insert, M3 x 5.7 (\u00d84.0 hole)"
 INSERT_L = 5.7          # the insert's own length: all the thread there is
+# Brett's idea, from pressing them: a seat at the mouth the insert's own
+# size, three layers deep, so it stands in the hole square and centred
+# before the iron goes on, and goes down straight. Ruthex's knurl is 4.6
+# across; drawn 0.2 over, as a small printed hole prints under.
+INSERT_OD = 4.6
+INSERT_SEAT = (INSERT_OD + 0.2, 0.6)    # diameter, depth
+
+
+def insert_seat(x, y, mouth, up=1.0):
+    """The seat at an insert's mouth, `mouth` the height of the face it
+    goes in from (the hole runs down from there)."""
+    return cyl(INSERT_SEAT[0] / 2, mouth - INSERT_SEAT[1], mouth + up, x, y, 64)
 # A bolt into a blind insert ends inside it. The melt the knurl pushes
 # down fills the bore under the insert; a bolt that reaches past the
 # insert's end meets that plug and stops before it clamps. Brett's
@@ -1004,6 +1016,7 @@ def stator(specimen=SPECIMEN):
     for a in TOWER_PHI:
         x, y, _ = polar(TOWER_PITCH, a)
         tools.append(cyl(INS_M3[0], top - INS_M3[1], top + 1, x, y, 48))
+        tools.append(insert_seat(x, y, top))
         tools.append(cyl(AXLE_R, top - INS_M3[1] - 4.0, top, x, y, 48))
     # the three foot bolts, headed from above, down into the pucks
     for a in FOOT_PHI:
@@ -1014,7 +1027,8 @@ def stator(specimen=SPECIMEN):
     # under it, and beside it the hole the drive's cable goes down
     hx, hy_ = POST_X / 2 + 0.2, POST_Y / 2 + 0.2      # the shop's running fit
     sock = box((-hx, -hy_, -POST_SOCKET), (hx, hy_, 1.0))
-    ins = cyl(INS_M3[0], -POST_SOCKET - INS_M3[1], 0.5, 0, SCREW_Y, 48)
+    ins = union([cyl(INS_M3[0], -POST_SOCKET - INS_M3[1], 0.5, 0, SCREW_Y, 48),
+                 insert_seat(0, SCREW_Y, -POST_SOCKET, POST_SOCKET + 0.5)])
     relief = cyl(1.7, -BASE_T - 1, 0.5, 0, SCREW_Y, 48)
     wire = cyl(2.5, -BASE_T - 1, 1.0, 0, CABLE_Y, 48)
     for m in (sock, ins, relief, wire):
@@ -1518,7 +1532,7 @@ def ctrl_box(specimen=SPECIMEN):
     # the cable's way in, low on the inner wall, and the tie bar beside it
     cut2.append(box((-l / 2 - 1, CTRL_INLET_Y - 3.5, t),
                     (-l / 2 + t + 1, CTRL_INLET_Y + 3.5,
-                     t + TRAY_T + 1.4 + CABLE_R + 0.2)))
+                     t + INLET_TRAY_T + 1.4 + CABLE_R + 0.2)))
     # the lid's pegs press into the bosses, printed into printed like the
     # drive's lid
     # and a 45-degree mouth, the lead-in, which also clears the peg's fillet.
@@ -1553,19 +1567,31 @@ def ctrl_lid(specimen=SPECIMEN):
 # USB-C goes out through, y across, z up from the board it is glued to.
 #
 # The boards and the parts with legs sit in a printed tray on the box's
-# floor, which is also where every joint goes: the XIAO in a window the
-# shape of its board, the DRV8833 on the plate with a slot under each row
-# of holes for the solder that comes through, and the joints that are not
-# on a board each in its own channel, a printed wall between it and the
-# next. Every place on the tray says what goes there -- the parts' values
-# and their schematic symbols, the channels the net they carry -- so it is
-# wired by matching, plug by number. The XIAO's and the DRV8833's pads are
-# 2.54 apart, too close for a name the printer can draw legibly; the page
-# names those.
+# floor, laid out like a circuit board: the XIAO in a window the shape of
+# its board, the DRV8833 on the plate with a slot under each row of holes,
+# and every part with legs in a saddle the shape of its body, its legs
+# down through holes. The nets that are not on a board are made under the
+# plate: each wire comes down through its own hole beside the net's name,
+# runs in a groove underneath, and meets the others in the net's pocket.
+# The grooves are the circuit's traces, cut into the face that prints on
+# the bed, with each net's name beside its pocket, mirrored so it reads
+# with the tray turned over. Every name on the top is cut in too: raised
+# letters 3.6 tall printed as blobs (Brett's first and second trays).
 #
-# Nothing is soldered in the tray: each joint is made in the air, with the
-# iron nowhere near the PETG, and pressed down into its channel when cool.
-TRAY_T = 2.0            # the plate, on the box's floor (1.2 until 30.0.0: it flexed)
+# Each joint is still made off the plastic: the wires' ends twisted under
+# the tray, lifted clear with tweezers, soldered, and pressed into the
+# pocket when cool. Two legs end on the DRV8833 itself -- the 4.7 ohm's
+# into AOUT1 and the 5 V wire into VIN -- each along a groove and up
+# through the slot under that row, soldered on the board's top.
+#
+# The plate is 3.0, its pockets 2.0 deep under it. The 100 uF stands on
+# the DRV8833, now 2 mm off it with its top 0.4 under the lid; the 5 V
+# wire, which passed under it, comes into VIN from below.
+TRAY_T = 3.0            # the plate, on the box's floor (2.0 until 42.0.0)
+# The box's inlet and where the cables come through it were drawn for a
+# 2.0 plate, and the box is printed and glued down: they stay there, and
+# the plate is cut away round them.
+INLET_TRAY_T = 2.0
 TRAY_GAP = 0.3          # all round inside the box's walls and bosses
 TRAY_FIT = 0.25         # each board's window, per side
 # The tray's notches round the lid's two bosses: a snug fit, so the
@@ -1573,15 +1599,20 @@ TRAY_FIT = 0.25         # each board's window, per side
 # Until 30.0.0 it was 0.4 per side and the tray sat loose.
 TRAY_BOSS_FIT = 0.15
 # The first print (26.0.0) drew its labels in bold Arial 2.8 tall, 0.4
-# proud, with 0.6 strokes: one nozzle line and a smear, and the letters
-# came out as blobs. Now every mark is straight strokes 0.8 wide -- two
-# lines of the 0.4 nozzle -- in a block letter of strokes, 0.8 proud.
-TRAY_RAISE = 0.8        # labels, outlines and symbols, stood up off it
-TRAY_LINE = 0.8         # every stroke: an outline, a symbol, a letter
-TRAY_CAP = 3.6          # a block letter's height
-TROUGH = (4.0, 1.2, 3.0)  # a joint's channel: inside width, wall, height
+# proud: a smear. 30.0.0 drew raised block letters 3.6 tall in 0.8
+# strokes, and those printed as blobs too: every stroke a small island
+# the nozzle starts and stops on. Cut into the plate, the letters are
+# holes the top layers go round, and they print as clean as the outline.
+TRAY_CAP = 4.2          # a block letter's height
+TRAY_LINE = 0.9         # every stroke: a letter, a symbol
+TRAY_CUT = 0.6          # how deep they are cut, top and underside
+# Under the plate: a groove the width of one wire or leg, and a pocket
+# for each net's joint (a twist of up to four 28 AWG ends, soldered).
+GROOVE = (1.4, 1.0)     # width, depth
+POCKET = (4.4, 2.0)     # diameter, depth
+HOLE_WIRE = 1.6         # a 28 AWG wire, 0.8 over its insulation, prints ~1.4
 DRV_RIM = (1.0, 1.2)    # the wall round the DRV8833: thickness, height
-DRV_SLOT = 2.0          # the slot under each of its rows of holes
+DRV_SLOT = 2.0          # the slot under each of its rows of holes, through
 WIRE_R = 0.4            # Pololu's 28 AWG: JST SH takes insulation 0.8 at
                         # most, so no fatter than that (Pololu gives none)
 PITCH = 2.54
@@ -1619,19 +1650,36 @@ DRV_PARTS = ((4.86, 7.52, 8.86, 11.53, 1.03, "ic"),          # the DRV8833
 R1_DIM = (11.0, 4.5, 0.8)        # RSMF2JT4R70, 4.7 ohm 2 W
 R2_DIM = (6.0, 2.3, 0.55)        # CF14JT10K0, 10 kohm
 C1_DIM = (5.0, 11.0, 2.0, 0.5)   # EEU-FR1C101: dia, height, lead pitch, lead
-C1_STANDOFF = 3.0                # its legs, so a wire passes under it
-# Where things sit on the tray (box frame, mm)
-TROUGHS = {"GND": ((14.0, -14.0), "x", 8.5),
-           "3V3": ((1.0, -13.15), "y", 8.5),
-           "D5": ((1.0, 6.2), "y", 6.0),
-           "M1": ((-3.0, 14.4), "x", 6.4)}
-R1_BOX = ((-24.6, 11.7), (-6.8, 17.4))     # its outline; the body along x
-R1_X = -13.95                              # the body's centre, in the outline
-R2_BOX = ((-3.4, -8.3), (5.0, 2.6))        # along y, between 3V3 and D5
-C1_MARK = (-24.0, -7.6)                    # its symbol, beside where it stands
+C1_STANDOFF = 2.0                # off the DRV8833's parts, under the lid
+# The two resistors lie in saddles, their legs bent down at BEND past the
+# body's end into holes drawn LEAD_HOLE over the leg.
+BEND = 2.05
+LEAD_HOLE = 0.6
+R1_AT = ((-13.95, 14.55), "x", 1.5)        # its centre, its axis, saddle depth
+R2_AT = ((1.0, -2.85), "y", 0.8)
 INLET_X = -CTRL["l"] / 2 + 4.0             # where the cables' wires fan out
 # where each cable's wires rise from it, clear of the marks beside them
 RISE_X = {"cable": -27.6, "lead": -26.6}
+# The nets made under the plate: where each one's pocket is, the holes its
+# wires come down through (in the order WIRES numbers them), where its
+# name is cut on top and how it is turned.
+NETS = {
+    "M1": dict(pocket=(-4.0, 14.55), holes=((-0.6, 14.55),),
+               name=(10.0, 14.4, 0.0), under=(3.5, 13.5, 0.0)),
+    "3V3": dict(pocket=(-3.4, -9.0), holes=((-3.8, -11.7), (-1.6, -11.7), (2.8, -11.7)),
+                name=(2.4, -15.1, 0.0), under=(6.1, -7.4, 90.0)),
+    "D5": dict(pocket=(-3.4, 3.6), holes=((-3.4, 8.0), (3.6, 6.0)),
+               name=(1.6, 11.2, 0.0), under=(6.1, 1.5, 90.0)),
+    "GND": dict(pocket=(14.0, -14.4), holes=((9.6, -16.1), (11.6, -16.1),
+                                             (16.4, -16.1), (18.4, -16.1)),
+                name=(21.0, -12.0, 0.0), under=(21.4, -11.9, 0.0, 3.6)),
+}
+# the 5 V wire's way into VIN from below: down here, along, up the slot
+VIN_HOLE = (-22.8, -12.4)
+# what else is cut on top: the parts' values, the 100 uF's polarity
+VALUES = (("4.7\u03a9", (-25.6, 6.5), 90.0),       # beside R1's leg, up the left side
+          ("10K", (5.4, -2.85), 90.0),
+          ("100\u00b5F", (-13.4, -14.6), 0.0))   # under the DRV8833, where it stands
 
 # Every wire inside the box: its color, the net, the two ends, the step
 # that solders it, the height it runs at over the tray's plate (so a
@@ -1642,10 +1690,11 @@ RISE_X = {"cable": -27.6, "lead": -26.6}
 # between the boards, colored by what they carry -- red 5 V, black
 # ground, blue 3V3, yellow the XIAO's signals out.
 # Ends: ("cable", k) and ("lead", k) where they come in, k their place in
-# the bundle; ("xiao", pad); ("drv", row, pin[, from +x under C1]);
-# ("joint", net, end of its channel, offset across it).
+# the bundle; ("xiao", pad); ("drv", row, pin) from above, ("under", row,
+# pin) up through the slot from its own hole; ("hole", net, k) down the
+# net's k-th hole into its pocket.
 WIRES = (
-    ("W1", "red", "M1", ("cable", 5), ("joint", "M1", 1, 0.0), "j_m1", 6.3,
+    ("W1", "red", "M1", ("cable", 5), ("hole", "M1", 0), "j_m1", 6.3,
      ((-27.6, 10.6), (-1.4, 10.6))),
     ("W2", "black", "M2", ("cable", 4), ("drv", "power", "AOUT2"), "motor_wires", 4.3,
      ((-27.6, 1.27),)),
@@ -1653,25 +1702,25 @@ WIRES = (
      ((-27.6, 11.5), (19.26, 11.5))),
     ("W4", "white", "encoder B", ("cable", 1), ("xiao", "D4"), "motor_wires", 8.1,
      ((-27.6, 12.3), (16.72, 12.3))),
-    ("W5", "blue", "3V3", ("cable", 3), ("joint", "3V3", -1, -0.9), "j_home", 4.8,
+    ("W5", "blue", "3V3", ("cable", 3), ("hole", "3V3", 0), "j_home", 4.8,
      ((-27.6, -15.85),)),
-    ("W6", "green", "GND", ("cable", 0), ("joint", "GND", -1, -0.9), "j_gnd", 4.0,
+    ("W6", "green", "GND", ("cable", 0), ("hole", "GND", 0), "j_gnd", 4.0,
      ((-27.6, -17.0), (12.4, -17.0))),
-    ("W7", "blue", "3V3", ("lead", 0), ("joint", "3V3", -1, 0.9), "j_home", 5.7,
+    ("W7", "blue", "3V3", ("lead", 0), ("hole", "3V3", 1), "j_home", 5.7,
      ((-26.6, -15.85),)),
-    ("W8", "green", "GND", ("lead", 1), ("joint", "GND", -1, 0.9), "j_gnd", 4.9,
+    ("W8", "green", "GND", ("lead", 1), ("hole", "GND", 1), "j_gnd", 4.9,
      ((-26.6, -16.2), (12.4, -16.2))),
-    ("W9", "white", "home", ("lead", 2), ("joint", "D5", -1, 0.9), "j_home", 6.8,
+    ("W9", "white", "home", ("lead", 2), ("hole", "D5", 0), "j_home", 6.8,
      ((-26.6, 4.6),)),
-    ("W10", "red", "5V", ("xiao", "5V"), ("drv", "power", "VIN", 1), "jumpers", 8.8,
+    ("W10", "red", "5V", ("xiao", "5V"), ("under", "power", "VIN"), "jumpers", 8.8,
      ((26.88, -11.6), (-15.38, -11.6))),
-    ("W11", "black", "GND", ("xiao", "GND"), ("joint", "GND", 1, 0.0), "j_gnd", 3.8,
+    ("W11", "black", "GND", ("xiao", "GND"), ("hole", "GND", 2), "j_gnd", 3.8,
      ((24.34, -14.0),)),
-    ("W12", "black", "GND", ("joint", "GND", -1, 0.0), ("drv", "logic", "GND"), "j_gnd", 6.6,
+    ("W12", "black", "GND", ("hole", "GND", 3), ("drv", "logic", "GND"), "j_gnd", 6.6,
      ((-8.92, -14.0),)),
-    ("W13", "blue", "3V3", ("joint", "3V3", 1, 0.9), ("xiao", "3V3"), "j_home", 6.0,
+    ("W13", "blue", "3V3", ("hole", "3V3", 2), ("xiao", "3V3"), "j_home", 6.0,
      ((21.8, -11.55),)),
-    ("W14", "white", "home", ("joint", "D5", 1, 0.9), ("xiao", "D5"), "j_home", 4.8,
+    ("W14", "white", "home", ("hole", "D5", 1), ("xiao", "D5"), "j_home", 4.8,
      ((14.18, 7.8),)),
     ("W15", "yellow", "AIN1", ("xiao", "D0"), ("drv", "logic", "AIN1"), "jumpers", 9.6,
      ((26.88, 13.2), (-8.92, 13.2))),
@@ -1711,15 +1760,53 @@ def _drv_top():
     return _plate_top() + 0.02 + DRV8833[2]
 
 
-def _trough_axis(net):
-    c, ax, n = TROUGHS[net]
+def _net_hole(net, k):
+    return np.asarray(NETS[net]["holes"][k], float)
+
+
+def _under_z():
+    """A wire's or a leg's centre in a groove under the plate."""
+    return _floor() + GROOVE[1] / 2
+
+
+def _part_axis(at):
+    (cx, cy), ax, depth = at
     a = np.array([1.0, 0.0]) if ax == "x" else np.array([0.0, 1.0])
-    return np.asarray(c, float), a, n
+    return np.array([cx, cy], float), a, depth
 
 
-def _joint_z():
-    # clear of the channel's label under it
-    return _plate_top() + TRAY_RAISE + 1.1
+def _lead_holes(at, dim):
+    """The two holes a part's legs go down: BEND past each end of its body."""
+    c, a, _ = _part_axis(at)
+    d = dim[0] / 2 + BEND
+    return c - a * d, c + a * d
+
+
+def _part_z(at, dim):
+    """The centre of a lying part's body, sat in its saddle."""
+    return _plate_top() + dim[1] / 2 - _part_axis(at)[2]
+
+
+def _routes():
+    """Every groove under the plate, as (what, points): from each net's
+    holes to its pocket, the 4.7 ohm's leg to the slot under AOUT1, the
+    5 V wire's to the slot under VIN."""
+    out = []
+    for net, d in NETS.items():
+        for k, h in enumerate(d["holes"]):
+            out.append((f"{net} {k}", [tuple(h), tuple(d["pocket"])]))
+    # each lying part's legs into the pockets of the nets they join
+    for (at, dim), nets in (((R1_AT, R1_DIM), (None, "M1")),
+                            ((R2_AT, R2_DIM), ("3V3", "D5"))):
+        for h, net in zip(_lead_holes(at, dim), nets):
+            if net:
+                out.append((f"leg to {net}", [tuple(h), tuple(NETS[net]["pocket"])]))
+    w1 = _lead_holes(R1_AT, R1_DIM)[0]
+    ao = drv_hole("power", "AOUT1")
+    out.append(("R1 to AOUT1", [tuple(w1), (w1[0], ao[1]), (ao[0], ao[1])]))
+    vin = drv_hole("power", "VIN")
+    out.append(("5V to VIN", [VIN_HOLE, (vin[0], VIN_HOLE[1]), (vin[0], vin[1])]))
+    return out
 
 
 # A block letter as strokes in a unit cell, x 0..1 across, y 0..1 up
@@ -1773,50 +1860,10 @@ def _glyph(text, cap, at, angle=0.0, w=TRAY_LINE):
     return affinity.translate(g, at[0], at[1])
 
 
-def _stroke(pts, w=TRAY_LINE):
-    # round joins: a mitre on a zigzag's sharp turns grows a spike
-    return LineString(pts).buffer(w / 2, cap_style=2, join_style=1)
-
-
-def _resistor_sym(c, length, angle=0.0, amp=0.9, peaks=3):
-    """The zigzag, `length` long with a lead stub at each end."""
-    stub = length * 0.18
-    n = 2 * peaks
-    xs = np.linspace(-length / 2 + stub, length / 2 - stub, n + 1)
-    pts = [(-length / 2, 0.0)] + [(x, 0.0 if i in (0, n) else (amp if i % 2 else -amp))
-                                  for i, x in enumerate(xs)] + [(length / 2, 0.0)]
-    g = _stroke(pts)
-    g = affinity.rotate(g, angle, origin=(0, 0))
-    return affinity.translate(g, c[0], c[1])
-
-
-def _cap_sym(c, plus_dir):
-    """A polarized capacitor: its straight + plate toward `plus_dir` (a
-    unit vector), the curved - plate away, a lead off each and a + sign."""
-    u = np.asarray(plus_dir, float)
-    v = np.array([-u[1], u[0]])
-    c = np.asarray(c, float)
-    gap, half, lead = 0.6, 1.8, 1.3
-    parts = [_stroke([c + u * gap + v * half, c + u * gap - v * half]),
-             _stroke([c + u * gap, c + u * (gap + lead)]),
-             _stroke([c - u * (gap + 0.35), c - u * (gap + 0.35 + lead)])]
-    arc = [c - u * gap - v * half * np.sin(a) - u * 0.55 * (1 - np.cos(a))
-           for a in np.linspace(-1.2, 1.2, 13)]
-    parts.append(_stroke(arc))
-    p = c + u * (gap + 0.9) + v * 1.9
-    parts += [_stroke([p - u * 1.0, p + u * 1.0]),
-              _stroke([p - v * 1.0, p + v * 1.0])]
-    return unary_union(parts)
-
-
-def _outline(lo, hi):
-    o = Polygon([(lo[0], lo[1]), (hi[0], lo[1]), (hi[0], hi[1]), (lo[0], hi[1])])
-    return o.difference(o.buffer(-TRAY_LINE, join_style=2))
-
-
 def tray_layout():
-    """The tray in plan: its plate, walls and raised marks, each a shapely
-    region in the box's frame, and what each mark is."""
+    """The tray in plan, in the box's frame: its plate, the walls on it,
+    and what is cut into it -- through, from the top, from underneath --
+    each a shapely region, and what each cut is."""
     l, w, t = CTRL["l"], CTRL["w"], CTRL["wall"]
     xi, yi = l / 2 - t - TRAY_GAP, w / 2 - t - TRAY_GAP
     plate = Polygon([(-xi, -yi), (xi, -yi), (xi, yi), (-xi, yi)])
@@ -1828,59 +1875,60 @@ def tray_layout():
                                       (xi + 1, -XIAO[1] / 2 - TRAY_FIT),
                                       (xi + 1, XIAO[1] / 2 + TRAY_FIT),
                                       (x0, XIAO[1] / 2 + TRAY_FIT)]))
-    # under the DRV8833's rows: room for what comes through its holes
+    # where the cables come in, at the height the box's inlet was drawn
+    # for: the plate is cut away round them
+    plate = plate.difference(Polygon([(-xi - 1, CTRL_INLET_Y - 4.6),
+                                      (INLET_X + 2.4, CTRL_INLET_Y - 4.6),
+                                      (INLET_X + 2.4, CTRL_INLET_Y + 4.0),
+                                      (-xi - 1, CTRL_INLET_Y + 4.0)]))
+    through = []
+    # under the DRV8833's rows: room for what comes through its holes, and
+    # the way up into them from underneath
     for row in DRV_ROWS:
         x = drv_hole(row, "GND")[0]
-        plate = plate.difference(Polygon(
+        through.append(Polygon(
             [(x - DRV_SLOT / 2, -8.89 - 1.0), (x + DRV_SLOT / 2, -8.89 - 1.0),
              (x + DRV_SLOT / 2, 8.89 + 1.0), (x - DRV_SLOT / 2, 8.89 + 1.0)]))
+    for net, d in NETS.items():
+        for h in d["holes"]:
+            through.append(Point(*h).buffer(HOLE_WIRE / 2, 32))
+    for at, dim in ((R1_AT, R1_DIM), (R2_AT, R2_DIM)):
+        for h in _lead_holes(at, dim):
+            through.append(Point(*h).buffer(dim[2] / 2 + LEAD_HOLE / 2, 32))
+    through.append(Point(*VIN_HOLE).buffer(HOLE_WIRE / 2, 32))
     dl, dw = DRV8833[0] / 2 + TRAY_FIT, DRV8833[1] / 2 + TRAY_FIT
     inner = Polygon([(DRV_C[0] - dl, -dw), (DRV_C[0] + dl, -dw),
                      (DRV_C[0] + dl, dw), (DRV_C[0] - dl, dw)])
     rim = inner.buffer(DRV_RIM[0], join_style=2).difference(inner)
-    walls = []
-    marks = []                         # (what, region)
-    for net, (c, ax, n) in TROUGHS.items():
-        c = np.asarray(c, float)
-        a = np.array([1.0, 0.0]) if ax == "x" else np.array([0.0, 1.0])
-        b = np.array([-a[1], a[0]])
-        hw_, wl = TROUGH[0] / 2, TROUGH[1]
-        for s in (-1, 1):
-            q0 = c - a * n / 2 + b * s * hw_
-            q1 = c + a * n / 2 + b * s * (hw_ + wl)
-            walls.append(Polygon([(q0[0], q0[1]), (q1[0], q0[1]),
-                                  (q1[0], q1[1]), (q0[0], q1[1])]))
-        marks.append((f"channel {net}",
-                      _glyph(net, TRAY_CAP, c, 0.0 if ax == "x" else 90.0)))
-    # R1, the motor's 4.7 ohm: outline, symbol, value
-    (ax0, ay0), (ax1, ay1) = R1_BOX
-    cy = (ay0 + ay1) / 2
-    marks.append(("R1 outline", _outline(*R1_BOX)))
-    # the value right up to the outline's end, the symbol in what is left
-    val = _glyph("4.7\u03a9", TRAY_CAP, (0.0, cy))
-    pad = TRAY_LINE + 0.15
-    val = affinity.translate(val, ax1 - pad - val.bounds[2], 0.0)
-    sl = val.bounds[0] - 0.5 - (ax0 + pad)
-    assert sl >= 3.0, f"no room for R1's symbol: {sl:.2f}"
-    marks.append(("R1 symbol", _resistor_sym((ax0 + pad + sl / 2, cy), sl, amp=1.3,
-                                             peaks=2)))
-    marks.append(("R1 value", val))
-    # R2, the home sensor's 10 kohm pull-up, along y
-    (bx0, by0), (bx1, by1) = R2_BOX
-    marks.append(("R2 outline", _outline(*R2_BOX)))
-    ry = (by0 + by1) / 2
-    marks.append(("R2 symbol", _resistor_sym((bx0 + 2.2, ry), 6.4, 90.0, 0.8)))
-    marks.append(("R2 value", _glyph("10K", TRAY_CAP, (bx1 - 2.7, ry), 90.0)))
-    # C1 stands on the DRV8833, + to VIN: its symbol and value beside it
-    vin, gnd = drv_hole("power", "VIN"), drv_hole("power", "GND")
-    marks.append(("C1 symbol", _cap_sym((C1_MARK[0], (vin[1] + gnd[1]) / 2), (0.0, 1.0))))
-    marks.append(("C1 value", _glyph("100\u00b5F", TRAY_CAP, (-27.3, 2.2), 90.0)))
-    return dict(plate=plate, rim=rim, walls=unary_union(walls), marks=marks)
+    # cut into the top: the names and values
+    top = []
+    for net, d in NETS.items():
+        x, y, a = d["name"]
+        top.append((f"name {net}", _glyph(net, TRAY_CAP, (x, y), a)))
+    for text, at, a in VALUES:
+        top.append((f"value {text}", _glyph(text, TRAY_CAP, at, a)))
+    # cut into the underside: the grooves, the pockets, each net's name
+    under = []
+    for what, pts in _routes():
+        under.append((f"groove {what}",
+                      LineString(pts).buffer(GROOVE[0] / 2, cap_style=1, join_style=1)))
+    for net, d in NETS.items():
+        under.append((f"pocket {net}", Point(*d["pocket"]).buffer(POCKET[0] / 2, 48)))
+    labels = []
+    for net, d in NETS.items():
+        x, y, a, *cap = d["under"]
+        # mirrored, so it reads with the tray turned over
+        g = affinity.scale(_glyph(net, cap[0] if cap else TRAY_CAP, (0, 0), a), -1, 1,
+                           origin=(0, 0))
+        labels.append((f"under {net}", affinity.translate(g, x, y)))
+    return dict(plate=plate, rim=rim, through=unary_union(through),
+                top=top, under=under, labels=labels)
 
 
 def ctrl_tray(specimen=SPECIMEN):
     """The controller's tray: dropped into the box, it holds both boards
-    and every joint, and says where each goes."""
+    and every part, carries every joint off a board underneath, and says
+    where each goes."""
     L = tray_layout()
     z0 = _floor()
     pt = _plate_top()
@@ -1889,17 +1937,32 @@ def ctrl_tray(specimen=SPECIMEN):
         geoms = list(poly.geoms) if poly.geom_type == "MultiPolygon" else [poly]
         out = []
         for g in geoms:
+            if g.is_empty or g.area < 1e-6:
+                continue
             m = trimesh.creation.extrude_polygon(g, zb - za)
             m.apply_translation([0, 0, za])
             out.append(m)
         return out
-    # what stands on the plate goes 0.01 into it, so the union is one body
-    marks = unary_union([g for _, g in L["marks"]]).intersection(L["plate"])
-    solid = (prism(L["plate"], z0, pt)
-             + prism(L["rim"].intersection(L["plate"]), pt - 0.01, pt + DRV_RIM[1])
-             + prism(L["walls"].intersection(L["plate"]), pt - 0.01, pt + TROUGH[2])
-             + prism(marks.difference(L["walls"]), pt - 0.01, pt + TRAY_RAISE))
-    return _ctrl_local(union(solid), specimen)
+    plate = L["plate"].difference(L["through"])
+    solid = union(prism(plate, z0, pt)
+                  + prism(L["rim"].intersection(plate), pt - 0.01, pt + DRV_RIM[1]))
+    tools = []
+    tools += prism(unary_union([g for _, g in L["top"]]), pt - TRAY_CUT, pt + 1)
+    tools += prism(unary_union([g for _, g in L["under"]
+                                if not _.startswith("pocket")]), z0 - 1, z0 + GROOVE[1])
+    tools += prism(unary_union([g for _, g in L["under"]
+                                if _.startswith("pocket")]), z0 - 1, z0 + POCKET[1])
+    tools += prism(unary_union([g for _, g in L["labels"]]), z0 - 1, z0 + TRAY_CUT)
+    # the saddles: each body's own cylinder, sunk to its depth
+    for at, dim in ((R1_AT, R1_DIM), (R2_AT, R2_DIM)):
+        c, a, _ = _part_axis(at)
+        zc = _part_z(at, dim)
+        sad = trimesh.creation.cylinder(radius=dim[1] / 2 + 0.2, height=dim[0] + 0.6,
+                                        sections=48)
+        sad.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], [a[0], a[1], 0]))
+        sad.apply_translation([c[0], c[1], zc])
+        tools.append(sad)
+    return _ctrl_local(cut(solid, tools), specimen)
 
 
 # --- the bought parts in the box, drawn as they are ------------------------
@@ -1982,58 +2045,61 @@ def _bands(c, axis, r, length, colors):
     return out
 
 
-def _r1_geom():
-    (ax0, ay0), (ax1, ay1) = R1_BOX
-    zc = _plate_top() + TRAY_RAISE + 0.05 + R1_DIM[1] / 2
-    c = np.array([R1_X, (ay0 + ay1) / 2, zc])
-    return c
+def _lying(at, dim, body, bands):
+    """A resistor in its saddle, its legs bent down through their holes
+    to the underside. Returns its prims and the bottoms of its two legs."""
+    L_, D, lead = dim
+    c, a, _ = _part_axis(at)
+    zc = _part_z(at, dim)
+    c3 = np.array([c[0], c[1], zc])
+    a3 = np.array([a[0], a[1], 0.0])
+    out = [_cylp(c3, a3, D / 2, L_, body)]
+    out += _bands(c3, a3, D / 2, L_, bands)
+    ends = []
+    for s, h in zip((-1, 1), _lead_holes(at, dim)):
+        e = c3 + a3 * s * L_ / 2
+        bot = np.array([h[0], h[1], _under_z()])
+        out += _wire([e, (h[0], h[1], zc), bot], "steel", lead / 2)
+        ends.append(bot)
+    return out, ends
 
 
 def r1_prims():
-    """The motor's 4.7 ohm, lying in its outline: one leg into the M1
-    channel, the other bent back over the DRV8833's edge into AOUT1,
-    sleeved its length so it touches nothing on the way."""
-    L_, D, lead = R1_DIM
-    c = _r1_geom()
-    zc = c[2]
-    lr = lead / 2
-    out = [_cylp(c, (1, 0, 0), D / 2, L_, "r_body_blue")]
-    out += _bands(c, (1, 0, 0), D / 2, L_, ("yellow", "violet", "gold", "gold"))
-    m1c, _, n = _trough_axis("M1")
-    jz = _joint_z()
-    xe = c[0] + L_ / 2
-    out += _wire([(xe, c[1], zc), (m1c[0] - n / 2 - 0.6, m1c[1], zc),
-                  (m1c[0] - n / 2 - 0.6, m1c[1], jz), (m1c[0] - 0.6, m1c[1], jz)],
-                 "steel", lr)
+    """The motor's 4.7 ohm in its saddle beside the DRV8833: the leg
+    toward it along a groove under the plate and up through the slot into
+    AOUT1, soldered on top; the other into the M1 pocket."""
+    out, (w, e) = _lying(R1_AT, R1_DIM, "r_body_blue", ("yellow", "violet", "gold", "gold"))
     h = drv_hole("power", "AOUT1")
-    xs = DRV_C[0] - DRV8833[0] / 2 - TRAY_FIT - DRV_RIM[0] / 2
-    xw = c[0] - L_ / 2
-    out += _wire([(xw, c[1], zc), (xs, c[1], zc), (xs, h[1], zc), (h[0], h[1], zc),
-                  (h[0], h[1], _drv_top() + 0.1)], "steel", lr)
-    out += _wire([(xs, c[1] - 1.0, zc), (xs, h[1] + 1.0, zc)], "shrink", lr + 0.43)
+    pts = [w] + [np.array([x, y, _under_z()]) for x, y in _routes_by("R1 to AOUT1")[1:]]
+    pts.append(np.array([h[0], h[1], _drv_top() + 0.1]))
+    out += _wire(pts, "steel", R1_DIM[2] / 2)
     out.append(_solder_hole(h))
+    out += _to_pocket(e, "M1", R1_DIM[2] / 2)
     return out
 
 
 def r2_prims():
-    L_, D, lead = R2_DIM
-    (bx0, by0), (bx1, by1) = R2_BOX
-    c = np.array([1.0, (by0 + by1) / 2, _plate_top() + TRAY_RAISE + 0.05 + D / 2])
-    out = [_cylp(c, (0, 1, 0), D / 2, L_, "r_body_tan")]
-    out += _bands(c, (0, 1, 0), D / 2, L_, ("brown", "black", "orange", "gold"))
-    jz = _joint_z()
-    for net, s in (("3V3", -1), ("D5", 1)):
-        jc = _trough_axis(net)[0]
-        out += _wire([(c[0], c[1] + s * L_ / 2, c[2]),
-                      (c[0], c[1] + s * (L_ / 2 + 0.6), c[2]),
-                      (c[0], c[1] + s * (L_ / 2 + 1.2), jz), (jc[0], jc[1] - s * 0.6, jz)],
-                     "steel", lead / 2)
+    """The 10 kohm pull-up in its saddle, a leg into each of the 3V3 and
+    D5 pockets."""
+    out, (a, b) = _lying(R2_AT, R2_DIM, "r_body_tan", ("brown", "black", "orange", "gold"))
+    out += _to_pocket(a, "3V3", R2_DIM[2] / 2) + _to_pocket(b, "D5", R2_DIM[2] / 2)
     return out
+
+
+def _to_pocket(bot, net, r):
+    """From the bottom of a hole along the floor into the net's pocket."""
+    p = NETS[net]["pocket"]
+    q = np.array([p[0], p[1], _under_z()])
+    return _wire([bot, q], "steel", r) if np.linalg.norm(q - bot) > 1e-6 else []
+
+
+def _routes_by(what):
+    return dict(_routes())[what]
 
 
 def c1_prims():
     """The 100 uF stood on the DRV8833, its legs in VIN (+) and GND (-),
-    3 mm up so the 5 V jumper passes under it into VIN."""
+    2 mm up off the board's parts."""
     D, H, pitch, lead = C1_DIM
     vin, gnd = drv_hole("power", "VIN"), drv_hole("power", "GND")
     c = (vin + gnd) / 2
@@ -2045,7 +2111,7 @@ def c1_prims():
                  (c[0] + 1.0, c[1] - D / 2 + 0.6, z0 + H - 0.3), "cap_stripe")]
     for h, s in ((vin, 1), (gnd, -1)):
         top = np.array([c[0], c[1] + s * pitch / 2, z0])
-        out += _wire([top, (top[0], top[1], z0 - 1.2), (h[0], h[1], z0 - 2.0),
+        out += _wire([top, (top[0], top[1], z0 - 0.6), (h[0], h[1], z0 - 1.2),
                       (h[0], h[1], _drv_top() + 0.1)], "steel", lead / 2)
         out.append(_solder_hole(h))
     return out
@@ -2061,7 +2127,7 @@ def _end(spec, lane=None):
     kind = spec[0]
     if kind in ("cable", "lead"):
         k = spec[1]
-        z = CTRL["wall"] + TRAY_T + 1.4          # as _to_box has it
+        z = CTRL["wall"] + INLET_TRAY_T + 1.4    # as _to_box has it
         y0 = CTRL_INLET_Y + (CABLE_DY if kind == "cable" else LEAD_DY)
         n = 6 if kind == "cable" else 3
         a = 2 * np.pi * k / n
@@ -2080,20 +2146,23 @@ def _end(spec, lane=None):
                        "solder", sides=24)])
     if kind == "drv":
         h = drv_hole(spec[1], spec[2])
-        p = np.array([h[0], h[1], _drv_top() + 0.1])
-        pts = [p]
-        if len(spec) > 3:
-            # in under C1, from +x at the height of the board's parts' tops
-            z = _drv_top() + 1.9
-            pts += [np.array([h[0], h[1], z]), np.array([h[0] + spec[3] * 3.7, h[1], z])]
+        return [np.array([h[0], h[1], _drv_top() + 0.1])], [_solder_hole(h)]
+    if kind == "under":
+        # into a DRV8833 hole from below: up the slot from a groove that
+        # starts at its own hole in the plate
+        h = drv_hole(spec[1], spec[2])
+        route = _routes_by("5V to VIN")
+        pts = [np.array([h[0], h[1], _drv_top() + 0.1])]
+        pts += [np.array([x, y, _under_z()]) for x, y in route[::-1]]
+        pts.append(np.array([route[0][0], route[0][1], _plate_top() + WIRE_R + 0.3]))
         return pts, [_solder_hole(h)]
-    if kind == "joint":
-        c, a, n = _trough_axis(spec[1])
-        b = np.array([-a[1], a[0]])
-        jz = _joint_z()
-        q = c + a * spec[2] * 1.6 + b * spec[3]
-        return [np.array([c[0] + b[0] * spec[3] * 0.4, c[1] + b[1] * spec[3] * 0.4, jz]),
-                np.array([q[0], q[1], jz])], []
+    if kind == "hole":
+        # down through its hole beside the net's name, into the pocket
+        net, k = spec[1], spec[2]
+        h = _net_hole(net, k)
+        p = NETS[net]["pocket"]
+        return [np.array([p[0], p[1], _under_z()]), np.array([h[0], h[1], _under_z()]),
+                np.array([h[0], h[1], _plate_top() + WIRE_R + 0.3])], []
     raise ValueError(spec)
 
 
@@ -2119,11 +2188,10 @@ def wire_prims(wid):
 
 
 def joint_prims(net):
-    """The joint itself, in its channel: the wires' ends twisted and
-    soldered, cold before it goes in."""
-    c, a, n = _trough_axis(net)
-    return [_cylp((c[0], c[1], _joint_z()), (a[0], a[1], 0.0), 0.95, 3.0,
-                  "solder", sides=24)]
+    """The joint itself, in its pocket under the plate: the wires' ends
+    twisted and soldered, cold before it goes in."""
+    p = NETS[net]["pocket"]
+    return [_cylp((p[0], p[1], _floor() + 0.95), (0, 0, 1), 1.3, 1.6, "solder", sides=24)]
 
 
 def wiring_table():
@@ -2133,9 +2201,9 @@ def wiring_table():
             return ("motor cable" if e[0] == "cable" else "home lead")
         if e[0] == "xiao":
             return f"XIAO {e[1]}"
-        if e[0] == "drv":
-            return f"DRV8833 {e[2]}"
-        return f"{e[1]} channel"
+        if e[0] in ("drv", "under"):
+            return f"DRV8833 {e[2]}" + (", from below" if e[0] == "under" else "")
+        return f"{e[1]} hole {e[2] + 1}"
     return [dict(id=w[0], color=w[1], net=w[2], a=name(w[3]), b=name(w[4]),
                  step=w[5]) for w in WIRES]
 
@@ -2148,7 +2216,7 @@ def _to_box(specimen, dy):
     # just inside the wall: from there its wires fan out over the tray
     inside = (co + polar(-(CTRL["l"] / 2 - 4.0), CTRL["phi"])
               + polar(CTRL_INLET_Y + dy, CTRL["phi"] + 90.0))
-    z = board + CTRL["wall"] + TRAY_T + 1.4
+    z = board + CTRL["wall"] + INLET_TRAY_T + 1.4
     return inlet, inside, z
 
 
@@ -2275,6 +2343,7 @@ def pucks(specimen=SPECIMEN):
                  (PUCK_R, PUCK_FOOT[1] + PUCK_FOOT[0] - PUCK_R),
                  (PUCK_R, PUCK_H), (0, PUCK_H)], sections=96)
         tools = [cyl(INS_M3[0], PUCK_H - INS_M3[1], PUCK_H + 1, 0, 0, 48),
+                 insert_seat(0, 0, PUCK_H),
                  # the joint table's millimeter under the insert, for the
                  # bolt's tip
                  cyl(BOLT_R, PUCK_H - INS_M3[1] - 1.5, PUCK_H, 0, 0, 48)]
@@ -2398,6 +2467,7 @@ def rotor(specimen=SPECIMEN):
     for x in BOLTS_X:
         tools.append(cyl(INS_M3[0], zp - PAD_SLOT_D - INS_M3[1],
                          zp - PAD_SLOT_D + 0.5, x, Y_ARC, 48))
+        tools.append(insert_seat(x, Y_ARC, zp - PAD_SLOT_D, 0.5))
         tools.append(cyl(BOLT_R, zp - PAD_SLOT_D - INS_M3[1] - 4.0,
                          zp - PAD_SLOT_D, x, Y_ARC, 48))
     return cut(r_, tools)
@@ -2493,6 +2563,7 @@ def saddle():
     # the receiver's inserts
     for u, v in MOUNT_SCREWS:
         tools.append(cyl(INS_M3[0], h1 - INS_M3[1], h1 + 1.0, u, v, 48))
+        tools.append(insert_seat(u, v, h1))
     s = cut(s, tools)
     s.apply_transform(M_ARC)
     return s
@@ -3656,9 +3727,12 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["ctrl_box"], path=(down, 25.0)),
         _step("tray", "The tray into the box",
               "Printed, it drops in flat, its notches round the lid's two "
-              "bosses. It holds both boards and every joint, and says what "
-              "goes where: each part's value and symbol where it lies, each "
-              "channel the net it joins.",
+              "bosses. It is wired like a circuit board: each part in a "
+              "saddle its own shape, its legs down through holes; each wire "
+              "down through the hole beside its net's name. Turned over, "
+              "the grooves underneath are the circuit, and every net that is "
+              "not on a board meets the others in its pocket there. It comes "
+              "out again for the wiring, and goes back in when it is done.",
               ["ctrl_tray"], path=(down, 15.0)),
         _step("cable_run", "The motor's cable under the base to the box",
               "Its loose end from under the base, across the board, in "
@@ -3680,47 +3754,54 @@ def assembly_steps(parts, specimen=SPECIMEN):
               solder=True),
         _step("c1", "The 100 uF onto the DRV8833",
               "Its long leg (+) into VIN, the striped leg (-) into the GND "
-              "beside it, on the power row; standing 3 mm off the board, so "
-              "the 5 V wire can pass under it. Solder underneath and trim "
+              "beside it, on the power row; standing 2 mm off the board's "
+              "parts, its top under the lid. Solder underneath and trim "
               "flush: the tray's slot takes what is left.",
               hw=[(CAP_ITEM, 1, inbox(c1_prims()))], solder=True),
         _step("jumpers", "Board to board: power and the three signals",
-              "Red from the XIAO's 5V into VIN, beside the capacitor's leg. "
-              "Yellow from D0 to AIN1, D1 to AIN2 and D8 to FLT (nFAULT). "
-              "On the XIAO each lies flat along its pad, tinned first; on "
-              "the DRV8833 each goes through its hole, soldered underneath "
-              "and trimmed.",
+              "Red from the XIAO's 5V down through the hole beside the "
+              "100 uF's value, along its groove under the tray and up the "
+              "slot into VIN from below, beside the capacitor's leg; "
+              "soldered on the board's top. Yellow from D0 to AIN1, D1 to "
+              "AIN2 and D8 to FLT (nFAULT). On the XIAO each lies flat along "
+              "its pad, tinned first; on the DRV8833 each goes through its "
+              "hole, soldered underneath and trimmed.",
               hw=[("", 0, wires["jumpers"])], solder=True),
         _step("r1", "The motor's 4.7 ohm",
-              "In its outline on the tray, beside the DRV8833. Sleeve the "
-              "leg nearer the DRV8833 its whole length, bend it back over "
-              "the board's edge and solder it into AOUT1. Its other leg "
-              "goes into the M1 channel.",
+              "Into its saddle above the DRV8833, a leg bent down into the "
+              "hole at each end. Under the tray, the leg nearer the left "
+              "wall runs down its groove and up the slot into AOUT1, "
+              "soldered on the board's top; the other runs to the M1 "
+              "pocket.",
               hw=[(MOTOR_R_ITEM, 1, inbox(r1_prims()))], solder=True),
         _step("motor_wires", "Three of the motor cable's wires straight on",
               "Black (the motor's M2) into AOUT2. Yellow (encoder A) to "
               "the XIAO's D3, white (encoder B) to D4.",
               hw=[("", 0, wires["motor_wires"])], solder=True),
         _step("j_m1", "Red to the 4.7 ohm: the M1 channel",
-              "The cable's red (the motor's M1) twisted onto the "
-              "resistor's leg, soldered in the air, and pressed into the "
-              "M1 channel once it is cool.",
+              "The cable's red (the motor's M1) down the hole beside M1, "
+              "and under the tray along its groove to the pocket, where it "
+              "twists onto the resistor's leg. Lift the twist clear of the "
+              "plastic with tweezers, solder it, and press it into the "
+              "pocket once it is cool.",
               hw=[("", 0, wires["j_m1"] + inbox(joint_prims("M1")))], solder=True),
         _step("j_home", "The pull-up, 3V3 and the home signal",
-              "The 10 kohm into its outline between the 3V3 and D5 "
-              "channels, a leg into each. 3V3: the motor cable's blue "
-              "(the encoder's supply), the home lead's blue (the sensor's), "
-              "the resistor's leg and a blue on to the XIAO's 3V3. D5: the "
-              "home lead's white (the sensor's output), the resistor's "
-              "other leg and a white on to the XIAO's D5. Each joint made "
-              "in the air, then into its channel.",
+              "The 10 kohm into its saddle beside its value, a leg down "
+              "each end: under the tray they run to the 3V3 and D5 pockets. "
+              "3V3, down its three holes: the motor cable's blue (the "
+              "encoder's supply), the home lead's blue (the sensor's) and a "
+              "blue on to the XIAO's 3V3. D5, down its two: the home lead's "
+              "white (the sensor's output) and a white on to the XIAO's D5. "
+              "In each pocket the ends twist together, soldered lifted "
+              "clear, pressed in cool.",
               hw=[(PULLUP_ITEM, 1, inbox(r2_prims())),
                   ("", 0, wires["j_home"] + inbox(joint_prims("3V3"))
                    + inbox(joint_prims("D5")))], solder=True),
         _step("j_gnd", "Every ground together: the GND channel",
-              "Both greens (the encoder's and the sensor's ground) and two "
-              "blacks: one to the XIAO's GND, one to the DRV8833's GND on "
-              "its logic row. One joint, into the GND channel.",
+              "Down the four holes beside GND: both greens (the encoder's "
+              "and the sensor's ground) and two blacks, one to the XIAO's "
+              "GND, one to the DRV8833's GND on its logic row. One joint, "
+              "in the GND pocket.",
               hw=[("", 0, wires["j_gnd"] + inbox(joint_prims("GND")))], solder=True),
         _step("ctrl_lid", "Lid on the controller",
               "Its two pegs pressed into the bosses.",

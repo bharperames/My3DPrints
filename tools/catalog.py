@@ -563,7 +563,11 @@ PARTS = [
        # 41.0.0: the receiver's M3 holes 3.5, not 3.3: the screws would
        # not pass.
        # 42.0.0: the turner a straight knurled knob, not a V wheel.
-       version="42.0.0",
+       # 43.0.0: the controller's tray wired like a circuit board -- parts
+       # in saddles, legs and wires down through holes, every net's
+       # joint in a pocket under the plate, the grooves its traces, every
+       # name cut in; a seat at every heat-set insert's mouth.
+       version="43.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face
