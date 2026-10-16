@@ -175,6 +175,33 @@
 
 <div class="wrap">
 <main>
+    <section class="card" id="circuitCard">
+      <h2>Circuit <span class="sub">every wire as the tray lays it out, with what it carries</span></h2>
+      <svg id="circuit" viewBox="0 0 960 450" role="img" aria-label="Wiring diagram with live line values"></svg>
+      <p class="note">Values are the simulation's: logic lines read 3.3 V high or 0 V low; the motor's terminals are worked out from the current through the driver's switches and the 4.7 Ω.</p>
+    </section>
+
+
+  <div class="row2">
+    <section class="card">
+      <h2>Signals <span class="sub" id="scopeNote"></span></h2>
+      <div class="bar">
+        <span class="sub">window</span>
+        <span class="seg" id="winSeg">
+          <button data-win="30">30 s</button><button data-win="5" class="on">5 s</button>
+          <button data-win="1">1 s</button><button data-win="0.05" title="Wide enough to see each encoder edge, at 1× or slower">50 ms</button>
+        </span>
+        <label class="chk"><input type="checkbox" id="freeze"> hold</label>
+      </div>
+      <canvas id="scope"></canvas>
+    </section>
+    <section class="card">
+      <h2>The program <span class="sub">where the XIAO's code is now</span></h2>
+      <ul class="prog" id="prog"></ul>
+      <p class="note" id="progNote"></p>
+    </section>
+  </div>
+
   <section class="card">
     <h2>Drivetrain <span class="sub">motor to ring, live</span></h2>
     <div class="train">
@@ -214,55 +241,6 @@
       </div>
     </div>
   </section>
-
-  <div class="row2">
-    <section class="card">
-      <h2>Circuit <span class="sub">every wire as the tray lays it out, with what it carries</span></h2>
-      <svg id="circuit" viewBox="0 0 960 450" role="img" aria-label="Wiring diagram with live line values"></svg>
-      <p class="note">Values are the simulation's: logic lines read 3.3 V high or 0 V low; the motor's terminals are worked out from the current through the driver's switches and the 4.7 Ω.</p>
-    </section>
-    <section class="card">
-      <h2>By hand <span class="sub">one command at a time</span></h2>
-      <div class="ctl">
-        <div class="g"><span class="sub">Move the ring</span>
-          <div class="b"><button data-cmd="home">Home</button><span>Find the magnet and stop centered on it: stop 0</span></div>
-          <div class="b"><button data-cmd="step 1">Step +1</button><span>One driver turn: the ring moves one 10° stop</span></div>
-          <div class="b"><button data-cmd="step 2">Step +2</button><span>Two stops, 20°, without stopping between</span></div>
-        </div>
-        <div class="g"><span class="sub">The phone</span>
-          <div class="b"><button data-cmd="shoot">Shoot</button><span>Send volume-up over Bluetooth: the Camera app takes a photo</span></div>
-        </div>
-        <div class="g"><span class="sub">Bench checks</span>
-          <div class="b"><button data-cmd="spin 3">Spin 3</button><span>Three driver turns with nothing on the shaft: the motor, its wiring and the encoder</span></div>
-          <div class="b"><button data-cmd="hall">Read switch</button><span>Is the magnet over the home switch right now?</span></div>
-          <div class="b"><button data-cmd="hello">Hello</button><span>The program's version, and whether it is homed</span></div>
-          <div class="b simonly"><button id="wave">Wave magnet</button><span>Pass the magnet over the switch by hand (simulation)</span></div>
-          <div class="b simonly"><label class="chk" style="grid-column:1/3" title="The gearmotor alone on the bench: nothing on its shaft, the Hall switch loose on its lead"><input type="checkbox" id="bench"> Bench setup: the motor alone, no ring (takes effect on Connect)</label></div>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <div class="row2">
-    <section class="card">
-      <h2>Signals <span class="sub" id="scopeNote"></span></h2>
-      <div class="bar">
-        <span class="sub">window</span>
-        <span class="seg" id="winSeg">
-          <button data-win="30">30 s</button><button data-win="5" class="on">5 s</button>
-          <button data-win="1">1 s</button><button data-win="0.05" title="Wide enough to see each encoder edge, at 1× or slower">50 ms</button>
-        </span>
-        <label class="chk"><input type="checkbox" id="freeze"> hold</label>
-      </div>
-      <canvas id="scope"></canvas>
-    </section>
-    <section class="card">
-      <h2>The program <span class="sub">where the XIAO's code is now</span></h2>
-      <ul class="prog" id="prog"></ul>
-      <p class="note" id="progNote"></p>
-    </section>
-  </div>
-
   <div class="row2">
     <section class="card">
       <h2>Serial <span class="sub">Mac to XIAO, and back</span></h2>
@@ -288,6 +266,26 @@
 </main>
 
 <aside>
+    <section>
+    <h2>By hand <span class="sub">one command at a time</span></h2>
+    <div class="ctl">
+      <div class="g"><span class="sub">Move the ring</span>
+        <div class="b"><button data-cmd="home">Home</button><span>Find the magnet and stop centered on it: stop 0</span></div>
+        <div class="b"><button data-cmd="step 1">Step +1</button><span>One driver turn: the ring moves one 10° stop</span></div>
+        <div class="b"><button data-cmd="step 2">Step +2</button><span>Two stops, 20°, without stopping between</span></div>
+      </div>
+      <div class="g"><span class="sub">The phone</span>
+        <div class="b"><button data-cmd="shoot">Shoot</button><span>Send volume-up over Bluetooth: the Camera app takes a photo</span></div>
+      </div>
+      <div class="g"><span class="sub">Bench checks</span>
+        <div class="b"><button data-cmd="spin 3">Spin 3</button><span>Three driver turns with nothing on the shaft: the motor, its wiring and the encoder</span></div>
+        <div class="b"><button data-cmd="hall">Read switch</button><span>Is the magnet over the home switch right now?</span></div>
+        <div class="b"><button data-cmd="hello">Hello</button><span>The program's version, and whether it is homed</span></div>
+        <div class="b simonly"><button id="wave">Wave magnet</button><span>Pass the magnet over the switch by hand (simulation)</span></div>
+        <div class="b simonly"><label class="chk" style="grid-column:1/3" title="The gearmotor alone on the bench: nothing on its shaft, the Hall switch loose on its lead"><input type="checkbox" id="bench"> Bench setup: the motor alone, no ring (takes effect on Connect)</label></div>
+      </div>
+    </div>
+  </section>
   <section>
     <h2>Capture</h2>
     <div class="stage" id="stage">Not running</div>
@@ -675,7 +673,7 @@ function buildCircuit() {
 
   // a value on every line
   C.lbl = {};
-  const lbl = (id, x, y, anchor = 'middle') => { C.lbl[id] = T(x, y, '', { color: '--ink', weight: 600, anchor }); };
+  const lbl = (id, x, y, anchor = 'middle') => { C.lbl[id] = T(x, y, '', { color: '--ink', weight: 650, anchor, size: 12.5 }); };
   lbl('encB', 450, Y.encB - 5); lbl('encA', 450, Y.encA - 5); lbl('encV', 450, Y.vcc - 5); lbl('gnd', 450, Y.gnd - 5);
   lbl('vin', 540, Y.v5 - 6); lbl('enc', 450, 64);
   lbl('ain1', 625, Y.ain1 - 6); lbl('ain2', 625, Y.ain2 - 6); lbl('flt', 625, Y.flt - 6);
