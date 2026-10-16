@@ -61,7 +61,7 @@
     border-radius:5px; padding:3px 6px; }
   input[type=range] { accent-color:var(--accent); }
 
-  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 360px; min-height:calc(100vh - 100px); }
+  .wrap { display:grid; grid-template-columns:minmax(0,1fr) 340px; min-height:calc(100vh - 100px); }
   @media (max-width: 1200px) { .wrap { grid-template-columns:1fr; } }
   main { padding:12px 14px 28px; display:grid; gap:12px; align-content:start; min-width:0; }
   aside { padding:12px 14px 28px; border-left:1px solid var(--line); background:var(--surface); display:grid; gap:14px; align-content:start; }
@@ -71,17 +71,18 @@
   @media (max-width: 900px) { .row2 { grid-template-columns:1fr; } }
   .note { font-size:12px; color:var(--ink-soft); margin:6px 0 0; }
 
-  /* the drivetrain: five stations, motor to ring */
-  .train { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:0; }
-  @media (max-width: 1000px) { .train { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } }
-  @media (max-width: 560px) { .train { grid-template-columns:1fr; } }
-  .st { position:relative; padding:4px 10px 6px; border-left:1px solid var(--line); min-width:0; }
-  .st:first-child { border-left:0; }
-  .st .name { font-size:13px; font-weight:650; }
-  .st .what { font-size:11.5px; color:var(--ink-soft); min-height:2.6em; }
-  .st svg { width:100%; max-width:150px; height:auto; display:block; margin:4px auto; }
-  .st .arrow { position:absolute; right:-9px; top:62px; color:var(--edge); font-size:16px; z-index:1; }
-  @media (max-width: 1000px) { .st { border-left:0; } .st .arrow { display:none; } }
+  .cmdbar { background:var(--surface); border-bottom:1px solid var(--line); padding:6px 18px;
+    display:flex; gap:8px 16px; align-items:center; flex-wrap:wrap; }
+  .cg { display:inline-flex; gap:5px; align-items:center; flex-wrap:wrap; }
+  .cl { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin-right:2px; }
+  .cmdbar button { padding:4px 10px; }
+  .help { font-size:12px; color:var(--ink-soft); flex:1 1 260px; min-width:0; }
+  .inst { display:grid; grid-template-columns:68px minmax(0,1fr); gap:8px; align-items:start;
+    padding:6px 0; border-top:1px solid var(--line); }
+  .inst svg { width:68px; height:auto; display:block; }
+  .inst .ih { display:flex; justify-content:space-between; align-items:baseline; gap:6px; }
+  .inst .name { font-size:12.5px; font-weight:650; }
+  .inst .big { font-size:16px; text-align:right; }
   .kv { display:grid; grid-template-columns:auto 1fr; gap:1px 8px; font-size:12px; }
   .kv dt { color:var(--ink-soft); }
   .kv dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
@@ -96,13 +97,6 @@
   #circuit { width:100%; height:auto; display:block; }
   #scope { width:100%; height:300px; display:block; background:var(--well); border-radius:6px; }
   .bar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:2px 0 8px; }
-
-  /* hand controls */
-  .ctl { display:grid; gap:10px; }
-  .ctl .g { display:grid; gap:4px; }
-  .ctl .g > .sub { font-weight:600; color:var(--ink); font-size:12px; }
-  .ctl .b { display:grid; grid-template-columns:auto 1fr; gap:4px 8px; align-items:center; font-size:12px; color:var(--ink-soft); }
-  .ctl .b button { min-width:96px; }
 
   .prog { list-style:none; margin:0; padding:0; font-size:12.5px; }
   .prog li { padding:3px 8px; border-left:3px solid transparent; color:var(--ink-soft); }
@@ -173,6 +167,21 @@
   <button class="stopbtn estop" data-cmd="stop" title="Cut the motor now">STOP</button>
 </div>
 
+<div class="cmdbar">
+  <span class="cg"><span class="cl">Ring</span>
+    <button data-cmd="home" data-help="Home: find the magnet and stop centered on it, stop 0">Home</button>
+    <button data-cmd="step 1" data-help="Step +1: one driver turn, the ring moves one 10° stop">Step +1</button>
+    <button data-cmd="step 2" data-help="Step +2: two stops, 20°, without stopping between">Step +2</button></span>
+  <span class="cg"><span class="cl">Phone</span>
+    <button data-cmd="shoot" data-help="Shoot: volume-up over Bluetooth, the Camera app takes a photo">Shoot</button></span>
+  <span class="cg"><span class="cl">Bench</span>
+    <button data-cmd="spin 3" data-help="Spin 3: three driver turns with nothing on the shaft, to check the motor, its wiring and the encoder">Spin 3</button>
+    <button data-cmd="hall" data-help="Read switch: is the magnet over the home switch right now?">Read switch</button>
+    <button data-cmd="hello" data-help="Hello: the program's version, and whether it is homed">Hello</button>
+    <button class="simonly" id="wave" data-help="Wave magnet: pass the magnet over the switch by hand (simulation)">Wave magnet</button>
+    <label class="chk simonly" data-help="Motor alone: the gearmotor on the bench, nothing on its shaft, the switch loose on its lead. Takes effect on Connect."><input type="checkbox" id="bench"> motor alone</label></span>
+  <span class="help" id="cmdHelp">Hover a command to see what it does.</span>
+</div>
 <div class="wrap">
 <main>
     <section class="card" id="circuitCard">
@@ -202,45 +211,6 @@
     </section>
   </div>
 
-  <section class="card">
-    <h2>Drivetrain <span class="sub">motor to ring, live</span></h2>
-    <div class="train">
-      <div class="st">
-        <div class="name">Motor</div><div class="what">Pololu #5173, 6 V brushed, encoder on its shaft</div>
-        <svg id="dMotor" viewBox="-50 -50 100 100"></svg>
-        <div class="big" id="vMotorRpm">—</div>
-        <dl class="kv" id="kvMotor"></dl>
-        <span class="arrow">▶</span>
-      </div>
-      <div class="st">
-        <div class="name">Gearbox</div><div class="what" id="whatGear">298:1 metal spur gears</div>
-        <svg id="dGear" viewBox="-50 -50 100 100"></svg>
-        <div class="big" id="vGearTq">—</div>
-        <dl class="kv" id="kvGear"></dl>
-        <span class="arrow">▶</span>
-      </div>
-      <div class="st">
-        <div class="name">Driver</div><div class="what">The crank on the gearbox shaft: the pin drives, the lock holds</div>
-        <svg id="dDriver" viewBox="-50 -50 100 100"></svg>
-        <div class="big" id="vPsi">—</div>
-        <dl class="kv" id="kvDriver"></dl>
-        <span class="arrow">▶</span>
-      </div>
-      <div class="st">
-        <div class="name">Geneva</div><div class="what" id="whatGeneva">36 slots in the ring's lip: one driver turn, one 10° step</div>
-        <svg id="geneva" viewBox="-30 -26 60 44"></svg>
-        <div class="big" id="vGeneva">—</div>
-        <dl class="kv" id="kvGeneva"></dl>
-        <span class="arrow">▶</span>
-      </div>
-      <div class="st">
-        <div class="name">Ring</div><div class="what">Carries the arc and the phone; home is the magnet over the switch</div>
-        <svg id="dRing" viewBox="-50 -50 100 100"></svg>
-        <div class="big" id="vRing">—</div>
-        <dl class="kv" id="kvRing"></dl>
-      </div>
-    </div>
-  </section>
   <div class="row2">
     <section class="card">
       <h2>Serial <span class="sub">Mac to XIAO, and back</span></h2>
@@ -266,25 +236,18 @@
 </main>
 
 <aside>
-    <section>
-    <h2>By hand <span class="sub">one command at a time</span></h2>
-    <div class="ctl">
-      <div class="g"><span class="sub">Move the ring</span>
-        <div class="b"><button data-cmd="home">Home</button><span>Find the magnet and stop centered on it: stop 0</span></div>
-        <div class="b"><button data-cmd="step 1">Step +1</button><span>One driver turn: the ring moves one 10° stop</span></div>
-        <div class="b"><button data-cmd="step 2">Step +2</button><span>Two stops, 20°, without stopping between</span></div>
-      </div>
-      <div class="g"><span class="sub">The phone</span>
-        <div class="b"><button data-cmd="shoot">Shoot</button><span>Send volume-up over Bluetooth: the Camera app takes a photo</span></div>
-      </div>
-      <div class="g"><span class="sub">Bench checks</span>
-        <div class="b"><button data-cmd="spin 3">Spin 3</button><span>Three driver turns with nothing on the shaft: the motor, its wiring and the encoder</span></div>
-        <div class="b"><button data-cmd="hall">Read switch</button><span>Is the magnet over the home switch right now?</span></div>
-        <div class="b"><button data-cmd="hello">Hello</button><span>The program's version, and whether it is homed</span></div>
-        <div class="b simonly"><button id="wave">Wave magnet</button><span>Pass the magnet over the switch by hand (simulation)</span></div>
-        <div class="b simonly"><label class="chk" style="grid-column:1/3" title="The gearmotor alone on the bench: nothing on its shaft, the Hall switch loose on its lead"><input type="checkbox" id="bench"> Bench setup: the motor alone, no ring (takes effect on Connect)</label></div>
-      </div>
-    </div>
+  <section>
+    <h2>Instruments <span class="sub">motor to ring</span></h2>
+    <div class="inst" title="Pololu #5173, 6 V brushed, encoder on its shaft"><svg id="dMotor" viewBox="-50 -50 100 100"></svg>
+      <div><div class="ih"><span class="name">Motor</span><span class="big" id="vMotorRpm">—</span></div><dl class="kv" id="kvMotor"></dl></div></div>
+    <div class="inst" title="Metal spur gears"><svg id="dGear" viewBox="-50 -50 100 100"></svg>
+      <div><div class="ih"><span class="name">Gearbox</span><span class="big" id="vGearTq">—</span></div><dl class="kv" id="kvGear"></dl></div></div>
+    <div class="inst" title="The crank on the gearbox shaft: the pin drives, the lock holds"><svg id="dDriver" viewBox="-50 -50 100 100"></svg>
+      <div><div class="ih"><span class="name">Driver</span><span class="big" id="vPsi">—</span></div><dl class="kv" id="kvDriver"></dl></div></div>
+    <div class="inst" title="The slots in the ring's lip: one driver turn, one step"><svg id="geneva" viewBox="-30 -26 60 44"></svg>
+      <div><div class="ih"><span class="name">Geneva</span><span class="big" id="vGeneva">—</span></div><dl class="kv" id="kvGeneva"></dl></div></div>
+    <div class="inst" title="Carries the arc and the phone; home is the magnet over the switch"><svg id="dRing" viewBox="-50 -50 100 100"></svg>
+      <div><div class="ih"><span class="name">Ring</span><span class="big" id="vRing">—</span></div><dl class="kv" id="kvRing"></dl></div></div>
   </section>
   <section>
     <h2>Capture</h2>
@@ -436,8 +399,6 @@ function dial(svg, v, max, zone, label) {
   const A = at(v / max);
   el('line', { x1: 0, y1: 0, x2: 30 * Math.sin(rad(A)), y2: -30 * Math.cos(rad(A)), stroke: css('--ink'), 'stroke-width': 2, 'stroke-linecap': 'round' }, svg);
   el('circle', { cx: 0, cy: 0, r: 3, fill: css('--ink') }, svg);
-  const t = el('text', { x: 0, y: 30, 'text-anchor': 'middle', fill: css('--ink-soft'), 'font-size': 8 }, svg);
-  t.textContent = label;
 }
 
 function drawDriver(svg, psi, locked) {
@@ -472,8 +433,6 @@ function drawRing(svg, th, homed, b) {
   el('line', { x1: 0, y1: 0, x2: 0, y2: -R + 4, stroke: css('--accent'), 'stroke-width': 2.5, 'stroke-linecap': 'round' }, g);
   el('circle', { cx: 0, cy: -R + 4, r: 3.4, fill: css(homed ? '--accent' : '--warn') }, g);
   el('circle', { cx: 0, cy: 0, r: 3, fill: css('--ink') }, svg);
-  const t = el('text', { x: 0, y: 18, 'text-anchor': 'middle', fill: css('--ink-soft'), 'font-size': 7.5 }, svg);
-  t.textContent = 'switch at top';
 }
 
 function updateTrain() {
@@ -997,6 +956,10 @@ $('#connect').addEventListener('click', async () => {
 $('#disconnect').addEventListener('click', () => post({ op: 'disconnect' }));
 document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => post({ op: 'send', line: b.dataset.cmd })));
 $('#wave').addEventListener('click', () => post({ op: 'control', line: 'wave' }));
+document.querySelectorAll('[data-help]').forEach(e => {
+  const show = () => { $('#cmdHelp').textContent = e.dataset.help; };
+  e.addEventListener('mouseenter', show); e.addEventListener('focus', show); e.addEventListener('click', show);
+});
 $('#start').addEventListener('click', () => post({ op: 'capture' }));
 $('#continue').addEventListener('click', () => post({ op: 'continue' }));
 $('#stopRun').addEventListener('click', () => post({ op: 'stop' }));
@@ -1033,8 +996,6 @@ async function init() {
   try {
     SPEC = await (await fetch('/jig/specs')).json();
     for (const s of SPEC.specs) P[s.key] = +s.value;
-    $('#whatGear').textContent = `${P.ratio.toFixed(0)}:1 metal spur gears`;
-    $('#whatGeneva').textContent = `${SPEC.geneva.n} slots in the ring's lip: one driver turn, one ${360 / SPEC.geneva.n}° step`;
     $('#specs').innerHTML = SPEC.specs.map(s =>
       `<tr class="${s.source.startsWith('estimate') ? 'est' : ''}"><td>${s.key}</td><td class="n">${+(+s.value).toPrecision(4)} ${s.unit}</td><td>${s.source}</td></tr>`).join('');
     pullText();
