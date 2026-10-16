@@ -125,7 +125,7 @@ def fit_rows(parts):
         ("Sleeve in a 688's bore",                   "steel", "sleeve_a",    ("p", None),               (-0.08, 0.12), "688 bore 8 -0.008"),
         ("Carriage lips on the arc",                 "rect",  "saddle",      ("p", None),               run,     "the arc's 30 mm, printed on its side"),
         ("1/4-20 through the receiver",              "vhole", "receiver",    (6.30, -0.10, 0.05),       clear,   "1/4-20 major; the receiver prints on its back"),
-        ("Receiver screw through its bar",           "vhole", "receiver",    (2.93, -0.05, 0.05),       (-0.15, 0.5), "M3 major, drawn snug to locate it"),
+        ("Receiver screw through its bar",           "vhole", "receiver",    (2.93, -0.05, 0.05),       (0.0, 0.6),  "M3 major; at 3.3 drawn it would not pass"),
         ("Receiver's pin in the clamp's plain hole", "steel", "receiver",    ("p", None),               (-0.15, 0.3), "the clamp's 5.0 by caliper; close, PETG gives"),
         ("Mount screw through the pedestal",         "vhole", "stator",      ("p", None),               clear,   "printed thread"),
         ("Arc's bar in the pad's slot",              "rect",  "rotor",       ("pz", None),              run,     "bar width is a printed height"),

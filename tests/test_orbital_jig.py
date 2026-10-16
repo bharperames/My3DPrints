@@ -66,6 +66,22 @@ class TestJig(unittest.TestCase):
             want = J.printed(n, self.parts[n])
             self.assertLess(np.abs(back.vertices - want.vertices).max(), 1e-6, n)
 
+    def test_every_body_stands_on_a_face_not_an_edge(self):
+        """The turner reached plate 20 as it stands in the jig, a wheel on
+        the 1.5 mm tip of its V, and spaghettied. Its first layer was 9%
+        of its widest section; on its back it is 69%, and the least of
+        the rest is the hex nut's 27%, its thread's lead-in at the plate."""
+        flat, _ = J.layout(self.parts)
+
+        def area(m, z):
+            s = m.section([0, 0, 1], [0, 0, z])
+            return 0.0 if s is None else sum(
+                q.area for q in s.to_2D()[0].polygons_full)
+        for n, m in flat.items():
+            z0, z1 = m.bounds[:, 2]
+            widest = max(area(m, z) for z in np.linspace(z0 + 0.2, z1 - 0.2, 40))
+            self.assertGreater(area(m, z0 + 0.2), 0.2 * widest, n)
+
     def test_skins_are_printed_and_never_assembled(self):
         """A hole opening through a bridge gets a one-layer skin in the
         printed file; the assembled part, which the sweeps see, has none."""

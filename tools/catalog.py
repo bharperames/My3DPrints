@@ -559,7 +559,10 @@ PARTS = [
        # 39.0.0: the feet under the corners at r 114; a heel on the shoe
        # so the thumbscrew cannot rock the carriage; the receiver's pin
        # 4.9 and its seat roofed in steps; a turner for the 1/4-20.
-       version="39.0.0",
+       # 40.0.0: the turner prints on its back; it had stood on its V.
+       # 41.0.0: the receiver's M3 holes 3.5, not 3.3: the screws would
+       # not pass.
+       version="41.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

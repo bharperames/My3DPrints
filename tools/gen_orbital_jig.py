@@ -805,9 +805,11 @@ MOUNT_FACE = CLAMP_FACE_Y - Y_ARC - 0.1            # the seat, 0.1 off the clamp
 MOUNT_U = (157.0, 186.0)                           # round the socket and the pin
 MOUNT_V = (-21.5, CLAMP_V + ST02S["w"] / 2.0)      # the saddle's span, to the clamp
 # Two M3 screws into inserts in the saddle's face, clear of the nut's
-# pocket at the thumbscrew; the holes drawn snug so they locate it.
+# pocket at the thumbscrew. Drawn Ø3.3 to locate it, Brett's screws
+# would not pass: a vertical hole that small prints under. Ø3.5 passes
+# them by a hair, still close enough to locate.
 MOUNT_SCREWS = ((163.0, -14.0), (163.0, 14.0))
-MOUNT_SCREW_R = 1.65
+MOUNT_SCREW_R = 1.75
 # The 1/4-20 runs QTR_ENGAGE into the clamp's socket, which is 6.45 deep
 # (Brett's calipers): four threads, and 1.25 short of the bottom, so a
 # bolt a little long or a seat printed a little thin still lets the clamp
@@ -2917,6 +2919,10 @@ def plate_pose(name, mesh):
     # onto the plate
     if name == "receiver":
         return rot(90.0, [1, 0, 0])
+    # on its back, the socket open to the nozzle. As it stands it is a
+    # wheel on its edge, on the V's 1.5 mm tip, and plate 20 spaghettied
+    if name == "qtr_turner":
+        return rot(90.0, [1, 0, 0])
     if name.startswith("sleeve"):
         return rot(180.0, [1, 0, 0])
     # crank-top down, so the bore opens on the plate and the lock rises
@@ -4227,7 +4233,7 @@ def fits(parts, specimen=SPECIMEN):
         "clearance")
     rs = _arc_to_world(*MOUNT_SCREWS[0], MOUNT_FACE - 2.0)
     row("Receiver screw through its bar", y_hole(parts["receiver"], rs), 3.0,
-        "slip", note="drawn snug: the two screws locate the receiver")
+        "clearance", note="drawn 3.3 to locate it, the screws would not pass")
     # the pin, sectioned square to its axis half way along it
     sec = parts["receiver"].section(
         plane_origin=_arc_to_world(PIN_U, CLAMP_V, MOUNT_FACE + MOUNT_PIN[1] / 2),
