@@ -447,8 +447,12 @@ function updateGeneva() {
   // the lip: an annulus from the slots' mouth out, slots every 10 degrees,
   // a seat for the lock between each pair
   const mouth = c * Math.cos(Math.PI / n), outer = c + a + 6;
-  const lip = el('g', { transform: `rotate(${-th})` }, g);
-  el('path', { d: arcPath(mouth, outer, -40, 40), fill: '#4F9A88', opacity: 0.55, stroke: '#4F9A88' }, lip);
+  // The lip is a patch of the ring near the driver, so it stays put and
+  // only its slots move. They repeat every step, so turning them by the
+  // ring's angle within its step is the ring turning by all of it; turned
+  // by all of it, the patch left the view once the ring passed 40 degrees.
+  el('path', { d: arcPath(mouth, outer, -40, 40), fill: '#4F9A88', opacity: 0.55, stroke: '#4F9A88' }, g);
+  const lip = el('g', { transform: `rotate(${-(((th % step) + step) % step)})` }, g);
   for (let k = -4; k <= 4; k++) {
     const ang = (k + 0.5) * step;
     const [x0, y0] = P(mouth - 1, ang), [x1, y1] = P(c + a + 0.6, ang);
