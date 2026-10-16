@@ -69,7 +69,7 @@ class TestJig(unittest.TestCase):
     def test_every_body_stands_on_a_face_not_an_edge(self):
         """The turner reached plate 20 as it stands in the jig, a wheel on
         the 1.5 mm tip of its V, and spaghettied. Its first layer was 9%
-        of its widest section; on its back it is 69%, and the least of
+        of its widest section; on its back it is 97%, and the least of
         the rest is the hex nut's 27%, its thread's lead-in at the plate."""
         flat, _ = J.layout(self.parts)
 

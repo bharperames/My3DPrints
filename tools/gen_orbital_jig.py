@@ -2559,23 +2559,37 @@ def receiver():
 # The turner: a camera mount is screwed on by turning the camera, and
 # this one is the other way round -- the clamp is keyed by its pin and
 # the 1/4-20 turns behind it, where fingers get only its 2 mm of head.
-# So a small knob in the V wheels' shape carries the head in a hex
-# socket: the bolt goes into the clamp by the fingers, and the turner can
-# stay on it. Its stem fills the counterbore, so the socket holds all of
-# the head, and it prints back down, the socket open to the nozzle.
-TURNER = dict(r=11.0, w=8.0, tip=1.5, side_r=9.0)
+# So a small knurled knob carries the head in a hex socket: the bolt goes
+# into the clamp by the fingers, and the turner can stay on it. Its stem
+# fills the counterbore, so the socket holds all of the head, and it
+# prints back down, the socket open to the nozzle. It began as a V
+# wheel; the V's flanks gave the fingers nothing, so it is straight, its
+# grooves running up the print so every layer is the same outline.
+TURNER = dict(r=11.0, w=8.0, edge=0.6, grooves=24, groove_r=0.9, groove_at=11.2)
 TURNER_FIT = 0.2         # the hex socket over the head's flats: snug
 TURNER_STEM = 1.5        # into the 1.86 counterbore
+TURNER_GAP = 0.4         # the knob's face off the receiver's: two layers
 
 
 def qtr_turner_local():
     """Built back down at z = 0, the stem and the socket's mouth up."""
-    r, w, tip, sr = TURNER["r"], TURNER["w"], TURNER["tip"], TURNER["side_r"]
-    hw = w / 2.0
+    T = TURNER
+    r, w, e = T["r"], T["w"], T["edge"]
+    face = w - (TURNER_GAP - 0.1)   # the knob's face, the stem standing off it
+    knurl = Point(0, 0).buffer(r, quad_segs=48)
+    for k in range(T["grooves"]):
+        a = 2 * np.pi * k / T["grooves"]
+        knurl = knurl.difference(
+            Point(T["groove_at"] * np.cos(a), T["groove_at"] * np.sin(a))
+            .buffer(T["groove_r"], quad_segs=8))
+    knob = trimesh.creation.extrude_polygon(knurl, face)
+    # both edges broken: the plate's against its first layer's squeeze,
+    # the receiver's for the fingers
+    edges = rev([(0, 0), (r - e, 0), (r, e), (r, face - e), (r - e, face), (0, face)],
+                sections=180)
+    knob = trimesh.boolean.intersection([knob, edges], engine="manifold")
     rs = MOUNT_CBORE_R - 0.4
-    body = rev([(0, 0), (sr, 0), (r, hw - tip), (r, hw + tip), (sr, w),
-                (rs, w), (rs, w + TURNER_STEM), (0, w + TURNER_STEM)],
-               sections=180)
+    body = union([knob, cyl(rs, face - 0.01, w + TURNER_STEM, sections=180)])
     af = QTR_HEAD[0] + TURNER_FIT
     top = w + TURNER_STEM
     sock = trimesh.creation.cylinder(radius=af / np.sqrt(3.0),
