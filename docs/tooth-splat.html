@@ -55,6 +55,19 @@
   .mrow em { display:block; font-style:normal; font-size:15px; color:var(--note); }
   .r-rembg { border-color:var(--warn); } .r-rembg b { color:var(--warn); }
   .r-sam { border-color:var(--accent); } .r-sam b { color:var(--accent); }
+  .viewer { position:relative; height:640px; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#0B0D0E; margin:12px 0 8px; }
+  .viewer canvas { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+  .viewer canvas:active { cursor:grabbing; }
+  .viewer .status { position:absolute; inset:0; display:grid; place-items:center; color:var(--note); font-size:15px; pointer-events:none; }
+  .viewer .readout { position:absolute; left:12px; bottom:10px; font:13.5px "IBM Plex Mono",monospace; color:var(--note); background:rgba(11,13,14,.75); padding:3px 8px; border-radius:4px; pointer-events:none; }
+  .vbar { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; margin:0 0 6px; }
+  .vbar .grp { display:flex; gap:6px; align-items:center; }
+  .vbar .lbl { font-size:14px; color:var(--note); margin-right:2px; }
+  .vbar button { font:500 14px "IBM Plex Sans",sans-serif; color:var(--ink); background:var(--panel); border:1px solid var(--edge); border-radius:6px; padding:5px 11px; cursor:pointer; }
+  .vbar button:hover { border-color:var(--accent); }
+  .vbar button.on { background:var(--accent); color:#0F1A17; border-color:var(--accent); }
+  .vhelp { font-size:14.5px; color:var(--note); margin:0 0 18px; }
+  kbd { font:13px "IBM Plex Mono",monospace; background:var(--panel-2); border:1px solid var(--edge); border-radius:4px; padding:0 5px; }
   figcaption { font-size:14.5px; margin-top:8px; color:var(--note); }
   figcaption b { color:var(--ink); font-weight:600; }
   .nums { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin:14px 0 18px; }
@@ -77,7 +90,7 @@
 </header>
 <main>
 
-<p class="lead">This page explains how a video from the orbital jig becomes a Gaussian splat of the specimen alone: a 3D model you can turn and zoom, with the stand, the jig and the room left out.</p>
+<p class="lead">This page explains how a video from the orbital jig becomes a <a href="https://en.wikipedia.org/wiki/Gaussian_splatting" target="_blank" rel="noopener">Gaussian splat</a> of the specimen alone: a 3D model you can turn and zoom, with the stand, the jig and the room left out.</p>
 <p>It takes five stages:</p>
 <ol>
   <li><strong>Capture.</strong> Film the specimen in a few orbits at different elevations (<a href="#capture">section 1</a>; lighting for it in <a href="#light">section 8</a>).</li>
@@ -228,6 +241,21 @@
   <figcaption><b>What the trainer is given:</b> the frame, transparent outside the mask.</figcaption>
 </figure>
 </div>
+<h3 id="viewer">Turn it yourself</h3>
+<p>The finished splat, live. The camera orbits the tooth&rsquo;s own center with the jig&rsquo;s axis held upright, so the tooth never tips over and never drifts out of view, however it is dragged.</p>
+<div class="vbar">
+  <span class="grp"><span class="lbl">View</span>
+    <button data-az="0">Face</button><button data-az="180">Back</button><button data-az="90">Edge</button><button data-az="-90">Other edge</button><button data-el="88">Top</button></span>
+  <span class="grp"><span class="lbl">Height</span>
+    <button data-el="11.5" title="the low clip&rsquo;s elevation">11.5°</button><button data-el="30" title="the middle clip&rsquo;s elevation">30°</button><button data-el="61" title="the high clip&rsquo;s elevation">61°</button></span>
+  <span class="grp"><button id="v-spin">Turn</button><button id="v-reset">Reset</button></span>
+</div>
+<div class="viewer" id="splat-view">
+  <canvas aria-label="The Meg Tooth splat; drag to orbit"></canvas>
+  <div class="status">loading the splat (12 MB)&hellip;</div>
+  <div class="readout"></div>
+</div>
+<p class="vhelp">Drag to orbit. Scroll or pinch to zoom toward the pointer. Right-drag or shift-drag to slide the view; <strong>Reset</strong> brings it back. Keys: <kbd>&larr;</kbd><kbd>&rarr;</kbd> turn 15°, <kbd>&uarr;</kbd><kbd>&darr;</kbd> raise and lower, <kbd>+</kbd><kbd>&minus;</kbd> zoom. The heights are the three the tooth was filmed from; below 11.5° nothing was seen, so the camera stops a little under the horizon.</p>
 <figure>
   <img src="../assets/tooth-splat/heldout.jpg" alt="Held-out photos above and the splat's renders of the same views below">
   <figcaption><b>Top: three held-out photos, one per ring. Bottom: the splat, rendered from those cameras.</b> It never saw these three views.</figcaption>
@@ -262,5 +290,128 @@
 </div>
 
 </main>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+  "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.3.1/dist/spark.module.js" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+
+// The tooth's frame, measured from the camera solve that produced the splat:
+// up is the jig's axis, the center is the middle of the tooth's span along it,
+// azimuth 0 faces the tooth as frame 46 of IMG_4781 does.
+const V = {"center": [1.018177, 1.617295, 0.300109], "up": [-0.065096, -0.893542, -0.444236], "e1": [0.835681, 0.194477, -0.513629], "e2": [0.545343, -0.404675, 0.734057], "faceAz": 59.536434, "radius": 2.185066, "camDist": 4.1364};
+const box = document.getElementById("splat-view");
+const canvas = box.querySelector("canvas"), status = box.querySelector(".status"), readout = box.querySelector(".readout");
+const up = new THREE.Vector3(...V.up).normalize();
+const e1 = new THREE.Vector3(...V.e1), e2 = new THREE.Vector3(...V.e2);
+const center = new THREE.Vector3(...V.center);
+const R = V.radius, DEG = Math.PI / 180;
+const az0 = V.faceAz * DEG;
+
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false }); }
+catch (e) { status.textContent = "This browser could not start WebGL2, which the viewer needs."; throw e; }
+renderer.setPixelRatio(window.devicePixelRatio);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0B0D0E);
+const camera = new THREE.PerspectiveCamera(40, 1, R * 0.01, R * 50);
+camera.up.copy(up);
+scene.add(new SparkRenderer({ renderer }));
+const splat = new SplatMesh({ url: "../assets/tooth-splat/meg-tooth.ply" });
+scene.add(splat);
+splat.initialized.then(() => status.remove())
+  .catch(() => { status.textContent = "The splat did not load. Open this page from the shop (make serve), not as a file."; });
+
+const controls = new OrbitControls(camera, canvas);
+controls.target.copy(center);
+controls.enableDamping = true; controls.dampingFactor = 0.09;
+controls.rotateSpeed = 0.55; controls.zoomSpeed = 0.8; controls.panSpeed = 0.6;
+controls.zoomToCursor = true; controls.screenSpacePanning = true;
+controls.minDistance = R * 0.3; controls.maxDistance = R * 8;
+controls.minPolarAngle = 0.02;                 // straight down, but never past it
+controls.maxPolarAngle = (90 + 12) * DEG;      // a little under the horizon: nothing was filmed from below
+controls.autoRotateSpeed = 1.2;
+
+// where a camera sits for an azimuth and elevation (degrees), at a distance
+function place(azDeg, elDeg, dist) {
+  const a = az0 + azDeg * DEG, el = elDeg * DEG;
+  const dir = e1.clone().multiplyScalar(Math.cos(el) * Math.cos(a))
+    .addScaledVector(e2, Math.cos(el) * Math.sin(a)).addScaledVector(up, Math.sin(el));
+  return center.clone().addScaledVector(dir, dist);
+}
+function current() {
+  const d = camera.position.clone().sub(controls.target), dist = d.length();
+  const el = Math.asin(THREE.MathUtils.clamp(d.dot(up) / dist, -1, 1)) / DEG;
+  let az = Math.atan2(d.dot(e2), d.dot(e1)) / DEG - V.faceAz;
+  az = ((az + 540) % 360) - 180;
+  return { az, el, dist };
+}
+// glide rather than jump, so a preset shows where it went
+let anim = null;
+function goTo(pos, target = controls.target.clone(), ms = 650) {
+  anim = { p0: camera.position.clone(), p1: pos, t0: controls.target.clone(), t1: target, start: performance.now(), ms };
+}
+function view({ az, el, dist }) {
+  const c = current();
+  goTo(place(az ?? c.az, el ?? c.el, dist ?? c.dist), center.clone());
+}
+// far enough that the whole tooth fits the shorter side of the view, with a margin
+const fitDist = () => R * 1.1 / Math.sin(Math.min(camera.fov, camera.fov * camera.aspect) * DEG / 2);
+const HOME = { az: 0, el: 28.9, get dist() { return fitDist(); } };
+
+box.parentElement.querySelectorAll(".vbar [data-az], .vbar [data-el]").forEach(b => b.onclick = () => {
+  view({ az: b.dataset.az !== undefined ? +b.dataset.az : undefined, el: b.dataset.el !== undefined ? +b.dataset.el : undefined });
+});
+const spin = document.getElementById("v-spin");
+spin.onclick = () => { controls.autoRotate = !controls.autoRotate; spin.classList.toggle("on", controls.autoRotate); };
+document.getElementById("v-reset").onclick = () => goTo(place(HOME.az, HOME.el, HOME.dist), center.clone());
+controls.addEventListener("start", () => { anim = null; });
+
+// keys act only while the pointer is over the viewer or it has focus
+canvas.tabIndex = 0;
+let hover = false;
+box.addEventListener("pointerenter", () => hover = true);
+box.addEventListener("pointerleave", () => hover = false);
+window.addEventListener("keydown", e => {
+  if (!hover && document.activeElement !== canvas) return;
+  const c = current();
+  const k = { ArrowLeft: { az: c.az - 15 }, ArrowRight: { az: c.az + 15 },
+              ArrowUp: { el: Math.min(c.el + 10, 88) }, ArrowDown: { el: Math.max(c.el - 10, -12) },
+              "+": { dist: Math.max(c.dist / 1.25, controls.minDistance) }, "=": { dist: Math.max(c.dist / 1.25, controls.minDistance) },
+              "-": { dist: Math.min(c.dist * 1.25, controls.maxDistance) } }[e.key];
+  if (!k) return;
+  e.preventDefault(); goTo(place(k.az ?? c.az, k.el ?? c.el, k.dist ?? c.dist), controls.target.clone(), 300);
+});
+
+function resize() {
+  const w = box.clientWidth, h = box.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(box); resize();
+camera.position.copy(place(HOME.az, HOME.el, HOME.dist));
+
+renderer.setAnimationLoop(now => {
+  if (anim) {
+    const t = Math.min(1, (now - anim.start) / anim.ms), s = t * t * (3 - 2 * t);
+    // swing around the center rather than cutting through the tooth
+    const a = anim.p0.clone().sub(anim.t0), b = anim.p1.clone().sub(anim.t1);
+    const q = new THREE.Quaternion().setFromUnitVectors(a.clone().normalize(), b.clone().normalize());
+    const dir = a.clone().normalize().applyQuaternion(new THREE.Quaternion().slerp(q, s));
+    const tgt = anim.t0.clone().lerp(anim.t1, s);
+    camera.position.copy(tgt).addScaledVector(dir, THREE.MathUtils.lerp(a.length(), b.length(), s));
+    controls.target.copy(tgt);
+    if (t >= 1) anim = null;
+  }
+  controls.update();
+  const c = current();
+  readout.textContent = `turned ${c.az >= 0 ? "+" : ""}${c.az.toFixed(0)}°  ·  height ${c.el.toFixed(0)}°  ·  zoom ${(fitDist() / c.dist).toFixed(1)}×`;
+  renderer.render(scene, camera);
+});
+</script>
 </body>
 </html>
