@@ -30,10 +30,12 @@
     border:1px solid var(--line); border-radius:8px; background:var(--panel); font-size:15px; margin:18px 0 8px; }
   nav.toc a { color:var(--ink); text-decoration:none; }
   nav.toc a:hover { color:var(--accent); }
-  nav.toc b, h2 b { color:var(--accent); font-family:"IBM Plex Mono",monospace; font-weight:500; }
-  nav.toc b { font-size:13px; margin-right:6px; }
+  /* Section numbers read as part of the title: same face and size, then a period. */
+  nav.toc b, h2 b { color:var(--accent); font:inherit; font-variant-numeric:tabular-nums; }
+  nav.toc b::after, h2 b::after { content:"."; }
+  nav.toc b { margin-right:6px; }
   h2 { font-size:22px; font-weight:600; margin:48px 0 10px; }
-  h2 b { font-size:15px; margin-right:10px; vertical-align:2px; }
+  h2 b { margin-right:8px; }
   h3 { font-size:17px; font-weight:600; margin:24px 0 6px; }
   p { margin:0 0 14px; }
   ul, ol { margin:0 0 14px; padding-left:22px; }
@@ -74,20 +76,20 @@
 <body>
 <header>
   <h1>Video to splat</h1>
-  <span class="sub">how three orbits of a phone video become an isolated, 3D tooth, step by step, from the red tooth's run</span>
+  <span class="sub">how three orbits of a phone video become an isolated, 3D tooth, step by step, from the Meherrin Megalodon Tooth's run</span>
   <a href="../index.html">← the shop</a>
 </header>
 <main>
 
-<p class="lead">The jig turns the tooth in front of a phone that stays put. Out of that come video frames full of things that are not the tooth: the stand, its rods, the turntable, the foam, the room. This page walks the run that produced <code>tooth_red_splat.ply</code>, one step at a time, with that run's own pictures and numbers: how the camera's position is solved, how the tooth is told apart from its stand <em>in 3D</em> before any picture is cut, and how that turns a general-purpose segmenter into a precise one.</p>
+<p class="lead">The jig turns the tooth in front of a phone that stays put. Out of that come video frames full of things that are not the tooth: the stand, its rods, the turntable, the foam, the room. This page walks the run that produced the splat of the Meherrin Megalodon Tooth (the Meg Tooth from here on), one step at a time, with that run's own pictures and numbers: how the camera's position is solved, how the tooth is told apart from its stand <em>in 3D</em> before any picture is cut, and how that turns a general-purpose segmenter into a precise one.</p>
 
 <nav class="toc">
   <a href="#capture"><b>1</b>The capture</a>
   <a href="#solve"><b>2</b>Where the phone was</a>
-  <a href="#cut"><b>3</b>The cut in 3D</a>
-  <a href="#key"><b>4</b>An answer key per frame</a>
-  <a href="#sam"><b>5</b>SAM 2, prompted from 3D</a>
-  <a href="#rembg"><b>6</b>Against rembg</a>
+  <a href="#cut"><b>3</b>Telling tooth from stand</a>
+  <a href="#key"><b>4</b>A tooth outline per frame</a>
+  <a href="#sam"><b>5</b>Isolating the tooth in each frame</a>
+  <a href="#rembg"><b>6</b>Compared with background removal</a>
   <a href="#train"><b>7</b>Training the splat</a>
   <a href="#light"><b>8</b>Light and gloss</a>
 </nav>
@@ -103,7 +105,7 @@
 
 <h2 id="solve"><b>2</b>Where the phone was</h2>
 <div>
-<p>The solver is COLMAP, an open-source photogrammetry library from ETH Zürich, run on the Mac's CPU through its Python binding by a short script. It works with no reference object, no markers and no measurement. The only reference is the scene itself: things that look the same in several frames must be the same physical spot, and there is only one arrangement of cameras that makes all of those agree.</p>
+<p>The solver is COLMAP, an open-source photogrammetry library from ETH Zürich, run on the CPU through its Python binding by a short script. It works with no reference object, no markers and no measurement. The only reference is the scene itself: things that look the same in several frames must be the same physical spot, and there is only one arrangement of cameras that makes all of those agree.</p>
 <ol>
   <li><strong>Features.</strong> SIFT (David Lowe's detector, built into COLMAP) blurs each frame at a ladder of sizes and subtracts neighboring rungs. What survives the subtraction are blobs: spots brighter or darker than their surroundings at some particular size. A spot is kept only if it is the strongest response among its 26 neighbors in position and size, if its contrast clears a threshold, and if it is not merely a stretch of edge (a point on a straight edge looks like every other point along it). Each keeper gets a direction from its dominant gradient and a description: the gradients in a 4 × 4 grid around it, 8 directions each, 128 numbers that survive turning, scaling and a change in lighting. This run asked for up to 8,192 per frame.</li>
   <li><strong>Matching.</strong> Every frame is compared with every other (33,153 pairs here). Each feature's nearest description in the other frame counts only if it is clearly nearer than the second nearest (Lowe's ratio test), so a feature that resembles several others is dropped as ambiguous. Then RANSAC repeatedly picks a handful of matches at random, works out the one camera move they imply, and counts how many of the rest agree; the move with the most agreement wins, and every match that disagrees with it is thrown out.</li>
@@ -134,7 +136,7 @@
 </figure>
 </div>
 
-<h2 id="cut"><b>3</b>The cut, in 3D</h2>
+<h2 id="cut"><b>3</b>Telling tooth from stand</h2>
 <div>
 <p>With the axis known, every point has two simple numbers: how high it sits along the axis, and how far it is from it. Plotted that way the scene comes apart on its own. The tooth is the big cloud, the stand's plate is a thin bright layer below it, and between them is a gap with almost nothing in it, the space the rods cross.</p>
 </div>
@@ -147,18 +149,18 @@
 <p>It works because this tooth is perched with its root clear of the plate. A tooth set down among the pins would need a cut that follows the root rather than a flat one.</p>
 </div>
 
-<h2 id="key"><b>4</b>An answer key for every frame</h2>
+<h2 id="key"><b>4</b>A tooth outline for every frame</h2>
 <div>
-<p>Each frame's camera is known, so the tooth's points can be projected back into it. Grown and filled, they make a silhouette of the tooth for that exact frame. It is coarse at the edge, because the points are sparse, but it is never wrong about <em>which object</em> is the tooth.</p>
+<p>Each frame's camera is known, so the tooth's part of the reconstructed 3D point cloud (the points the cut assigned to the tooth) can be projected back into it. Grown and filled, they make a silhouette of the tooth for that exact frame. It is coarse at the edge, because the points are sparse, but it is never wrong about <em>which object</em> is the tooth.</p>
 </div>
 <figure>
   <img src="../assets/tooth-splat/project.jpg" alt="Projected tooth and stand points, then the filled silhouette">
-  <figcaption><b>Left: the tooth's points (green) and the stand's (red), projected into frame 46. Right: filled.</b> Two uses: it grades any mask without trusting the masker, and it tells SAM 2 what to look for.</figcaption>
+  <figcaption><b>Left: the point cloud's tooth points (green) and stand points (red), projected into frame 46. Right: filled.</b> Two uses: it grades any mask without trusting the masker, and it tells SAM 2 what to look for.</figcaption>
 </figure>
 
-<h2 id="sam"><b>5</b>SAM 2, prompted from 3D</h2>
+<h2 id="sam"><b>5</b>Isolating the tooth in each frame</h2>
 <div>
-<p>SAM 2 (Meta's Segment Anything 2.1, the large model, run on the Mac's GPU) draws precise edges around <em>whatever it is asked for</em>. It sees the whole frame; it does not decide what the subject is. The 3D cut makes that decision for it, in every frame, with no clicking:</p>
+<p>SAM 2 (Meta's Segment Anything 2.1, the large model, run on the GPU) draws precise edges around <em>whatever it is asked for</em>. It sees the whole frame; it does not decide what the subject is. The 3D cut makes that decision for it, in every frame, with no clicking:</p>
 <ul>
   <li><strong>20 "this" points</strong> spread across the silhouette, shrunk in from its edge so none lands on the background;</li>
   <li><strong>4 "not this" points</strong> on the stand;</li>
@@ -171,9 +173,9 @@
   <figcaption><b>Frame 46.</b> The prompts come entirely from the 3D points; the edge comes from SAM 2. Across all 258 frames the masks kept 97.7% of the tooth (worst frame 95.3%) and none of the stand.</figcaption>
 </figure>
 
-<h2 id="rembg"><b>6</b>Against rembg</h2>
+<h2 id="rembg"><b>6</b>Compared with background removal</h2>
 <div>
-<p>rembg is what EstyLister, FossilRecord and ToothTrainr use to isolate a tooth: <code>remove()</code> with a <code>u2net</code> session and nothing else changed. Its models (u2net, and the newer isnet and BiRefNet) remove backgrounds by <em>salience</em>: whatever looks like the subject of the photo stays. On a plain sweep that is the right question, and it is why rembg works for product shots. Here it is the wrong one. The stand, its rods and the turntable look as much like a subject as the tooth does, more so as the camera looks down on them, and which of them wins changes from frame to frame.</p>
+<p>rembg is the common way to isolate a subject from its background; this study uses its default model, <code>u2net</code>, through <code>remove()</code> with nothing else changed. Its models (u2net, and the newer isnet and BiRefNet) remove backgrounds by <em>salience</em>: whatever looks like the subject of the photo stays. On a plain sweep that is the right question, and it is why rembg works for product shots. Here it is the wrong one. The stand, its rods and the turntable look as much like a subject as the tooth does, more so as the camera looks down on them, and which of them wins changes from frame to frame.</p>
 </div>
 <figure>
   <div class="maskgrid">
@@ -181,24 +183,24 @@
     <div class="mcol"><b>IMG_4782, frame 32</b><span>(the 11.5° clip)</span></div>
     <div class="mcol"><b>IMG_4781, frame 59</b><span>(the 30° clip)</span></div>
     <div class="mcol"><b>IMG_4783, frame 48</b><span>(the 61° clip)</span></div>
-    <div class="mrow r-rembg"><b>rembg</b><span>u2net, the call EstyLister, FossilRecord and ToothTrainr make</span><em>Keeps what looks like a subject.</em></div>
+    <div class="mrow r-rembg"><b>rembg</b><span>u2net, its default model</span><em>Keeps what looks like a subject.</em></div>
     <img src="../assets/tooth-splat/mask_rembg_4782_0032.jpg" alt="rembg mask, low ring, 11.5°, IMG_4782, frame 32">
     <img src="../assets/tooth-splat/mask_rembg_4781_0059.jpg" alt="rembg mask, middle ring, 30°, IMG_4781, frame 59">
     <img src="../assets/tooth-splat/mask_rembg_4783_0048.jpg" alt="rembg mask, high ring, 61°, IMG_4783, frame 48">
-    <div class="mrow r-sam"><b>SAM 2</b><span>prompted from the 3D cut</span><em>Keeps the object the points say is tooth.</em></div>
+    <div class="mrow r-sam"><b>SAM 2</b><span>guided by the point cloud</span><em>Keeps the object the points say is tooth.</em></div>
     <img src="../assets/tooth-splat/mask_sam_4782_0032.jpg" alt="SAM 2 mask, low ring, 11.5°, IMG_4782, frame 32">
     <img src="../assets/tooth-splat/mask_sam_4781_0059.jpg" alt="SAM 2 mask, middle ring, 30°, IMG_4781, frame 59">
     <img src="../assets/tooth-splat/mask_sam_4783_0048.jpg" alt="SAM 2 mask, high ring, 61°, IMG_4783, frame 48">
   </div>
-  <figcaption><b>Three frames, masked two ways,</b> one from each clip, each the frame nearest that clip&rsquo;s median for u2net rather than its worst. The outline is the mask, everything dimmed was thrown away, and the tag is how much was kept beyond the tooth, as a share of the tooth&rsquo;s own area, measured against the 3D answer key. Low, u2net mostly holds; looking down, the stand and the turntable read as part of the subject and it keeps them. SAM 2, prompted from the 3D cut, keeps none of either on any ring.</figcaption>
+  <figcaption><b>Three frames, masked two ways,</b> one from each clip, each the frame nearest that clip&rsquo;s median for u2net rather than its worst. The outline is the mask, everything dimmed was thrown away, and the tag is how much was kept beyond the tooth, as a share of the tooth&rsquo;s own area, measured against the 3D answer key. Low, u2net mostly holds; looking down, the stand and the turntable read as part of the subject and it keeps them. SAM 2, guided by the point cloud, keeps none of either on any ring.</figcaption>
 </figure>
 <div>
 <p>Every mask scored against the 3D answer key. The averages hide the difference: all of them keep about the same share of the tooth. They part ways on the worst frame and on the stand, which is what a splat suffers from: a stand that flickers in and out of the masks becomes a ghost floating under the tooth.</p>
-<h3>This run: the red tooth, 258 frames</h3>
+<h3>This run: the Meg Tooth, 258 frames</h3>
 <table>
   <tr><th>masker</th><th class="n">tooth kept</th><th class="n">worst frame</th><th class="n">frames keeping the platform</th><th class="n">median IoU</th><th class="n">worst IoU</th></tr>
   <tr><td>rembg u2net</td><td class="n">98.4%</td><td class="n">68.5%</td><td class="n">136 of 258</td><td class="n">0.78</td><td class="n">0.20</td></tr>
-  <tr class="best"><td>SAM 2, prompted from 3D</td><td class="n">97.7%</td><td class="n">95.3%</td><td class="n">0 of 258</td><td class="n">0.91</td><td class="n">0.84</td></tr>
+  <tr class="best"><td>SAM 2, guided by the point cloud</td><td class="n">97.7%</td><td class="n">95.3%</td><td class="n">0 of 258</td><td class="n">0.91</td><td class="n">0.84</td></tr>
 </table>
 <p>By ring, u2net kept more than a quarter of the tooth&rsquo;s area again in junk on 3 of 70 frames at 11.5&deg;, 36 of 116 at 30&deg; and 52 of 72 at 61&deg;. The higher the camera, the more the stand looks like the subject.</p>
 <h3>The earlier perched capture, IMG_4730/4731: three rembg models</h3>
@@ -207,11 +209,11 @@
   <tr><td>rembg u2net</td><td class="n">96.6%</td><td class="n">76.3%</td><td class="n">17</td><td class="n">0.86</td><td class="n">&mdash;</td></tr>
   <tr><td>rembg isnet-general-use</td><td class="n">97.1%</td><td class="n">79.8%</td><td class="n">14</td><td class="n">0.80</td><td class="n">14.2%</td></tr>
   <tr><td>rembg BiRefNet</td><td class="n">97.1%</td><td class="n">87.8%</td><td class="n">25</td><td class="n">0.82</td><td class="n">&mdash;</td></tr>
-  <tr class="best"><td>SAM 2, prompted from 3D</td><td class="n">96.4%</td><td class="n">91.2%</td><td class="n">0</td><td class="n">0.91</td><td class="n">0.0%</td></tr>
+  <tr class="best"><td>SAM 2, guided by the point cloud</td><td class="n">96.4%</td><td class="n">91.2%</td><td class="n">0</td><td class="n">0.91</td><td class="n">0.0%</td></tr>
 </table>
 <p>&ldquo;Platform flips&rdquo; counts how often, frame to frame, the platform switches between kept and dropped. A splat trained on isnet&rsquo;s masks grew 14.2% of the tooth&rsquo;s area again in stray splats outside it; on SAM 2&rsquo;s, none.</p>
 <div class="why">
-<p><strong>What removed the stand.</strong> Not a better crop: SAM 2 sees the whole frame either way. It is the 3D cut deciding what the subject is, and handing SAM 2 exact &ldquo;is tooth&rdquo; and &ldquo;is background&rdquo; hints in the form its predictor takes: <code>point_coords</code>, an N&nbsp;&times;&nbsp;2 array of pixel positions; <code>point_labels</code>, a 1 (tooth) or 0 (background) for each; and <code>box</code>, the silhouette&rsquo;s x0,&nbsp;y0,&nbsp;x1,&nbsp;y1. SAM 2 supplies only the edge. The same pairing removed the platform on the perched capture as well, so it is the method and not this tooth. For EstyLister or FossilRecord shots on a plain background, rembg remains the easy tool; this pipeline earns its keep when the subject shares the frame with things that look as important as it does.</p>
+<p><strong>What removed the stand.</strong> Not a better crop: SAM 2 sees the whole frame either way. It is the 3D cut deciding what the subject is, and handing SAM 2 exact &ldquo;is tooth&rdquo; and &ldquo;is background&rdquo; hints in the form its predictor takes: <code>point_coords</code>, an N&nbsp;&times;&nbsp;2 array of pixel positions; <code>point_labels</code>, a 1 (tooth) or 0 (background) for each; and <code>box</code>, the silhouette&rsquo;s x0,&nbsp;y0,&nbsp;x1,&nbsp;y1. SAM 2 supplies only the edge. The same pairing removed the platform on the perched capture as well, so it is the method and not this tooth. For a subject photographed on a plain background, rembg remains the easy tool; this pipeline earns its keep when the subject shares the frame with things that look as important as it does.</p>
 </div>
 
 <h2 id="train"><b>7</b>Training the splat</h2>
@@ -221,10 +223,11 @@
 <p>Every 10th frame is held back. The score below is how well the splat renders a view it was never shown, measured on the tooth only.</p>
 <div class="nums">
   <div class="num"><b>51,783</b><span>splats</span></div>
-  <div class="num"><b>21.5 dB</b><span>26 held-out views, on the tooth</span></div>
+  <div class="num"><b>21.5 dB</b><span>PSNR, 26 held-out views, on the tooth</span></div>
   <div class="num"><b>0.0%</b><span>stray, outside the tooth</span></div>
 </div>
-<p>By ring: 61° scores 23.5 dB, 30° 21.9, and the low 11.5° ring 18.8, the one with the lamps behind the tooth. A last crop, deleting any splat below the cut height, removed none: the lowest sat at −0.94 against −0.975.</p>
+<p><strong>What the dB measures.</strong> PSNR, peak signal-to-noise ratio, compares the splat&rsquo;s render of a held-out view with the real photo of that view, pixel by pixel, over the tooth only. The &ldquo;noise&rdquo; is every difference between the two, whatever its cause: blur, a wrong color, a highlight in the wrong place. It is 10&nbsp;&times;&nbsp;log<sub>10</sub>(1&nbsp;/&nbsp;mean squared error), with pixel values from 0 to 1, so it reads as a typical error. 21.5 dB means the render is off by about 8% of full brightness at a typical pixel, roughly 21 of 255 levels. Every 6 dB halves that error: 27.5 dB would be about 4%. Identical images score infinitely high.</p>
+<p>By ring: 61° scores 23.5 dB (off by about 7%), 30° 21.9 (8%), and the low 11.5° ring 18.8 (11.5%), the one with the lamps behind the tooth. A last crop, deleting any splat below the cut height, removed none: the lowest sat at −0.94 against −0.975.</p>
 </div>
 <figure style="margin-top:0">
   <img src="../assets/tooth-splat/rgba.jpg" alt="One training frame with its mask as transparency">
@@ -251,7 +254,7 @@
   <tr class="best"><td>light off, IMG_4780</td><td class="n">7</td><td class="n">20.4 dB</td><td class="n">18.3 dB</td><td class="n">27,070</td></tr>
   <tr><td>light on, IMG_4781</td><td class="n">7</td><td class="n">19.3 dB</td><td class="n">17.0 dB</td><td class="n">33,339</td></tr>
 </table>
-<p>One ring alone scores below the three-ring splat&rsquo;s 21.5 dB because each view has fewer neighbors to learn from; the comparison is between these two rows. Light off is about 1 dB better, on only 7 views each, so it is a lean in the expected direction rather than a verdict.</p>
+<p>One ring alone scores below the three-ring splat&rsquo;s 21.5 dB because each view has fewer neighbors to learn from; the comparison is between these two rows. Light off is about 1 dB better, a typical error of 9.5% of full brightness against 10.8%, on only 7 views each, so it is a lean in the expected direction rather than a verdict.</p>
 <figure>
   <img src="../assets/tooth-splat/light_flash.jpg" alt="Light on: held-out photos above, the splat's renders below">
   <figcaption><b>Light on, IMG_4781.</b> Top: held-out photos. Bottom: the splat from the same cameras. The light&rsquo;s hot spots on the crown (second and fourth) come back as a soft, broad glow: the splat cannot hold a highlight that sharp, so it spreads it.</figcaption>
