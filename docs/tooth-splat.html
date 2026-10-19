@@ -91,7 +91,7 @@
 <main>
 
 <p class="lead">This page explains how a video from the orbital jig becomes a <a href="https://en.wikipedia.org/wiki/Gaussian_splatting" target="_blank" rel="noopener">Gaussian splat</a> of the specimen alone, with the stand, the jig and the room left out.</p>
-<p>A splat is more than a shape. It keeps the specimen&rsquo;s real color and surface texture, and each point of it can change color with the angle it is seen from, so gloss, sheen and shading shift across the surface as you turn it, the way they do on the real object in your hand. What it records is the specimen as it looked under the lights it was filmed in, which is why the lighting matters (<a href="#light">section 8</a>).</p>
+<p>A splat is more than a shape. Gaussian splatting is a form of <em>real-time radiance field rendering</em>: instead of a surface with a picture painted on it, it records how much light, and of what color, leaves each part of the specimen in each direction, and draws that fast enough to turn smoothly in a browser. That is how it keeps the specimen&rsquo;s real color and surface texture, and each point of it can change color with the angle it is seen from, so gloss, sheen and shading shift across the surface as you turn it, the way they do on the real object in your hand. What it records is the specimen as it looked under the lights it was filmed in, which is why the lighting matters (<a href="#light">section 8</a>).</p>
 <p>It takes five stages:</p>
 <ol>
   <li><strong>Capture.</strong> Film the specimen in a few orbits at different elevations (<a href="#capture">section 1</a>; lighting for it in <a href="#light">section 8</a>).</li>
@@ -242,28 +242,29 @@
   <figcaption><b>What the trainer is given:</b> the frame, transparent outside the mask.</figcaption>
 </figure>
 </div>
+<p>The held-out views, side by side with what the splat drew from the same cameras, one from each ring:</p>
+<figure>
+  <img src="../assets/tooth-splat/heldout.jpg" alt="Held-out photos above and the splat's renders of the same views below">
+  <figcaption><b>Top: three held-out photos, one per ring. Bottom: the splat, rendered from those cameras.</b> It never saw these three views.</figcaption>
+</figure>
 <h3 id="viewer">Turn it yourself</h3>
-<p>The finished splat, live, and the two single-ring splats from the lighting comparison in <a href="#light">section 8</a>: switch between them and the camera stays exactly where it is, so light off and light on can be compared from the same view. The camera orbits the tooth&rsquo;s own center with the jig&rsquo;s axis held upright, so the tooth never tips over and never drifts out of view, however it is dragged.</p>
+<p>The finished splat, live, and the two single-ring splats from the lighting comparison in <a href="#light">section 8</a>: switch between them and the camera stays exactly where it is, so light off and light on can be compared from the same view. The three-clip splat was filmed with the phone&rsquo;s light on too; IMG_4780 is the only clip with it off. The camera orbits the tooth&rsquo;s own center with the jig&rsquo;s axis held upright, so the tooth never tips over and never drifts out of view, however it is dragged.</p>
 <div class="vbar">
-  <span class="grp" id="v-which"><span class="lbl">Splat</span><button data-splat="all">All three clips</button><button data-splat="off">Light off (IMG_4780)</button><button data-splat="on">Light on (IMG_4781)</button></span>
+  <span class="grp" id="v-which"><span class="lbl">Splat</span><button data-splat="all">All three clips (light on)</button><button data-splat="off">Light off (IMG_4780)</button><button data-splat="on">Light on (IMG_4781)</button></span>
 </div>
 <div class="vbar">
   <span class="grp"><span class="lbl">View</span>
     <button data-az="0">Face</button><button data-az="180">Back</button><button data-az="90">Edge</button><button data-az="-90">Other edge</button><button data-el="88">Top</button></span>
   <span class="grp"><span class="lbl">Height</span>
     <button data-el="11.5" title="the low clip&rsquo;s elevation">11.5°</button><button data-el="30" title="the middle clip&rsquo;s elevation">30°</button><button data-el="61" title="the high clip&rsquo;s elevation">61°</button></span>
-  <span class="grp"><button id="v-spin">Turn</button><button id="v-reset">Reset</button></span>
+  <span class="grp"><button id="v-spin">Turn</button><button id="v-free" title="rotate freely in any direction, past the poles">Free tumble</button><button id="v-reset">Reset</button></span>
 </div>
 <div class="viewer" id="splat-view">
   <canvas aria-label="The Meg Tooth splat; drag to orbit"></canvas>
   <div class="status"></div>
   <div class="readout"></div>
 </div>
-<p class="vhelp">Drag to orbit. Scroll or pinch to zoom toward the pointer. Right-drag or shift-drag to slide the view; <strong>Reset</strong> brings it back. Keys: <kbd>&larr;</kbd><kbd>&rarr;</kbd> turn 15°, <kbd>&uarr;</kbd><kbd>&darr;</kbd> raise and lower, <kbd>+</kbd><kbd>&minus;</kbd> zoom. The heights are the three the tooth was filmed from; below 11.5° nothing was seen, so the camera stops a little under the horizon.</p>
-<figure>
-  <img src="../assets/tooth-splat/heldout.jpg" alt="Held-out photos above and the splat's renders of the same views below">
-  <figcaption><b>Top: three held-out photos, one per ring. Bottom: the splat, rendered from those cameras.</b> It never saw these three views.</figcaption>
-</figure>
+<p class="vhelp">Drag to orbit. Scroll or pinch to zoom toward the pointer. Right-drag or shift-drag to slide the view; <strong>Reset</strong> brings it back. Keys: <kbd>&larr;</kbd><kbd>&rarr;</kbd> turn 15°, <kbd>&uarr;</kbd><kbd>&darr;</kbd> raise and lower, <kbd>+</kbd><kbd>&minus;</kbd> zoom. The heights are the three the tooth was filmed from. The orbit goes all the way under, but nothing was filmed from below 11.5&deg;, so the underside is thin and may show holes. <strong>Free tumble</strong> drops the upright axis and turns any way, past the poles, for as long as it is dragged; any view or height button sets it upright again.</p>
 
 <h2 id="light"><b>8</b>Lighting the model and preserving gloss</h2>
 <div id="light-body">
@@ -303,14 +304,18 @@
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { TrackballControls } from "three/addons/controls/TrackballControls.js";
 import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 
-// Each splat with its own frame, measured from the camera solve that made it:
-// up is the jig's axis, the center is the middle of the tooth's span along it,
-// azimuth 0 faces the tooth as frame 46 of IMG_4781 does. The two lighting
-// splats came out of one solve, so they share a frame and a center: switching
-// between them changes nothing but the splat.
-const SPLATS = [{"id": "all", "label": "All three clips", "url": "../assets/tooth-splat/meg-tooth.ply", "mb": 12, "V": {"center": [1.018177, 1.617295, 0.300109], "up": [-0.065096, -0.893542, -0.444236], "e1": [0.835681, 0.194477, -0.513629], "e2": [0.545343, -0.404675, 0.734057], "faceAz": 59.536434, "radius": 2.185066, "camDist": 4.1364}}, {"id": "off", "label": "Light off (IMG_4780)", "url": "../assets/tooth-splat/meg-tooth-light-off.ply", "mb": 6, "V": {"center": [-0.819041, 1.158661, 1.305953], "up": [0.013774, -0.887454, -0.460691], "e1": [-0.802801, -0.28448, 0.524006], "e2": [-0.596088, 0.362626, -0.716367], "faceAz": 60.044727, "radius": 2.18154, "camDist": 3.925353}}, {"id": "on", "label": "Light on (IMG_4781)", "url": "../assets/tooth-splat/meg-tooth-light-on.ply", "mb": 8, "V": {"center": [-0.819041, 1.158661, 1.305953], "up": [0.013774, -0.887454, -0.460691], "e1": [-0.802801, -0.28448, 0.524006], "e2": [-0.596088, 0.362626, -0.716367], "faceAz": 60.044727, "radius": 2.18154, "camDist": 3.925353}}];
+// Each splat sits in the coordinates of the camera solve that made it, and the
+// three-clip and four-clip solves are different frames. Rather than move the
+// camera between frames on a switch -- which drew the old splat, off to one side,
+// for a frame or two -- every splat is moved into one shared frame: its tooth's
+// center at the origin, the jig's axis up (+Y), the direction frame 46 of
+// IMG_4781 looked from at +Z, and its size scaled to 1. The camera never jumps.
+// Spark evaluates view-dependent color in each splat's own space, so moving it
+// keeps the gloss right.
+const SPLATS = [{"id": "all", "label": "All three clips (light on)", "url": "../assets/tooth-splat/meg-tooth.ply", "mb": 12, "V": {"center": [1.018177, 1.617295, 0.300109], "up": [-0.065096, -0.893542, -0.444236], "e1": [0.835681, 0.194477, -0.513629], "e2": [0.545343, -0.404675, 0.734057], "faceAz": 59.536434, "radius": 2.185066, "camDist": 4.1364}}, {"id": "off", "label": "Light off (IMG_4780)", "url": "../assets/tooth-splat/meg-tooth-light-off.ply", "mb": 6, "V": {"center": [-0.819041, 1.158661, 1.305953], "up": [0.013774, -0.887454, -0.460691], "e1": [-0.802801, -0.28448, 0.524006], "e2": [-0.596088, 0.362626, -0.716367], "faceAz": 60.044727, "radius": 2.18154, "camDist": 3.925353}}, {"id": "on", "label": "Light on (IMG_4781)", "url": "../assets/tooth-splat/meg-tooth-light-on.ply", "mb": 8, "V": {"center": [-0.819041, 1.158661, 1.305953], "up": [0.013774, -0.887454, -0.460691], "e1": [-0.802801, -0.28448, 0.524006], "e2": [-0.596088, 0.362626, -0.716367], "faceAz": 60.044727, "radius": 2.18154, "camDist": 3.925353}}];
 const DEG = Math.PI / 180;
 const box = document.getElementById("splat-view");
 const canvas = box.querySelector("canvas"), status = box.querySelector(".status"), readout = box.querySelector(".readout");
@@ -321,43 +326,64 @@ catch (e) { status.textContent = "This browser could not start WebGL2, which the
 renderer.setPixelRatio(window.devicePixelRatio);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0B0D0E);
-const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
 scene.add(new SparkRenderer({ renderer }));
 const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 0, 0);
 controls.enableDamping = true; controls.dampingFactor = 0.09;
 controls.rotateSpeed = 0.55; controls.zoomSpeed = 0.8; controls.panSpeed = 0.6;
 controls.zoomToCursor = true; controls.screenSpacePanning = true;
-controls.minPolarAngle = 0.02;                 // straight down, but never past it
-controls.maxPolarAngle = (90 + 12) * DEG;      // a little under the horizon: nothing was filmed from below
+controls.minDistance = 0.3; controls.maxDistance = 8;
+// upright orbit: anywhere from straight down to straight up, stopping at each pole
+controls.minPolarAngle = 0.01; controls.maxPolarAngle = Math.PI - 0.01;
 controls.autoRotateSpeed = 1.2;
-
-// the frame of the splat on show
-let F = null;
-function useFrame(V) {
-  F = { V, up: new THREE.Vector3(...V.up).normalize(), e1: new THREE.Vector3(...V.e1),
-        e2: new THREE.Vector3(...V.e2), center: new THREE.Vector3(...V.center), R: V.radius, az0: V.faceAz * DEG };
-  camera.up.copy(F.up);
-  camera.near = F.R * 0.01; camera.far = F.R * 50; camera.updateProjectionMatrix();
-  controls.minDistance = F.R * 0.3; controls.maxDistance = F.R * 8;
-  // OrbitControls reads camera.up once, when made; tell it the new one
-  controls._quat = new THREE.Quaternion().setFromUnitVectors(F.up, new THREE.Vector3(0, 1, 0));
-  controls._quatInverse = controls._quat.clone().invert();
+const CENTER = new THREE.Vector3();
+// free tumble: no up and no poles, it turns any way for as long as it is dragged
+const free = new TrackballControls(camera, canvas);
+free.enabled = false; free.rotateSpeed = 2.5; free.zoomSpeed = 1.0; free.panSpeed = 0.5;
+free.dynamicDampingFactor = 0.12; free.minDistance = 0.3; free.maxDistance = 8;
+let tumbling = false;
+const tumbleBtn = document.getElementById("v-free");
+function setTumble(on) {
+  if (on === tumbling) return;
+  tumbling = on; tumbleBtn.classList.toggle("on", on);
+  if (on) {
+    controls.enabled = false; controls.autoRotate = false; spinOff();
+    free.target.copy(controls.target); free.enabled = true; free.handleResize();
+  } else {
+    free.enabled = false;
+    // back to upright from wherever the tumble left it
+    const p = camera.position.clone();
+    camera.up.set(0, 1, 0); controls.target.copy(free.target); controls.enabled = true;
+    camera.position.copy(p); camera.lookAt(controls.target);
+  }
 }
-// far enough that the whole tooth fits the shorter side of the view, with a margin
-const fitDist = () => F.R * 1.1 / Math.sin(Math.min(camera.fov, camera.fov * camera.aspect) * DEG / 2);
+
+// the transform that carries a splat's own coordinates into the shared frame
+function toShared(V) {
+  const up = new THREE.Vector3(...V.up).normalize();
+  const e1 = new THREE.Vector3(...V.e1), e2 = new THREE.Vector3(...V.e2);
+  const a = V.faceAz * DEG;
+  const front = e1.clone().multiplyScalar(Math.cos(a)).addScaledVector(e2, Math.sin(a)).normalize();
+  const side = new THREE.Vector3().crossVectors(up, front);
+  // columns are where the shared X, Y, Z axes point in the splat's coordinates
+  const rot = new THREE.Matrix4().makeBasis(side, up, front).transpose();   // splat -> shared
+  const s = 1 / V.radius;
+  const c = new THREE.Vector3(...V.center).applyMatrix4(rot).multiplyScalar(-s);
+  return { quaternion: new THREE.Quaternion().setFromRotationMatrix(rot), scale: s, position: c };
+}
+
+// far enough that the whole tooth (radius 1) fits the shorter side of the view, with a margin
+const fitDist = () => 1.1 / Math.sin(Math.min(camera.fov, camera.fov * camera.aspect) * DEG / 2);
 // where a camera sits for an azimuth and elevation (degrees) and a zoom
 function place(azDeg, elDeg, zoom) {
-  const a = F.az0 + azDeg * DEG, el = elDeg * DEG;
-  const dir = F.e1.clone().multiplyScalar(Math.cos(el) * Math.cos(a))
-    .addScaledVector(F.e2, Math.cos(el) * Math.sin(a)).addScaledVector(F.up, Math.sin(el));
-  return F.center.clone().addScaledVector(dir, fitDist() / zoom);
+  const a = azDeg * DEG, el = elDeg * DEG;
+  return new THREE.Vector3(Math.cos(el) * Math.sin(a), Math.sin(el), Math.cos(el) * Math.cos(a))
+    .multiplyScalar(fitDist() / zoom);
 }
 function current() {
   const d = camera.position.clone().sub(controls.target), dist = d.length();
-  const el = Math.asin(THREE.MathUtils.clamp(d.dot(F.up) / dist, -1, 1)) / DEG;
-  let az = Math.atan2(d.dot(F.e2), d.dot(F.e1)) / DEG - F.V.faceAz;
-  az = ((az + 540) % 360) - 180;
-  return { az, el, zoom: fitDist() / dist };
+  return { az: Math.atan2(d.x, d.z) / DEG, el: Math.asin(THREE.MathUtils.clamp(d.y / dist, -1, 1)) / DEG, zoom: fitDist() / dist };
 }
 // glide rather than jump, so a preset shows where it went
 let anim = null;
@@ -365,8 +391,9 @@ function goTo(pos, target, ms = 650) {
   anim = { p0: camera.position.clone(), p1: pos, t0: controls.target.clone(), t1: target, start: performance.now(), ms };
 }
 function view({ az, el, zoom }, ms) {
+  setTumble(false);
   const c = current();
-  goTo(place(az ?? c.az, el ?? c.el, zoom ?? c.zoom), F.center.clone(), ms);
+  goTo(place(az ?? c.az, el ?? c.el, zoom ?? c.zoom), CENTER.clone(), ms);
 }
 const HOME = { az: 0, el: 28.9, zoom: 1 };
 
@@ -375,23 +402,22 @@ const meshes = {};
 let shown = null;
 function show(id) {
   const S = SPLATS.find(x => x.id === id);
-  const keep = shown ? current() : HOME;     // same turn, height and zoom on the new splat
-  anim = null;
-  for (const m of Object.values(meshes)) m.visible = false;
   if (!meshes[id]) {
-    status.textContent = `loading ${S.label} (${S.mb} MB)…`;
-    meshes[id] = new SplatMesh({ url: S.url });
-    scene.add(meshes[id]);
-    meshes[id].initialized.then(() => { if (shown === id) status.textContent = ""; })
+    status.textContent = `loading ${S.label} (${S.mb} MB)\u2026`;
+    const m = new SplatMesh({ url: S.url }), t = toShared(S.V);
+    m.quaternion.copy(t.quaternion); m.scale.setScalar(t.scale); m.position.copy(t.position);
+    m.visible = false; meshes[id] = m; scene.add(m);
+    // the old splat stays up until the new one can be drawn
+    m.initialized.then(() => { if (shown === id) swap(id); })
       .catch(() => { status.textContent = "The splat did not load. Open this page from the shop (make serve), not as a file."; });
-  } else status.textContent = "";
-  meshes[id].visible = true;
+  }
   shown = id;
-  useFrame(S.V);
-  controls.target.copy(F.center);
-  camera.position.copy(place(keep.az, keep.el, keep.zoom));
-  controls.update();
+  if (meshes[id].isInitialized) swap(id);
   document.querySelectorAll("#v-which [data-splat]").forEach(b => b.classList.toggle("on", b.dataset.splat === id));
+}
+function swap(id) {
+  for (const [k, m] of Object.entries(meshes)) m.visible = k === id;
+  status.textContent = "";
 }
 document.querySelectorAll("#v-which [data-splat]").forEach(b => b.onclick = () => show(b.dataset.splat));
 
@@ -399,8 +425,10 @@ document.querySelectorAll(".vbar [data-az], .vbar [data-el]").forEach(b => b.onc
   view({ az: b.dataset.az !== undefined ? +b.dataset.az : undefined, el: b.dataset.el !== undefined ? +b.dataset.el : undefined });
 });
 const spin = document.getElementById("v-spin");
-spin.onclick = () => { controls.autoRotate = !controls.autoRotate; spin.classList.toggle("on", controls.autoRotate); };
-document.getElementById("v-reset").onclick = () => goTo(place(HOME.az, HOME.el, HOME.zoom), F.center.clone());
+function spinOff() { controls.autoRotate = false; spin.classList.remove("on"); }
+spin.onclick = () => { setTumble(false); controls.autoRotate = !controls.autoRotate; spin.classList.toggle("on", controls.autoRotate); };
+tumbleBtn.onclick = () => setTumble(!tumbling);
+document.getElementById("v-reset").onclick = () => setTumble(false) || goTo(place(HOME.az, HOME.el, HOME.zoom), CENTER.clone());
 controls.addEventListener("start", () => { anim = null; });
 
 // keys act only while the pointer is over the viewer or it has focus
@@ -412,10 +440,10 @@ window.addEventListener("keydown", e => {
   if (!hover && document.activeElement !== canvas) return;
   const c = current();
   const k = { ArrowLeft: { az: c.az - 15 }, ArrowRight: { az: c.az + 15 },
-              ArrowUp: { el: Math.min(c.el + 10, 88) }, ArrowDown: { el: Math.max(c.el - 10, -12) },
+              ArrowUp: { el: Math.min(c.el + 10, 89) }, ArrowDown: { el: Math.max(c.el - 10, -89) },
               "+": { zoom: c.zoom * 1.25 }, "=": { zoom: c.zoom * 1.25 }, "-": { zoom: c.zoom / 1.25 } }[e.key];
   if (!k) return;
-  e.preventDefault();
+  e.preventDefault(); setTumble(false);
   if (k.zoom) k.zoom = THREE.MathUtils.clamp(k.zoom, fitDist() / controls.maxDistance, fitDist() / controls.minDistance);
   goTo(place(k.az ?? c.az, k.el ?? c.el, k.zoom ?? c.zoom), controls.target.clone(), 300);
 });
@@ -423,8 +451,10 @@ window.addEventListener("keydown", e => {
 function resize() {
   const w = box.clientWidth, h = box.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  free.handleResize();
 }
 new ResizeObserver(resize).observe(box); resize();
+camera.position.copy(place(HOME.az, HOME.el, HOME.zoom));
 show(SPLATS[0].id);
 
 renderer.setAnimationLoop(now => {
@@ -439,9 +469,9 @@ renderer.setAnimationLoop(now => {
     controls.target.copy(tgt);
     if (t >= 1) anim = null;
   }
-  controls.update();
+  if (tumbling) free.update(); else controls.update();
   const c = current();
-  readout.textContent = `turned ${c.az >= 0 ? "+" : ""}${c.az.toFixed(0)}°  ·  height ${c.el.toFixed(0)}°  ·  zoom ${c.zoom.toFixed(1)}×`;
+  readout.textContent = (tumbling ? "free tumble  ·  " : "") + `turned ${c.az >= 0 ? "+" : ""}${c.az.toFixed(0)}°  ·  height ${c.el.toFixed(0)}°  ·  zoom ${c.zoom.toFixed(1)}×`;
   renderer.render(scene, camera);
 });
 </script>
