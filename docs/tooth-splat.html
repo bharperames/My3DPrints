@@ -67,12 +67,11 @@
   .vbar button:hover { border-color:var(--accent); }
   .vbar button.on { background:var(--accent); color:#0F1A17; border-color:var(--accent); }
   .vhelp { font-size:14.5px; color:var(--note); margin:0 0 18px; }
-  .vkeys { position:absolute; top:10px; right:10px; background:rgba(20,24,26,.88); border:1px solid var(--line); border-radius:8px; padding:8px 12px; }
+  .vkeys { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px 18px; margin:0 0 12px; padding:10px 14px; background:var(--panel); border:1px solid var(--line); border-radius:8px; font-size:14.5px; }
   .vkeys[hidden] { display:none; }
-  .vkeys table { margin:0; width:auto; font-size:14px; }
-  .vkeys th, .vkeys td { border:none; padding:3px 6px; background:none; }
-  .vkeys th { font-weight:600; color:var(--ink); white-space:nowrap; }
-  .vkeys td { color:var(--note); }
+  .vkeys div { display:flex; gap:8px; align-items:baseline; }
+  .vkeys dt { font-weight:600; white-space:nowrap; }
+  .vkeys dd { margin:0; color:var(--note); }
   kbd { font:13px "IBM Plex Mono",monospace; background:var(--panel-2); border:1px solid var(--edge); border-radius:4px; padding:0 5px; }
   figcaption { font-size:14.5px; margin-top:8px; color:var(--note); }
   figcaption b { color:var(--ink); font-weight:600; }
@@ -263,29 +262,27 @@
     <button data-az="0">Face</button><button data-az="180">Back</button><button data-az="90">Edge</button><button data-az="-90">Other edge</button><button data-el="88">Top</button></span>
   <span class="grp"><span class="lbl">Height</span>
     <button data-el="11.5" title="the low clip&rsquo;s elevation">11.5°</button><button data-el="30" title="the middle clip&rsquo;s elevation">30°</button><button data-el="61" title="the high clip&rsquo;s elevation">61°</button></span>
-  <span class="grp"><button id="v-spin">Turn</button><button id="v-free" title="rotate freely in any direction, past the poles">Free tumble</button><button id="v-reset">Reset</button><button id="v-help">Controls</button></span>
+  <span class="grp"><button id="v-spin">Turn</button><button id="v-free" title="rotate freely in any direction, past the poles">Free tumble</button><button id="v-reset">Reset</button><button id="v-help" class="on">Controls</button></span>
 </div>
 <div class="viewer" id="splat-view">
   <canvas aria-label="The Meg Tooth splat; drag to orbit"></canvas>
   <div class="status"></div>
   <div class="readout"></div>
-  <div class="vkeys" hidden>
-    <table>
-      <tr><th>Orbit</th><td>drag</td></tr>
-      <tr><th>Pan</th><td>right-drag, or shift-drag</td></tr>
-      <tr><th>Zoom</th><td>scroll or pinch, toward the pointer</td></tr>
-      <tr><th>Set focus</th><td>click the tooth: it turns about that point</td></tr>
-      <tr><th>Fly to point</th><td>double-click the tooth</td></tr>
-      <tr><th>Frame the tooth</th><td><kbd>F</kbd></td></tr>
-      <tr><th>Reset camera</th><td><kbd>R</kbd></td></tr>
-      <tr><th>Turn, raise</th><td><kbd>&larr;</kbd><kbd>&rarr;</kbd> <kbd>&uarr;</kbd><kbd>&darr;</kbd></td></tr>
-      <tr><th>Zoom by step</th><td><kbd>+</kbd> <kbd>&minus;</kbd></td></tr>
-      <tr><th>Free tumble</th><td><kbd>T</kbd></td></tr>
-      <tr><th>This panel</th><td><kbd>H</kbd></td></tr>
-    </table>
-  </div>
 </div>
-<p class="vhelp">The heights are the three the tooth was filmed from. The orbit goes all the way under, but nothing was filmed from below 11.5&deg;, so the underside is thin and may show holes. <strong>Free tumble</strong> drops the upright axis and turns any way, past the poles; any view or height button sets it upright again. Click the tooth to turn about that point, double-click to fly to it; <strong>Controls</strong> (or <kbd>H</kbd>) lists every control. Keys work while the pointer is over the view.</p>
+<dl class="vkeys" id="v-keys">
+  <div><dt>Orbit</dt><dd>drag</dd></div>
+  <div><dt>Pan</dt><dd>right-drag, or shift-drag</dd></div>
+  <div><dt>Zoom</dt><dd>scroll or pinch, toward the pointer</dd></div>
+  <div><dt>Set focus</dt><dd>click the tooth: it turns about that point</dd></div>
+  <div><dt>Fly to point</dt><dd>double-click the tooth</dd></div>
+  <div><dt>Frame the tooth</dt><dd><kbd>F</kbd></dd></div>
+  <div><dt>Reset camera</dt><dd><kbd>R</kbd></dd></div>
+  <div><dt>Turn, raise</dt><dd><kbd>&larr;</kbd><kbd>&rarr;</kbd> <kbd>&uarr;</kbd><kbd>&darr;</kbd></dd></div>
+  <div><dt>Zoom by step</dt><dd><kbd>+</kbd> <kbd>&minus;</kbd></dd></div>
+  <div><dt>Free tumble</dt><dd><kbd>T</kbd></dd></div>
+  <div><dt>Show or hide these</dt><dd><kbd>H</kbd></dd></div>
+</dl>
+<p class="vhelp">The heights are the three the tooth was filmed from. The orbit goes all the way under, but nothing was filmed from below 11.5&deg;, so the underside is thin and may show holes. <strong>Free tumble</strong> drops the upright axis and turns any way, past the poles; any view or height button sets it upright again. Keys work while the pointer is over the view.</p>
 
 <h2 id="light"><b>8</b>Lighting the model and preserving gloss</h2>
 <div id="light-body">
@@ -452,7 +449,7 @@ tumbleBtn.onclick = () => setTumble(!tumbling);
 document.getElementById("v-reset").onclick = () => setTumble(false) || goTo(place(HOME.az, HOME.el, HOME.zoom), CENTER.clone());
 controls.addEventListener("start", () => { anim = null; });
 free.addEventListener("start", () => { anim = null; });
-const help = box.querySelector(".vkeys");
+const help = document.getElementById("v-keys");
 function toggleHelp() { help.hidden = !help.hidden; document.getElementById("v-help").classList.toggle("on", !help.hidden); }
 document.getElementById("v-help").onclick = toggleHelp;
 
