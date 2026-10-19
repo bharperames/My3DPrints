@@ -26,14 +26,9 @@
   header a { margin-left:auto; color:var(--accent); text-decoration:none; font-size:15px; }
   /* One column: text, panels, tables and figures share both edges. */
   main { max-width:876px; margin:0 auto; padding:24px 28px 0; }
-  nav.toc { display:grid; grid-template-columns:repeat(4,1fr); gap:6px 18px; padding:14px 18px;
-    border:1px solid var(--line); border-radius:8px; background:var(--panel); font-size:15px; margin:18px 0 8px; }
-  nav.toc a { color:var(--ink); text-decoration:none; }
-  nav.toc a:hover { color:var(--accent); }
   /* Section numbers read as part of the title: same face and size, then a period. */
-  nav.toc b, h2 b { color:var(--accent); font:inherit; font-variant-numeric:tabular-nums; }
-  nav.toc b::after, h2 b::after { content:"."; }
-  nav.toc b { margin-right:6px; }
+  h2 b { color:var(--accent); font:inherit; font-variant-numeric:tabular-nums; }
+  h2 b::after { content:"."; }
   h2 { font-size:22px; font-weight:600; margin:48px 0 10px; }
   h2 b { margin-right:8px; }
   h3 { font-size:17px; font-weight:600; margin:24px 0 6px; }
@@ -41,6 +36,7 @@
   ul, ol { margin:0 0 14px; padding-left:22px; }
   li { margin-bottom:6px; }
   li::marker { color:var(--accent); }
+  main a { color:var(--accent); }
   code { font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace; font-size:14px; background:var(--panel-2); padding:1px 5px; border-radius:4px; }
   .lead { font-size:17px; }
   .why { border-left:3px solid var(--accent); background:var(--panel); padding:12px 16px; border-radius:0 8px 8px 0; margin:16px 0 20px; }
@@ -76,23 +72,21 @@
 <body>
 <header>
   <h1>Video to splat</h1>
-  <span class="sub">how three orbits of a phone video become an isolated, 3D tooth, step by step, from the Meherrin Megalodon Tooth's run</span>
+  <span class="sub">from orbit video to a 3D model of the specimen alone</span>
   <a href="../index.html">← the shop</a>
 </header>
 <main>
 
-<p class="lead">The jig carries a phone around a tooth that stays still. Out of that come video frames full of things that are not the tooth: the stand, its rods, the rotor ring the phone rides on, the foam, the room. This page walks the run that produced the splat of the Meherrin Megalodon Tooth (the Meg Tooth from here on), one step at a time, with that run's own pictures and numbers: how the camera's position is solved, how the tooth is told apart from its stand <em>in 3D</em> before any picture is cut, and how that turns a general-purpose segmenter into a precise one.</p>
-
-<nav class="toc">
-  <a href="#capture"><b>1</b>The capture</a>
-  <a href="#solve"><b>2</b>Where the phone was</a>
-  <a href="#cut"><b>3</b>Telling tooth from stand</a>
-  <a href="#key"><b>4</b>A tooth outline per frame</a>
-  <a href="#sam"><b>5</b>Isolating the tooth in each frame</a>
-  <a href="#rembg"><b>6</b>Compared with background removal</a>
-  <a href="#train"><b>7</b>Training the splat</a>
-  <a href="#light"><b>8</b>Lighting the model and preserving gloss</a>
-</nav>
+<p class="lead">This page explains how a video from the orbital jig becomes a Gaussian splat of the specimen alone: a 3D model you can turn and zoom, with the stand, the jig and the room left out.</p>
+<p>It takes five stages:</p>
+<ol>
+  <li><strong>Capture.</strong> Film the specimen in a few orbits at different elevations (<a href="#capture">section 1</a>; lighting for it in <a href="#light">section 8</a>).</li>
+  <li><strong>Solve the cameras.</strong> Work out where the phone was in every frame (<a href="#solve">section 2</a>).</li>
+  <li><strong>Separate the specimen in 3D.</strong> Tell the specimen from its stand by where each sits along the orbit&rsquo;s axis (<a href="#cut">section 3</a>).</li>
+  <li><strong>Cut it out of every frame.</strong> Turn that 3D separation into a precise mask per frame (sections <a href="#key">4</a>, <a href="#sam">5</a> and <a href="#rembg">6</a>).</li>
+  <li><strong>Train the splat</strong> on the masked frames (<a href="#train">section 7</a>).</li>
+</ol>
+<p>Every picture and number below comes from one real run: a Meherrin Megalodon tooth (the Meg Tooth), filmed in three orbits.</p>
 
 <h2 id="capture"><b>1</b>The capture</h2>
 <div>
