@@ -262,7 +262,7 @@
     <button data-az="0">Face</button><button data-az="180">Back</button><button data-az="90">Edge</button><button data-az="-90">Other edge</button><button data-el="88">Top</button></span>
   <span class="grp"><span class="lbl">Height</span>
     <button data-el="11.5" title="the low clip&rsquo;s elevation">11.5°</button><button data-el="30" title="the middle clip&rsquo;s elevation">30°</button><button data-el="61" title="the high clip&rsquo;s elevation">61°</button></span>
-  <span class="grp"><button id="v-spin">Turn</button><button id="v-free" title="rotate freely in any direction, past the poles">Free tumble</button><button id="v-reset">Reset</button><button id="v-help" class="on">Controls</button></span>
+  <span class="grp"><button id="v-spin" title="off, 10°/s, 20°/s">Turn</button><button id="v-free" title="rotate freely in any direction, past the poles">Free tumble</button><button id="v-reset">Reset</button><button id="v-help" class="on">Controls</button></span>
 </div>
 <div class="viewer" id="splat-view">
   <canvas aria-label="The Meg Tooth splat; drag to orbit"></canvas>
@@ -354,7 +354,6 @@ controls.zoomToCursor = true; controls.screenSpacePanning = true;
 controls.minDistance = 0.06; controls.maxDistance = 8;   // close enough to fly into a serration
 // upright orbit: anywhere from straight down to straight up, stopping at each pole
 controls.minPolarAngle = 0.01; controls.maxPolarAngle = Math.PI - 0.01;
-controls.autoRotateSpeed = 1.2;
 const CENTER = new THREE.Vector3();
 // free tumble: no up and no poles, it turns any way for as long as it is dragged
 const free = new TrackballControls(camera, canvas);
@@ -443,8 +442,19 @@ document.querySelectorAll(".vbar [data-az], .vbar [data-el]").forEach(b => b.onc
   view({ az: b.dataset.az !== undefined ? +b.dataset.az : undefined, el: b.dataset.el !== undefined ? +b.dataset.el : undefined });
 });
 const spin = document.getElementById("v-spin");
-function spinOff() { controls.autoRotate = false; spin.classList.remove("on"); }
-spin.onclick = () => { setTumble(false); controls.autoRotate = !controls.autoRotate; spin.classList.toggle("on", controls.autoRotate); };
+// Turn steps off, 10 and 20 degrees a second. OrbitControls, handed the frame's
+// time in seconds, turns 6 degrees a second per unit of autoRotateSpeed, so the
+// rate holds on a 60 Hz screen and a 120 Hz one alike.
+const SPINS = [0, 10, 20];
+let spinStep = 0;
+function setSpin(i) {
+  spinStep = i; const dps = SPINS[i];
+  controls.autoRotate = dps > 0; controls.autoRotateSpeed = dps / 6;
+  spin.classList.toggle("on", dps > 0);
+  spin.textContent = dps ? `Turn ${dps}°/s` : "Turn";
+}
+function spinOff() { setSpin(0); }
+spin.onclick = () => { setTumble(false); setSpin((spinStep + 1) % SPINS.length); };
 tumbleBtn.onclick = () => setTumble(!tumbling);
 document.getElementById("v-reset").onclick = () => setTumble(false) || goTo(place(HOME.az, HOME.el, HOME.zoom), CENTER.clone());
 controls.addEventListener("start", () => { anim = null; });
@@ -519,7 +529,9 @@ new ResizeObserver(resize).observe(box); resize();
 camera.position.copy(place(HOME.az, HOME.el, HOME.zoom));
 show(SPLATS[0].id);
 
+let last = null;
 renderer.setAnimationLoop(now => {
+  const dt = last === null ? 0 : Math.min((now - last) / 1000, 0.1); last = now;
   if (anim) {
     const t = Math.min(1, (now - anim.start) / anim.ms), s = t * t * (3 - 2 * t);
     // swing around the center rather than cutting through the tooth
@@ -531,7 +543,7 @@ renderer.setAnimationLoop(now => {
     controls.target.copy(tgt); free.target.copy(tgt);
     if (t >= 1) anim = null;
   }
-  if (tumbling) free.update(); else controls.update();
+  if (tumbling) free.update(); else controls.update(dt);
   const c = current();
   readout.textContent = (tumbling ? "free tumble  ·  " : "") + `turned ${c.az >= 0 ? "+" : ""}${c.az.toFixed(0)}°  ·  height ${c.el.toFixed(0)}°  ·  zoom ${c.zoom.toFixed(1)}×`;
   renderer.render(scene, camera);
