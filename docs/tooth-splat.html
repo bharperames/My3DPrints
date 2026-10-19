@@ -81,7 +81,7 @@
 </header>
 <main>
 
-<p class="lead">The jig turns the tooth in front of a phone that stays put. Out of that come video frames full of things that are not the tooth: the stand, its rods, the turntable, the foam, the room. This page walks the run that produced the splat of the Meherrin Megalodon Tooth (the Meg Tooth from here on), one step at a time, with that run's own pictures and numbers: how the camera's position is solved, how the tooth is told apart from its stand <em>in 3D</em> before any picture is cut, and how that turns a general-purpose segmenter into a precise one.</p>
+<p class="lead">The jig carries a phone around a tooth that stays still. Out of that come video frames full of things that are not the tooth: the stand, its rods, the rotor ring the phone rides on, the foam, the room. This page walks the run that produced the splat of the Meherrin Megalodon Tooth (the Meg Tooth from here on), one step at a time, with that run's own pictures and numbers: how the camera's position is solved, how the tooth is told apart from its stand <em>in 3D</em> before any picture is cut, and how that turns a general-purpose segmenter into a precise one.</p>
 
 <nav class="toc">
   <a href="#capture"><b>1</b>The capture</a>
@@ -91,7 +91,7 @@
   <a href="#sam"><b>5</b>Isolating the tooth in each frame</a>
   <a href="#rembg"><b>6</b>Compared with background removal</a>
   <a href="#train"><b>7</b>Training the splat</a>
-  <a href="#light"><b>8</b>Light and gloss</a>
+  <a href="#light"><b>8</b>Lighting the model and preserving gloss</a>
 </nav>
 
 <h2 id="capture"><b>1</b>The capture</h2>
@@ -100,7 +100,7 @@
 </div>
 <figure>
   <img src="../assets/tooth-splat/frames.jpg" alt="Four frames from each of the three clips">
-  <figcaption><b>Rows: IMG_4783 (61°), IMG_4781 (30°), IMG_4782 (11.5°).</b> The tooth turns; the phone, the arc and the box stay where they are in every frame. The lamps on the low ring sit right behind the tooth.</figcaption>
+  <figcaption><b>Rows: IMG_4783 (61°), IMG_4781 (30°), IMG_4782 (11.5°).</b> The phone circles the tooth; the arc and the rotor ring ride with it, so they sit in the same place in every frame. The lamps on the low ring sit right behind the tooth.</figcaption>
 </figure>
 
 <h2 id="solve"><b>2</b>Where the phone was</h2>
@@ -118,7 +118,7 @@
   <figcaption><b>One frame, IMG_4781 #46.</b> Gray rings: every feature found. Green: the ones that matched across frames and became 3D points. The dimmed area was masked out before feature finding, and it has to be.</figcaption>
 </figure>
 <div class="why">
-<p><strong>Why the mask matters.</strong> The jig turns the tooth, not the phone. The arc, the box and the room are fixed to the phone, so in every frame they sit in the same place, which is perfect evidence that the camera never moved. Left in, they fight the tooth's features, and the first unmasked solve of IMG_4731 came out as a bad orbit. Masked, the only things left are the tooth and what turns with it, and to COLMAP a still camera watching a turning tooth is identical to a camera circling a still one.</p>
+<p><strong>Why the mask matters.</strong> The jig moves the phone, not the tooth. The arc and the rotor ring ride with the phone, so in every frame they sit in the same place, which is perfect evidence that the camera never moved. Left in, they fight the tooth's features, and the first unmasked solve of IMG_4731 came out as a bad orbit. Masked, what is left is the tooth and its stand, which really are still, and the solve finds the phone circling them, as it did.</p>
 </div>
 <figure>
   <img src="../assets/tooth-splat/matches.jpg" alt="Matched points between two frames">
@@ -128,7 +128,7 @@
 <div>
 <h3>The result: cameras and points</h3>
 <p>Each <strong>point</strong> is one of those matched features, placed in 3D where its sightlines from different frames cross, and carrying the color it had in the photos. This run made 46,027 of them. They are sparse: dense where the surface has texture (the root, the crown's edges) and thin where it is smooth or dark. They are not the splat; they are the skeleton the splat starts from, and the evidence for the cut that follows.</p>
-<p>The cameras land on three circles around one line, as they physically must. That line is the turntable's axis, which no one told the solver about. Fitting circles to the cameras recovers the axis and the orbit radius <em>R</em>, and everything that follows is measured in those terms, because the solve has no units of its own.</p>
+<p>The cameras land on three circles around one line, as they physically must. That line is the rotor's axis, which no one told the solver about. Fitting circles to the cameras recovers the axis and the orbit radius <em>R</em>, and everything that follows is measured in those terms, because the solve has no units of its own.</p>
 </div>
 <figure style="margin-top:0">
   <img src="../assets/tooth-splat/cameras.jpg" alt="The solved cameras on three rings around the sparse tooth">
@@ -175,7 +175,7 @@
 
 <h2 id="rembg"><b>6</b>Compared with background removal</h2>
 <div>
-<p>rembg is the common way to isolate a subject from its background; this study uses its default model, <code>u2net</code>, through <code>remove()</code> with nothing else changed. Its models (u2net, and the newer isnet and BiRefNet) remove backgrounds by <em>salience</em>: whatever looks like the subject of the photo stays. On a plain sweep that is the right question, and it is why rembg works for product shots. Here it is the wrong one. The stand, its rods and the turntable look as much like a subject as the tooth does, more so as the camera looks down on them, and which of them wins changes from frame to frame.</p>
+<p>rembg is the common way to isolate a subject from its background; this study uses its default model, <code>u2net</code>, through <code>remove()</code> with nothing else changed. Its models (u2net, and the newer isnet and BiRefNet) remove backgrounds by <em>salience</em>: whatever looks like the subject of the photo stays. On a plain sweep that is the right question, and it is why rembg works for product shots. Here it is the wrong one. The stand, its rods and the rotor ring look as much like a subject as the tooth does, more so as the camera looks down on them, and which of them wins changes from frame to frame.</p>
 </div>
 <figure>
   <div class="maskgrid">
@@ -192,7 +192,7 @@
     <img src="../assets/tooth-splat/mask_sam_4781_0059.jpg" alt="SAM 2 mask, middle ring, 30°, IMG_4781, frame 59">
     <img src="../assets/tooth-splat/mask_sam_4783_0048.jpg" alt="SAM 2 mask, high ring, 61°, IMG_4783, frame 48">
   </div>
-  <figcaption><b>Three frames, masked two ways,</b> one from each clip, each the frame nearest that clip&rsquo;s median for u2net rather than its worst. The outline is the mask, everything dimmed was thrown away, and the tag is how much was kept beyond the tooth, as a share of the tooth&rsquo;s own area, measured against the 3D answer key. Low, u2net mostly holds; looking down, the stand and the turntable read as part of the subject and it keeps them. SAM 2, guided by the point cloud, keeps none of either on any ring.</figcaption>
+  <figcaption><b>Three frames, masked two ways,</b> one from each clip, each the frame nearest that clip&rsquo;s median for u2net rather than its worst. The outline is the mask, everything dimmed was thrown away, and the tag is how much was kept beyond the tooth, as a share of the tooth&rsquo;s own area, measured against the 3D answer key. Low, u2net mostly holds; looking down, the stand and the rotor ring read as part of the subject and it keeps them. SAM 2, guided by the point cloud, keeps none of either on any ring.</figcaption>
 </figure>
 <div>
 <p>Every mask scored against the 3D answer key. The averages hide the difference: all of them keep about the same share of the tooth. They part ways on the worst frame and on the stand, which is what a splat suffers from: a stand that flickers in and out of the masks becomes a ghost floating under the tooth.</p>
@@ -239,13 +239,13 @@
   <figcaption><b>Top: three held-out photos, one per ring. Bottom: the splat, rendered from those cameras.</b> It never saw these three views.</figcaption>
 </figure>
 
-<h2 id="light"><b>8</b>Light and gloss</h2>
+<h2 id="light"><b>8</b>Lighting the model and preserving gloss</h2>
 <div id="light-body">
 <p>The enamel is glossy and should look glossy. A splat can keep gloss: each splat&rsquo;s color is allowed to change with the direction it is seen from. What it cannot keep is a highlight too sharp for that smooth change, or one that comes and goes because something passed in front of the lamp. Those it softens or smears, and zoomed far in they read as blotches.</p>
 <ul>
-  <li><strong>Leave the phone&rsquo;s video light off.</strong> It is a small, hard source riding on the camera, and both halves of that work against a splat. Small and hard, it makes a needle-sharp highlight on glossy enamel, sharper than a splat&rsquo;s smoothly varying color can hold. Riding on the camera, it moves with every view: the highlight always sits wherever the enamel faces the lens, so as the tooth turns it slides across the crown and lights a different spot in every frame. Training asks one fixed set of splats to agree with all of those frames at once, and the only compromise is a soft glow spread over the whole crown, the blotches seen up close. Light the tooth from fixed sources instead and the gloss stays, as sheen the splat can reproduce; the comparison below shows both.</li>
-  <li><strong>Lamps the jig passes in front of</strong> change the tooth&rsquo;s brightness in a way no still scene could.</li>
-  <li><strong>Large, soft, fixed sources</strong> (a tent, or lamps bounced off white boards, high enough that the arc never crosses them) give a broad sheen that the splat reproduces, so the gloss survives without blotches.</li>
+  <li><strong>Leave the phone&rsquo;s video light off.</strong> It is a small, hard source riding on the camera, and both halves of that work against a splat. Small and hard, it makes a needle-sharp highlight on glossy enamel, sharper than a splat&rsquo;s smoothly varying color can hold. Riding on the camera, it moves with every view: the highlight always sits wherever the enamel faces the lens, so as the phone circles, it slides across the crown and lights a different spot in every frame. Training asks one fixed set of splats to agree with all of those frames at once, and the only compromise is a soft glow spread over the whole crown, the blotches seen up close. Light the tooth from fixed sources instead and the gloss stays, as sheen the splat can reproduce; the comparison below shows both.</li>
+  <li><strong>Keep the lamps out of the orbit&rsquo;s path.</strong> The phone, its clamp and the arc circle the tooth, so a lamp at the height of the orbit is blocked for part of every turn: the tooth darkens while they pass, which is lighting no still scene could have, and the splat smears it in. That is what shadowed the low ring here. A lamp mounted above the arc&rsquo;s highest point, or a source broad enough that the arc covers only a sliver of it (a tent, a white ceiling or board lit indirectly), is never blocked, or barely changes when it is.</li>
+  <li><strong>Large, soft, fixed sources</strong> (a tent, or lamps bounced off white boards, above the arc&rsquo;s path, so it never crosses them) give a broad sheen that the splat reproduces, so the gloss survives without blotches.</li>
 </ul>
 <h3>Measured: the same ring with the phone&rsquo;s light off, then on</h3>
 <p>IMG_4780 was shot just before IMG_4781, at the same 30&deg; ring, with the phone&rsquo;s video light off; the side lamps were on for both. It solved into the same model as the other three clips, all 324 frames at 0.52 pixel, so the tooth had not moved. Each clip trained its own splat from 66 frames (IMG_4781 thinned to match), the same steps and settings, every 10th frame held back.</p>
