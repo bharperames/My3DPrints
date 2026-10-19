@@ -242,7 +242,10 @@
 </figure>
 </div>
 <h3 id="viewer">Turn it yourself</h3>
-<p>The finished splat, live. The camera orbits the tooth&rsquo;s own center with the jig&rsquo;s axis held upright, so the tooth never tips over and never drifts out of view, however it is dragged.</p>
+<p>The finished splat, live, and the two single-ring splats from the lighting comparison in <a href="#light">section 8</a>: switch between them and the camera stays exactly where it is, so light off and light on can be compared from the same view. The camera orbits the tooth&rsquo;s own center with the jig&rsquo;s axis held upright, so the tooth never tips over and never drifts out of view, however it is dragged.</p>
+<div class="vbar">
+  <span class="grp" id="v-which"><span class="lbl">Splat</span><button data-splat="all">All three clips</button><button data-splat="off">Light off (IMG_4780)</button><button data-splat="on">Light on (IMG_4781)</button></span>
+</div>
 <div class="vbar">
   <span class="grp"><span class="lbl">View</span>
     <button data-az="0">Face</button><button data-az="180">Back</button><button data-az="90">Edge</button><button data-az="-90">Other edge</button><button data-el="88">Top</button></span>
@@ -252,7 +255,7 @@
 </div>
 <div class="viewer" id="splat-view">
   <canvas aria-label="The Meg Tooth splat; drag to orbit"></canvas>
-  <div class="status">loading the splat (12 MB)&hellip;</div>
+  <div class="status"></div>
   <div class="readout"></div>
 </div>
 <p class="vhelp">Drag to orbit. Scroll or pinch to zoom toward the pointer. Right-drag or shift-drag to slide the view; <strong>Reset</strong> brings it back. Keys: <kbd>&larr;</kbd><kbd>&rarr;</kbd> turn 15°, <kbd>&uarr;</kbd><kbd>&darr;</kbd> raise and lower, <kbd>+</kbd><kbd>&minus;</kbd> zoom. The heights are the three the tooth was filmed from; below 11.5° nothing was seen, so the camera stops a little under the horizon.</p>
@@ -301,17 +304,15 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 
-// The tooth's frame, measured from the camera solve that produced the splat:
+// Each splat with its own frame, measured from the camera solve that made it:
 // up is the jig's axis, the center is the middle of the tooth's span along it,
-// azimuth 0 faces the tooth as frame 46 of IMG_4781 does.
-const V = {"center": [1.018177, 1.617295, 0.300109], "up": [-0.065096, -0.893542, -0.444236], "e1": [0.835681, 0.194477, -0.513629], "e2": [0.545343, -0.404675, 0.734057], "faceAz": 59.536434, "radius": 2.185066, "camDist": 4.1364};
+// azimuth 0 faces the tooth as frame 46 of IMG_4781 does. The two lighting
+// splats came out of one solve, so they share a frame and a center: switching
+// between them changes nothing but the splat.
+const SPLATS = [{"id": "all", "label": "All three clips", "url": "../assets/tooth-splat/meg-tooth.ply", "mb": 12, "V": {"center": [1.018177, 1.617295, 0.300109], "up": [-0.065096, -0.893542, -0.444236], "e1": [0.835681, 0.194477, -0.513629], "e2": [0.545343, -0.404675, 0.734057], "faceAz": 59.536434, "radius": 2.185066, "camDist": 4.1364}}, {"id": "off", "label": "Light off (IMG_4780)", "url": "../assets/tooth-splat/meg-tooth-light-off.ply", "mb": 6, "V": {"center": [-0.819041, 1.158661, 1.305953], "up": [0.013774, -0.887454, -0.460691], "e1": [-0.802801, -0.28448, 0.524006], "e2": [-0.596088, 0.362626, -0.716367], "faceAz": 60.044727, "radius": 2.18154, "camDist": 3.925353}}, {"id": "on", "label": "Light on (IMG_4781)", "url": "../assets/tooth-splat/meg-tooth-light-on.ply", "mb": 8, "V": {"center": [-0.819041, 1.158661, 1.305953], "up": [0.013774, -0.887454, -0.460691], "e1": [-0.802801, -0.28448, 0.524006], "e2": [-0.596088, 0.362626, -0.716367], "faceAz": 60.044727, "radius": 2.18154, "camDist": 3.925353}}];
+const DEG = Math.PI / 180;
 const box = document.getElementById("splat-view");
 const canvas = box.querySelector("canvas"), status = box.querySelector(".status"), readout = box.querySelector(".readout");
-const up = new THREE.Vector3(...V.up).normalize();
-const e1 = new THREE.Vector3(...V.e1), e2 = new THREE.Vector3(...V.e2);
-const center = new THREE.Vector3(...V.center);
-const R = V.radius, DEG = Math.PI / 180;
-const az0 = V.faceAz * DEG;
 
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false }); }
@@ -319,57 +320,86 @@ catch (e) { status.textContent = "This browser could not start WebGL2, which the
 renderer.setPixelRatio(window.devicePixelRatio);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0B0D0E);
-const camera = new THREE.PerspectiveCamera(40, 1, R * 0.01, R * 50);
-camera.up.copy(up);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
 scene.add(new SparkRenderer({ renderer }));
-const splat = new SplatMesh({ url: "../assets/tooth-splat/meg-tooth.ply" });
-scene.add(splat);
-splat.initialized.then(() => status.remove())
-  .catch(() => { status.textContent = "The splat did not load. Open this page from the shop (make serve), not as a file."; });
-
 const controls = new OrbitControls(camera, canvas);
-controls.target.copy(center);
 controls.enableDamping = true; controls.dampingFactor = 0.09;
 controls.rotateSpeed = 0.55; controls.zoomSpeed = 0.8; controls.panSpeed = 0.6;
 controls.zoomToCursor = true; controls.screenSpacePanning = true;
-controls.minDistance = R * 0.3; controls.maxDistance = R * 8;
 controls.minPolarAngle = 0.02;                 // straight down, but never past it
 controls.maxPolarAngle = (90 + 12) * DEG;      // a little under the horizon: nothing was filmed from below
 controls.autoRotateSpeed = 1.2;
 
-// where a camera sits for an azimuth and elevation (degrees), at a distance
-function place(azDeg, elDeg, dist) {
-  const a = az0 + azDeg * DEG, el = elDeg * DEG;
-  const dir = e1.clone().multiplyScalar(Math.cos(el) * Math.cos(a))
-    .addScaledVector(e2, Math.cos(el) * Math.sin(a)).addScaledVector(up, Math.sin(el));
-  return center.clone().addScaledVector(dir, dist);
+// the frame of the splat on show
+let F = null;
+function useFrame(V) {
+  F = { V, up: new THREE.Vector3(...V.up).normalize(), e1: new THREE.Vector3(...V.e1),
+        e2: new THREE.Vector3(...V.e2), center: new THREE.Vector3(...V.center), R: V.radius, az0: V.faceAz * DEG };
+  camera.up.copy(F.up);
+  camera.near = F.R * 0.01; camera.far = F.R * 50; camera.updateProjectionMatrix();
+  controls.minDistance = F.R * 0.3; controls.maxDistance = F.R * 8;
+  // OrbitControls reads camera.up once, when made; tell it the new one
+  controls._quat = new THREE.Quaternion().setFromUnitVectors(F.up, new THREE.Vector3(0, 1, 0));
+  controls._quatInverse = controls._quat.clone().invert();
+}
+// far enough that the whole tooth fits the shorter side of the view, with a margin
+const fitDist = () => F.R * 1.1 / Math.sin(Math.min(camera.fov, camera.fov * camera.aspect) * DEG / 2);
+// where a camera sits for an azimuth and elevation (degrees) and a zoom
+function place(azDeg, elDeg, zoom) {
+  const a = F.az0 + azDeg * DEG, el = elDeg * DEG;
+  const dir = F.e1.clone().multiplyScalar(Math.cos(el) * Math.cos(a))
+    .addScaledVector(F.e2, Math.cos(el) * Math.sin(a)).addScaledVector(F.up, Math.sin(el));
+  return F.center.clone().addScaledVector(dir, fitDist() / zoom);
 }
 function current() {
   const d = camera.position.clone().sub(controls.target), dist = d.length();
-  const el = Math.asin(THREE.MathUtils.clamp(d.dot(up) / dist, -1, 1)) / DEG;
-  let az = Math.atan2(d.dot(e2), d.dot(e1)) / DEG - V.faceAz;
+  const el = Math.asin(THREE.MathUtils.clamp(d.dot(F.up) / dist, -1, 1)) / DEG;
+  let az = Math.atan2(d.dot(F.e2), d.dot(F.e1)) / DEG - F.V.faceAz;
   az = ((az + 540) % 360) - 180;
-  return { az, el, dist };
+  return { az, el, zoom: fitDist() / dist };
 }
 // glide rather than jump, so a preset shows where it went
 let anim = null;
-function goTo(pos, target = controls.target.clone(), ms = 650) {
+function goTo(pos, target, ms = 650) {
   anim = { p0: camera.position.clone(), p1: pos, t0: controls.target.clone(), t1: target, start: performance.now(), ms };
 }
-function view({ az, el, dist }) {
+function view({ az, el, zoom }, ms) {
   const c = current();
-  goTo(place(az ?? c.az, el ?? c.el, dist ?? c.dist), center.clone());
+  goTo(place(az ?? c.az, el ?? c.el, zoom ?? c.zoom), F.center.clone(), ms);
 }
-// far enough that the whole tooth fits the shorter side of the view, with a margin
-const fitDist = () => R * 1.1 / Math.sin(Math.min(camera.fov, camera.fov * camera.aspect) * DEG / 2);
-const HOME = { az: 0, el: 28.9, get dist() { return fitDist(); } };
+const HOME = { az: 0, el: 28.9, zoom: 1 };
 
-box.parentElement.querySelectorAll(".vbar [data-az], .vbar [data-el]").forEach(b => b.onclick = () => {
+// splats load on first use and stay loaded, so switching back is instant
+const meshes = {};
+let shown = null;
+function show(id) {
+  const S = SPLATS.find(x => x.id === id);
+  const keep = shown ? current() : HOME;     // same turn, height and zoom on the new splat
+  anim = null;
+  for (const m of Object.values(meshes)) m.visible = false;
+  if (!meshes[id]) {
+    status.textContent = `loading ${S.label} (${S.mb} MB)…`;
+    meshes[id] = new SplatMesh({ url: S.url });
+    scene.add(meshes[id]);
+    meshes[id].initialized.then(() => { if (shown === id) status.textContent = ""; })
+      .catch(() => { status.textContent = "The splat did not load. Open this page from the shop (make serve), not as a file."; });
+  } else status.textContent = "";
+  meshes[id].visible = true;
+  shown = id;
+  useFrame(S.V);
+  controls.target.copy(F.center);
+  camera.position.copy(place(keep.az, keep.el, keep.zoom));
+  controls.update();
+  document.querySelectorAll("#v-which [data-splat]").forEach(b => b.classList.toggle("on", b.dataset.splat === id));
+}
+document.querySelectorAll("#v-which [data-splat]").forEach(b => b.onclick = () => show(b.dataset.splat));
+
+document.querySelectorAll(".vbar [data-az], .vbar [data-el]").forEach(b => b.onclick = () => {
   view({ az: b.dataset.az !== undefined ? +b.dataset.az : undefined, el: b.dataset.el !== undefined ? +b.dataset.el : undefined });
 });
 const spin = document.getElementById("v-spin");
 spin.onclick = () => { controls.autoRotate = !controls.autoRotate; spin.classList.toggle("on", controls.autoRotate); };
-document.getElementById("v-reset").onclick = () => goTo(place(HOME.az, HOME.el, HOME.dist), center.clone());
+document.getElementById("v-reset").onclick = () => goTo(place(HOME.az, HOME.el, HOME.zoom), F.center.clone());
 controls.addEventListener("start", () => { anim = null; });
 
 // keys act only while the pointer is over the viewer or it has focus
@@ -382,10 +412,11 @@ window.addEventListener("keydown", e => {
   const c = current();
   const k = { ArrowLeft: { az: c.az - 15 }, ArrowRight: { az: c.az + 15 },
               ArrowUp: { el: Math.min(c.el + 10, 88) }, ArrowDown: { el: Math.max(c.el - 10, -12) },
-              "+": { dist: Math.max(c.dist / 1.25, controls.minDistance) }, "=": { dist: Math.max(c.dist / 1.25, controls.minDistance) },
-              "-": { dist: Math.min(c.dist * 1.25, controls.maxDistance) } }[e.key];
+              "+": { zoom: c.zoom * 1.25 }, "=": { zoom: c.zoom * 1.25 }, "-": { zoom: c.zoom / 1.25 } }[e.key];
   if (!k) return;
-  e.preventDefault(); goTo(place(k.az ?? c.az, k.el ?? c.el, k.dist ?? c.dist), controls.target.clone(), 300);
+  e.preventDefault();
+  if (k.zoom) k.zoom = THREE.MathUtils.clamp(k.zoom, fitDist() / controls.maxDistance, fitDist() / controls.minDistance);
+  goTo(place(k.az ?? c.az, k.el ?? c.el, k.zoom ?? c.zoom), controls.target.clone(), 300);
 });
 
 function resize() {
@@ -393,7 +424,7 @@ function resize() {
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(box); resize();
-camera.position.copy(place(HOME.az, HOME.el, HOME.dist));
+show(SPLATS[0].id);
 
 renderer.setAnimationLoop(now => {
   if (anim) {
@@ -409,7 +440,7 @@ renderer.setAnimationLoop(now => {
   }
   controls.update();
   const c = current();
-  readout.textContent = `turned ${c.az >= 0 ? "+" : ""}${c.az.toFixed(0)}°  ·  height ${c.el.toFixed(0)}°  ·  zoom ${(fitDist() / c.dist).toFixed(1)}×`;
+  readout.textContent = `turned ${c.az >= 0 ? "+" : ""}${c.az.toFixed(0)}°  ·  height ${c.el.toFixed(0)}°  ·  zoom ${c.zoom.toFixed(1)}×`;
   renderer.render(scene, camera);
 });
 </script>
