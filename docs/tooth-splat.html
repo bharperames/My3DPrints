@@ -67,6 +67,12 @@
   .vbar button:hover { border-color:var(--accent); }
   .vbar button.on { background:var(--accent); color:#0F1A17; border-color:var(--accent); }
   .vhelp { font-size:14.5px; color:var(--note); margin:0 0 18px; }
+  .vkeys { position:absolute; top:10px; right:10px; background:rgba(20,24,26,.88); border:1px solid var(--line); border-radius:8px; padding:8px 12px; }
+  .vkeys[hidden] { display:none; }
+  .vkeys table { margin:0; width:auto; font-size:14px; }
+  .vkeys th, .vkeys td { border:none; padding:3px 6px; background:none; }
+  .vkeys th { font-weight:600; color:var(--ink); white-space:nowrap; }
+  .vkeys td { color:var(--note); }
   kbd { font:13px "IBM Plex Mono",monospace; background:var(--panel-2); border:1px solid var(--edge); border-radius:4px; padding:0 5px; }
   figcaption { font-size:14.5px; margin-top:8px; color:var(--note); }
   figcaption b { color:var(--ink); font-weight:600; }
@@ -257,14 +263,29 @@
     <button data-az="0">Face</button><button data-az="180">Back</button><button data-az="90">Edge</button><button data-az="-90">Other edge</button><button data-el="88">Top</button></span>
   <span class="grp"><span class="lbl">Height</span>
     <button data-el="11.5" title="the low clip&rsquo;s elevation">11.5°</button><button data-el="30" title="the middle clip&rsquo;s elevation">30°</button><button data-el="61" title="the high clip&rsquo;s elevation">61°</button></span>
-  <span class="grp"><button id="v-spin">Turn</button><button id="v-free" title="rotate freely in any direction, past the poles">Free tumble</button><button id="v-reset">Reset</button></span>
+  <span class="grp"><button id="v-spin">Turn</button><button id="v-free" title="rotate freely in any direction, past the poles">Free tumble</button><button id="v-reset">Reset</button><button id="v-help">Controls</button></span>
 </div>
 <div class="viewer" id="splat-view">
   <canvas aria-label="The Meg Tooth splat; drag to orbit"></canvas>
   <div class="status"></div>
   <div class="readout"></div>
+  <div class="vkeys" hidden>
+    <table>
+      <tr><th>Orbit</th><td>drag</td></tr>
+      <tr><th>Pan</th><td>right-drag, or shift-drag</td></tr>
+      <tr><th>Zoom</th><td>scroll or pinch, toward the pointer</td></tr>
+      <tr><th>Set focus</th><td>click the tooth: it turns about that point</td></tr>
+      <tr><th>Fly to point</th><td>double-click the tooth</td></tr>
+      <tr><th>Frame the tooth</th><td><kbd>F</kbd></td></tr>
+      <tr><th>Reset camera</th><td><kbd>R</kbd></td></tr>
+      <tr><th>Turn, raise</th><td><kbd>&larr;</kbd><kbd>&rarr;</kbd> <kbd>&uarr;</kbd><kbd>&darr;</kbd></td></tr>
+      <tr><th>Zoom by step</th><td><kbd>+</kbd> <kbd>&minus;</kbd></td></tr>
+      <tr><th>Free tumble</th><td><kbd>T</kbd></td></tr>
+      <tr><th>This panel</th><td><kbd>H</kbd></td></tr>
+    </table>
+  </div>
 </div>
-<p class="vhelp">Drag to orbit. Scroll or pinch to zoom toward the pointer. Right-drag or shift-drag to slide the view; <strong>Reset</strong> brings it back. Keys: <kbd>&larr;</kbd><kbd>&rarr;</kbd> turn 15°, <kbd>&uarr;</kbd><kbd>&darr;</kbd> raise and lower, <kbd>+</kbd><kbd>&minus;</kbd> zoom. The heights are the three the tooth was filmed from. The orbit goes all the way under, but nothing was filmed from below 11.5&deg;, so the underside is thin and may show holes. <strong>Free tumble</strong> drops the upright axis and turns any way, past the poles, for as long as it is dragged; any view or height button sets it upright again.</p>
+<p class="vhelp">The heights are the three the tooth was filmed from. The orbit goes all the way under, but nothing was filmed from below 11.5&deg;, so the underside is thin and may show holes. <strong>Free tumble</strong> drops the upright axis and turns any way, past the poles; any view or height button sets it upright again. Click the tooth to turn about that point, double-click to fly to it; <strong>Controls</strong> (or <kbd>H</kbd>) lists every control. Keys work while the pointer is over the view.</p>
 
 <h2 id="light"><b>8</b>Lighting the model and preserving gloss</h2>
 <div id="light-body">
@@ -333,7 +354,7 @@ controls.target.set(0, 0, 0);
 controls.enableDamping = true; controls.dampingFactor = 0.09;
 controls.rotateSpeed = 0.55; controls.zoomSpeed = 0.8; controls.panSpeed = 0.6;
 controls.zoomToCursor = true; controls.screenSpacePanning = true;
-controls.minDistance = 0.3; controls.maxDistance = 8;
+controls.minDistance = 0.06; controls.maxDistance = 8;   // close enough to fly into a serration
 // upright orbit: anywhere from straight down to straight up, stopping at each pole
 controls.minPolarAngle = 0.01; controls.maxPolarAngle = Math.PI - 0.01;
 controls.autoRotateSpeed = 1.2;
@@ -341,7 +362,7 @@ const CENTER = new THREE.Vector3();
 // free tumble: no up and no poles, it turns any way for as long as it is dragged
 const free = new TrackballControls(camera, canvas);
 free.enabled = false; free.rotateSpeed = 2.5; free.zoomSpeed = 1.0; free.panSpeed = 0.5;
-free.dynamicDampingFactor = 0.12; free.minDistance = 0.3; free.maxDistance = 8;
+free.dynamicDampingFactor = 0.12; free.minDistance = 0.06; free.maxDistance = 8;
 let tumbling = false;
 const tumbleBtn = document.getElementById("v-free");
 function setTumble(on) {
@@ -382,13 +403,13 @@ function place(azDeg, elDeg, zoom) {
     .multiplyScalar(fitDist() / zoom);
 }
 function current() {
-  const d = camera.position.clone().sub(controls.target), dist = d.length();
+  const d = camera.position.clone().sub(tumbling ? free.target : controls.target), dist = d.length();
   return { az: Math.atan2(d.x, d.z) / DEG, el: Math.asin(THREE.MathUtils.clamp(d.y / dist, -1, 1)) / DEG, zoom: fitDist() / dist };
 }
 // glide rather than jump, so a preset shows where it went
 let anim = null;
 function goTo(pos, target, ms = 650) {
-  anim = { p0: camera.position.clone(), p1: pos, t0: controls.target.clone(), t1: target, start: performance.now(), ms };
+  anim = { p0: camera.position.clone(), p1: pos, t0: (tumbling ? free.target : controls.target).clone(), t1: target, start: performance.now(), ms };
 }
 function view({ az, el, zoom }, ms) {
   setTumble(false);
@@ -430,6 +451,43 @@ spin.onclick = () => { setTumble(false); controls.autoRotate = !controls.autoRot
 tumbleBtn.onclick = () => setTumble(!tumbling);
 document.getElementById("v-reset").onclick = () => setTumble(false) || goTo(place(HOME.az, HOME.el, HOME.zoom), CENTER.clone());
 controls.addEventListener("start", () => { anim = null; });
+free.addEventListener("start", () => { anim = null; });
+const help = box.querySelector(".vkeys");
+function toggleHelp() { help.hidden = !help.hidden; document.getElementById("v-help").classList.toggle("on", !help.hidden); }
+document.getElementById("v-help").onclick = toggleHelp;
+
+// Pick the point on the splat under the pointer. Spark's SplatMesh answers a
+// three.js raycast with the splats the ray meets, in its own transformed frame.
+const raycaster = new THREE.Raycaster();
+function pick(ev) {
+  const r = canvas.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const hit = raycaster.intersectObject(meshes[shown], false)[0];
+  return hit ? hit.point.clone() : null;
+}
+const orbitTarget = () => tumbling ? free.target : controls.target;
+// Set focus: the orbit turns about the clicked point; the camera stays where it is.
+function setFocus(pt) { goTo(camera.position.clone(), pt, 450); }
+// Fly to point: the clicked point becomes the center and the camera closes in on it.
+function flyTo(pt) {
+  const d = Math.max(controls.minDistance * 1.5, camera.position.distanceTo(pt) * 0.45);
+  goTo(pt.clone().addScaledVector(camera.position.clone().sub(pt).normalize(), d), pt, 700);
+}
+function frameTooth() { const c = current(); goTo(place(c.az, c.el, 1), CENTER.clone()); }
+// a click is a press and release that barely moved; a double-click must not also act as two clicks
+let down = null, clickTimer = null;
+canvas.addEventListener("pointerdown", e => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+canvas.addEventListener("pointerup", e => {
+  if (!down || e.button !== 0) return;
+  const still = Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5 && performance.now() - down.t < 350;
+  down = null;
+  if (!still) return;
+  const ev = { clientX: e.clientX, clientY: e.clientY };
+  clearTimeout(clickTimer);
+  clickTimer = setTimeout(() => { const pt = pick(ev); if (pt) setFocus(pt); }, 260);
+});
+canvas.addEventListener("dblclick", e => { clearTimeout(clickTimer); const pt = pick(e); if (pt) flyTo(pt); });
 
 // keys act only while the pointer is over the viewer or it has focus
 canvas.tabIndex = 0;
@@ -438,6 +496,11 @@ box.addEventListener("pointerenter", () => hover = true);
 box.addEventListener("pointerleave", () => hover = false);
 window.addEventListener("keydown", e => {
   if (!hover && document.activeElement !== canvas) return;
+  const letter = e.key.toLowerCase();
+  if (letter === "f") { e.preventDefault(); setTumble(false); frameTooth(); return; }
+  if (letter === "r") { e.preventDefault(); document.getElementById("v-reset").click(); return; }
+  if (letter === "h") { e.preventDefault(); toggleHelp(); return; }
+  if (letter === "t") { e.preventDefault(); setTumble(!tumbling); return; }
   const c = current();
   const k = { ArrowLeft: { az: c.az - 15 }, ArrowRight: { az: c.az + 15 },
               ArrowUp: { el: Math.min(c.el + 10, 89) }, ArrowDown: { el: Math.max(c.el - 10, -89) },
@@ -445,7 +508,9 @@ window.addEventListener("keydown", e => {
   if (!k) return;
   e.preventDefault(); setTumble(false);
   if (k.zoom) k.zoom = THREE.MathUtils.clamp(k.zoom, fitDist() / controls.maxDistance, fitDist() / controls.minDistance);
-  goTo(place(k.az ?? c.az, k.el ?? c.el, k.zoom ?? c.zoom), controls.target.clone(), 300);
+  // keys turn about whatever point is the orbit center now
+  const off = place(k.az ?? c.az, k.el ?? c.el, k.zoom ?? c.zoom);
+  goTo(controls.target.clone().add(off), controls.target.clone(), 300);
 });
 
 function resize() {
@@ -466,7 +531,7 @@ renderer.setAnimationLoop(now => {
     const dir = a.clone().normalize().applyQuaternion(new THREE.Quaternion().slerp(q, s));
     const tgt = anim.t0.clone().lerp(anim.t1, s);
     camera.position.copy(tgt).addScaledVector(dir, THREE.MathUtils.lerp(a.length(), b.length(), s));
-    controls.target.copy(tgt);
+    controls.target.copy(tgt); free.target.copy(tgt);
     if (t >= 1) anim = null;
   }
   if (tumbling) free.update(); else controls.update();
