@@ -420,6 +420,10 @@ input:not([type=range]):not([type=checkbox]), textarea, select,
 .cardfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;
   margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
 .cardfoot .print{padding:7px 12px;font-size:12.5px}
+.pagelist{display:flex;flex-direction:column;gap:2px;margin-top:auto;
+  padding-top:10px;border-top:1px solid var(--line)}
+.pagelist .pagelink{align-self:flex-start;font-size:13.5px;line-height:1.35;padding:3px 0}
+.pagelist + .cardfoot{margin-top:0;border-top:none}
 .card .params{max-height:none}
 .emptycat{color:var(--faint);font-style:italic;padding:26px 0}
 @media (max-width:1080px){
@@ -2324,7 +2328,12 @@ renderer.setAnimationLoop(animate);
                + 'skipping the plate';
     open.onclick = () => openPart(p, open);
     foot.append(open);
-    for (const u of (p.pages || [])){
+    // One link sits in the footer beside the buttons. Several squeezed in
+    // there wrapped every label to a word per line, so they get their own
+    // list above it, one link to a line.
+    const pages = p.pages || [];
+    const list = document.createElement('nav'); list.className = 'pagelist';
+    for (const u of pages){
       const a = document.createElement('a');
       a.className = 'pagelink'; a.href = u.href; a.textContent = u.label + ' \u2192';
       // An embedded page opens OVER the shop rather than replacing it.
@@ -2336,9 +2345,10 @@ renderer.setAnimationLoop(animate);
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
         e.preventDefault(); openEmbedded(p, u);
       };
-      foot.append(a);
+      (pages.length > 1 ? list : foot).append(a);
     }
     foot.append(plateButton(p));
+    if (pages.length > 1) body.append(list);
     body.append(foot);
     // A print note is the point of the whole shop: what happened on the
     // printer. It used to bind only to the hand-written cards, so the parts

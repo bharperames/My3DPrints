@@ -584,7 +584,9 @@ PARTS = [
               dict(label="Assemble it, step by step",
                    href="docs/orbital-jig-assembly.html"),
               dict(label="Drives, mounts and the app: the study",
-                   href="docs/orbital-jig-plan.html")],
+                   href="docs/orbital-jig-plan.html"),
+              dict(label="Video to splat: isolating the tooth in 3D",
+                   href="docs/tooth-splat.html")],
        gen=["gen_orbital_jig.py"], params=[
            dict(key="specimen", label="focal height", unit="mm", min=25,
                 max=110, step=1, val=78,
