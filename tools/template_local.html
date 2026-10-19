@@ -2523,6 +2523,8 @@ renderer.setAnimationLoop(animate);
     all.sort((a, b) =>
       (searching ? (b.rank || 0) - (a.rank || 0) : 0) ||
       shelfRank(shelfOf(a)) - shelfRank(shelfOf(b)) ||
+      // featured cards keep the order the catalog lists them in
+      ((a.part && a.part.featured) ?? 0) - ((b.part && b.part.featured) ?? 0) ||
       (b.rank || 0) - (a.rank || 0) ||
       (onPlate(b) ? 1 : 0) - (onPlate(a) ? 1 : 0));
     const total = {};

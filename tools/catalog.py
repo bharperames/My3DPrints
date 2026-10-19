@@ -108,6 +108,8 @@ KITS = [
 # printed comes before work that has not, and files that were downloaded come
 # last however many of them there are.
 SHELVES = [
+    dict(id="featured", label="Featured",
+         note="What is being worked on now, ahead of everything else."),
     dict(id="proven", label="Printed and proven",
          note="These have been through the printer and came out right."),
     dict(id="designed", label="Designed here",
@@ -123,6 +125,12 @@ SHELVES = [
               "later revision can be compared against it rather than "
               "remembered."),
 ]
+
+# What the Featured shelf holds, in order: the designs being worked on now,
+# so the shop opens on them instead of on a search for their name. A card
+# listed here leaves its own shelf for this one; drop it from the list when
+# the work moves on and it goes back.
+FEATURED = ["orbital_jig"]
 
 # --- parts: each resolves to one 3MF on disk -----------------------------
 PARTS = [
@@ -1902,9 +1910,11 @@ def catalog(with_library=True):
     # lands somewhere sensible without being told; `shelf=` on an entry
     # overrides it.
     for p in parts:
-        p["shelf"] = p.get("shelf") or (
+        p["shelf"] = ("featured" if p["id"] in FEATURED else p.get("shelf") or (
             "library" if p["kind"] == "library"
-            else "proven" if p.get("proven") else "designed")
+            else "proven" if p.get("proven") else "designed"))
+        if p["id"] in FEATURED:
+            p["featured"] = FEATURED.index(p["id"])
     by = {p["id"]: p for p in parts}
     kits = []
     for k in list(KITS) + sets(parts):
