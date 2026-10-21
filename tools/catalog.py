@@ -585,7 +585,9 @@ PARTS = [
        # board; the 4.7 ohm's saddle takes the longest RSMF2.
        # 46.0.0: each resistor's leg holes stand IPC-A-610's straight run
        # and bend radius past its longest body; the 4.7 ohm's were 1.1 short.
-       version="46.0.0",
+       # 47.0.0: the home sensor's leads come down 1.4 out of its body, by
+       # the same rule, and the base's slot for them is wide enough.
+       version="47.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

@@ -659,7 +659,7 @@ function poseAll(k, f) {
     // a body a bench step builds onto is shown as a ghost during it
     // (a strict boolean: three skips a body only when visible === false)
     const benchOn = !!(STEPS[k].against && STEPS[k].against.includes(n) && i > k);
-    m.visible = visibleAt(i, k) || benchOn;
+    m.visible = (visibleAt(i, k) || benchOn) && !(STEPS[k].hide || []).includes(n);
     setGhost(m, !!benchOn || spare(i));
     const st = STEPS[i];
     let M = new THREE.Matrix4();
@@ -779,7 +779,10 @@ function frameStep(i) {
   if (box.isEmpty()) { cam = null; return; }
   const c = box.getCenter(new THREE.Vector3());
   const r = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 18);
-  const dir = camera.position.clone().sub(controls.target).normalize();
+  // a step that says where to look from -- down into the controller,
+  // up under its tray -- is seen from there; the rest from where we are
+  const dir = STEPS[i].view ? new THREE.Vector3(...STEPS[i].view).normalize()
+    : camera.position.clone().sub(controls.target).normalize();
   const goal = { t: c, p: c.clone().add(dir.clone().multiplyScalar(fitDist(r))) };
   const from = { t: controls.target.clone(), p: camera.position.clone() };
   const far = from.t.distanceTo(c) > 60;
