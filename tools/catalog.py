@@ -575,7 +575,15 @@ PARTS = [
        # in saddles, legs and wires down through holes, every net's
        # joint in a pocket under the plate, the grooves its traces, every
        # name cut in; a seat at every heat-set insert's mouth.
-       version="43.0.0",
+       # 44.0.0: the boards clip into the tray -- each tucks one edge
+       # under a fixed lip and presses down past a hook on an arm that
+       # bends in the plate's plane -- so they stay put with it turned over.
+       # Built here and never printed.
+       # 45.0.0: the clips and frames sized to the boards' published
+       # tolerances: the DRV8833's frame takes Pololu's +-0.3 edges, held
+       # at one end with its arm preloaded; every hook clears the thickest
+       # board; the 4.7 ohm's saddle takes the longest RSMF2.
+       version="45.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

@@ -1613,6 +1613,53 @@ POCKET = (4.4, 2.0)     # diameter, depth
 HOLE_WIRE = 1.6         # a 28 AWG wire, 0.8 over its insulation, prints ~1.4
 DRV_RIM = (1.0, 1.2)    # the wall round the DRV8833: thickness, height
 DRV_SLOT = 2.0          # the slot under each of its rows of holes, through
+# The boards clip in. Each hook is on an arm cut free of the plate by a
+# slot, and the arm bends sideways, in the plate's own plane, to let the
+# board past: along its layers, never across them as a peg standing up
+# from the plate would (the lid's 2.1 pegs snapped at the root that way).
+# A hook's bend is 1.5 t d / L^2 of strain on an arm t thick and L long
+# moved d; every arm here stays under 2%. Each board tucks one edge under
+# a fixed lip and clips down past an arm's hook. The XIAO tucks its -y
+# edge under a lip beside the USB-C, in the 2 mm there before the first
+# pad (a slot on that side would run through the GND name), and clips at
+# its far end and its +y edge. The DRV8833 tucks its +y end and clips at
+# its -y end, on the 0.75 of board its parts and pads leave there.
+#
+# The boards are not all the size they are drawn. Pololu's drawing gives
+# the DRV8833's board edges +-0.3 (so 12.1-13.3 by 19.7-20.9) and its
+# board 1.57 thick; Seeed gives the XIAO as 21 x 17.8 and nothing more,
+# its STEP 20.95 x 17.78 x 1.25, and its KiCad board 1.6 thick -- taken
+# here as +-0.2 on each size and up to 1.6 thick. So each board is pressed
+# against one fixed wall, under its lip, and the arm across from it stands
+# where a nominal board's edge is: a large board pushes the arm back and
+# is held all the same, a small one has room to slide only less than the
+# hooks reach. Every hook stands clear over the thickest board.
+XIAO_TOL = 0.2          # on its length and width
+XIAO_T_MAX = 1.6
+DRV_EDGE_TOL = 0.3      # on each edge, Pololu's drawing
+SEAT = 0.05             # a nominal board to the walls that hold it
+LATCH_T = 1.0           # each arm, across its bend
+LATCH_SLOT = 1.0        # behind the arm: room for the hook to go back
+LATCH_SPLIT = 0.5       # the cut that frees the arm from the plate
+HOOK = 0.75             # how far a hook reaches in from its wall
+HOOK_OVER = 0.15        # its underside over the thickest board's top
+HOOK_FLAT = 0.25        # the flat at its nose, below the lead-in
+XIAO_END_HOOK = 0.9     # the far end's: its window is 0.25 long, and in
+                        # the box the USB-C end has 0.2 to the wall
+# The DRV8833 can be 1.2 shorter than the longest: more than one hook
+# reaches, so its fixed lip reaches 1.4 (its parts start 2.1 in from that
+# end) and its arm stands 0.2 inside a nominal board's edge.
+DRV_LIP_X = (-17.5, -10.5)       # the fixed lip, at the +y end, clear of FLT's wire
+DRV_LIP = 1.4
+DRV_HOOK = 0.85
+DRV_PRELOAD = 0.2
+DRV_HOOK_X = (-13.3, -10.2)      # its hook, at the -y end: clear of the
+                                 # bulk capacitor and the pads
+DRV_ARM_X = (-17.6, -9.0)        # the arm the hook is on, root to tip
+DRV_ARM_T = 0.8                  # thinner: the longest board puts it back 1.55
+DRV_ARM_SLOT = 1.7
+XIAO_END_ARM_Y = (0.4, 3.4)      # the far-end hook, along the arm's tip
+XIAO_SIDE_ARM_X = (19.7, 27.8)   # the side arms' root, and where the hook starts
 WIRE_R = 0.4            # Pololu's 28 AWG: JST SH takes insulation 0.8 at
                         # most, so no fatter than that (Pololu gives none)
 PITCH = 2.54
@@ -1649,6 +1696,10 @@ DRV_PARTS = ((4.86, 7.52, 8.86, 11.53, 1.03, "ic"),          # the DRV8833
 # Body colors are the usual ones for these lines, not from a datasheet.
 R1_DIM = (11.0, 4.5, 0.8)        # RSMF2JT4R70, 4.7 ohm 2 W
 R2_DIM = (6.0, 2.3, 0.55)        # CF14JT10K0, 10 kohm
+# the longest body each drawing allows (RSMF2 11.0 +-1.5, CF14 6.0 +-0.3):
+# a saddle shorter than its body would hold the body up off its seat. A
+# fatter body (RSMF2 4.5 +-1.0) only sits higher in it.
+R1_MAX_L, R2_MAX_L = 12.5, 6.3
 C1_DIM = (5.0, 11.0, 2.0, 0.5)   # EEU-FR1C101: dia, height, lead pitch, lead
 C1_STANDOFF = 2.0                # off the DRV8833's parts, under the lid
 # The two resistors lie in saddles, their legs bent down at BEND past the
@@ -1669,7 +1720,7 @@ NETS = {
     "3V3": dict(pocket=(-3.4, -9.0), holes=((-3.8, -11.7), (-1.6, -11.7), (2.8, -11.7)),
                 name=(2.4, -15.1, 0.0), under=(6.1, -7.4, 90.0)),
     "D5": dict(pocket=(-3.4, 3.6), holes=((-3.4, 8.0), (3.6, 6.0)),
-               name=(1.6, 11.2, 0.0), under=(6.1, 1.5, 90.0)),
+               name=(1.6, 11.2, 0.0), under=(4.1, 1.4, 90.0, 3.6)),
     "GND": dict(pocket=(14.0, -14.4), holes=((9.6, -16.1), (11.6, -16.1),
                                              (16.4, -16.1), (18.4, -16.1)),
                 name=(21.0, -12.0, 0.0), under=(21.4, -11.9, 0.0, 3.6)),
@@ -1678,8 +1729,8 @@ NETS = {
 VIN_HOLE = (-22.8, -12.4)
 # what else is cut on top: the parts' values, the 100 uF's polarity
 VALUES = (("4.7\u03a9", (-25.6, 6.5), 90.0),       # beside R1's leg, up the left side
-          ("10K", (5.4, -2.85), 90.0),
-          ("100\u00b5F", (-13.4, -14.6), 0.0))   # under the DRV8833, where it stands
+          ("10K", (5.4, -5.1), 90.0),        # below the XIAO's far-end arm
+          ("100\u00b5F", (-13.4, -15.17), 0.0, 3.6))   # short of the DRV8833's clip   # under the DRV8833, where it stands
 
 # Every wire inside the box: its color, the net, the two ends, the step
 # that solders it, the height it runs at over the tray's plate (so a
@@ -1869,12 +1920,13 @@ def tray_layout():
     plate = Polygon([(-xi, -yi), (xi, -yi), (xi, yi), (-xi, yi)])
     for x, y in CTRL_BOSSES:
         plate = plate.difference(Point(x, y).buffer(CTRL_BOSS_R + TRAY_BOSS_FIT, 64))
-    # the XIAO's window, open to the wall it butts against
+    # the XIAO's window, open to the wall it butts against: its -y wall
+    # the one it is held to, its +y wide enough for the widest board but
+    # for the arm beside the USB-C, which stands at a nominal one's edge
     x0 = XIAO_X1 - XIAO[0] - TRAY_FIT
-    plate = plate.difference(Polygon([(x0, -XIAO[1] / 2 - TRAY_FIT),
-                                      (xi + 1, -XIAO[1] / 2 - TRAY_FIT),
-                                      (xi + 1, XIAO[1] / 2 + TRAY_FIT),
-                                      (x0, XIAO[1] / 2 + TRAY_FIT)]))
+    ym, yp = _xiao_walls()
+    plate = plate.difference(_rect(x0, ym, xi + 1, yp).difference(
+        _rect(XIAO_SIDE_ARM_X[0], XIAO[1] / 2 + SEAT, xi + 1, yp + 0.01)))
     # where the cables come in, at the height the box's inlet was drawn
     # for: the plate is cut away round them
     plate = plate.difference(Polygon([(-xi - 1, CTRL_INLET_Y - 4.6),
@@ -1896,17 +1948,19 @@ def tray_layout():
         for h in _lead_holes(at, dim):
             through.append(Point(*h).buffer(dim[2] / 2 + LEAD_HOLE / 2, 32))
     through.append(Point(*VIN_HOLE).buffer(HOLE_WIRE / 2, 32))
-    dl, dw = DRV8833[0] / 2 + TRAY_FIT, DRV8833[1] / 2 + TRAY_FIT
-    inner = Polygon([(DRV_C[0] - dl, -dw), (DRV_C[0] + dl, -dw),
-                     (DRV_C[0] + dl, dw), (DRV_C[0] - dl, dw)])
+    dl, (dm, dp) = _drv_frame()
+    slots, raised, hooks = _latches(x0, xi)
+    through += slots
+    # held at +y, room at -y for the longest board but where the arm is
+    inner = _rect(DRV_C[0] - dl, dm, DRV_C[0] + dl, dp)
     rim = inner.buffer(DRV_RIM[0], join_style=2).difference(inner)
     # cut into the top: the names and values
     top = []
     for net, d in NETS.items():
         x, y, a = d["name"]
         top.append((f"name {net}", _glyph(net, TRAY_CAP, (x, y), a)))
-    for text, at, a in VALUES:
-        top.append((f"value {text}", _glyph(text, TRAY_CAP, at, a)))
+    for text, at, a, *cap in VALUES:
+        top.append((f"value {text}", _glyph(text, cap[0] if cap else TRAY_CAP, at, a)))
     # cut into the underside: the grooves, the pockets, each net's name
     under = []
     for what, pts in _routes():
@@ -1922,7 +1976,100 @@ def tray_layout():
                            origin=(0, 0))
         labels.append((f"under {net}", affinity.translate(g, x, y)))
     return dict(plate=plate, rim=rim, through=unary_union(through),
-                top=top, under=under, labels=labels)
+                top=top, under=under, labels=labels, raised=raised, hooks=hooks)
+
+
+def _rect(x0, y0, x1, y1):
+    return Polygon([(min(x0, x1), min(y0, y1)), (max(x0, x1), min(y0, y1)),
+                    (max(x0, x1), max(y0, y1)), (min(x0, x1), max(y0, y1))])
+
+
+def _xiao_walls():
+    """The XIAO's window across: the -y wall it is held to, and the +y
+    wall that clears the widest board pressed against it."""
+    ym = -XIAO[1] / 2 - SEAT
+    return ym, ym + XIAO[1] + XIAO_TOL + 0.1
+
+
+def _drv_frame():
+    """The DRV8833's frame: its half-width, and its -y and +y walls. Held
+    at +y; at -y room for the longest board but where the arm is."""
+    dl = DRV8833[0] / 2 + DRV_EDGE_TOL + 0.1
+    dp = DRV8833[1] / 2 + SEAT
+    return dl, (dp - DRV8833[1] - 2 * DRV_EDGE_TOL - 0.15, dp)
+
+
+def _arm_strain(t, d, length):
+    """The bend in an arm t thick and `length` long, its tip moved d."""
+    return 1.5 * t * d / length ** 2
+
+
+def _latches(x0, xi):
+    """The clips that hold the boards: the slots that free each arm, the
+    walls standing on the plate (the DRV8833's lip and arm, up past its
+    board), and the hooks, each (what, wall from, wall to, inward, z under
+    it, z over it, lead-in, reach)."""
+    T, S, P = LATCH_T, LATCH_SLOT, LATCH_SPLIT
+    ym, yp = _xiao_walls()
+    ya = XIAO[1] / 2 + SEAT                    # the side arm's face
+    xb = _floor() + XIAO_T_MAX + HOOK_OVER     # the XIAO lies on the box's floor
+    db = _drv_top() + DRV8833[2] * 0.1 + HOOK_OVER   # FR4's own +-10%
+    slots, raised, hooks = [], [], []
+    # the XIAO's far end: an arm down the window's end wall, root at its corner
+    y0 = XIAO_END_ARM_Y[0]
+    slots.append(_rect(x0 - T - S, y0 - P, x0 - T, yp))
+    slots.append(_rect(x0 - T - S, y0 - P, x0 + 0.01, y0))
+    hooks.append(("XIAO end", (x0, y0), (x0, XIAO_END_ARM_Y[1]), (1.0, 0.0),
+                  xb, None, True, XIAO_END_HOOK))
+    # its long edges beside the USB-C: an arm along +y, its tip at the
+    # tray's end; a lip in the plate's own wall at -y
+    slots.append(_rect(XIAO_SIDE_ARM_X[0], ya + T, xi + 1, ya + T + S))
+    hooks.append(("XIAO side", (XIAO_SIDE_ARM_X[1], ya), (xi, ya), (0.0, -1.0),
+                  xb, None, True, HOOK))
+    hooks.append(("XIAO lip", (XIAO_SIDE_ARM_X[1], ym), (xi, ym), (0.0, 1.0),
+                  xb, _plate_top(), False, HOOK))
+    # the DRV8833: a fixed lip at +y, an arm with its hook at -y, both
+    # standing a hook's height over its board
+    _, (dm, dp) = _drv_frame()
+    zt = db + HOOK_FLAT + DRV_HOOK            # the clip's lead-in, to its top
+    raised.append((_rect(DRV_LIP_X[0], dp, DRV_LIP_X[1], dp + DRV_RIM[0]), zt))
+    hooks.append(("DRV8833 lip", (DRV_LIP_X[0], dp), (DRV_LIP_X[1], dp), (0.0, -1.0),
+                  db, zt, False, DRV_LIP))
+    a0, a1 = DRV_ARM_X
+    T, S = DRV_ARM_T, DRV_ARM_SLOT
+    fa = -dp + DRV_PRELOAD                     # its face, just inside a nominal board's edge
+    raised.append((_rect(a0, fa - T, a1, fa), zt))
+    # freed by a split a nozzle can leave open, run into the slots under
+    # its rows and into the groove from VIN
+    sp = max(fa + P, -8.89 - 1.0 + 0.04)
+    slots.append(_rect(-18.4, fa, a1, sp))
+    slots.append(_rect(a0, fa - T - S, a1 + P, fa - T))
+    slots.append(_rect(a1, fa - T - S, a1 + P, sp))
+    hooks.append(("DRV8833 clip", (DRV_HOOK_X[0], fa), (DRV_HOOK_X[1], fa), (0.0, 1.0),
+                  db, zt, True, DRV_HOOK))
+    return slots, raised, hooks
+
+
+def _hook_mesh(a, b, inward, zb, zt, lead, reach=HOOK):
+    """A hook along the wall from a to b, reaching in along `inward`:
+    flat underneath, and with `lead` a 45-degree lead-in over its nose
+    that a board pressed down onto it pushes back."""
+    if lead:
+        prof = [(-0.05, zb), (reach, zb), (reach, zb + HOOK_FLAT),
+                (0.0, zb + HOOK_FLAT + reach), (-0.05, zb + HOOK_FLAT + reach)]
+    else:
+        prof = [(-0.05, zb), (reach, zb), (reach, zt), (-0.05, zt)]
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    e = b - a
+    n = float(np.linalg.norm(e))
+    m = trimesh.creation.extrude_polygon(Polygon(prof), n)
+    T = np.eye(4)
+    T[:3, 0] = [inward[0], inward[1], 0.0]
+    T[:3, 1] = [0.0, 0.0, 1.0]
+    T[:3, 2] = [e[0] / n, e[1] / n, 0.0]
+    T[:3, 3] = [a[0], a[1], 0.0]
+    m.apply_transform(T)          # a mirroring transform rewinds the faces itself
+    return m
 
 
 def ctrl_tray(specimen=SPECIMEN):
@@ -1945,7 +2092,11 @@ def ctrl_tray(specimen=SPECIMEN):
         return out
     plate = L["plate"].difference(L["through"])
     solid = union(prism(plate, z0, pt)
-                  + prism(L["rim"].intersection(plate), pt - 0.01, pt + DRV_RIM[1]))
+                  + prism(L["rim"].intersection(plate), pt - 0.01, pt + DRV_RIM[1])
+                  + [m for poly, zt in L["raised"]
+                     for m in prism(poly.intersection(plate), pt - 0.01, zt)]
+                  + [_hook_mesh(a, b, n, zb, zt, lead, reach)
+                     for _, a, b, n, zb, zt, lead, reach in L["hooks"]])
     tools = []
     tools += prism(unary_union([g for _, g in L["top"]]), pt - TRAY_CUT, pt + 1)
     tools += prism(unary_union([g for _, g in L["under"]
@@ -1954,10 +2105,10 @@ def ctrl_tray(specimen=SPECIMEN):
                                 if _.startswith("pocket")]), z0 - 1, z0 + POCKET[1])
     tools += prism(unary_union([g for _, g in L["labels"]]), z0 - 1, z0 + TRAY_CUT)
     # the saddles: each body's own cylinder, sunk to its depth
-    for at, dim in ((R1_AT, R1_DIM), (R2_AT, R2_DIM)):
+    for at, dim, lmax in ((R1_AT, R1_DIM, R1_MAX_L), (R2_AT, R2_DIM, R2_MAX_L)):
         c, a, _ = _part_axis(at)
         zc = _part_z(at, dim)
-        sad = trimesh.creation.cylinder(radius=dim[1] / 2 + 0.2, height=dim[0] + 0.6,
+        sad = trimesh.creation.cylinder(radius=dim[1] / 2 + 0.2, height=lmax + 0.4,
                                         sections=48)
         sad.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], [a[0], a[1], 0]))
         sad.apply_translation([c[0], c[1], zc])
@@ -3743,15 +3894,23 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "alongside the motor's cable, and in through the box's inlet.",
               hw=[("", 0, lead)]),
         _step("boards", "The XIAO and the DRV8833 into the tray",
-              "The XIAO port first: tilt it, put the USB-C into the wall's "
-              "opening, then lay it down into its window. The DRV8833 parts "
-              "up, its GND end toward you (the end with the square pad, on "
-              "the underside), into the frame beside it. Both lift straight "
-              "out again to be soldered: everything from here is soldered "
-              "on the bench, and the tray shows where it ends up.",
+              "Both clip in, on the bench with the tray out. The XIAO "
+              "parts up, its USB-C toward the tray's open end: tuck the "
+              "edge away from the M1 name under the small lip beside the "
+              "USB-C, then press the board down until the hooks at its far "
+              "end and its other edge click over it. The DRV8833 parts up, "
+              "its GND end toward you (the end with the square pad, on the "
+              "underside): tuck the far end under the lip in its frame, "
+              "then press the near end down past the hook. To free either, "
+              "push a hook's arm back with a fingernail and lift. The tray "
+              "goes back into the box USB-C end first, tilted, the port "
+              "into the wall's opening, then laid down over the bosses; "
+              "everything from here is soldered on the bench, and the tray "
+              "shows where it ends up.",
               hw=[("Seeed Studio XIAO ESP32S3", 1, xiao),
                   ("Pololu #2130 DRV8833 dual motor driver carrier", 1, drv)],
-              solder=True),
+              # its clip's arm stands DRV_PRELOAD inside the board's end
+              presses=[("Pololu #2130 DRV8833", "ctrl_tray")], solder=True),
         _step("c1", "The 100 uF onto the DRV8833",
               "Its long leg (+) into VIN, the striped leg (-) into the GND "
               "beside it, on the power row; standing 2 mm off the board's "
@@ -4049,7 +4208,9 @@ def assembly_sweep(parts, specimen=SPECIMEN, step=0.5):
                 cm.add_object("M:" + n, m)
             _, names = cm.in_collision_internal(return_names=True)
             hit = sorted({"|".join(sorted((a[2:], b[2:]))) for a, b in names
-                          if (a[:2] == "M:") != (b[:2] == "M:")})
+                          if (a[:2] == "M:") != (b[:2] == "M:")
+                          and not _presses((a[2:], b[2:]), st, movers, installed,
+                                           np.eye(4))})
             if hit:
                 fouls.append((0.0, hit))
         if st["turn"]:
