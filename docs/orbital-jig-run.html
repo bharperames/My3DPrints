@@ -95,6 +95,7 @@
   .gauge b.soft { background:var(--warn); }
 
   #circuit { width:100%; height:auto; display:block; }
+  #circuit .pin { cursor:help; } #circuit .pin:hover text { fill:var(--ink); }
   #scope { width:100%; height:300px; display:block; background:var(--well); border-radius:6px; }
   .bar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:2px 0 8px; }
 
@@ -550,12 +551,47 @@ function arcPath(r0, r1, a0, a1) {
 // shared nets (3V3, GND) closed with a tag where a line would cross another.
 // Every wire carries a live value: its voltage, its logic level, or its current.
 const C = {};
+// what each pin does, keyed by the column it is drawn in and its name
+const PIN_TIPS = {
+  '180:enc B': 'Encoder channel B (white wire). The same square wave as A, a quarter cycle apart: '
+    + 'whether A or B changes first tells which way the motor turns. Open drain, pulled up to enc VCC by 10 kΩ on the encoder board.',
+  '180:enc A': 'Encoder channel A (yellow wire). Its Hall sensor sees a magnet disc on the motor shaft; '
+    + 'A and B together change 12 times per motor turn, 3,575 times per turn of the gearbox shaft. Open drain, pulled up to enc VCC by 10 kΩ.',
+  '180:enc VCC': 'Powers the encoder\'s Hall sensors (blue wire; 2.7–18 V). Fed 3.3 V so its pull-ups lift A and B '
+    + 'no higher than 3.3 V, which the XIAO\'s pins can take.',
+  '180:GND': 'Ground (green wire): the encoder, XIAO and DRV8833 share one 0 V.',
+  '180:M2 −': 'Motor terminal 2 (black wire), driven by the DRV8833\'s AOUT2.',
+  '180:M1 +': 'Motor terminal 1 (red wire), driven by the DRV8833\'s AOUT1 through the 4.7 Ω. '
+    + 'M1 above M2 turns the motor forward; swap them and it reverses.',
+  '180:VCC': 'Home switch supply (SS451A, the lead on the left with its printed face toward you), from 3V3.',
+  'home:GND': 'Home switch ground (the middle lead), to the shared GND.',
+  '180:OUT': 'Home switch output (right-hand lead). Open collector: it pulls the line to 0 V while a magnet pole is within '
+    + 'about 1–3 mm, and lets go otherwise, when the 10 kΩ pulls it back up to 3.3 V.',
+  '380:VIN': 'Motor supply, 2.7–10.8 V: the XIAO\'s 5 V from USB. Seeed allows 500 mA through it; the jig draws about 0.35 A, 0.7 A in a jam.',
+  '380:GND': 'Driver ground, tied to the XIAO\'s GND. The board grounds its current-sense pins itself.',
+  '380:AOUT1': 'H-bridge output 1 to motor M1 (through the 4.7 Ω): high when AIN1 is high and AIN2 low.',
+  '380:AOUT2': 'H-bridge output 2 to motor M2: high when AIN2 is high and AIN1 low.',
+  '530:AIN1': 'Bridge A input 1, from D0. AIN1 high, AIN2 low drives forward; both high brakes; both low lets the motor coast.',
+  '530:AIN2': 'Bridge A input 2, from D1. AIN2 high, AIN1 low drives backward.',
+  '530:FLT': 'nFAULT: open drain, pulled to 0 V by the driver on over-current or over-temperature. '
+    + 'The program stops the motor when it reads low.',
+  '720:D4': 'Encoder B in. An interrupt on every change, both edges, feeds the quadrature count.',
+  '720:D3': 'Encoder A in. An interrupt on every change; A and B read together give the count and its direction. '
+    + 'A move that stops counting is treated as a jam and braked.',
+  '720:3V3': 'The XIAO\'s 3.3 V regulator out: powers the encoder and the home switch and its pull-up.',
+  '720:GND': 'Ground, shared by every board.',
+  '720:5V': 'USB VBUS out, about 5 V straight from the Mac\'s port: the DRV8833\'s motor supply.',
+  '720:D0': 'Out to AIN1: high with D1 low turns the motor forward.',
+  '720:D1': 'Out to AIN2: high with D0 low turns the motor backward; D0 and D1 both high brakes, which every move ends with.',
+  '720:D8': 'In from nFAULT, with the XIAO\'s own pull-up: low means the driver has shut its outputs off.',
+  '720:D5': 'Home in: reads low while the ring\'s magnet is over the switch. Homing turns until it does.',
+};
 function buildCircuit() {
   const svg = $('#circuit');
   svg.innerHTML = '';
   const T = (x, y, text, o = {}) => {
     const t = el('text', { x, y, fill: css(o.color || '--ink-soft'), 'font-size': o.size || 11.5,
-                           'text-anchor': o.anchor || 'start', 'font-weight': o.weight || 400 }, svg);
+                           'text-anchor': o.anchor || 'start', 'font-weight': o.weight || 400 }, o.parent || svg);
     t.textContent = text;
     return t;
   };
@@ -564,9 +600,15 @@ function buildCircuit() {
     T(x + 10, y + 20, title, { color: '--ink', size: 14, weight: 650 });
     if (sub) T(x + 10, y + 36, sub);
   };
-  const pin = (x, y, name, side) => {
-    el('circle', { cx: x, cy: y, r: 3.2, fill: css('--edge') }, svg);
-    T(x + (side === 'L' ? 8 : -8), y + 4, name, { anchor: side === 'L' ? 'start' : 'end' });
+  // hover a pin for what it does: the dot and its name are one target,
+  // with a band behind them so the hand need not find the letters
+  const pin = (x, y, name, side, key = `${x}:${name}`) => {
+    const g = el('g', { class: 'pin' }, svg);
+    el('title', {}, g).textContent = PIN_TIPS[key] || name;
+    const w = name.length * 7 + 18;
+    el('rect', { x: side === 'L' ? x - 6 : x + 6 - w, y: y - 9, width: w, height: 18, fill: 'transparent' }, g);
+    el('circle', { cx: x, cy: y, r: 3.2, fill: css('--edge') }, g);
+    T(x + (side === 'L' ? 8 : -8), y + 4, name, { anchor: side === 'L' ? 'start' : 'end', parent: g });
   };
   const wire = (pts, color, id, dash) => {
     const d = 'M' + pts.map(p => p.join(',')).join(' L');
@@ -585,6 +627,7 @@ function buildCircuit() {
                              { fill: '#8C6B3C' }), svg);
     if (label) T(lx, ly, label, { color: '--ink', weight: 600 });
   };
+  const tip = (node, text) => { el('title', {}, node).textContent = text; return node; };
 
   box(20, 40, 160, 300, 'Gearmotor', 'Pololu #5173, encoder');
   box(20, 352, 160, 86, 'Home switch', 'SS451A');
@@ -598,7 +641,7 @@ function buildCircuit() {
               m2: 296, m1: 324, hv: 396, hg: 414, ho: 432, d5: 372 };
   pin(180, Y.encB, 'enc B', 'R'); pin(180, Y.encA, 'enc A', 'R'); pin(180, Y.vcc, 'enc VCC', 'R');
   pin(180, Y.gnd, 'GND', 'R'); pin(180, Y.m2, 'M2 −', 'R'); pin(180, Y.m1, 'M1 +', 'R');
-  pin(180, Y.hv, 'VCC', 'R'); pin(180, Y.hg, 'GND', 'R'); pin(180, Y.ho, 'OUT', 'R');
+  pin(180, Y.hv, 'VCC', 'R'); pin(180, Y.hg, 'GND', 'R', 'home:GND'); pin(180, Y.ho, 'OUT', 'R');
   pin(380, Y.vin, 'VIN', 'L'); pin(380, Y.gndD, 'GND', 'L'); pin(380, Y.m2, 'AOUT2', 'L'); pin(380, Y.m1, 'AOUT1', 'L');
   pin(530, Y.ain1, 'AIN1', 'R'); pin(530, Y.ain2, 'AIN2', 'R'); pin(530, Y.flt, 'FLT', 'R');
   pin(720, Y.encB, 'D4', 'L'); pin(720, Y.encA, 'D3', 'L'); pin(720, Y.vcc, '3V3', 'L'); pin(720, Y.gnd, 'GND', 'L');
@@ -614,6 +657,8 @@ function buildCircuit() {
   wire([[180, Y.m2], [380, Y.m2]], '--w-black', 'm2');
   wire([[180, Y.m1], [380, Y.m1]], '--w-red', 'm1');
   resistor(250, Y.m1, 310, Y.m1, '4.7 Ω', 262, Y.m1 + 22);
+  tip(svg.lastChild.previousSibling, '4.7 Ω, 2 W, in series with the motor: a jam draws about 0.53 A and 1.15 kg·cm '
+    + 'instead of 1.07 A and 2.6 kg·cm, whatever the program is doing. Running, the motor draws about 0.2 A.');
   wire([[530, Y.ain1], [720, Y.ain1]], '--w-yellow', 'ain1');
   wire([[530, Y.ain2], [720, Y.ain2]], '--w-yellow', 'ain2');
   wire([[530, Y.flt], [720, Y.flt]], '--w-yellow', 'flt');
@@ -622,6 +667,7 @@ function buildCircuit() {
   wire([[180, Y.ho], [600, Y.ho], [600, Y.d5], [720, Y.d5]], '--w-white', 'home');
   wire([[600, Y.d5], [600, 324]], '--w-blue', 'pull');
   resistor(600, 330, 600, 370, '', 0, 0);
+  tip(svg.lastChild, '10 kΩ pull-up from 3V3 to D5: holds the home line at 3.3 V until the switch pulls it to 0 V.');
   el('line', { x1: 586, y1: 324, x2: 614, y2: 324, stroke: css('--w-blue'), 'stroke-width': 3, 'stroke-linecap': 'round' }, svg);
   T(580, 328, '3V3', { color: '--w-blue', weight: 600, anchor: 'end' });
   T(590, 354, '10 kΩ pull-up', { color: '--ink', weight: 600, anchor: 'end' });
