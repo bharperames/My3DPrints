@@ -42,6 +42,7 @@
     background:color-mix(in srgb,var(--surface) 92%,transparent); border:1px solid var(--line); border-radius:10px; padding:12px 18px 12px 12px; }
   #pick canvas { flex:0 0 auto; width:220px; height:170px; border-radius:6px; background:var(--surface-2); }
   #pick b { font-weight:650; font-size:25px; display:block; } #pick .sub { color:var(--ink-soft); font-size:18px; margin-top:4px; }
+  #pick button { font-size:16px; margin-top:10px; }
   @media (max-width: 900px) { #pick { font-size:16px; } #pick b { font-size:19px; } #pick .sub { font-size:15px; }
     #pick canvas { width:130px; height:100px; } }
   #hud .n { font-variant-numeric:tabular-nums; color:var(--ink-soft); }
@@ -876,6 +877,9 @@ STEPS.forEach(st => {
     if (m && !m.userData.label) m.userData.label = [h.item || st.title, HW_NOTE[h.item] || st.title];
   }
 });
+/* each part as the occurrence it is: the step that fits this one */
+hwOf.forEach((ms, i) => ms.forEach(m => { m.userData.step = i; }));
+for (const [n, m] of Object.entries(body)) m.userData.step = stepOfBody[n];
 const pickEl = document.getElementById('pick');
 const picker = new THREE.Raycaster();
 let downAt = null;
@@ -888,7 +892,10 @@ renderer.domElement.addEventListener('pointerup', e => {
   const hit = picker.intersectObjects(allMeshes.filter(m => m.visible), false)[0];
   if (!hit) { pickEl.style.display = 'none'; return; }
   const [name, note] = hit.object.userData.label || ['', ''];
-  pickEl.innerHTML = `<div><b>${name}</b>${note ? `<div class="sub">${note}</div>` : ''}</div>`;
+  const at = hit.object.userData.step;
+  pickEl.innerHTML = `<div><b>${name}</b>${note ? `<div class="sub">${note}</div>` : ''}` +
+    (at !== undefined ? `<button id="pickgo">Go to install step ${at + 1}</button>` : '') + '</div>';
+  if (at !== undefined) document.getElementById('pickgo').onclick = () => go(at, false);
   pickEl.prepend(thumb.domElement);
   pickEl.style.display = 'flex';
   drawThumb(hit.object);
