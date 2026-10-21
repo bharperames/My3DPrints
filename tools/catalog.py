@@ -583,7 +583,9 @@ PARTS = [
        # tolerances: the DRV8833's frame takes Pololu's +-0.3 edges, held
        # at one end with its arm preloaded; every hook clears the thickest
        # board; the 4.7 ohm's saddle takes the longest RSMF2.
-       version="45.0.0",
+       # 46.0.0: each resistor's leg holes stand IPC-A-610's straight run
+       # and bend radius past its longest body; the 4.7 ohm's were 1.1 short.
+       version="46.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

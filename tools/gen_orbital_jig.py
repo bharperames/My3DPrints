@@ -1702,10 +1702,15 @@ R2_DIM = (6.0, 2.3, 0.55)        # CF14JT10K0, 10 kohm
 R1_MAX_L, R2_MAX_L = 12.5, 6.3
 C1_DIM = (5.0, 11.0, 2.0, 0.5)   # EEU-FR1C101: dia, height, lead pitch, lead
 C1_STANDOFF = 2.0                # off the DRV8833's parts, under the lid
-# The two resistors lie in saddles, their legs bent down at BEND past the
-# body's end into holes drawn LEAD_HOLE over the leg.
-BEND = 2.05
+# The two resistors lie in saddles, their legs bent down into holes drawn
+# LEAD_HOLE over the leg. IPC-A-610: a lead runs straight out of the body
+# a lead's diameter, and never less than 0.8, before its bend starts, and
+# bends no tighter than a diameter inside (1.5 from 0.8 up), so each hole
+# stands that far past the end of the longest body its drawing allows.
+# Until 46.0.0 both stood 2.05 past a nominal body: the 4.7 ohm's legs
+# would have been bent at the body, 1.1 short at its longest.
 LEAD_HOLE = 0.6
+LEAD_MIN_STRAIGHT = 0.8
 R1_AT = ((-13.95, 14.55), "x", 1.5)        # its centre, its axis, saddle depth
 R2_AT = ((1.0, -2.85), "y", 0.8)
 INLET_X = -CTRL["l"] / 2 + 4.0             # where the cables' wires fan out
@@ -1826,10 +1831,18 @@ def _part_axis(at):
     return np.array([cx, cy], float), a, depth
 
 
+def _lead_bend(dim):
+    """How far past a body's end its leg comes down: the straight run out
+    of the body, the bend's inside radius and half the leg."""
+    d = dim[2]
+    return max(d, LEAD_MIN_STRAIGHT) + (d if d < 0.8 else 1.5 * d) + d / 2
+
+
 def _lead_holes(at, dim):
-    """The two holes a part's legs go down: BEND past each end of its body."""
+    """The two holes a part's legs go down, past each end of the longest
+    body its drawing allows."""
     c, a, _ = _part_axis(at)
-    d = dim[0] / 2 + BEND
+    d = {R1_DIM: R1_MAX_L, R2_DIM: R2_MAX_L}[dim] / 2 + _lead_bend(dim)
     return c - a * d, c + a * d
 
 
@@ -2262,7 +2275,8 @@ def c1_prims():
                  (c[0] + 1.0, c[1] - D / 2 + 0.6, z0 + H - 0.3), "cap_stripe")]
     for h, s in ((vin, 1), (gnd, -1)):
         top = np.array([c[0], c[1] + s * pitch / 2, z0])
-        out += _wire([top, (top[0], top[1], z0 - 0.6), (h[0], h[1], z0 - 1.2),
+        out += _wire([top, (top[0], top[1], z0 - LEAD_MIN_STRAIGHT),
+                      (h[0], h[1], z0 - LEAD_MIN_STRAIGHT - 0.6),
                       (h[0], h[1], _drv_top() + 0.1)], "steel", lead / 2)
         out.append(_solder_hole(h))
     return out
