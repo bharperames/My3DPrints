@@ -422,7 +422,9 @@ MOTOR = dict(item="Pololu #5173 298:1 Micro Metal Gearmotor HP 6V, "
              # channel would not take Brett's plug; and 1.0 longer, for the
              # wires to leave it straight before they turn
              plug=(6.8, 9.0, 4.0),
-             shaft_d=3.0, shaft_flat=2.5, shaft_l=10.0,
+             # the shaft 9.0 out of the faceplate: Brett's stands 5.97 out of
+             # the 3 mm floor (drawn 10.0 until 55.0.0)
+             shaft_d=3.0, shaft_flat=2.5, shaft_l=9.0,
              bush_d=4.0, bush_h=0.7, rpm_6v=100.0, stall_kgcm=4.0,
              # 297.92:1 exactly (Pololu), so 12 x 297.92 counts a driver
              # turn, not 3,576: counted at 3,576 it drifts a count a frame
@@ -4037,7 +4039,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "- left free, the sleeve turns with the bolt's head and walks "
               "its wheel back off the race",
               check="race", turn=turn),
-        _step("pin", "Pin into the crank",
+        _step("pin", "Pin and nut into the crank",
               "On the bench.\n"
               "1. Slide the \u00d83 x 16 dowel down through the whole 8 mm of "
               "crank, until its top is flush with the crank's top and 8 mm "
@@ -4048,8 +4050,14 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "the pin, and check the pin is square to the crank's face.\n"
               "3. Touch a drop of thin CA to the joint at the top: it wicks "
               "down the hole. Hold it still for a minute.\n"
-              "- keep glue off the 8 mm below, which runs in the ring's slots",
-              hw=[(f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)", 1, pin)],
+              "- keep glue off the 8 mm below, which runs in the ring's slots\n"
+              "4. Drop the M3 nut into the slot in the crank's top, standing "
+              "on edge, its hole lined up with the hole in the crank's side: "
+              "the set screw goes in through that hole and this nut in step "
+              "19. Once the crank is on the shaft, the block's floor stands "
+              "over the slot and the nut cannot come out.",
+              hw=[(f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)", 1, pin),
+                  (NUT_ITEM, 1, crank_nut)],
               path=(down, 20.0), against=["driver"]),
         _step("cable", "Plug the cable on and thread it down",
               "On the bench, before the gearmotor goes in: once it is in the "
@@ -4079,16 +4087,17 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "the crank's height in the next step.",
               ["driver_shim"], check="spare"),
         _step("driver", "Driver up onto the gearmotor's shaft",
-              "On the bench.\n"
-              "1. The M3 nut into its slot in the crank's top.\n"
-              "2. The shim against the block's floor, round the shaft.\n"
-              "3. Slide the D-bore onto the D-shaft, flat to flat, up until "
+              "On the bench, the pin and nut already in the crank.\n"
+              "1. The shim against the block's floor, round the shaft.\n"
+              "2. Slide the D-bore onto the D-shaft, flat to flat, up until "
               "the crank meets the shim.\n"
-              "4. Tighten the set screw onto the flat through the crank's "
-              "side, and pull the shim out.\n"
-              "The pin goes with it.",
+              "3. Turn the set screw in through the hole in the crank's side, "
+              "through the nut, and tighten it onto the shaft's flat.\n"
+              "- it takes a 1.5 mm hex key (ISO 4029's socket for M3); a T6 "
+              "Torx driver turns it too\n"
+              "4. Pull the shim out.",
               ["driver"], path=(up, 15.0), against=["drive_block", "motor"],
-              carry=["pin"], hw=[(SETSCREW_ITEM, 1, setscrew), (NUT_ITEM, 1, crank_nut)]),
+              carry=["pin"], hw=[(SETSCREW_ITEM, 1, setscrew)]),
         _step("drive", "The drive down onto the base",
               "As one unit: the cable's loose end through the base's hole, "
               "the lock and pin down through a seat in the lip, the post's "

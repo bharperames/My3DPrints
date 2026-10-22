@@ -1002,7 +1002,11 @@ renderer.domElement.addEventListener('pointerup', e => {
   const r = renderer.domElement.getBoundingClientRect();
   picker.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1,
                                          -(e.clientY - r.top) / r.height * 2 + 1), camera);
-  const hit = picker.intersectObjects(allMeshes.filter(m => m.visible), false)[0];
+  // through what is drawn see-through -- a ghost, a faded part -- to the
+  // first solid one behind it, as it looks; a see-through part only when
+  // nothing solid is behind it
+  const hits = picker.intersectObjects(allMeshes.filter(m => m.visible), false);
+  const hit = hits.find(h => !h.object.material.transparent) || hits[0];
   if (!hit) { pickEl.style.display = 'none'; return; }
   const [name, note] = hit.object.userData.label || ['', ''];
   const at = hit.object.userData.step;
@@ -1469,6 +1473,9 @@ window.__assembly = {
   get camBusy() { return !!cam; },
   get camState() { return camera.position.distanceTo(controls.target); },
   look(pos, target) { camera.position.set(...pos); controls.target.set(...target); controls.update(); },
+  // where a world point lands on the screen, in client pixels
+  screen(p) { const v = new THREE.Vector3(...p).project(camera), r = renderer.domElement.getBoundingClientRect();
+    return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
 };
 </script>
 </body>

@@ -440,7 +440,7 @@ class TestRealDrive(unittest.TestCase):
         self.assertEqual((m["w"], m["d"], m["gearbox"], m["body"]),
                          (12.0, 10.0, 9.0, 15.0))
         self.assertEqual((m["shaft_d"], m["shaft_flat"], m["shaft_l"]),
-                         (3.0, 2.5, 10.0))
+                         (3.0, 2.5, 9.0))
 
     def test_the_motor_has_torque_to_spare(self):
         """At 5 V the stall torque scales to about 0.33 N.m; the driver

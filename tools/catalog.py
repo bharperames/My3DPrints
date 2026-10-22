@@ -604,7 +604,9 @@ PARTS = [
        # 54.0.0: the same, finished -- a ledge under the XIAO's edges and a
        # lip in each gap between its pads, so each edge sits in a groove;
        # its side arm 1.4 thick. 53.0.0 was recorded part way.
-       version="54.0.0",
+       # 55.0.0: the gearmotor's shaft 9.0 long, as Brett's stands out of
+       # the floor, so the crank's D-bore is 1.0 shallower.
+       version="55.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face
