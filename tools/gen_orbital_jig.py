@@ -431,7 +431,12 @@ PRESS = 0.10            # the shop's press
 # answer is a press drawn tight enough to be tight in every print, and a
 # vise to make it. Crush ribs were tried and are wrong for PETG: nothing
 # crushes, the ribs smear and creep, and how they behave was a guess.
-PIN_PRESS = -0.03       # the Geneva pin's hole over the pin: prints ~0.2 under, tight always
+# 47.0.0: the vise lost. Brett's crank, drawn as below, would not take the
+# Ø3 dowel even in a vise -- a steel pin pressed cold through 8 mm of PETG
+# 0.2 or so under it does not go. So the pin goes in hot, with the iron,
+# the way the inserts do: the softened PETG flows round it and shrinks
+# back onto it as it cools, whatever size this print's hole came out.
+PIN_PRESS = -0.03       # the Geneva pin's hole over the pin: under it, for the heat to close round
 LID_PRESS = 0.05        # the lid's peg and key over their printed bores
 # The D-shaft is not pressed at all: a clearance D-bore, and an M3 set
 # screw on its flat through a captured nut, the way Pololu's own hubs hold
@@ -3873,9 +3878,16 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "its wheel back off the race.",
               check="race", turn=turn),
         _step("pin", "Pin into the crank",
-              "On the bench, in a vise: the \u00d83 x 16 dowel pressed down "
-              "through the whole 8 mm of crank, flush with its top. The hole "
-              "is drawn at the pin's size so it is tight in every print.",
+              "On the bench, with the iron at 230 \u00b0C, the way the inserts "
+              "went in: pressed cold, even in a vise, the pin will not go. "
+              "Rest the crank on the vise's jaws opened about 4 mm, so the pin "
+              "can come out underneath. Stand the \u00d83 x 16 dowel upright in "
+              "the hole's mouth and hold the iron's tip on its top end: in "
+              "10-20 seconds it warms and sinks under light pressure. Keep it "
+              "upright and stop when its top is flush with the crank's top, "
+              "then press something flat and metal across it until it is "
+              "cool, about a minute. The hole is drawn under the pin, so the "
+              "softened PETG closes round it and holds it.",
               hw=[(f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)", 1, pin)],
               path=(down, 20.0), against=["driver"],
               presses=[("\u00d83 x 16 steel dowel", "driver")]),
@@ -4336,10 +4348,12 @@ FIT_BANDS = (("interference", -9.0, 0.0), ("press", 0.0, 0.2),
 
 
 def fit_class(allow, kind="printed hole"):
-    if kind == "steel in a vise":
-        # drawn under the pin on purpose: PETG yields, and a vise does it
-        return "press" if -0.10 <= allow <= 0.2 else (
-            "interference" if allow < -0.10 else "slip")
+    if kind == "steel, heat-pressed":
+        # drawn under the pin on purpose: the iron melts it home, and the
+        # PETG it displaces closes round the pin. Over the pin, nothing
+        # is left to grip it
+        return "press" if -0.30 <= allow <= 0.0 else (
+            "interference" if allow < -0.30 else "slip")
     if kind == "printed in printed":
         # both sides yield: a light press is drawn a little over
         return "press" if -0.15 <= allow <= 0.02 else (
@@ -4458,7 +4472,7 @@ def fits(parts, specimen=SPECIMEN):
 
     zc = (Z["crank_lo"] + Z["crank_hi"]) / 2
     row("Geneva pin in the crank", hole_d(parts["driver"], pin_xy, zc, PIN_R),
-        2 * PIN_R, "press", kind="steel in a vise", note="steel dowel, pressed with a vise")
+        2 * PIN_R, "press", kind="steel, heat-pressed", note="steel dowel, pressed in hot with the iron")
     zl = L["ring_bot"] + LIP_T / 2
     a_s = np.radians(GENEVA_PHI + 180.0 / GENEVA_N)
     rs = (GENEVA_MOUTH + GENEVA_C + GENEVA_A) / 2

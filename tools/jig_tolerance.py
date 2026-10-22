@@ -91,10 +91,11 @@ def fit_rows(parts):
     slip = (0.0, 0.35)
     run = (0.05, 0.60)
     clear = (0.05, 9.0)
-    # a press into PETG: tight in every print is the aim. PETG yields
-    # past ~5% strain rather than cracking, so a tight press needs a vise,
-    # not luck; the limit here is a press a bench vise still makes
-    vise = (-0.40, 0.0)
+    # a steel pin into PETG, pressed in hot with the iron: anything under
+    # the pin melts home, and over it nothing grips. Pressed cold, this
+    # model said a vise made 0.4 under; Brett's crank, drawn 0.03 under
+    # (0.2 under as this model prints it), would not take the pin in a vise
+    heat = (-0.60, 0.0)
     pp = (-0.40, 0.02)                # printed into printed: both yield
     # The controller's lid: snug, pushed home by hand. Drawn as `pp`
     # (0.05 under its bore) its printed pegs would not go into the bosses
@@ -104,7 +105,7 @@ def fit_rows(parts):
     lid = (-0.10, 0.6)
     spec = [
         # name in fits(),                            kind,   part,          mate,                      works if, note
-        ("Geneva pin in the crank",                  "vhole", "driver",      (3.0, 0.002, 0.008),       vise,    "dowel, m6, pressed in a vise"),
+        ("Geneva pin in the crank",                  "vhole", "driver",      (3.0, 0.002, 0.008),       heat,    "dowel, m6, pressed in hot"),
         ("Geneva pin in a slot",                     "vhole", "rotor",       (3.0, 0.002, 0.008),       run,     "slot, as a hole"),
         ("Gearmotor's D-shaft in the crank, round",  "vhole", "driver",      (3.0, -0.012, 0.0),        (0.0, 0.6), "held by the set screw"),
         ("Gearmotor's D-shaft in the crank, flat",   "vhole", "driver",      (2.5, -0.05, 0.05),        (0.0, 0.6), "the set screw bears on it"),
