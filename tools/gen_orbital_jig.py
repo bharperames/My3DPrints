@@ -481,6 +481,7 @@ POST_R = 55.0           # its centre from the rotor axis: clear of the crank,
                         # that the plug's channel never reaches the screw's
                         # access bore
 SCREW_Y, CABLE_Y = -3.5, 3.5          # the post's two bores, side by side
+POST_SCREW_MOUTH = 4.4  # the screw's hole at the floor, under its 5.5 head
 POST_SOCKET = 0.8       # how far its foot sits down into the base
 PIN_L = 16.0            # the Geneva pin: Ø3 x 16, through the 8 mm crank
 MAGNET = (3.0, 2.0)     # Ø3 x 2 N52 disc, either face to its sensor
@@ -1343,6 +1344,13 @@ def drive_block(specimen=SPECIMEN):
              # down an access bore from the top
              cyl(1.7, low, Z["face"] + 0.01, px, SCREW_Y, 32),
              cyl(3.25, Z["face"], Z["motor_top"] + 1, px, SCREW_Y, 48),
+             # 52.0.0: a 45-degree mouth on the screw's hole. Dropped down
+             # the head's bore, the shank's tip wanders 1.75 off centre and
+             # lands on the floor beside the hole (Brett's went in only
+             # pushed up from below). The mouth catches it within about a
+             # millimeter and leaves the head a ring of floor to clamp on.
+             cone(POST_SCREW_MOUTH / 2 + 1.0, Z["face"] + 1.0,
+                  Z["face"] - POST_SCREW_MOUTH / 2, px, SCREW_Y, 48),
              # the cable's bore, top to bottom
              cyl(CABLE_R + 0.6, low, Z["motor_top"] + 1, px, CABLE_Y, 48)]
     # the plug's channel: out of the encoder's pocket through the inner
@@ -1459,7 +1467,7 @@ def motor_prims(specimen=SPECIMEN):
 # capture turns the ring four times over.
 # Seeed XIAO ESP32S3: board length, width and thickness, measured off
 # Seeed's own STEP model (Seeed states only 21 x 17.8)
-XIAO = (20.96, 17.78, 1.25)
+XIAO = (20.96, 17.78, 1.59)   # 1.59 thick by Brett's calipers; Seeed's STEP says 1.25
 # Pololu #2130 DRV8833 carrier, from Pololu's dimension drawing and STEP
 DRV8833 = (12.7, 20.32, 1.57)
 CTRL = dict(r=175.0, phi=15.0, l=64.0, w=40.0, h=20.0, wall=2.0, lid=2.0)
@@ -1550,7 +1558,9 @@ def ctrl_box(specimen=SPECIMEN):
     # plug's overmold (12.35 x 6.5 at most, by the USB-C spec), not just
     # the receptacle: through a 2 mm wall a receptacle-sized hole stopped
     # the overmold with the plug 4.6 of its 6.6 mm in.
-    uz = t + 1.0 + 3.26 / 2
+    # centred on the receptacle, on top of the XIAO on its ledge: it was
+    # centred for a 1.25 board on the floor, and Brett's is 1.59
+    uz = t + XIAO_LEDGE[0] + 0.02 + XIAO[2] + 3.21 / 2
     cut2.append(box((l / 2 - t - 0.5, XIAO_Y - 6.4, uz - 3.5),
                     (l / 2 + 1, XIAO_Y + 6.4, uz + 3.5)))
     # the cable's way in, low on the inner wall, and the tie bar beside it
@@ -1583,7 +1593,13 @@ def ctrl_lid(specimen=SPECIMEN):
         p = trimesh.creation.revolve(prof, sections=48)
         p.apply_translation([x, y, 0])
         pegs.append(p)
-    return _ctrl_local(union([lid] + pegs), specimen)
+    # the post that holds the XIAO down: on its shield, behind the USB-C
+    r, zb = XIAO_POST[0] / 2, _xiao_z() + XIAO[2] + XIAO_SHIELD_H + XIAO_POST[1]
+    prof = [(0, zb), (r - 0.3, zb), (r, zb + 0.3), (r, h - 1.0), (r + 1.0, h),
+            (r + 1.0, h + 0.5), (0, h + 0.5)]
+    post = trimesh.creation.revolve(prof, sections=48)
+    post.apply_translation([XIAO_X1 - XIAO_POST_X, XIAO_Y, 0])
+    return _ctrl_local(union([lid] + pegs + [post]), specimen)
 
 
 # --- the controller's tray and its wiring --------------------------------
@@ -1695,6 +1711,32 @@ DRV_ARM_T = 0.8                  # thinner: the longest board puts it back 1.55
 DRV_ARM_SLOT = 1.7
 XIAO_END_ARM_Y = (0.4, 3.4)      # the far-end hook, along the arm's tip
 XIAO_SIDE_ARM_X = (19.7, 27.8)   # the side arms' root, and where the hook starts
+# 53.0.0: the XIAO in a groove. Its window went through the tray and the
+# board lay on the box's floor, held only over its top edges: out of the
+# box nothing was under it, and Brett's rolled about its long axis past
+# the hooks and sat crooked. Now a ledge, three layers tall, runs under
+# its edges -- the fixed side, the far end, and the arm side as far as the
+# arm's root (a ledge on the arm itself would stiffen its bend past what
+# PETG takes) -- so each edge sits between a ledge and a hook. The window
+# keeps the size that fits.
+XIAO_LEDGE = (0.6, 1.0)          # tall, and in under the board's edge
+# Over that edge, a lip in every gap between its pads: the one stub beside
+# the USB-C was half over the board's rounded corner, and Brett's board sat
+# on it rather than under it. 0.9 long, in gaps of 1.44 between pads: the
+# wire on each pad passes between them.
+XIAO_LIP_W = 0.9
+# The side arm 1.4 thick, not LATCH_T: at 1.0 it gave under the board's
+# edge. The widest board bends the 10 mm arm 0.95 going in, 2.0% strain.
+XIAO_SIDE_PRELOAD = 0.0
+XIAO_SIDE_ARM_T = 1.4
+# The hooks reach 0.75 over the board, and beside the USB-C only in the
+# 2 mm before the first pad: a plug pushed in at an angle levers that end
+# up past them (Brett's did). The lid holds it down instead -- a post from
+# its underside to just over the RF shield, behind the USB-C, so the board
+# cannot lift while the lid is on, which is whenever a plug goes in.
+XIAO_SHIELD_H = 2.0              # the shield over the board (Seeed's STEP)
+XIAO_POST = (5.0, 0.1)           # the post: across, and its gap over the shield
+XIAO_POST_X = 9.5                # its centre in from the USB end (shield ends 6.71 in)
 WIRE_R = 0.4            # Pololu's 28 AWG: JST SH takes insulation 0.8 at
                         # most, so no fatter than that (Pololu gives none)
 PITCH = 2.54
@@ -1706,6 +1748,17 @@ XIAO_PAD0 = 2.92
 XIAO_X1 = CTRL["l"] / 2 - CTRL["wall"] - 0.2    # its USB end, at the wall
 XIAO_EDGE = {1: ("D0", "D1", "D2", "D3", "D4", "D5", "D6"),
              -1: ("5V", "GND", "3V3", "D10", "D9", "D8", "D7")}
+# Brett's photographs of his XIAO, as DRV_PHOTOS are: from the board's
+# centre to the photo's u, v, fitted to its 14 edge holes (placed by eye
+# on each ring, to about 0.2 mm). The page cuts out the holes and the
+# board's rounded corners, where his skin shows.
+XIAO_PHOTOS = {
+    "top": ("assets/xiao/front.jpg",
+            (0.042177, 0.000037, 0.461868, 0.000000, 0.053188, 0.505609)),
+    "bottom": ("assets/xiao/back.jpg",
+               (0.044030, -0.000306, 0.465513, -0.000000, -0.051852, 0.507320))}
+XIAO_PHOTO_HOLE = 0.9
+XIAO_CORNER_R = 1.0
 # The DRV8833 carrier's two rows of 8, 10.16 apart, read off the
 # silkscreen in Pololu's drawing; GND is the square pad at one end of
 # both. With its parts up and the power row toward -x (the cable's side),
@@ -1731,7 +1784,9 @@ DRV_PARTS = ((4.86, 7.52, 8.86, 11.53, 1.03, "ic"),          # the DRV8833
 # page: the parts' side on top, the silkscreen's underneath. Each maps the
 # board's x, y from its centre to the photo's u, v (u = a x + b y + c,
 # v = d x + e y + f), fitted by least squares to the 16 holes' centers in
-# the photo, all within 0.12 mm.
+# the photo, all within 0.12 mm. His fingers show through the holes: the
+# page cuts each hole out, DRV_PHOTO_HOLE across.
+DRV_PHOTO_HOLE = 1.0
 DRV_PHOTOS = {
     "top": ("assets/drv8833/front.jpg",
             (-0.000071, -0.050683, 0.511461, 0.080646, -0.000762, 0.515589)),
@@ -1993,8 +2048,19 @@ def tray_layout():
     # for the arm beside the USB-C, which stands at a nominal one's edge
     x0 = XIAO_X1 - XIAO[0] - TRAY_FIT
     ym, yp = _xiao_walls()
-    plate = plate.difference(_rect(x0, ym, xi + 1, yp).difference(
-        _rect(XIAO_SIDE_ARM_X[0], XIAO[1] / 2 + SEAT, xi + 1, yp + 0.01)))
+    ya = XIAO[1] / 2 + SEAT - XIAO_SIDE_PRELOAD
+    window = _rect(x0, ym, xi + 1, yp).difference(
+        _rect(XIAO_SIDE_ARM_X[0], ya, xi + 1, yp + 0.01))
+    plate = plate.difference(window)
+    # the ledge under its edges: in from each wall to XIAO_LEDGE[1] inside a
+    # nominal board's edge, up to its USB end; not on the two arms, whose
+    # bend it would stiffen
+    lw = XIAO_LEDGE[1]
+    ledge = (window.difference(_rect(x0 + lw, -XIAO[1] / 2 + lw, xi + 2, XIAO[1] / 2 - lw))
+             .difference(_rect(XIAO_X1, ym - 1, xi + 2, yp + 1))
+             .difference(_rect(XIAO_SIDE_ARM_X[0], 0.0, xi + 2, yp + 1))
+             .difference(_rect(x0 - 1, XIAO_END_ARM_Y[0] - LATCH_SPLIT, x0 + lw + 0.01,
+                               yp + 1)))
     # where the cables come in, at the height the box's inlet was drawn
     # for: the plate is cut away round them
     plate = plate.difference(Polygon([(-xi - 1, CTRL_INLET_Y - 4.6),
@@ -2044,12 +2110,18 @@ def tray_layout():
                            origin=(0, 0))
         labels.append((f"under {net}", affinity.translate(g, x, y)))
     return dict(plate=plate, rim=rim, through=unary_union(through),
-                top=top, under=under, labels=labels, raised=raised, hooks=hooks)
+                top=top, under=under, labels=labels, raised=raised, hooks=hooks,
+                ledge=ledge)
 
 
 def _rect(x0, y0, x1, y1):
     return Polygon([(min(x0, x1), min(y0, y1)), (max(x0, x1), min(y0, y1)),
                     (max(x0, x1), max(y0, y1)), (min(x0, x1), max(y0, y1))])
+
+
+def _xiao_z():
+    """The XIAO's underside: on its ledge in the tray."""
+    return _floor() + XIAO_LEDGE[0] + 0.02
 
 
 def _xiao_walls():
@@ -2079,8 +2151,8 @@ def _latches(x0, xi):
     it, z over it, lead-in, reach)."""
     T, S, P = LATCH_T, LATCH_SLOT, LATCH_SPLIT
     ym, yp = _xiao_walls()
-    ya = XIAO[1] / 2 + SEAT                    # the side arm's face
-    xb = _floor() + XIAO_T_MAX + HOOK_OVER     # the XIAO lies on the box's floor
+    ya = XIAO[1] / 2 + SEAT - XIAO_SIDE_PRELOAD   # the side arm's face
+    xb = _xiao_z() + XIAO_T_MAX + HOOK_OVER    # the XIAO on its ledge
     db = _drv_top() + DRV8833[2] * 0.1 + HOOK_OVER   # FR4's own +-10%
     slots, raised, hooks = [], [], []
     # the XIAO's far end: an arm down the window's end wall, root at its corner
@@ -2091,11 +2163,19 @@ def _latches(x0, xi):
                   xb, None, True, XIAO_END_HOOK))
     # its long edges beside the USB-C: an arm along +y, its tip at the
     # tray's end; a lip in the plate's own wall at -y
-    slots.append(_rect(XIAO_SIDE_ARM_X[0], ya + T, xi + 1, ya + T + S))
+    slots.append(_rect(XIAO_SIDE_ARM_X[0], ya + XIAO_SIDE_ARM_T, xi + 1,
+                       ya + XIAO_SIDE_ARM_T + S))
     hooks.append(("XIAO side", (XIAO_SIDE_ARM_X[1], ya), (xi, ya), (0.0, -1.0),
                   xb, None, True, HOOK))
-    hooks.append(("XIAO lip", (XIAO_SIDE_ARM_X[1], ym), (xi, ym), (0.0, 1.0),
-                  xb, _plate_top(), False, HOOK))
+    # the -y edge's lips: the stub beside the USB-C, and one in each gap
+    # between its pads and past the last, clear of the wires laid on them
+    lips = [(XIAO_SIDE_ARM_X[1], xi)]
+    pads = [XIAO_X1 - XIAO_PAD0 - PITCH * k for k in range(len(XIAO_EDGE[-1]))]
+    lips += [(a - PITCH / 2 - XIAO_LIP_W / 2, a - PITCH / 2 + XIAO_LIP_W / 2)
+             for a in pads]
+    for a, b in lips:
+        hooks.append(("XIAO lip", (a, ym), (b, ym), (0.0, 1.0),
+                      xb, _plate_top(), False, HOOK))
     # the DRV8833: a fixed lip at +y, an arm with its hook at -y, both
     # standing a hook's height over its board
     _, (dm, dp) = _drv_frame()
@@ -2166,7 +2246,8 @@ def ctrl_tray(specimen=SPECIMEN):
                   + [_hook_mesh(a, b, n, zb, zt, lead, reach)
                      for _, a, b, n, zb, zt, lead, reach in L["hooks"]]
                   + prism(unary_union([g for _, g in L["top"]]).intersection(plate),
-                          pt - 0.01, pt + TRAY_RAISE))
+                          pt - 0.01, pt + TRAY_RAISE)
+                  + prism(L["ledge"], z0, z0 + XIAO_LEDGE[0]))
     tools = []
     tools += prism(unary_union([g for _, g in L["under"]
                                 if not _.startswith("pocket")]), z0 - 1, z0 + GROOVE[1])
@@ -2213,24 +2294,47 @@ def _wire(pts, mat, r=WIRE_R):
     return out
 
 
+def _photo(table, c, faces, holes=(), hole_d=0.0, corner=0.0):
+    """The photographs in `table` for `faces`, their fits carried from the
+    board's centre `c` into the box's frame; `holes` (box frame) and the
+    board's corners are cut out of them on the page."""
+    out = {}
+    for f in faces:
+        img, (a, b, k, d, e, k2) = table[f]
+        out[f] = dict(img=img, uv=[a, b, k - a * c[0] - b * c[1],
+                                   d, e, k2 - d * c[0] - e * c[1]])
+        if len(holes):
+            out[f].update(holes=[[float(x), float(y)] for x, y in holes],
+                          hole_d=hole_d, corner=corner)
+    return out
+
+
 def xiao_prims():
     """Seeed's XIAO ESP32S3, from its STEP: black board, gold half-hole
     pads, the RF shield, the USB-C overhanging its end, the two buttons
     and the antenna's U.FL."""
-    x1, z = XIAO_X1, _floor() + 0.02
+    x1, z = XIAO_X1, _xiao_z()
     zt = z + XIAO[2]
     w = XIAO[1] / 2
-    out = [_boxp((x1 - XIAO[0], -w, z), (x1, w, zt), "pcb_black")]
+    c = (x1 - XIAO[0] / 2, 0.0)
+    holes = [(x1 - XIAO_PAD0 - PITCH * k, s * (w - 0.8))
+             for s in XIAO_EDGE for k in range(len(XIAO_EDGE[s]))]
+    out = [dict(_boxp((x1 - XIAO[0], -w, z), (x1, w, zt), "pcb_black"),
+                photo=_photo(XIAO_PHOTOS, c, ("top", "bottom"), holes,
+                             XIAO_PHOTO_HOLE, XIAO_CORNER_R))]
     for s, names in XIAO_EDGE.items():
         for k in range(len(names)):
             x = x1 - XIAO_PAD0 - PITCH * k
             ya, yb = sorted((s * w, s * (w - 1.6)))
             out.append(_boxp((x - 0.55, ya, zt), (x + 0.55, yb, zt + 0.04), "gold"))
-    out.append(_boxp((x1 - 17.31, -6.3, zt), (x1 - 6.71, 6.3, zt + 2.0), "shield"))
+    out.append(_boxp((x1 - 17.31, -6.3, zt), (x1 - 6.71, 6.3, zt + XIAO_SHIELD_H), "shield"))
     out.append(_boxp((x1 - 5.77, -4.47, zt), (x1 + 1.53, 4.47, zt + 3.21), "steel"))
     for ya, yb in ((5.12, 6.72), (-6.72, -5.12)):       # Reset and Boot
         out.append(_boxp((x1 - 2.87, ya, zt), (x1 - 0.29, yb, zt + 0.73), "plastic"))
     out.append(_boxp((x1 - 20.09, 3.87, zt), (x1 - 18.37, 5.58, zt + 1.25), "steel"))
+    # what stands on it wears the photo of itself on top
+    for q in out[1:]:
+        q["photo"] = _photo(XIAO_PHOTOS, c, ("top",))
     return out
 
 
@@ -2240,15 +2344,10 @@ def drv_prims():
     z = _plate_top() + 0.02
     zt = z + DRV8833[2]
     l, w = DRV8833[0] / 2, DRV8833[1] / 2
-    def photo(*faces):
-        out = {}
-        for f in faces:
-            img, (a, b, c, d, e, f0) = DRV_PHOTOS[f]
-            out[f] = dict(img=img, uv=[a, b, c - a * DRV_C[0] - b * DRV_C[1],
-                                       d, e, f0 - d * DRV_C[0] - e * DRV_C[1]])
-        return out
+    holes = [drv_hole(r, n) for r, (_, ns) in DRV_ROWS.items() for n in ns]
     out = [dict(_boxp((DRV_C[0] - l, -w, z), (DRV_C[0] + l, w, zt), "pcb_green"),
-                photo=photo("top", "bottom"))]
+                photo=_photo(DRV_PHOTOS, DRV_C, ("top", "bottom"), holes,
+                             DRV_PHOTO_HOLE))]
     for row, (_, names) in DRV_ROWS.items():
         for n in names:
             c = drv_hole(row, n)
@@ -2260,7 +2359,7 @@ def drv_prims():
         Y0, Y1 = w - y1, w - y0
         # each part's top wears the photo of itself
         out.append(dict(_boxp((X0, Y0, zt), (X1, Y1, zt + hh),
-                              "plastic" if mat == "ic" else "ceramic"), photo=photo("top")))
+                              "plastic" if mat == "ic" else "ceramic"), photo=_photo(DRV_PHOTOS, DRV_C, ("top",))))
     return out
 
 
@@ -2366,13 +2465,14 @@ def _end(spec, lane=None):
         return [p, np.array([RISE_X[kind], p[1], p[2]])], []
     if kind == "xiao":
         c, s = xiao_pad(spec[1])
-        zt = _floor() + 0.02 + XIAO[2]
+        zt = _xiao_z() + XIAO[2]
         p = np.array([c[0], s * (XIAO[1] / 2 - 0.8), zt + 0.04 + WIRE_R])
         # the board lies in its window on the box's floor, below the
         # tray's top: up off its pad, then out over the window's edge
         up = np.array([c[0], p[1], max(p[2], _plate_top() + TRAY_RAISE + WIRE_R + 0.3)])
         return ([p, up, np.array([c[0], s * 10.0, up[2]])],
-                [_cylp((c[0], s * (XIAO[1] / 2 - 0.7), zt + 0.3), (0, 0, 1), 0.7, 0.6,
+                # the joint on its pad, clear of the side arm pressed on the edge
+                [_cylp((c[0], s * (XIAO[1] / 2 - 0.95), zt + 0.3), (0, 0, 1), 0.7, 0.6,
                        "solder", sides=24)])
     if kind == "drv":
         h = drv_hole(spec[1], spec[2])
@@ -3786,7 +3886,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
 
     # the USB-C plug in the XIAO's port, its cord running off the board
     # the receptacle's centre: on top of the XIAO, 3.21 tall (Seeed's STEP)
-    pz = t_ + 0.02 + XIAO[2] + 3.21 / 2
+    pz = _xiao_z() + XIAO[2] + 3.21 / 2
     # what shows is the overmold, 12 x 6.4 and 20 long, from the
     # receptacle's mouth out through the wall; its metal shell is inside
     um = XIAO_X1 + 1.53
@@ -3853,25 +3953,31 @@ def assembly_steps(parts, specimen=SPECIMEN):
               path=(down, 20.0), against=["stator", "pucks"]),
         _step("mount_screw", "Mount screw up through the pedestal",
               "On the bench, from underneath: push a 7 mm drill through the "
-              "thin skin over the hex pocket first; the hex head drops into its "
+              "thin skin over the hex pocket first; the hex head drops into "
+              "its "
               "pocket and cannot turn. The last time the underside is "
               "reachable.", ["mount_screw"], path=(up, 60.0),
               against=["stator"]),
         _step("home_hall", "Home sensor into its boss",
-              "On the bench: grip the three leads with fine pliers right "
-              "against the body, so the bend never pulls on the case, and "
-              "bend them 90 degrees down past the pliers' jaw, about 1 mm "
-              "out from the body, away from the printed face. Set it in the "
-              "pocket printed face up, the leads down the slot beside it "
-              "and out under the base. Held printed face toward you, leads "
-              "down, they are supply, ground and output, left to right "
-              "(Honeywell's drawing): blue to the left, green to the "
-              "middle, white to the right. "
-              "Its wiring is the motor cable's spare: cut the cable 37 cm from "
-              "its plug and take three of the six wires off the loose 38 cm. "
-              "Splice them onto the sensor's leads underneath now and sleeve "
-              "each joint -- the splice ends up in the gap under the base, "
-              "where nothing can be soldered once the base is down.",
+              "On the bench, before the base goes down.\n"
+              "1. Bend the leads\n"
+              "- grip all three with fine pliers right against the body, so "
+              "the bend never pulls on the case\n"
+              "- bend them 90 degrees down past the jaw, about 1 mm out from "
+              "the body, away from the printed face\n"
+              "2. Set it in the pocket printed face up, the leads down the "
+              "slot beside it and out under the base.\n"
+              "3. Take its wiring from the motor cable's spare\n"
+              "- cut the cable 37 cm from its plug\n"
+              "- take three of the six wires off the loose 38 cm\n"
+              "4. Splice them onto the leads underneath, now: the splice ends "
+              "up in the gap under the base, where nothing can be soldered "
+              "once the base is down.\n"
+              "- held printed face toward you, leads down, the leads are "
+              "supply, ground and output, left to right (Honeywell's "
+              "drawing)\n"
+              "- blue to the left, green to the middle, white to the right\n"
+              "- sleeve each joint",
               hw=[(HALL_ITEM, 1, home_hall), (SHRINK_ITEM, 3, [])],
               path=(down, 15.0), against=["stator"]),
         _step("stator", "Base onto the board",
@@ -3883,12 +3989,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
               carry=["stator_inserts", "pucks", "feet", "mount_screw",
                      "home_hall"]),
         _step("bearings", "Two 688s into each printed wheel, onto the towers",
-              "On the bench, in a vise or under a flat block: a 688 pressed "
-              "into each face of a wheel, pushing on the bearing's outer "
-              "ring only, until it sits just under the face. The bore is "
-              "drawn a touch loose: a bearing that slides in by hand gets a "
-              "drop of CA or J-B Weld round its outer ring. Then sit each "
-              "wheel on a tower.",
+              "On the bench, in a vise or under a flat block, for each "
+              "wheel:\n"
+              "1. Press a 688 into each face, pushing on the bearing's outer "
+              "ring only, until it sits just under the face.\n"
+              "- the bore is drawn a touch loose: a bearing that slides in by "
+              "hand gets a drop of CA or J-B Weld round its outer ring\n"
+              "2. Sit the wheel on a tower.",
               list(WHEELS),
               [(WHEEL_BRG_ITEM, 6, bearings(True, _wheel_688s))],
               (down, 25.0), alt="retracted"),
@@ -3920,24 +4027,28 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["rotor"], path=(down, 40.0),
               carry=["rotor_inserts", "ring_magnet"]),
         _step("preload", "Turn the eccentrics in and tighten",
-              "With a 10 mm wrench on each sleeve's hex, in turn, a little "
-              "each time, so the ring stays centered, until every bearing "
-              "meets the race and the ring turns without play -- fully in "
-              "is a little tight, so stop just short of it. Then tighten "
-              "each axle bolt with the wrench still holding its sleeve: "
-              "left free, the sleeve turns with the bolt's head and walks "
-              "its wheel back off the race.",
+              "1. Turn each sleeve's hex with a 10 mm wrench, in turn and a "
+              "little each time, so the ring stays centered.\n"
+              "- stop when every bearing meets the race and the ring turns "
+              "without play\n"
+              "- fully in is a little tight: stop just short of it\n"
+              "2. Tighten each axle bolt with the wrench still holding its "
+              "sleeve.\n"
+              "- left free, the sleeve turns with the bolt's head and walks "
+              "its wheel back off the race",
               check="race", turn=turn),
         _step("pin", "Pin into the crank",
-              "On the bench: the \u00d83 x 16 dowel slid down through the "
-              "whole 8 mm of crank until its top is flush with the crank's "
-              "top, 8 mm standing out below. It should go in by hand, perhaps "
-              "with a twist; it is not a press. Stand the crank top up on "
-              "something flat with a hole for the pin, check the pin is "
-              "square to the crank's face, and touch a drop of thin CA to the "
-              "joint at the top: it wicks down the hole. Hold it still for a "
-              "minute, and keep glue off the 8 mm below, which runs in the "
-              "ring's slots.",
+              "On the bench.\n"
+              "1. Slide the \u00d83 x 16 dowel down through the whole 8 mm of "
+              "crank, until its top is flush with the crank's top and 8 mm "
+              "stands out below.\n"
+              "- it should go in by hand, perhaps with a twist; it is not a "
+              "press\n"
+              "2. Stand the crank top up on something flat with a hole for "
+              "the pin, and check the pin is square to the crank's face.\n"
+              "3. Touch a drop of thin CA to the joint at the top: it wicks "
+              "down the hole. Hold it still for a minute.\n"
+              "- keep glue off the 8 mm below, which runs in the ring's slots",
               hw=[(f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)", 1, pin)],
               path=(down, 20.0), against=["driver"]),
         _step("cable", "Plug the cable on and thread it down",
@@ -3950,13 +4061,17 @@ def assembly_steps(parts, specimen=SPECIMEN):
               view=(0.5 * np.cos(np.radians(GENEVA_PHI)),
                     0.5 * np.sin(np.radians(GENEVA_PHI)), 1.0)),
         _step("motor", "Gearmotor into the drive block",
-              "On the bench: first push a 4 mm drill through the two thin "
-              "skins on the block's floor, the bushing's hole and the screw's; "
-              "then the motor shaft down, its bushing into the floor's hole, "
-              "the flat of its D-shaft facing across the block, drawing the "
-              "cable down the bore as it goes and the plug into its channel. "
-              f"Seated, its faceplate is flat on the floor and {MOTOR['shaft_l'] - FLOOR_T:g} mm of shaft "
-              "stands out below. Nothing to solder: everything is on its plug.",
+              "On the bench, the cable already on its plug.\n"
+              "1. Push a 4 mm drill through the two thin skins on the block's "
+              "floor: the bushing's hole and the screw's.\n"
+              "2. Lower the gearmotor in, shaft down, drawing the cable down "
+              "the bore as it goes:\n"
+              "- its bushing into the floor's hole\n"
+              "- the flat of its D-shaft facing across the block\n"
+              "- the plug into its channel\n"
+              "3. Seated, its faceplate is flat on the floor and "
+              f"{MOTOR['shaft_l'] - FLOOR_T:g} mm of shaft stands out below.\n"
+              "Nothing to solder: everything is on its plug.",
               hw=[(MOTOR["item"], 1, motor)], path=(down, 30.0),
               against=["drive_block"]),
         _step("shim", "The driver's shim",
@@ -3964,12 +4079,14 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "the crank's height in the next step.",
               ["driver_shim"], check="spare"),
         _step("driver", "Driver up onto the gearmotor's shaft",
-              "On the bench: the M3 nut into its slot in the crank's top; "
-              "the shim against the block's floor, round the shaft; the "
-              "D-bore slid onto the D-shaft, flat to flat, up until the "
-              "crank meets the shim. Tighten the set screw onto the flat "
-              "through the crank's side, and pull the shim out. The pin "
-              "goes with it.",
+              "On the bench.\n"
+              "1. The M3 nut into its slot in the crank's top.\n"
+              "2. The shim against the block's floor, round the shaft.\n"
+              "3. Slide the D-bore onto the D-shaft, flat to flat, up until "
+              "the crank meets the shim.\n"
+              "4. Tighten the set screw onto the flat through the crank's "
+              "side, and pull the shim out.\n"
+              "The pin goes with it.",
               ["driver"], path=(up, 15.0), against=["drive_block", "motor"],
               carry=["pin"], hw=[(SETSCREW_ITEM, 1, setscrew), (NUT_ITEM, 1, crank_nut)]),
         _step("drive", "The drive down onto the base",
@@ -3981,7 +4098,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
               ["drive_block"], path=(down, 45.0),
               carry=["motor", "cable", "driver"]),
         _step("post_screw", "One screw down through the tower and post",
-              "Down the access bore into the base's insert.",
+              "Down the access bore into the base's insert. If it stops on "
+              "the floor, circle its head gently: the tip finds the hole's "
+              "mouth and drops through.",
               hw=[(f"M3x{length['drive post to base']}", 1, post_screw)],
               path=(down, 30.0)),
         _step("cap", "Lid pressed on",
@@ -3993,114 +4112,153 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "Glued to the board like the pucks, its USB-C opening facing "
               "out, its cable inlet toward the jig.",
               ["ctrl_box"], path=(down, 25.0)),
-        _step("tray", "The tray into the box",
-              "Printed, it drops in flat, its notches round the lid's two "
-              "bosses. It is wired like a circuit board: each part in a "
-              "saddle its own shape, its legs down through holes; each wire "
-              "down through the hole beside its net's name. Turned over, "
-              "the grooves underneath are the circuit, and every net that is "
-              "not on a board meets the others in its pocket there. It comes "
-              "out again for the wiring, and goes back in when it is done.",
-              ["ctrl_tray"], path=(down, 15.0)),
+        _step("tray", "The tray, out on the bench to be wired",
+              "Printed, it is wired out on the bench, where both faces can be "
+              "reached; it goes into the box only when the wiring is done "
+              "(the last step of it).\n"
+              "It is wired like a circuit board:\n"
+              "- each part in a saddle its own shape, its legs down through "
+              "holes\n"
+              "- each wire down through the hole beside its net's name\n"
+              "- turned over, the grooves underneath are the circuit, and "
+              "every net that is not on a board meets the others in its "
+              "pocket there",
+              ["ctrl_tray"], path=(down, 15.0), hide=["ctrl_box"]),
         _step("cable_run", "The motor's cable under the base to the box",
               "Its loose end from under the base, across the board, in "
-              "through the box's inlet. Pull 10 cm through: the wiring is "
-              "done with the ends up out of the box.", hw=[("", 0, cable_out)]),
+              "through the box's inlet and out over the box's far side, long "
+              "enough to reach the tray on the bench beside the box: the "
+              "wiring is done there.",
+              hw=[("", 0, cable_out)]),
         _step("home_lead", "The home sensor's lead to the box",
               "Spliced on before the base went down; laid under it now, "
               "alongside the motor's cable, and in through the box's inlet.",
               hw=[("", 0, lead)]),
         _step("drv", "The DRV8833 off the tray: everything under it",
-              "Seven joints are made on the DRV8833's underside, where it "
+              "Seven joints are made on the DRV8833's underside, where they "
               "cannot be reached once it is clipped in, so they come first, "
-              "on the bench with the board in helping hands by its edges, "
-              "parts up. Strip 3 mm off each wire's DRV8833 end. The 100 uF: "
-              "its long leg (+) into VIN, its striped leg (-) into the GND "
-              "beside it, on the power row, standing 2 mm off the board's "
-              "parts so its top stays under the lid. Into the logic row from "
-              f"the top: yellows cut {wire_cut('W15')}, {wire_cut('W16')} and "
-              f"{wire_cut('W17')} mm into AIN1, AIN2 and FLT, and a black cut "
-              f"{wire_cut('W12')} mm into GND. Into the power row: the motor "
-              "cable's black into AOUT2. Splay each lead a little underneath "
-              "so it stays put, turn the board over in the hands, solder all "
-              "seven, and cut them flush: the tray's slots under the rows "
-              "leave 1 mm. Then clip it into the tray, the tray flat on the "
-              "bench beside the box: parts up, its GND end (the square pad) "
-              "toward the 100 uF's value, the far end tucked under the lip "
-              "in its frame and the near end pressed down until the hook "
-              "clicks over it. To free it, push the hook's arm back with a "
-              "fingernail.",
+              "on the bench.\n"
+              "1. Hold the board in helping hands by its edges, parts up.\n"
+              "2. Strip 3 mm off each wire's DRV8833 end.\n"
+              "3. The 100 uF on the power row, standing 2 mm off the board's "
+              "parts so its top stays under the lid:\n"
+              "- its long leg (+) into VIN\n"
+              "- its striped leg (-) into the GND beside it\n"
+              "4. Into the logic row:\n"
+              f"- AIN1: a yellow cut {wire_cut('W15')} mm\n"
+              f"- AIN2: a yellow cut {wire_cut('W16')} mm\n"
+              f"- FLT: a yellow cut {wire_cut('W17')} mm\n"
+              f"- GND: a black cut {wire_cut('W12')} mm\n"
+              "5. Into the power row: the motor cable's black into AOUT2.\n"
+              "6. Splay each lead a little underneath so it stays put, and "
+              "turn the board over in the hands.\n"
+              "7. Solder all seven and cut them flush: the tray's slots under "
+              "the rows leave 1 mm.\n"
+              "8. Clip it into the tray, the tray flat on the bench:\n"
+              "- parts up, its GND end (the square pad) toward the 100 uF's "
+              "value\n"
+              "- the far end tucked under the lip in its frame\n"
+              "- the near end pressed down until the hook clicks over it\n"
+              "To free it, push the hook's arm back with a fingernail.",
               hw=[("Pololu #2130 DRV8833 dual motor driver carrier", 1, drv),
                   (CAP_ITEM, 1, inbox(c1_prims())), ("", 0, wires["drv"])],
               # its clip's arm stands DRV_PRELOAD inside the board's end
               presses=[("Pololu #2130 DRV8833", "ctrl_tray")], solder=True,
-              view=top_view),
+              view=top_view, hide=["ctrl_box"]),
         _step("xiao", "The XIAO clipped in, and its pads",
-              "The tray flat on the bench, right side up, the XIAO's window "
-              "toward you. The XIAO parts up, its USB-C toward the window's "
-              "open end: tuck the edge away from the M1 name under the small "
-              "lip beside the USB-C, then press it down until the hooks at "
-              "its far end and its other edge click over it. Every wire here "
-              "lies flat along its pad: strip 2 mm and tin it, tin the pad, "
-              "lay the wire on it pointing off the board's edge and touch the "
-              "iron to both. The pads sit 1.7 mm below the tray's top, so keep "
-              "the tip upright and off the window's walls. 5V: a red cut "
-              f"{wire_cut('W10')} mm. GND: a black cut {wire_cut('W11')} mm. "
-              f"3V3: a blue cut {wire_cut('W13')} mm. D5: a white cut "
-              f"{wire_cut('W14')} mm. D0, D1 and D8: the yellows from AIN1, "
-              "AIN2 and FLT. D3 and D4: the motor cable's yellow and white. "
-              "The black, blue and white go on down the hole beside their "
+              "1. Clip it in, the tray flat on the bench, right side up, the "
+              "XIAO's window toward you:\n"
+              "- the XIAO parts up, its USB-C toward the window's open end\n"
+              "- tilt it and slide the edge away from the M1 name into its "
+              "groove, under the row of lips between its pads\n"
+              "- press the other edge down until the hooks at its far end "
+              "and along that edge click over it: each edge now sits on a "
+              "ledge under a hook\n"
+              "2. Every wire here lies flat along its pad:\n"
+              "- strip 2 mm and tin it, and tin the pad\n"
+              "- lay the wire on it pointing off the board's edge and touch "
+              "the iron to both\n"
+              f"- the pads sit {_plate_top() - _xiao_z() - XIAO[2]:.1f} mm "
+              "below the tray's top: keep the tip "
+              "upright and off the window's walls\n"
+              "3. New wires, cut to length:\n"
+              f"- 5V: a red cut {wire_cut('W10')} mm\n"
+              f"- GND: a black cut {wire_cut('W11')} mm\n"
+              f"- 3V3: a blue cut {wire_cut('W13')} mm\n"
+              f"- D5: a white cut {wire_cut('W14')} mm\n"
+              "4. Wires already there:\n"
+              "- D0, D1 and D8: the yellows from AIN1, AIN2 and FLT\n"
+              "- D3 and D4: the motor cable's yellow and white\n"
+              "5. The black, blue and white go on down the hole beside their "
               "net's name, stripped 6 mm, and wait under the tray.",
               hw=[("Seeed Studio XIAO ESP32S3", 1, xiao), ("", 0, wires["xiao"])],
-              solder=True, view=top_view),
+              # its side arm stands XIAO_SIDE_PRELOAD inside the board's edge
+              presses=[("Seeed Studio XIAO ESP32S3", "ctrl_tray")],
+              solder=True, view=top_view, hide=["ctrl_box"]),
         _step("r1", "Up from below: the 4.7 ohm and 5 V",
-              "These two come up into the DRV8833 from under the tray, so "
-              "hold the tray on its long edge in the helping hands, the M1 "
-              "side up, where both faces can be reached. The 4.7 ohm into "
-              "its saddle above the DRV8833, a leg bent down into the hole at "
-              "each end, 2.4 mm out from the body so the bend never pulls on "
-              "it. Under the tray, its leg nearer the left wall along its "
-              "groove and up the slot into AOUT1; the red from 5V down the "
-              "hole beside the 100 uF's value, along its groove and up the "
-              "slot into VIN beside the capacitor's leg. Lay the tray flat, "
-              "right side up, and solder both on the DRV8833's top. The "
-              "resistor's other leg stays long, for the M1 pocket.",
+              "These two come up into the DRV8833 from under the tray.\n"
+              "1. Hold the tray on its long edge in the helping hands, the M1 "
+              "side up, so both faces can be reached.\n"
+              "2. The 4.7 ohm into its saddle above the DRV8833:\n"
+              "- a leg bent down into the hole at each end, 2.4 mm out from "
+              "the body so the bend never pulls on it\n"
+              "- under the tray, its leg nearer the left wall along its "
+              "groove and up the slot into AOUT1\n"
+              "- its other leg stays long, for the M1 pocket\n"
+              "3. The red from 5V down the hole beside the 100 uF's value, "
+              "along its groove and up the slot into VIN beside the "
+              "capacitor's leg.\n"
+              "4. Lay the tray flat, right side up, and solder both on the "
+              "DRV8833's top.",
               hw=[(MOTOR_R_ITEM, 1, inbox(r1_prims()))], solder=True,
-              view=top_view),
+              view=top_view, hide=["ctrl_box"]),
         _step("j_m1", "Upside down: the M1 joint",
-              "The four joints left are under the tray. Turn it over and "
-              "rest it on two blocks under its long edges, 16 mm or taller "
-              "(the 100 uF stands 14.6 above the plate), so nothing on top "
-              "bears on the bench. The cable's red (the motor's M1) down the "
-              "hole beside M1 and along its groove to the pocket, where it "
-              "twists onto the resistor's leg. Lift the twist clear of the "
-              "plastic with tweezers -- PETG softens at 80 C -- solder it, "
-              "and press it into the pocket once it is cool.",
+              "The four joints left are under the tray.\n"
+              "1. Turn it over and rest it on two blocks under its long "
+              "edges, 16 mm or taller (the 100 uF stands 14.6 above the "
+              "plate), so nothing on top bears on the bench.\n"
+              "2. The cable's red (the motor's M1) down the hole beside M1 "
+              "and along its groove to the pocket.\n"
+              "3. Twist it onto the resistor's leg.\n"
+              "4. Lift the twist clear of the plastic with tweezers -- PETG "
+              "softens at 80 C -- and solder it.\n"
+              "5. Press it into the pocket once it is cool.",
               hw=[("", 0, wires["j_m1"] + inbox(joint_prims("M1")))], solder=True,
               view=under_view, hide=["ctrl_box"]),
         _step("j_home", "Upside down: the pull-up, 3V3 and the home signal",
-              "The tray right side up for a moment: the 10 kohm into its "
-              "saddle beside its value, a leg down each end. Over again, on "
-              "the blocks: its legs run to the 3V3 and D5 pockets. 3V3, down "
-              "its three holes: the motor cable's blue (the encoder's "
-              "supply), the home lead's blue (the sensor's) and the blue "
-              "from the XIAO's 3V3. D5, down its two: the home lead's white "
-              "(the sensor's output) and the white from the XIAO's D5. In "
-              "each pocket the ends twist together, are soldered lifted "
-              "clear and pressed in cool.",
+              "1. The tray right side up for a moment: the 10 kohm into its "
+              "saddle beside its value, a leg down each end.\n"
+              "2. Over again, on the blocks: its legs run to the 3V3 and D5 "
+              "pockets.\n"
+              "3. Down the three holes beside 3V3:\n"
+              "- the motor cable's blue (the encoder's supply)\n"
+              "- the home lead's blue (the sensor's)\n"
+              "- the blue from the XIAO's 3V3\n"
+              "4. Down the two beside D5:\n"
+              "- the home lead's white (the sensor's output)\n"
+              "- the white from the XIAO's D5\n"
+              "5. In each pocket: twist the ends together, solder them lifted "
+              "clear, and press them in cool.",
               hw=[(PULLUP_ITEM, 1, inbox(r2_prims())),
                   ("", 0, wires["j_home"] + inbox(joint_prims("3V3"))
                    + inbox(joint_prims("D5")))], solder=True,
               view=under_view, hide=["ctrl_box"]),
         _step("j_gnd", "Upside down: every ground together",
-              "Down the four holes beside GND: both greens (the encoder's "
-              "and the sensor's ground) and the two blacks already there, "
-              "from the XIAO's GND and the DRV8833's. One joint, in the GND "
-              "pocket. Then the tray back into the box, right side up: USB-C "
-              "end first and tilted, the port into the wall's opening, then "
-              "laid down over the bosses, the cables folding in over it.",
+              "1. Down the four holes beside GND:\n"
+              "- both greens (the encoder's and the sensor's ground)\n"
+              "- the two blacks already there, from the XIAO's GND and the "
+              "DRV8833's\n"
+              "2. One joint, in the GND pocket: twisted, soldered lifted "
+              "clear, and pressed in cool.",
               hw=[("", 0, wires["j_gnd"] + inbox(joint_prims("GND")))], solder=True,
               view=under_view, hide=["ctrl_box"]),
+        _step("tray_in", "The wired tray into the box",
+              "Only now, with every joint made: right side up,\n"
+              "- USB-C end first and tilted, the port into the wall's "
+              "opening\n"
+              "- then laid down over the lid's two bosses, the cables "
+              "folding in over it",
+              view=top_view),
         _step("ctrl_lid", "Lid on the controller",
               "Its two pegs pressed into the bosses.",
               ["ctrl_lid"], path=(down, 15.0),
@@ -4136,7 +4294,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
               hw=[("M5 square nut", 1, nut)], path=(inboard, 20.0),
               against=["saddle"], at=E),
         _step("saddle", "Saddle onto the arc, inboard",
-              "Half way up the arc, its lips over the arc's inner and outer faces.",
+              "Half way up the arc, its lips over the arc's inner and outer "
+              "faces.",
               ["saddle"], path=(inboard, 30.0), carry=["saddle_inserts", "nut"],
               at=E),
         _step("shoe", "Shoe onto the arc, outboard", "",

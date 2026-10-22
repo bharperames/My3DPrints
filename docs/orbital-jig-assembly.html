@@ -76,6 +76,11 @@
   .bar.sticky { position:sticky; top:-14px; z-index:5; margin:-14px -16px 10px; padding:12px 16px 10px;
     background:var(--surface); border-bottom:1px solid var(--line); }
   button:disabled { opacity:.4; cursor:default; border-color:var(--edge); }
+  /* a step jumped to lands below the controls, not under them */
+  .step { scroll-margin-top:calc(var(--bar-h, 60px) + 6px); }
+  details.adv { margin-top:18px; border-top:1px solid var(--line); padding-top:10px; }
+  details.adv summary { cursor:pointer; font-weight:600; font-size:13px; }
+  details.adv h3 { font-size:12px; font-weight:600; color:var(--ink-soft); margin:12px 0 6px; }
   .follow { font-size:12.5px; color:var(--ink-soft); display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
   .seg { display:inline-flex; border:1px solid var(--edge); border-radius:6px; overflow:hidden; }
   .seg button { border:0; border-radius:0; padding:5px 10px; }
@@ -99,6 +104,12 @@
   .step .v { font-size:12px; font-weight:700; }
   .step .v.ok { color:var(--good); } .step .v.bad { color:var(--risk); }
   .step .what { grid-column:2 / -1; font-size:12px; color:var(--ink-soft); line-height:1.4; }
+  .step .what p { margin:0 0 4px; }
+  .step .what ol { margin:2px 0 4px; padding-left:20px; }
+  .step .what ol > li { margin:3px 0; padding-left:2px; }
+  .step .what ol > li::marker { color:var(--ink); font-weight:600; }
+  .step .what ul { margin:2px 0 2px; padding-left:16px; }
+  .step .what ul > li { margin:1px 0; }
   .chips { grid-column:2 / -1; display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
   .chip { font-size:11.5px; padding:1px 7px; border-radius:99px; border:1px solid var(--edge); }
   .chip.p { border-color:var(--p-small); color:var(--ink); }
@@ -136,12 +147,8 @@
       <button id="next">Step ▶</button>
       <button id="reset">Reset</button>
       <span class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="3">3×</button></span>
-      <label class="follow"><input type="checkbox" id="follow" checked> follow the step</label>
-      <span class="seg" id="modes" role="group" aria-label="render mode"></span>
     </div>
     <div class="checks" id="checks"></div>
-    <h2>Filament</h2>
-    <div id="petg"></div>
     <h2>The order</h2>
     <ol class="steps" id="steps"></ol>
     <h2>Bill of materials, as the steps use it</h2>
@@ -152,6 +159,15 @@
     <div class="tablewrap"><table id="fits"></table></div>
     <h2>Bolt lengths</h2>
     <div class="tablewrap"><table id="joints"></table></div>
+    <details class="adv">
+      <summary>Advanced</summary>
+      <h3>Render style</h3>
+      <span class="seg" id="modes" role="group" aria-label="render style"></span>
+      <h3>Camera</h3>
+      <label class="follow"><input type="checkbox" id="follow" checked> follow the step</label>
+      <h3>Filament</h3>
+      <div id="petg"></div>
+    </details>
     <div class="note">
       <b>What is drawn is what prints, and what was checked.</b> The bodies
       come out of the 3MF the shop builds for this part, and the order, the
@@ -284,7 +300,7 @@ function setFilament(m, mat) {
 /* The render modes the shop's pages offer. Hidden line is the real
    thing: surfaces still write depth, they just draw no colour, so an
    edge behind a part is hidden by it -- not every edge at once. */
-const MODES = [['shaded', 'Shaded'], ['edges', 'Shaded + edges'], ['hlr', 'Hidden line'],
+const MODES = [['edges', 'Default'], ['shaded', 'Shaded'], ['hlr', 'Hidden line'],
   ['wire', 'Wireframe'], ['xray', 'X-ray']];
 let mode = 'edges';
 const INK = new THREE.Color('#141f2e'), INK_SOFT = new THREE.Color('#a9b9cc');
@@ -495,15 +511,48 @@ function primGeom(p) {
 }
 /* A board photographed, laid on a box's top or bottom face: `uv` maps
    the box's own x, y to the photo, fitted by the generator to the
-   photographed holes. Children of the box, drawn over its face. */
-const photoTex = {};
-function photoDecals(p) {
-  return Object.entries(p.photo).map(([face, { img, uv }]) => {
-    if (!photoTex[img]) {
-      const t = photoTex[img] = new THREE.TextureLoader().load('../' + img);
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+   photographed holes. Where the photo shows what was behind the board --
+   through its holes, round its rounded corners -- `holes` and `corner`
+   cut it away, drawn in the box's frame through the same fit. Children of
+   the box, drawn over its face. */
+const photoImg = {}, photoTex = {};
+function loadPhoto(img) {
+  return photoImg[img] ||= new Promise((ok, no) => {
+    const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = '../' + img; });
+}
+function photoTexture(ph, p) {
+  const key = ph.img + (ph.holes ? '|' + JSON.stringify([p.lo, p.hi, ph.uv]) : '');
+  if (photoTex[key]) return photoTex[key];
+  const cv = document.createElement('canvas');
+  const t = photoTex[key] = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  loadPhoto(ph.img).then(im => {
+    const W = cv.width = im.naturalWidth, H = cv.height = im.naturalHeight;
+    const g = cv.getContext('2d');
+    g.drawImage(im, 0, 0);
+    if (ph.holes) {
+      const [a, b, c, d, e, f] = ph.uv;
+      g.setTransform(W * a, -H * d, W * b, -H * e, W * c, H - H * f);   // box mm -> pixels
+      g.globalCompositeOperation = 'destination-out';
+      g.beginPath();
+      for (const [x, y] of ph.holes) { g.moveTo(x + ph.hole_d / 2, y); g.arc(x, y, ph.hole_d / 2, 0, 2 * Math.PI); }
+      g.fill();
+      if (ph.corner) {            // everything outside the board's rounded outline
+        const [x0, y0] = p.lo, [x1, y1] = p.hi, m = 50;
+        g.beginPath();
+        g.rect(x0 - m, y0 - m, x1 - x0 + 2 * m, y1 - y0 + 2 * m);
+        g.roundRect(x0, y0, x1 - x0, y1 - y0, ph.corner);
+        g.fill('evenodd');
+      }
     }
+    t.needsUpdate = true;
+  });
+  return t;
+}
+function photoDecals(p) {
+  return Object.entries(p.photo).map(([face, ph]) => {
+    const { uv } = ph;
     const top = face === 'top', z = top ? p.hi[2] + 0.004 : p.lo[2] - 0.004;
     const [x0, y0] = p.lo, [x1, y1] = p.hi;
     // counter-clockwise seen from outside: up for the top, down for the bottom
@@ -515,8 +564,9 @@ function photoDecals(p) {
       [uv[0] * x + uv[1] * y + uv[2], uv[3] * x + uv[4] * y + uv[5]]), 2));
     g.setIndex([0, 1, 2, 0, 2, 3]);
     g.computeVertexNormals();
-    const d = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: photoTex[img],
-      roughness: 0.55, metalness: 0 }));
+    // cut-out pixels are see-through: the board's own face shows there
+    const d = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: photoTexture(ph, p),
+      roughness: 0.55, metalness: 0, alphaTest: 0.5 }));
     d.userData.decal = true;
     return d;
   });
@@ -744,8 +794,31 @@ function poseAll(k, f) {
 }
 
 /* ---------- the panel ---------- */
+/* A step's text: lines, each a sentence ("Text"), a sub-step ("1. Text")
+   or a detail under the sub-step above it ("- text"). */
+function noteHtml(note) {
+  let out = '', ol = false, ul = false;
+  const closeUl = () => { if (ul) { out += '</ul>'; ul = false; } };
+  const closeOl = () => { closeUl(); if (ol) { out += '</li></ol>'; ol = false; } };
+  for (const line of note.split('\n')) {
+    let m;
+    if ((m = line.match(/^(\d+)\. (.*)$/))) {
+      closeUl();
+      out += ol ? '</li><li>' : `<ol start="${m[1]}"><li>`;
+      ol = true; out += m[2];
+    } else if ((m = line.match(/^- (.*)$/))) {
+      if (!ul) { out += '<ul>'; ul = true; }
+      out += `<li>${m[1]}</li>`;
+    } else { closeOl(); out += `<p>${line}</p>`; }
+  }
+  closeOl();
+  return out;
+}
 const names = n => n.replace(/_/g, ' ');
 const stepsEl = document.getElementById('steps');
+{ const bar = document.querySelector('.bar.sticky');
+  const setBar = () => document.documentElement.style.setProperty('--bar-h', bar.offsetHeight + 'px');
+  new ResizeObserver(setBar).observe(bar); setBar(); }
 STEPS.forEach((st, i) => {
   const li = document.createElement('li');
   li.className = 'step'; li.id = 'st' + i;
@@ -756,7 +829,7 @@ STEPS.forEach((st, i) => {
     .concat(st.carry.map(id => `<span class="chip">with step ${idx[id] + 1}</span>`));
   li.innerHTML = `<span class="k">${i + 1}</span><b>${st.title}</b>` +
     `<span class="v ${ok === null ? '' : ok ? 'ok' : 'bad'}" title="${ok ? 'path swept clear' : ok === false ? 'collides: ' + c.fouls.map(f => f[1].join(', ')).join('; ') : 'not swept'}">${ok === null ? '' : ok ? '✓' : '✗'}</span>` +
-    (st.note ? `<span class="what">${st.note}</span>` : '') +
+    (st.note ? `<div class="what">${noteHtml(st.note)}</div>` : '') +
     (chips.length ? `<span class="chips">${chips.join('')}</span>` : '');
   li.onclick = () => { go(i); };
   stepsEl.appendChild(li);
@@ -861,9 +934,11 @@ function hudText() {
     el.className = 'step' + (i === k ? ' on' : i < k ? ' done' : '');
   });
 }
+/* the step's card, its top just under the controls */
+function showCard() { document.getElementById('st' + k).scrollIntoView({ block: 'start', behavior: 'smooth' }); }
 function go(i, play = playing) {
   k = Math.max(0, Math.min(STEPS.length - 1, i)); f = 0; playing = play; setPlay(); hudText(); frameStep(k);
-  document.getElementById('st' + k).scrollIntoView({ block: 'nearest' }); }
+  showCard(); }
 const playBtn = document.getElementById('play');
 let stepOnce = false;
 function setPlay() { playBtn.textContent = playing && !stepOnce ? '⏸ Pause' : (k === STEPS.length - 1 && f >= 1 ? '▶ Again' : '▶ Assemble'); }
@@ -876,9 +951,9 @@ document.getElementById('next').onclick = () => {
   stepOnce = true; playing = true; setPlay(); hudText(); };
 document.getElementById('prev').onclick = () => {
   if (k === 0) return;
-  k = k - 1; f = 1; playing = false; setPlay(); hudText(); frameStep(k); };
+  k = k - 1; f = 1; playing = false; setPlay(); hudText(); frameStep(k); showCard(); };
 document.getElementById('reset').onclick = () => {
-  k = 0; f = 0; playing = false; setPlay(); hudText(); frameStep(k); };
+  k = 0; f = 0; playing = false; setPlay(); hudText(); frameStep(k); showCard(); };
 document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
   speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b)); });
 
@@ -1354,7 +1429,7 @@ renderer.setAnimationLoop(now => {
     f += dt / durOf(k);
     if (stepOnce && f >= 1) { f = 1; stepOnce = false; playing = false; setPlay(); hudText(); }
     else if (f >= 1 + holdOf(k)) {           // a beat on each seated step
-      if (k < STEPS.length - 1) { k++; f = 0; hudText(); frameStep(k); document.getElementById('st' + k).scrollIntoView({ block: 'nearest' }); }
+      if (k < STEPS.length - 1) { k++; f = 0; hudText(); frameStep(k); showCard(); }
       else { f = 1; playing = false; setPlay(); }
     }
   }

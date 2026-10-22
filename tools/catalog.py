@@ -596,7 +596,15 @@ PARTS = [
        # The top's names raised again, 0.4, for a paint pen to gold; the 3
        # and the G redrawn, read as E and 6, and the letters closer.
        # 51.0.0: the same; 50.0.0 was recorded with the leg holes alone.
-       version="51.0.0",
+       # 52.0.0: a 45-degree mouth, 4.4 across, on the drive post screw's
+       # hole, so the bolt dropped down its bore finds it.
+       # 53.0.0: the XIAO drawn 1.59 thick, as Brett measured it (Seeed's
+       # STEP says 1.25): the box's USB-C opening centred on its port
+       # again, and a post under the lid holding it down behind the USB-C.
+       # 54.0.0: the same, finished -- a ledge under the XIAO's edges and a
+       # lip in each gap between its pads, so each edge sits in a groove;
+       # its side arm 1.4 thick. 53.0.0 was recorded part way.
+       version="54.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face
