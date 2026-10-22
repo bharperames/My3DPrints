@@ -329,6 +329,14 @@ function style(m) {
   const key = `${mat.transparent}|${mat.wireframe}`;
   if (u.key !== key) { mat.needsUpdate = true; u.key = key; }
   if (mat.emissive) mat.emissive.copy(GLOW).multiplyScalar(glow);
+  // a photo on its face: only where the faces are drawn as they are,
+  // and as faded as the part it lies on
+  for (const d of u.decals || []) {
+    d.visible = mode === 'shaded' || mode === 'edges';
+    const dm = d.material, dk = `${op < 1}`;
+    dm.opacity = op; dm.transparent = op < 1; dm.depthWrite = op >= 1;
+    if (d.userData.key !== dk) { dm.needsUpdate = true; d.userData.key = dk; }
+  }
   const e = m.children[0];
   if (e) {
     e.visible = m.visible && (mode === 'edges' || mode === 'xray' || mode === 'hlr');
@@ -485,6 +493,34 @@ function primGeom(p) {
   g.translate(...p.c);
   return g;
 }
+/* A board photographed, laid on a box's top or bottom face: `uv` maps
+   the box's own x, y to the photo, fitted by the generator to the
+   photographed holes. Children of the box, drawn over its face. */
+const photoTex = {};
+function photoDecals(p) {
+  return Object.entries(p.photo).map(([face, { img, uv }]) => {
+    if (!photoTex[img]) {
+      const t = photoTex[img] = new THREE.TextureLoader().load('../' + img);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    }
+    const top = face === 'top', z = top ? p.hi[2] + 0.004 : p.lo[2] - 0.004;
+    const [x0, y0] = p.lo, [x1, y1] = p.hi;
+    // counter-clockwise seen from outside: up for the top, down for the bottom
+    const xy = top ? [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
+      : [[x0, y0], [x0, y1], [x1, y1], [x1, y0]];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(xy.flatMap(([x, y]) => [x, y, z]), 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(xy.flatMap(([x, y]) =>
+      [uv[0] * x + uv[1] * y + uv[2], uv[3] * x + uv[4] * y + uv[5]]), 2));
+    g.setIndex([0, 1, 2, 0, 2, 3]);
+    g.computeVertexNormals();
+    const d = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: photoTex[img],
+      roughness: 0.55, metalness: 0 }));
+    d.userData.decal = true;
+    return d;
+  });
+}
 /* what each step's bought parts are made of */
 const MATS = { motor: ['steel', 'brass', 'steel', 'brass'], cable: ['cable'], ctrl: ['pcb'],
   home_hall: ['dark'], ring_magnet: ['magnet'], home_lead: ['cable'], cable_run: ['cable'],
@@ -508,6 +544,8 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
   const m = makeMesh(knurled ? insertGeom(p) : primGeom(p), hardwareMaterial(kind), knurled ? 80 : 25);
   m.userData.base = p.M ? new THREE.Matrix4().set(...p.M) : new THREE.Matrix4();
   m.userData.unit = p.unit ?? j;
+  if (p.photo) m.userData.decals = photoDecals(p);
+  for (const d of m.userData.decals || []) m.add(d);
   return m;
 })));
 

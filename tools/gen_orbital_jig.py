@@ -1599,8 +1599,8 @@ def ctrl_lid(specimen=SPECIMEN):
 # runs in a groove underneath, and meets the others in the net's pocket.
 # The grooves are the circuit's traces, cut into the face that prints on
 # the bed, with each net's name beside its pocket, mirrored so it reads
-# with the tray turned over. Every name on the top is cut in too: raised
-# letters 3.6 tall printed as blobs (Brett's first and second trays).
+# with the tray turned over. The names on the top stand up off it (see
+# TRAY_RAISE).
 #
 # Each joint is still made off the plastic: the wires' ends twisted under
 # the tray, lifted clear with tweezers, soldered, and pressed into the
@@ -1627,9 +1627,20 @@ TRAY_BOSS_FIT = 0.15
 # strokes, and those printed as blobs too: every stroke a small island
 # the nozzle starts and stops on. Cut into the plate, the letters are
 # holes the top layers go round, and they print as clean as the outline.
+# 50.0.0: raised again on the top, as Brett asked. Cut in, they printed
+# clean but could not be made to read: a paint pen run over the tray golds
+# the plate and the letters alike, where run over raised letters it golds
+# only them. They stand at the cut letters' size, 4.2 tall in 0.9 strokes
+# -- bigger than 30.0.0's 3.6 in 0.8 -- and only two layers proud, with
+# no frames round them. The underside's names stay cut: nobody paints them.
 TRAY_CAP = 4.2          # a block letter's height
 TRAY_LINE = 0.9         # every stroke: a letter, a symbol
-TRAY_CUT = 0.6          # how deep they are cut, top and underside
+TRAY_CUT = 0.6          # how deep the underside's names are cut
+TRAY_RAISE = 0.4        # how far the top's names stand up: two layers
+# between letters: at 0.22 of a letter's height 3V3 read as three marks,
+# not a word. 0.16 is 0.67 at 4.2, still more than a line and a half of
+# the 0.4 nozzle, so raised letters stay apart
+TRAY_TRACK = 0.16
 # Under the plate: a groove the width of one wire or leg, and a pocket
 # for each net's joint (a twist of up to four 28 AWG ends, soldered).
 GROOVE = (1.4, 1.0)     # width, depth
@@ -1716,6 +1727,16 @@ DRV_PARTS = ((4.86, 7.52, 8.86, 11.53, 1.03, "ic"),          # the DRV8833
              (2.98, 5.63, 3.88, 7.33, 0.90, "ceramic"),
              (2.85, 9.82, 3.75, 11.52, 0.90, "ceramic"),
              (3.59, 14.54, 5.30, 15.44, 0.90, "ceramic"))
+# Brett's photographs of his carrier, laid on the board's faces on the
+# page: the parts' side on top, the silkscreen's underneath. Each maps the
+# board's x, y from its centre to the photo's u, v (u = a x + b y + c,
+# v = d x + e y + f), fitted by least squares to the 16 holes' centers in
+# the photo, all within 0.12 mm.
+DRV_PHOTOS = {
+    "top": ("assets/drv8833/front.jpg",
+            (-0.000071, -0.050683, 0.511461, 0.080646, -0.000762, 0.515589)),
+    "bottom": ("assets/drv8833/back.jpg",
+               (0.001116, 0.050977, 0.504647, 0.077961, -0.000684, 0.497031))}
 # Stackpole's and Panasonic's drawings: body length, diameter, lead.
 # Body colors are the usual ones for these lines, not from a datasheet.
 R1_DIM = (11.0, 4.5, 0.8)        # RSMF2JT4R70, 4.7 ohm 2 W
@@ -1733,7 +1754,12 @@ C1_STANDOFF = 2.0                # off the DRV8833's parts, under the lid
 # stands that far past the end of the longest body its drawing allows.
 # Until 46.0.0 both stood 2.05 past a nominal body: the 4.7 ohm's legs
 # would have been bent at the body, 1.1 short at its longest.
-LEAD_HOLE = 0.6
+# 50.0.0: drawn 0.6 over the leg, the holes printed shut round it -- the
+# 10 kohm's Ø1.15 let almost no light through on Brett's tray. A hole that
+# small loses about half a millimeter, so each is drawn 1.2 over: Ø1.75
+# for the 0.55 leg, Ø2.0 for the 0.8, printing near 1.5 and 1.75. The
+# wire holes stay Ø1.6: the motor cable's wires go through them.
+LEAD_HOLE = 1.2
 LEAD_MIN_STRAIGHT = 0.8
 R1_AT = ((-13.95, 14.55), "x", 1.5)        # its centre, its axis, saddle depth
 R2_AT = ((1.0, -2.85), "y", 0.8)
@@ -1903,12 +1929,17 @@ def _routes():
 _BLOCK = {
     "0": [[(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)]],
     "1": [[(0.2, 0.8), (0.55, 1), (0.55, 0)]],
-    "3": [[(0, 1), (1, 1), (1, 0), (0, 0)], [(0.25, 0.5), (1, 0.5)]],
+    # flat-topped, a diagonal to its waist: squared off, a 3 is a backwards
+    # E, and Brett read the tray's 3V3 as EVE
+    "3": [[(0, 1), (1, 1), (0.35, 0.55), (1, 0.55), (1, 0), (0, 0)]],
     "4": [[(0, 1), (0, 0.45), (1, 0.45)], [(0.75, 1), (0.75, 0)]],
     "5": [[(1, 1), (0, 1), (0, 0.5), (1, 0.5), (1, 0), (0, 0)]],
     "7": [[(0, 1), (1, 1), (0.45, 0)]],
     "D": [[(0, 0), (0, 1), (0.6, 1), (1, 0.65), (1, 0.35), (0.6, 0), (0, 0)]],
-    "G": [[(1, 1), (0, 1), (0, 0), (1, 0), (1, 0.5), (0.45, 0.5)]],
+    # wider than the rest (see _BLOCK_W), so its bar stops short of the
+    # left stroke: in the common cell it ran into it, closed the bowl, and
+    # GND read 6ND
+    "G": [[(1, 1), (0, 1), (0, 0), (1, 0), (1, 0.5), (0.6, 0.5)]],
     "N": [[(0, 0), (0, 1), (1, 0), (1, 1)]],
     "V": [[(0, 1), (0.5, 0), (1, 1)]],
     "M": [[(0, 0), (0, 1), (0.5, 0.45), (1, 1), (1, 0)]],
@@ -1919,7 +1950,7 @@ _BLOCK = {
                  (1, 0.5), (0.7, 0.25), (0.7, 0), (1, 0)]],
     "+": [[(0, 0.5), (1, 0.5)], [(0.5, 0.05), (0.5, 0.95)]],
 }
-_BLOCK_W = {".": 0.25, "\u03a9": 0.85, "1": 0.45}
+_BLOCK_W = {".": 0.25, "\u03a9": 0.85, "1": 0.45, "G": 0.8}
 
 
 def _glyph(text, cap, at, angle=0.0, w=TRAY_LINE):
@@ -1940,7 +1971,7 @@ def _glyph(text, cap, at, angle=0.0, w=TRAY_LINE):
             lo = -0.3 * h if ch == "\u00b5" else 0.0
             out.append(strokes.intersection(
                 Polygon([(x, lo), (x + cw, lo), (x + cw, cap), (x, cap)])))
-        x += cw + 0.22 * cap
+        x += cw + TRAY_TRACK * cap
     g = unary_union(out)
     x0, y0, x1, y1 = g.bounds
     g = affinity.translate(g, -(x0 + x1) / 2, -(y0 + y1) / 2)
@@ -1991,7 +2022,7 @@ def tray_layout():
     # held at +y, room at -y for the longest board but where the arm is
     inner = _rect(DRV_C[0] - dl, dm, DRV_C[0] + dl, dp)
     rim = inner.buffer(DRV_RIM[0], join_style=2).difference(inner)
-    # cut into the top: the names and values
+    # standing up off the top: the names and values
     top = []
     for net, d in NETS.items():
         x, y, a = d["name"]
@@ -2133,9 +2164,10 @@ def ctrl_tray(specimen=SPECIMEN):
                   + [m for poly, zt in L["raised"]
                      for m in prism(poly.intersection(plate), pt - 0.01, zt)]
                   + [_hook_mesh(a, b, n, zb, zt, lead, reach)
-                     for _, a, b, n, zb, zt, lead, reach in L["hooks"]])
+                     for _, a, b, n, zb, zt, lead, reach in L["hooks"]]
+                  + prism(unary_union([g for _, g in L["top"]]).intersection(plate),
+                          pt - 0.01, pt + TRAY_RAISE))
     tools = []
-    tools += prism(unary_union([g for _, g in L["top"]]), pt - TRAY_CUT, pt + 1)
     tools += prism(unary_union([g for _, g in L["under"]
                                 if not _.startswith("pocket")]), z0 - 1, z0 + GROOVE[1])
     tools += prism(unary_union([g for _, g in L["under"]
@@ -2208,7 +2240,15 @@ def drv_prims():
     z = _plate_top() + 0.02
     zt = z + DRV8833[2]
     l, w = DRV8833[0] / 2, DRV8833[1] / 2
-    out = [_boxp((DRV_C[0] - l, -w, z), (DRV_C[0] + l, w, zt), "pcb_green")]
+    def photo(*faces):
+        out = {}
+        for f in faces:
+            img, (a, b, c, d, e, f0) = DRV_PHOTOS[f]
+            out[f] = dict(img=img, uv=[a, b, c - a * DRV_C[0] - b * DRV_C[1],
+                                       d, e, f0 - d * DRV_C[0] - e * DRV_C[1]])
+        return out
+    out = [dict(_boxp((DRV_C[0] - l, -w, z), (DRV_C[0] + l, w, zt), "pcb_green"),
+                photo=photo("top", "bottom"))]
     for row, (_, names) in DRV_ROWS.items():
         for n in names:
             c = drv_hole(row, n)
@@ -2218,8 +2258,9 @@ def drv_prims():
     for x0, y0, x1, y1, hh, mat in DRV_PARTS:
         X0, X1 = DRV_C[0] + l - x1, DRV_C[0] + l - x0
         Y0, Y1 = w - y1, w - y0
-        out.append(_boxp((X0, Y0, zt), (X1, Y1, zt + hh),
-                         "plastic" if mat == "ic" else "ceramic"))
+        # each part's top wears the photo of itself
+        out.append(dict(_boxp((X0, Y0, zt), (X1, Y1, zt + hh),
+                              "plastic" if mat == "ic" else "ceramic"), photo=photo("top")))
     return out
 
 
@@ -2329,7 +2370,7 @@ def _end(spec, lane=None):
         p = np.array([c[0], s * (XIAO[1] / 2 - 0.8), zt + 0.04 + WIRE_R])
         # the board lies in its window on the box's floor, below the
         # tray's top: up off its pad, then out over the window's edge
-        up = np.array([c[0], p[1], max(p[2], _plate_top() + WIRE_R + 0.3)])
+        up = np.array([c[0], p[1], max(p[2], _plate_top() + TRAY_RAISE + WIRE_R + 0.3)])
         return ([p, up, np.array([c[0], s * 10.0, up[2]])],
                 [_cylp((c[0], s * (XIAO[1] / 2 - 0.7), zt + 0.3), (0, 0, 1), 0.7, 0.6,
                        "solder", sides=24)])
@@ -2343,7 +2384,7 @@ def _end(spec, lane=None):
         route = _routes_by("5V to VIN")
         pts = [np.array([h[0], h[1], _drv_top() + 0.1])]
         pts += [np.array([x, y, _under_z()]) for x, y in route[::-1]]
-        pts.append(np.array([route[0][0], route[0][1], _plate_top() + WIRE_R + 0.3]))
+        pts.append(np.array([route[0][0], route[0][1], _plate_top() + TRAY_RAISE + WIRE_R + 0.3]))
         return pts, [_solder_hole(h)]
     if kind == "hole":
         # down through its hole beside the net's name, into the pocket
@@ -2351,7 +2392,7 @@ def _end(spec, lane=None):
         h = _net_hole(net, k)
         p = NETS[net]["pocket"]
         return [np.array([p[0], p[1], _under_z()]), np.array([h[0], h[1], _under_z()]),
-                np.array([h[0], h[1], _plate_top() + WIRE_R + 0.3])], []
+                np.array([h[0], h[1], _plate_top() + TRAY_RAISE + WIRE_R + 0.3])], []
     raise ValueError(spec)
 
 

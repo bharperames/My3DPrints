@@ -591,7 +591,12 @@ PARTS = [
        # glued: drawn under it, it would not go in cold or hot.
        # 49.0.0: the plug's channel in the drive block 9.6 wide for the 9.0
        # JST housing, and 1.0 longer; the lid's key keeps its size.
-       version="49.0.0",
+       # 50.0.0: the tray's resistor leg holes drawn 1.2 over the leg; at
+       # 0.6 over, the 10 kohm's printed shut round its leg.
+       # The top's names raised again, 0.4, for a paint pen to gold; the 3
+       # and the G redrawn, read as E and 6, and the letters closer.
+       # 51.0.0: the same; 50.0.0 was recorded with the leg holes alone.
+       version="51.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face
