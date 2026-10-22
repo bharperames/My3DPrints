@@ -3899,21 +3899,25 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "ring's slots.",
               hw=[(f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)", 1, pin)],
               path=(down, 20.0), against=["driver"]),
+        _step("cable", "Plug the cable on and thread it down",
+              "On the bench, before the gearmotor goes in: once it is in the "
+              "block, the encoder's side connector is down in its channel "
+              "where the plug cannot be pushed home. Pololu's 6-pin cable "
+              "into that connector, then its loose end down the post's bore "
+              "until it comes out of the foot.",
+              hw=[(CABLE_ITEM, 1, cable_in)], against=["drive_block"],
+              view=(0.5 * np.cos(np.radians(GENEVA_PHI)),
+                    0.5 * np.sin(np.radians(GENEVA_PHI)), 1.0)),
         _step("motor", "Gearmotor into the drive block",
               "On the bench: first push a 4 mm drill through the two thin "
               "skins on the block's floor, the bushing's hole and the screw's; "
               "then the motor shaft down, its bushing into the floor's hole, "
-              "the flat of its D-shaft facing across the block. Nothing to "
-              "solder: everything is on its plug.",
+              "the flat of its D-shaft facing across the block, drawing the "
+              "cable down the bore as it goes and the plug into its channel. "
+              f"Seated, its faceplate is flat on the floor and {MOTOR['shaft_l'] - FLOOR_T:g} mm of shaft "
+              "stands out below. Nothing to solder: everything is on its plug.",
               hw=[(MOTOR["item"], 1, motor)], path=(down, 30.0),
               against=["drive_block"]),
-        _step("cable", "Plug the cable on and thread it down",
-              "On the bench: Pololu's 6-pin cable into the encoder's side "
-              "connector, the plug lying in its channel, its loose end down "
-              "the post's bore until it comes out of the foot.",
-              hw=[(CABLE_ITEM, 1, cable_in)], against=["drive_block"],
-              view=(0.5 * np.cos(np.radians(GENEVA_PHI)),
-                    0.5 * np.sin(np.radians(GENEVA_PHI)), 1.0)),
         _step("shim", "The driver's shim",
               "Printed with the set, fitted never: the 0.6 mm fork that sets "
               "the crank's height in the next step.",
