@@ -772,26 +772,26 @@ class TestAssembly(unittest.TestCase):
         self.assertEqual(J.fit_class(0.1, "printed shaft in steel bore"),
                          "press")
 
-    def test_a_pin_hole_drawn_loose_would_be_caught(self):
-        """Negative control: the pin's hole drawn 0.3 over the pin grades
-        as a slip, which would let the pin fall out of the crank."""
-        with mock.patch.object(J, "PIN_PRESS", 0.30):
+    def test_the_pin_hole_that_would_not_take_the_pin_is_caught(self):
+        """Negative control: the hole as 47.0.0 drew it, 0.03 under the
+        pin -- Brett's would not take the dowel in a vise or hot with the
+        iron -- grades as an interference and fails."""
+        with mock.patch.object(J, "PIN_FIT", -0.03):
             d = J.driver(J.SPECIMEN)
         parts = dict(self.parts, driver=d)
         row = next(r for r in J.fits(parts) if r["name"] == "Geneva pin in the crank")
-        self.assertNotEqual(row["got"], "press")
+        self.assertEqual(row["got"], "interference")
         self.assertFalse(row["ok"])
 
     def test_nothing_depends_on_a_press_into_the_print_being_exact(self):
         """The D-shaft slides into a clearance bore and a set screw holds
-        it; the pin's hole is drawn under the pin so it is tight in every
-        print. PETG yields rather than cracks, and the crank has 2.5 mm of
-        wall beside the pin."""
+        it; the pin slides into its hole in every print and is glued, and
+        the crank has 2.5 mm of wall beside the pin."""
         rows = {r["name"]: r for r in J.fits(self.parts)}
         for n in ("Gearmotor's D-shaft in the crank, round",
                   "Gearmotor's D-shaft in the crank, flat"):
             self.assertGreaterEqual(rows[n]["allow"], 0.4, n)
-        self.assertLess(rows["Geneva pin in the crank"]["allow"], 0.0)
+        self.assertTrue(0.25 <= rows["Geneva pin in the crank"]["allow"] <= 0.40)
         self.assertGreaterEqual(J.CRANK_R - J.GENEVA_A - J.PIN_R, 2.5)
         bom = J.inserts()
         self.assertEqual(bom[J.SETSCREW_ITEM], 1)

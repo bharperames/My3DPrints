@@ -416,8 +416,12 @@ MOTOR = dict(item="Pololu #5173 298:1 Micro Metal Gearmotor HP 6V, "
              w=12.0, d=10.0, gearbox=9.0, body=15.0, enc=8.5,
              enc_w=13.6, enc_d=13.0,
              # the side header (2.7 proud) with the JST SH housing on it:
-             # out from the encoder, across, tall
-             plug=(5.8, 8.0, 4.0),
+             # out from the encoder, across, tall. Across is the cable's
+             # housing, SHR-06V-S-B, 9.0 over its side protrusions (JST);
+             # the header under it is 8.0. 49.0.0: drawn 8.0 across, the
+             # channel would not take Brett's plug; and 1.0 longer, for the
+             # wires to leave it straight before they turn
+             plug=(6.8, 9.0, 4.0),
              shaft_d=3.0, shaft_flat=2.5, shaft_l=10.0,
              bush_d=4.0, bush_h=0.7, rpm_6v=100.0, stall_kgcm=4.0,
              # 297.92:1 exactly (Pololu), so 12 x 297.92 counts a driver
@@ -431,12 +435,13 @@ PRESS = 0.10            # the shop's press
 # answer is a press drawn tight enough to be tight in every print, and a
 # vise to make it. Crush ribs were tried and are wrong for PETG: nothing
 # crushes, the ribs smear and creep, and how they behave was a guess.
-# 47.0.0: the vise lost. Brett's crank, drawn as below, would not take the
-# Ø3 dowel even in a vise -- a steel pin pressed cold through 8 mm of PETG
-# 0.2 or so under it does not go. So the pin goes in hot, with the iron,
-# the way the inserts do: the softened PETG flows round it and shrinks
-# back onto it as it cools, whatever size this print's hole came out.
-PIN_PRESS = -0.03       # the Geneva pin's hole over the pin: under it, for the heat to close round
+# 48.0.0: no press at all for the Geneva pin. Drawn 0.03 under, Brett's
+# crank would not take the Ø3 dowel in a vise, and the iron could not
+# heat 16 mm of steel enough to melt it in. The pin needs no grip from
+# the hole -- it is driven sideways, and nothing pulls on it along its
+# length -- so it slides in and a drop of thin CA holds it, as the home
+# magnet is held. Drawn 0.05 over the shop's slip, it slides in every print.
+PIN_FIT = 0.35          # the Geneva pin's hole over the pin: slides in, glued
 LID_PRESS = 0.05        # the lid's peg and key over their printed bores
 # The D-shaft is not pressed at all: a clearance D-bore, and an M3 set
 # screw on its flat through a captured nut, the way Pololu's own hubs hold
@@ -465,6 +470,7 @@ WALL_OUT, WALL_IN, WALL_SIDE = 1.2, 2.0, 1.6
 # which also keeps the plug from ever backing out. No inserts, no screws.
 CAP_T = 3.0
 KEY_D = 1.5             # the lid's key, down into the top of the plug's channel
+LID_KEY_PLUG = (5.8, 8.0)   # the plug the lid's key was drawn over, kept
 # The post and tower are as wide as the block round the encoder: the
 # block prints on its side, and a narrower tower stood 1.55 mm off the
 # plate for its whole length, an overhang with nothing under it.
@@ -1231,7 +1237,7 @@ def driver(specimen=SPECIMEN):
     d_pts = [(rc * np.cos(a_), rc * np.sin(a_)) for a_ in ang]
     # 45 degrees: the flare grows as far as it rises
     bore = _local(_funnel(d_pts, z0, zj, zt, (rc + zt - zj) / rc))
-    rp = PIN_R + PIN_PRESS / 2
+    rp = PIN_R + PIN_FIT / 2
     c_pts = [(rp * np.cos(a_), rp * np.sin(a_))
              for a_ in np.linspace(0, 2 * np.pi, 48, endpoint=False)]
     pin_hole = _funnel(c_pts, Z["crank_lo"] - 1, zj, zt, (rp + zt - zj) / rp)
@@ -1379,7 +1385,11 @@ def drive_cap(specimen=SPECIMEN):
     px = POST_R - GENEVA_C
     lid = trimesh.creation.extrude_polygon(_footprint(), CAP_T)
     lid.apply_translation([0, 0, Z["motor_top"]])
-    x0, x1, hw, _ = _channel(Z)
+    # the key keeps the size it had before 49.0.0 widened the channel
+    # under it, so the lid already printed still fits: a plain drop-in
+    # there now, and the peg locates the lid
+    ed = (MOTOR["enc_d"] + POCKET_ENC) / 2
+    x0, hw = -ed - LID_KEY_PLUG[0] - SLIP, LID_KEY_PLUG[1] / 2 + SLIP
     # the key and the peg, each a little over its printed bore: PETG
     # yields into a light press rather than cracking. Nothing pulls on the
     # lid; the plug is held by the channel's end wall, not by the key
@@ -3878,19 +3888,17 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "its wheel back off the race.",
               check="race", turn=turn),
         _step("pin", "Pin into the crank",
-              "On the bench, with the iron at 230 \u00b0C, the way the inserts "
-              "went in: pressed cold, even in a vise, the pin will not go. "
-              "Rest the crank on the vise's jaws opened about 4 mm, so the pin "
-              "can come out underneath. Stand the \u00d83 x 16 dowel upright in "
-              "the hole's mouth and hold the iron's tip on its top end: in "
-              "10-20 seconds it warms and sinks under light pressure. Keep it "
-              "upright and stop when its top is flush with the crank's top, "
-              "then press something flat and metal across it until it is "
-              "cool, about a minute. The hole is drawn under the pin, so the "
-              "softened PETG closes round it and holds it.",
+              "On the bench: the \u00d83 x 16 dowel slid down through the "
+              "whole 8 mm of crank until its top is flush with the crank's "
+              "top, 8 mm standing out below. It should go in by hand, perhaps "
+              "with a twist; it is not a press. Stand the crank top up on "
+              "something flat with a hole for the pin, check the pin is "
+              "square to the crank's face, and touch a drop of thin CA to the "
+              "joint at the top: it wicks down the hole. Hold it still for a "
+              "minute, and keep glue off the 8 mm below, which runs in the "
+              "ring's slots.",
               hw=[(f"\u00d83 x {PIN_L:g} steel dowel (the Geneva pin)", 1, pin)],
-              path=(down, 20.0), against=["driver"],
-              presses=[("\u00d83 x 16 steel dowel", "driver")]),
+              path=(down, 20.0), against=["driver"]),
         _step("motor", "Gearmotor into the drive block",
               "On the bench: first push a 4 mm drill through the two thin "
               "skins on the block's floor, the bushing's hole and the screw's; "
@@ -4348,12 +4356,13 @@ FIT_BANDS = (("interference", -9.0, 0.0), ("press", 0.0, 0.2),
 
 
 def fit_class(allow, kind="printed hole"):
-    if kind == "steel, heat-pressed":
-        # drawn under the pin on purpose: the iron melts it home, and the
-        # PETG it displaces closes round the pin. Over the pin, nothing
-        # is left to grip it
-        return "press" if -0.30 <= allow <= 0.0 else (
-            "interference" if allow < -0.30 else "slip")
+    if kind == "steel, glued":
+        # slides in by hand in every print, and the glue holds it: drawn
+        # under the shop's slip it may not go in at all (Brett's crank,
+        # 0.03 under, would not, even in a vise), and far over it the pin
+        # leans in its hole
+        return "slip" if 0.25 <= allow <= 0.40 else (
+            "interference" if allow < 0.25 else "clearance")
     if kind == "printed in printed":
         # both sides yield: a light press is drawn a little over
         return "press" if -0.15 <= allow <= 0.02 else (
@@ -4472,7 +4481,7 @@ def fits(parts, specimen=SPECIMEN):
 
     zc = (Z["crank_lo"] + Z["crank_hi"]) / 2
     row("Geneva pin in the crank", hole_d(parts["driver"], pin_xy, zc, PIN_R),
-        2 * PIN_R, "press", kind="steel, heat-pressed", note="steel dowel, pressed in hot with the iron")
+        2 * PIN_R, "slip", kind="steel, glued", note="steel dowel, slid in and glued with thin CA")
     zl = L["ring_bot"] + LIP_T / 2
     a_s = np.radians(GENEVA_PHI + 180.0 / GENEVA_N)
     rs = (GENEVA_MOUTH + GENEVA_C + GENEVA_A) / 2
@@ -4518,9 +4527,9 @@ def fits(parts, specimen=SPECIMEN):
     tt = np.array([-u[1], u[0], 0])
     kh = _ray_gap(parts["drive_block"], kc, tt)
     row("Lid's key in the plug's channel", kh,
-        None if kh is None else _key_width(parts["drive_cap"], kc, tt), "press",
-        kind="printed in printed",
-        note="it holds the lid, and holds the plug in its socket")
+        None if kh is None else _key_width(parts["drive_cap"], kc, tt), "clearance",
+        note="the lid's key kept as printed in a channel widened under it: "
+             "it drops in, holds the plug in its socket, and the peg locates the lid")
     ab = o + u * (POST_R - GENEVA_C) + np.array([-u[1], u[0], 0]) * SCREW_Y
     row("Lid's peg in the access bore",
         hole_d(parts["drive_block"], ab, Z["motor_top"] - 1.5, 3.25),

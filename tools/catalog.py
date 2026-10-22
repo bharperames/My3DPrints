@@ -587,7 +587,11 @@ PARTS = [
        # and bend radius past its longest body; the 4.7 ohm's were 1.1 short.
        # 47.0.0: the home sensor's leads come down 1.4 out of its body, by
        # the same rule, and the base's slot for them is wide enough.
-       version="47.0.0",
+       # 48.0.0: the Geneva pin's hole drawn Ø3.35, a slip, and the pin
+       # glued: drawn under it, it would not go in cold or hot.
+       # 49.0.0: the plug's channel in the drive block 9.6 wide for the 9.0
+       # JST housing, and 1.0 longer; the lid's key keeps its size.
+       version="49.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

@@ -91,11 +91,11 @@ def fit_rows(parts):
     slip = (0.0, 0.35)
     run = (0.05, 0.60)
     clear = (0.05, 9.0)
-    # a steel pin into PETG, pressed in hot with the iron: anything under
-    # the pin melts home, and over it nothing grips. Pressed cold, this
-    # model said a vise made 0.4 under; Brett's crank, drawn 0.03 under
-    # (0.2 under as this model prints it), would not take the pin in a vise
-    heat = (-0.60, 0.0)
+    # a steel pin slid into PETG and glued: it must go in by hand, and
+    # not lean far in its hole. This model said a vise pressed one 0.4
+    # under; Brett's crank, drawn 0.03 under (0.2 under as this model
+    # prints it), would not take the pin in a vise, nor hot with the iron
+    glued = (0.0, 0.40)
     pp = (-0.40, 0.02)                # printed into printed: both yield
     # The controller's lid: snug, pushed home by hand. Drawn as `pp`
     # (0.05 under its bore) its printed pegs would not go into the bosses
@@ -105,7 +105,7 @@ def fit_rows(parts):
     lid = (-0.10, 0.6)
     spec = [
         # name in fits(),                            kind,   part,          mate,                      works if, note
-        ("Geneva pin in the crank",                  "vhole", "driver",      (3.0, 0.002, 0.008),       heat,    "dowel, m6, pressed in hot"),
+        ("Geneva pin in the crank",                  "vhole", "driver",      (3.0, 0.002, 0.008),       glued,   "dowel, m6, slid in and glued"),
         ("Geneva pin in a slot",                     "vhole", "rotor",       (3.0, 0.002, 0.008),       run,     "slot, as a hole"),
         ("Gearmotor's D-shaft in the crank, round",  "vhole", "driver",      (3.0, -0.012, 0.0),        (0.0, 0.6), "held by the set screw"),
         ("Gearmotor's D-shaft in the crank, flat",   "vhole", "driver",      (2.5, -0.05, 0.05),        (0.0, 0.6), "the set screw bears on it"),
@@ -114,7 +114,7 @@ def fit_rows(parts):
         ("Gearbox bushing in the block's floor",     "vhole", "drive_block", (4.0, -0.03, 0.03),        (0.0, 0.40), "locates the driver's axis"),
         ("Encoder across its pocket",                "rect",  "drive_block", (13.6, -0.15, 0.15),       (0.0, 0.75), "routed PCB"),
         ("Encoder along its pocket",                 "rect",  "drive_block", (13.0, -0.15, 0.15),       (0.0, 0.75), ""),
-        ("Lid's key in the plug's channel",          "rect",  "drive_block", ("p", None),               pp,      "printed key"),
+        ("Lid's key in the plug's channel",          "rect",  "drive_block", ("p", None),               clear,   "printed key, a drop-in since 49.0.0"),
         ("Lid's peg in the access bore",             "vhole", "drive_block", ("p", None),               pp,      "printed peg"),
         ("Controller lid's peg in its boss",         "vhole", "ctrl_box",    ("p", None),               lid,     "printed peg, loose"),
         ("Home magnet in the ring",                  "vhole", "rotor",       (3.0, -0.10, 0.10),        (0.0, 0.55), "glued; small discs run +-0.1"),
