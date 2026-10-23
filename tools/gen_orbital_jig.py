@@ -3797,6 +3797,10 @@ VENDOR = {
                       ref=(1, 0, 0), r=4.0, h=4.0),
     "91292A033": dict(name="M3 x 35 socket head screw", seat=(0, 0, 16.0),
                       axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=35.0),
+    "91292A111": dict(name="M3 x 6 socket head screw", seat=(0, 0, 1.5),
+                      axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=6.0),
+    "91292A114": dict(name="M3 x 12 socket head screw", seat=(0, 0, 4.5),
+                      axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=12.0),
     "91292A115": dict(name="M3 x 16 socket head screw", seat=(0, 0, 6.5),
                       axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=16.0),
     "91390A101": dict(name="M3 x 8 cup-point set screw", seat=(0, 0, 0),
@@ -3808,8 +3812,9 @@ VENDOR = {
 }
 _VENDOR_CACHE = {}
 # the M3 socket head screws by length, where McMaster's STEP is in hand;
-# the rest are drawn as a head and a shank until theirs is
-M3_SOCKET_HEAD = {16: "91292A115", 35: "91292A033"}
+# a length not here is drawn as a head and a shank until its STEP is
+M3_SOCKET_HEAD = {6: "91292A111", 12: "91292A114", 16: "91292A115",
+                  35: "91292A033"}
 # Pairs whose real threads meet: drawn as McMaster models them, a screw
 # slid straight into its nut meets the nut's thread with its own -- it
 # goes in by turning. The sweep lets them through each other; the
