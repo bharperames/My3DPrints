@@ -3795,6 +3795,8 @@ VENDOR = {
                       axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=35.0),
     "91390A101": dict(name="M3 x 8 cup-point set screw", seat=(0, 0, 0),
                       axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=8.0),
+    "91828A211": dict(name="M3 hex nut", seat=(0, 0, 0), axis=(0, 0, 1),
+                      ref=(0, 1, 0), r=2.75, h=2.4),
     "91595A116": dict(name="3 x 16 dowel pin", seat=(0, 0, 0), axis=(0, 0, 1),
                       ref=(1, 0, 0), r=1.5, h=16.0),
 }
@@ -3803,7 +3805,8 @@ _VENDOR_CACHE = {}
 # slid straight into its nut meets the nut's thread with its own -- it
 # goes in by turning. The sweep lets them through each other; the
 # thumbscrew's reach past the nut is `thumbscrew_reach`'s question.
-THREAD_MATES = {frozenset(("M5 square nut", f"M5x{THUMB_LEN:g} thumbscrew"))}
+THREAD_MATES = {frozenset(("M5 square nut", f"M5x{THUMB_LEN:g} thumbscrew")),
+                frozenset((NUT_ITEM, SETSCREW_ITEM))}
 
 
 def vendor_path(pid):
@@ -3944,9 +3947,9 @@ def assembly_steps(parts, specimen=SPECIMEN):
     # its cup on the flat, its hex socket outward
     setscrew = [dict(vendor_prim("91390A101", [0.0, yf + 0.05 + 4.0, zm], [0, 1, 0]),
                      M=DR)]
-    crank_nut = [dict(kind="cyl", c=[0.0, yn + 0.15 + NUT_T / 2, zm], axis=[0, 1, 0],
-                      r=NUT_AF / np.sqrt(3), h=NUT_T, sides=6, corner=[1.0, 0, 0],
-                      mat="steel", M=DR)]
+    # a corner across the slot, as the stand-in had it
+    crank_nut = [dict(vendor_prim("91828A211", [0.0, yn + 0.15 + NUT_T / 2, zm],
+                                  [0, 1, 0], ref=(1, 0, 0)), M=DR)]
     lr, lp = HALL_LEADS
     post_screw = ([dict(vendor_prim("91292A033", [POST_R - GENEVA_C, SCREW_Y, Zd["face"]],
                                     [0, 0, 1]), M=DR)]
@@ -4282,8 +4285,12 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "reached, so this is done first, **on the bench**.\n"
               "1. Hold the board in helping hands by its edges, **chips "
               "up**.\n"
-              "2. Strip **3 mm** off one end of each new wire: that end goes "
-              "into the DRV8833.\n"
+              "2. Strip **3 mm** off one end of each new wire, and off the "
+              "motor cable's black: that end goes into the DRV8833. **Tin** "
+              "each end -- twist its strands, hold the iron under them and "
+              "feed solder in until it **soaks through and the end turns "
+              "silver and stiff** -- so the strands go into the hole "
+              "together instead of splaying.\n"
               "3. The 100 uF capacitor, along the edge marked **VIN**:\n"
               "- **the longer leg (+) into VIN**\n"
               "- **the shorter leg (-) into GND**, the hole beside VIN, on "
@@ -4333,10 +4340,17 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "the edge away from the M1 name in under the lips and press "
               "the other edge down past the hooks\n"
               "- each edge now sits on a ledge under a hook\n"
-              "2. Every wire here lies flat along its pad:\n"
-              "- strip 2 mm and tin it, and tin the pad\n"
-              "- lay the wire on it pointing off the board's edge and touch "
-              "the iron to both\n"
+              "2. Every wire here lies flat along its pad. **Tin** both "
+              "first, a coat of solder each, so the joint needs only the "
+              "iron:\n"
+              "- the pad: touch the iron to it with a little solder until "
+              "**a small shiny bump** sits on the pad\n"
+              "- the wire: strip **2 mm**, twist the strands, and feed solder "
+              "into them under the iron until the end is **silver and "
+              "stiff**\n"
+              "- lay the wire on the pad pointing off the board's edge, hold "
+              "it with tweezers, and press the iron on top for **1-2 s**: "
+              "the two coats melt into one, with no more solder\n"
               f"- the pads sit {_plate_top() - _xiao_z() - XIAO[2]:.1f} mm "
               "below the tray's top: keep the tip "
               "upright and off the window's walls\n"
