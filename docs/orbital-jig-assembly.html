@@ -217,6 +217,9 @@ document.head.insertAdjacentHTML('beforeend', `<style>${PICKER_CSS}</style>`);
 const petg = loadChoice();
 
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+/* units as they are read: 10 kΩ, 100 µF, 3.3V */
+const pretty = s => String(s).replace(/(\d)\s*kohm\b/g, '$1 kΩ').replace(/(\d)\s*ohm\b/g, '$1 Ω')
+  .replace(/(\d)\s*uF\b/g, '$1 µF').replace(/\b3V3\b/g, '3.3V');
 const hud = document.getElementById('hud');
 const errors = [];
 addEventListener('error', e => errors.push(String(e.message || e)));
@@ -679,6 +682,7 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
   m.userData.unit = p.unit ?? j;
   if (p.photo) m.userData.decals = photoDecals(p);
   if (p.print) m.userData.decals = [sleevePrint(p)];
+  if (p.label) m.userData.label = p.label.map(pretty);    // a wire: what it joins
   for (const d of m.userData.decals || []) m.add(d);
   return m;
 })));
@@ -884,9 +888,6 @@ function poseAll(k, f) {
 /* ---------- the panel ---------- */
 /* A step's text: lines, each a sentence ("Text"), a sub-step ("1. Text")
    or a detail under the sub-step above it ("- text"). */
-/* units as they are read: 10 kΩ, 100 µF, 3.3V */
-const pretty = s => String(s).replace(/(\d)\s*kohm\b/g, '$1 kΩ').replace(/(\d)\s*ohm\b/g, '$1 Ω')
-  .replace(/(\d)\s*uF\b/g, '$1 µF').replace(/\b3V3\b/g, '3.3V');
 /* which sub-steps are ticked: a convenience kept in this browser only */
 let ticked = {};
 try { ticked = JSON.parse(localStorage.getItem('ojig-ticked') || '{}'); } catch (e) {}

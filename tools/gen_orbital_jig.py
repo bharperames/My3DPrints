@@ -1829,7 +1829,17 @@ LEAD_HOLE = 1.2
 LEAD_MIN_STRAIGHT = 0.8
 R1_AT = ((-13.95, 14.55), "x", 1.5)        # its centre, its axis, saddle depth
 R2_AT = ((1.0, -2.85), "y", 0.8)
-INLET_X = -CTRL["l"] / 2 + 4.0             # where the cables' wires fan out
+INLET_X = -CTRL["l"] / 2 + 4.0             # the tray's cut-out round the inlet
+# The cables are loose wires, drawn as such: six in a ring for the motor's,
+# three for the home lead. Just inside the wall each ring opens into a row
+# across the box, 0.85 apart, and each wire rises from its place in the
+# row to its lane. The row's order is what keeps them out of each other:
+# the wires that run off toward -y at its -y end, and in each half the one
+# that passes over another's riser on the higher lane.
+FAN_X = -CTRL["l"] / 2 + CTRL["wall"] + 0.4  # where each ring ends, inside the wall
+FAN_PITCH = 0.95
+# each cable's wires in the row from -y, by their place k in its ring
+FAN_ROW = {"cable": (0, 3, 1, 2, 5, 4), "lead": (1, 0, 2)}
 # where each cable's wires rise from it, clear of the marks beside them
 RISE_X = {"cable": -27.6, "lead": -26.6}
 # The nets made under the plate: where each one's pocket is, the holes its
@@ -1874,7 +1884,7 @@ WIRES = (
      ((-27.6, 11.5), (19.26, 11.5))),
     ("W4", "white", "encoder B", ("cable", 1), ("xiao", "D4"), "xiao", 8.1,
      ((-27.6, 12.3), (16.72, 12.3))),
-    ("W5", "blue", "3V3", ("cable", 3), ("hole", "3V3", 0), "j_home", 4.8,
+    ("W5", "blue", "3V3", ("cable", 3), ("hole", "3V3", 0), "j_home", 7.5,
      ((-27.6, -15.85),)),
     ("W6", "green", "GND", ("cable", 0), ("hole", "GND", 0), "j_gnd", 4.0,
      ((-27.6, -17.0), (12.4, -17.0))),
@@ -2291,7 +2301,7 @@ def _cylp(c, axis, r, h, mat, **kw):
               r=float(r), h=float(h), **kw)
 
 
-def _wire(pts, mat, r=WIRE_R):
+def _wire(pts, mat, r=WIRE_R, label=None):
     """A wire through `pts`, one prim: the page draws it as a tube rounded
     through each bend; the sweep checks it as a cylinder a segment, each
     run on by most of its radius so a bend closes square."""
@@ -2299,17 +2309,25 @@ def _wire(pts, mat, r=WIRE_R):
     keep = pts[:1] + [b for a, b in zip(pts[:-1], pts[1:]) if np.linalg.norm(b - a) >= 1e-6]
     if len(keep) < 2:
         return []
-    return [dict(kind="wire", pts=[list(map(float, q)) for q in keep], r=float(r), mat=mat)]
+    out = dict(kind="wire", pts=[list(map(float, q)) for q in keep], r=float(r), mat=mat)
+    if label:
+        out["label"] = list(label)    # what the page says when it is clicked
+    return [out]
 
 
 def _wire_mesh(p):
     """A wire prim's segments, as the sweep sees them."""
     pts = [np.asarray(q, float) for q in p["pts"]]
-    segs = []
-    for a, b in zip(pts[:-1], pts[1:]):
+    segs, last = [], len(pts) - 2
+    for i, (a, b) in enumerate(zip(pts[:-1], pts[1:])):
         d = b - a
         n = float(np.linalg.norm(d))
-        segs.append(_prim_mesh(_cylp((a + b) / 2, d / n, p["r"], n + 1.6 * p["r"],
+        u = d / n
+        # run on past a bend; at the wire's own ends it meets whatever
+        # carries on from it (the cable's two halves), so stop just short
+        a = a - u * (0.8 * p["r"] if i > 0 else -0.01)
+        b = b + u * (0.8 * p["r"] if i < last else -0.01)
+        segs.append(_prim_mesh(_cylp((a + b) / 2, u, p["r"], float(np.linalg.norm(b - a)),
                                      p["mat"], sides=16)))
     return trimesh.util.concatenate(segs)
 
@@ -2479,11 +2497,11 @@ def _end(spec, lane=None):
         k = spec[1]
         z = CTRL["wall"] + INLET_TRAY_T + 1.4    # as _to_box has it
         y0 = CTRL_INLET_Y + (CABLE_DY if kind == "cable" else LEAD_DY)
-        n = 6 if kind == "cable" else 3
-        a = 2 * np.pi * k / n
-        rr = 0.82 if kind == "cable" else 0.5
-        p = np.array([INLET_X, y0 + rr * np.cos(a), z + rr * np.sin(a)])
-        return [p, np.array([RISE_X[kind], p[1], p[2]])], []
+        p = _ring_end(kind, k, y0, z)
+        row = FAN_ROW[kind]
+        y = y0 + (row.index(k) - (len(row) - 1) / 2) * FAN_PITCH
+        # spread across the box only: each keeps its height in the ring
+        return [p, np.array([RISE_X[kind], y, p[2]])], []
     if kind == "xiao":
         c, s = xiao_pad(spec[1])
         zt = _xiao_z() + XIAO[2]
@@ -2517,6 +2535,22 @@ def _end(spec, lane=None):
     raise ValueError(spec)
 
 
+def _ring_angle(kind, k):
+    """Where wire k sits round its cable's ring: turned 15 degrees so no
+    two share a height across the box, and in the row's order from -y."""
+    row = FAN_ROW[kind]
+    n = len(row)
+    a = sorted((2 * np.pi * j / n + np.radians(15.0) for j in range(n)), key=np.cos)
+    return a[row.index(k)]
+
+
+def _ring_end(kind, k, y0, z):
+    """Wire k at the end of its cable's ring, in the box's frame."""
+    rr = 0.82 if kind == "cable" else 0.5
+    a = _ring_angle(kind, k)
+    return np.array([FAN_X, y0 + rr * np.cos(a), z + rr * np.sin(a)])
+
+
 def wire_path(wid):
     w = {x[0]: x for x in WIRES}[wid]
     _, col, net, a, b, step, lane, via = w
@@ -2530,9 +2564,32 @@ def wire_path(wid):
     return pa + mid + pb[::-1]
 
 
+# the parts whose legs are twisted into a net's joint under the tray
+JOINT_LEGS = {"3V3": "the 10 kohm's leg", "D5": "the 10 kohm's other leg",
+              "M1": "the 4.7 ohm's leg"}
+
+
+def end_name(e):
+    """A wire's end, as someone holding the wire would name it."""
+    if e[0] == "cable":
+        return "the motor's cable"
+    if e[0] == "lead":
+        return "the home sensor's lead"
+    if e[0] == "xiao":
+        return f"the XIAO's {e[1]} pad"
+    if e[0] in ("drv", "under"):
+        return f"the DRV8833's {e[2]}" + (", from below" if e[0] == "under" else "")
+    legs = JOINT_LEGS.get(e[1])
+    return f"the {e[1]} joint under the tray" + (f" (on {legs})" if legs else "")
+
+
+def wire_label(w):
+    return [f"{w[1].capitalize()} wire: {w[2]}", f"From {end_name(w[3])} to {end_name(w[4])}"]
+
+
 def wire_prims(wid):
     w = {x[0]: x for x in WIRES}[wid]
-    out = _wire(wire_path(wid), "wire_" + w[1])
+    out = _wire(wire_path(wid), "wire_" + w[1], label=wire_label(w))
     for spec in (w[3], w[4]):
         out += _end(spec)[1]
     return out
@@ -2579,7 +2636,7 @@ def _to_box(specimen, dy):
     inlet = (co + polar(-(CTRL["l"] / 2 + 6.0), CTRL["phi"])
              + polar(CTRL_INLET_Y + dy, CTRL["phi"] + 90.0))
     # just inside the wall: from there its wires fan out over the tray
-    inside = (co + polar(-(CTRL["l"] / 2 - 4.0), CTRL["phi"])
+    inside = (co + polar(FAN_X, CTRL["phi"])
               + polar(CTRL_INLET_Y + dy, CTRL["phi"] + 90.0))
     z = board + CTRL["wall"] + INLET_TRAY_T + 1.4
     return inlet, inside, z
@@ -2655,6 +2712,58 @@ def home_lead(specimen=SPECIMEN):
     return [[h[0], h[1], L["base_bot"] - 3.2], [h[0], h[1], z], [b[0], b[1], z],
             [c[0], c[1], z], [d[0], d[1], z], [d[0], d[1], zb], [a2[0], a2[1], zb],
             [inlet[0], inlet[1], zb], [inside[0], inside[1], zb]]
+
+
+def _bundle(pts, kind, dy, specimen=SPECIMEN):
+    """A cable's own wires along its path `pts`, which ends inside the box
+    square to the wall: each wire kept at its place in the ring, the ring
+    carried back along the path without twisting, its corners mitred."""
+    pts = [np.asarray(q, float) for q in pts]
+    T = [(b - a) / np.linalg.norm(b - a) for a, b in zip(pts[:-1], pts[1:])]
+    # the ring's frame on the last run: across the box, and up
+    N = [None] * len(T)
+    N[-1] = np.array([*polar(1.0, CTRL["phi"] + 90.0)[:2], 0.0])
+    for j in range(len(T) - 2, -1, -1):
+        N[j] = _turn(T[j + 1], T[j]) @ N[j + 1]
+    rr = 0.82 if kind == "cable" else 0.5
+    out = {}
+    for k in FAN_ROW[kind]:
+        a = _ring_angle(kind, k)
+        off = [rr * (np.cos(a) * n + np.sin(a) * np.cross(t, n)) for t, n in zip(T, N)]
+        q = [pts[0] + off[0]]
+        for i in range(1, len(pts) - 1):
+            # where the offset runs either side of the corner meet
+            A = np.c_[T[i - 1], -T[i]]
+            st = np.linalg.lstsq(A, off[i] - off[i - 1], rcond=None)[0]
+            q.append(pts[i] + off[i - 1] + st[0] * T[i - 1])
+        q.append(pts[-1] + off[-1])
+        out[k] = q
+    return out
+
+
+def _turn(a, b):
+    """The least rotation taking unit vector a onto b."""
+    v, c = np.cross(a, b), float(a @ b)
+    if np.linalg.norm(v) < 1e-12:
+        return np.eye(3)
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + K + K @ K / (1 + c)
+
+
+CABLE_COLORS = {0: "green", 1: "white", 2: "yellow", 3: "blue", 4: "black", 5: "red"}
+LEAD_COLORS = {0: "blue", 1: "green", 2: "white"}
+
+
+def cable_wires(pts, kind, dy, start=0, stop=None, specimen=SPECIMEN):
+    """The prims of a cable's wires along points start:stop of its path."""
+    colors = CABLE_COLORS if kind == "cable" else LEAD_COLORS
+    what = "The motor's cable" if kind == "cable" else "The home sensor's lead"
+    out = []
+    for k, q in _bundle(pts, kind, dy, specimen).items():
+        w = next(x for x in WIRES if x[3] == (kind, k))
+        lab = [f"{what}: its {colors[k]} wire, {w[2]}", f"On in the box to {end_name(w[4])}"]
+        out += _wire(q[start:stop], "wire_" + colors[k], label=lab)
+    return out
 
 
 def cable_path(specimen=SPECIMEN):
@@ -3845,9 +3954,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
                   [dict(q, M=DR) for q in _bolt_prims(
                       [POST_R - GENEVA_C, SCREW_Y, Zd["face"]],
                       length["drive post to base"], r=1.5, head_r=2.75, head_h=3.0)])
-    cable_in = _tubes(cable_upper(specimen), CABLE_R)
-    cable_out = _tubes(cable_lower(specimen), CABLE_R)
-    lead = _tubes(home_lead(specimen), LEAD_R)
+    # the motor's cable, one path in two steps: down the drive, and on to the box
+    nu = len(cable_upper(specimen))
+    cable_in = cable_wires(cable_path(specimen), "cable", CABLE_DY, 0, nu)
+    cable_out = cable_wires(cable_path(specimen), "cable", CABLE_DY, nu - 1)
+    lead = cable_wires(home_lead(specimen), "lead", LEAD_DY)
     co, board = _ctrl_frame(specimen)
     CR = np.eye(4)
     CR[:3, 3] = [co[0], co[1], board]
