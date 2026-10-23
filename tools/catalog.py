@@ -14,6 +14,7 @@ packer never care which is which:
 Every entry resolves to a 3MF on disk plus a measured footprint, which is
 all the packer needs. Anything the packer cannot measure is not sellable.
 """
+import glob
 import hashlib
 import json
 import os
@@ -629,7 +630,10 @@ PARTS = [
                    href="docs/orbital-jig-plan.html"),
               dict(label="Video to splat: isolating the tooth in 3D",
                    href="docs/tooth-splat.html")],
-       gen=["gen_orbital_jig.py"], params=[
+       gen=["gen_orbital_jig.py"],
+       # the bought parts' meshes ride inside the 3MF: a new one is a
+       # new file to build, though no code moved
+       inputs=["../models/hardware/mcmaster/*.glb"], params=[
            dict(key="specimen", label="focal height", unit="mm", min=25,
                 max=110, step=1, val=78,
                 hint="How far the specimen's centre sits above the "
@@ -1373,6 +1377,9 @@ def stale(part, path):
     # badge said it was made to order. One level of local imports is enough
     # to catch that, and it costs a stat per module.
     srcs += _local_imports(srcs[0]) if srcs else []
+    # AND WHAT IT READS that is not code: files a card names as inputs
+    for g in part.get("inputs") or []:
+        srcs += glob.glob(os.path.join(HERE, g))
     return any(os.path.exists(f) and os.path.getmtime(f) > built
                for f in srcs)
 
