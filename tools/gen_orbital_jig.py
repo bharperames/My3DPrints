@@ -55,6 +55,7 @@ Usage: gen_orbital_jig.py [--specimen MM] [--out FILE.3mf]
 """
 import genapi
 import argparse
+import glob
 import json
 import os
 import sys
@@ -3782,7 +3783,7 @@ def _bolt_prims(seat, length, r=1.5, head_r=HEAD_R, head_h=HEAD_H,
 
 # --- bought hardware, as its maker drew it ----------------------------
 # McMaster-Carr's STEP files, tessellated with OpenCascade at full
-# quality, kept local in models/hardware/mcmaster/<part>.glb and never
+# quality, kept local in models/hardware/mcmaster/<part>_<name>.glb and never
 # committed. Each is placed by where its head seats and which way it
 # runs, read off the mesh: `seat` is the point on the axis under the head
 # (or the part's centre), `axis` the way from the shank to the head, and
@@ -3824,7 +3825,10 @@ THREAD_MATES = {frozenset(("M5 square nut", f"M5x{THUMB_LEN:g} thumbscrew")),
 
 
 def vendor_path(pid):
-    return os.path.join(VENDOR_DIR, pid + ".glb")
+    """Its mesh, found by part number: the file is named for people too
+    (91292A111_M3x6-socket-head-screw.glb), so only the number is fixed."""
+    found = sorted(glob.glob(os.path.join(VENDOR_DIR, pid + "*.glb")))
+    return found[0] if found else os.path.join(VENDOR_DIR, pid + ".glb")
 
 
 def vendor_mesh(pid):
