@@ -2292,17 +2292,26 @@ def _cylp(c, axis, r, h, mat, **kw):
 
 
 def _wire(pts, mat, r=WIRE_R):
-    """A wire through `pts`: a cylinder a segment, each run on by most of
-    its radius so a bend closes square."""
+    """A wire through `pts`, one prim: the page draws it as a tube rounded
+    through each bend; the sweep checks it as a cylinder a segment, each
+    run on by most of its radius so a bend closes square."""
     pts = [np.asarray(q, float) for q in pts]
-    out = []
+    keep = pts[:1] + [b for a, b in zip(pts[:-1], pts[1:]) if np.linalg.norm(b - a) >= 1e-6]
+    if len(keep) < 2:
+        return []
+    return [dict(kind="wire", pts=[list(map(float, q)) for q in keep], r=float(r), mat=mat)]
+
+
+def _wire_mesh(p):
+    """A wire prim's segments, as the sweep sees them."""
+    pts = [np.asarray(q, float) for q in p["pts"]]
+    segs = []
     for a, b in zip(pts[:-1], pts[1:]):
         d = b - a
         n = float(np.linalg.norm(d))
-        if n < 1e-6:
-            continue
-        out.append(_cylp((a + b) / 2, d / n, r, n + 1.6 * r, mat, sides=16))
-    return out
+        segs.append(_prim_mesh(_cylp((a + b) / 2, d / n, p["r"], n + 1.6 * p["r"],
+                                     p["mat"], sides=16)))
+    return trimesh.util.concatenate(segs)
 
 
 def _photo(table, c, faces, holes=(), hole_d=0.0, corner=0.0):
@@ -3584,6 +3593,8 @@ def _prim_mesh(p):
         else:
             m = m.copy()
             m.apply_transform(np.asarray(p["V"], float).reshape(4, 4))
+    elif p["kind"] == "wire":
+        m = _wire_mesh(p)
     elif p["kind"] == "mesh":
         m = trimesh.Trimesh(np.reshape(p["v"], (-1, 3)), np.reshape(p["f"], (-1, 3)),
                             process=False)
@@ -4154,34 +4165,39 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "alongside the motor's cable, and in through the box's inlet.",
               hw=[("", 0, lead)]),
         _step("drv", "The DRV8833 off the tray: everything under it",
-              "Seven joints are made on the DRV8833's underside, where they "
-              "cannot be reached once it is clipped in, so they come first, "
-              "on the bench.\n"
-              "1. Hold the board in helping hands by its edges, parts up.\n"
-              "2. Strip 3 mm off each wire's DRV8833 end.\n"
-              "3. The 100 uF on the power row, standing 2 mm off the board's "
-              "parts so its top stays under the lid:\n"
-              "- it has a polarity: in backwards, it can burst once the "
-              "USB-C is plugged in\n"
-              "- +, the longer leg: into VIN\n"
-              "- -, the shorter leg, on the side with the gray band of "
-              "minus signs: into the GND beside VIN\n"
-              "- before soldering, check the band faces GND\n"
-              "4. Into the logic row:\n"
-              f"- AIN1: a yellow cut {wire_cut('W15')} mm\n"
-              f"- AIN2: a yellow cut {wire_cut('W16')} mm\n"
-              f"- FLT: a yellow cut {wire_cut('W17')} mm\n"
-              f"- GND: a black cut {wire_cut('W12')} mm\n"
-              "5. Into the power row: the motor cable's black into AOUT2.\n"
-              "6. Splay each lead a little underneath so it stays put, and "
-              "turn the board over in the hands.\n"
-              "7. Solder all seven and cut them flush: the tray's slots under "
-              "the rows leave 1 mm.\n"
+              "Five wires and the capacitor's two legs go in through the "
+              "DRV8833's holes from the top and are soldered underneath. Once "
+              "the board is clipped into the tray its underside cannot be "
+              "reached, so this is done first, **on the bench**.\n"
+              "1. Hold the board in helping hands by its edges, **chips "
+              "up**.\n"
+              "2. Strip **3 mm** off one end of each new wire: that end goes "
+              "into the DRV8833.\n"
+              "3. The 100 uF capacitor, along the edge marked **VIN**:\n"
+              "- **the longer leg (+) into VIN**\n"
+              "- **the shorter leg (-) into GND**, the hole beside VIN, on "
+              "the side with the gray stripe of minus signs\n"
+              "- push it down only until its body stands **2 mm above the "
+              "board's chips**, so the lid closes over it\n"
+              "- before soldering, check **the gray stripe faces GND**: in "
+              "backwards it can burst once the USB-C is plugged in\n"
+              "4. Along the other edge, one wire into each of these holes, "
+              "cut to length:\n"
+              f"- **AIN1**: yellow, **{wire_cut('W15')} mm**\n"
+              f"- **AIN2**: yellow, **{wire_cut('W16')} mm**\n"
+              f"- **FLT**: yellow, **{wire_cut('W17')} mm**\n"
+              f"- **GND**: black, **{wire_cut('W12')} mm**\n"
+              "5. Back on the VIN edge: the motor cable's **black** wire "
+              "into **AOUT2**.\n"
+              "6. Bend each wire and leg out a little underneath so nothing "
+              "drops out, and turn the board over.\n"
+              "7. Solder all seven, then **trim them flush**: the tray leaves "
+              "only 1 mm under the board.\n"
               "8. Clip it into the tray, the tray flat on the bench:\n"
-              "- parts up, its GND end (the square pad) toward the 100 uF's "
-              "value\n"
-              "- the far end tucked under the lip in its frame\n"
-              "- the near end pressed down until the hook clicks over it\n"
+              "- chips up, its **square GND pad** toward the 100 uF label "
+              "on the tray\n"
+              "- tuck the far end under the lip in its frame\n"
+              "- press the near end down until **the hook clicks** over it\n"
               "To free it, push the hook's arm back with a fingernail.",
               hw=[("Pololu #2130 DRV8833 dual motor driver carrier", 1, drv),
                   (CAP_ITEM, 1, inbox(c1_prims())), ("", 0, wires["drv"])],

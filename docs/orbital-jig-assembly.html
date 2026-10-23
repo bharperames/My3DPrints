@@ -110,6 +110,12 @@
   .step .what ol > li::marker { color:var(--ink); font-weight:600; }
   .step .what ul { margin:2px 0 2px; padding-left:16px; }
   .step .what ul > li { margin:1px 0; }
+  .step .what b { color:var(--ink); font-weight:650; }
+  /* a sub-step ticked off as it is done: kept per browser */
+  .step .what input.tick { margin:0 5px 0 0; vertical-align:-2px; accent-color:var(--accent); cursor:pointer; }
+  .step .what li.done > .t { color:var(--ink-soft); opacity:0.55; }
+  .step .what li.done::marker { opacity:0.55; }
+  .step .ticks { font-size:11px; color:var(--ink-soft); margin-left:6px; font-weight:400; }
   .chips { grid-column:2 / -1; display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
   .chip { font-size:11.5px; padding:1px 7px; border-radius:99px; border:1px solid var(--edge); }
   .chip.p { border-color:var(--p-small); color:var(--ink); }
@@ -167,6 +173,7 @@
       <label class="follow"><input type="checkbox" id="follow" checked> follow the step</label>
       <h3>Filament</h3>
       <div id="petg"></div>
+      <button type="button" id="untick">Clear the ticked sub-steps</button>
     </details>
     <div class="note">
       <b>What is drawn is what prints, and what was checked.</b> The bodies
@@ -316,11 +323,22 @@ function inkFor(mat) {             // CAD edges: dark ink, light on a dark part
   const hsl = {}; mat.color.getHSL(hsl);
   return hsl.l < 0.32 ? INK_ON_DARK : INK;
 }
+const SELECT = new THREE.Color('#ffd400');           // CAD's selection yellow
+const selectMaterial = () => new THREE.MeshStandardMaterial({ color: SELECT, roughness: 0.45,
+  metalness: 0.05, side: THREE.DoubleSide });
+let selected = null;
+function select(m) {
+  if (selected === m) return;
+  const was = selected; selected = m;
+  for (const o of [was, m]) if (o) { o.userData.selected = o === m; style(o); }
+}
 function style(m) {
   const u = m.userData;
-  // a part joined into an assembly wears the assembly's colour
+  // a part joined into an assembly wears the assembly's colour; the one
+  // clicked wears selection yellow, in every style
   const own = u.joined ? u.asmMat : u.mat;
-  const want = mode === 'hlr' ? (u.hlrMat ||= HLR_FACE())
+  const want = u.selected ? (u.selMat ||= selectMaterial())
+    : mode === 'hlr' ? (u.hlrMat ||= HLR_FACE())
     : mode === 'xray' ? (u.xrayMat ||= XRAY_FACE()) : own;
   if (m.material !== want) { m.material = want; u.key = null; }
   const mat = m.material;
@@ -344,11 +362,11 @@ function style(m) {
   // either needs the material rebuilt, or the old one keeps drawing
   const key = `${mat.transparent}|${mat.wireframe}`;
   if (u.key !== key) { mat.needsUpdate = true; u.key = key; }
-  if (mat.emissive) mat.emissive.copy(GLOW).multiplyScalar(glow);
+  if (mat.emissive) mat.emissive.copy(u.selected ? SELECT : GLOW).multiplyScalar(u.selected ? 0.35 : glow);
   // a photo on its face: only where the faces are drawn as they are,
   // and as faded as the part it lies on
   for (const d of u.decals || []) {
-    d.visible = mode === 'shaded' || mode === 'edges';
+    d.visible = (mode === 'shaded' || mode === 'edges') && !u.selected;
     const dm = d.material, dk = `${op < 1}`;
     dm.opacity = op; dm.transparent = op < 1; dm.depthWrite = op >= 1;
     if (d.userData.key !== dk) { dm.needsUpdate = true; d.userData.key = dk; }
@@ -458,6 +476,35 @@ function insertGeom(p) {
   const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), d);
   return INSERT_GEOM.clone().translate(0, 0, -p.h / 2).applyQuaternion(q).translate(...p.c);
 }
+/* a wire through its points, bent round each corner as a wire bends --
+   a few of its radii, never more than half the shorter run -- and capped
+   round at its ends */
+function wireGeom(p) {
+  const P = p.pts.map(q => new THREE.Vector3(...q));
+  const path = new THREE.CurvePath();
+  let from = P[0], corners = 0;
+  for (let i = 1; i < P.length - 1; i++) {
+    const a = P[i].clone().sub(P[i - 1]), b = P[i + 1].clone().sub(P[i]);
+    const la = a.length(), lb = b.length();
+    a.normalize(); b.normalize();
+    if (a.dot(b) > 0.9999) continue;                     // no bend here
+    const rb = Math.min(3 * p.r, 0.5 * la, 0.5 * lb);
+    const s0 = P[i].clone().addScaledVector(a, -rb), s1 = P[i].clone().addScaledVector(b, rb);
+    if (s0.distanceTo(from) > 1e-6) path.add(new THREE.LineCurve3(from, s0));
+    path.add(new THREE.QuadraticBezierCurve3(s0, P[i].clone(), s1));
+    from = s1; corners++;
+  }
+  path.add(new THREE.LineCurve3(from, P[P.length - 1]));
+  const n = Math.ceil(path.getLength() * 6) + 24 * corners + 2;
+  const tube = new THREE.TubeGeometry(path, n, p.r, 24, false);
+  const cap = (q, d) => new THREE.SphereGeometry(p.r, 24, 12, 0, 2 * Math.PI, 0, Math.PI / 2)
+    .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d))
+    .translate(q.x, q.y, q.z);
+  const t0 = path.getTangentAt(0).negate(), t1 = path.getTangentAt(1);
+  const parts = [tube, cap(P[0], t0), cap(P[P.length - 1], t1)].map(g => g.toNonIndexed());
+  parts.forEach(g => { g.deleteAttribute('uv'); });
+  return mergeGeometries(parts);
+}
 /* hardware from the same primitives the generator swept */
 function primGeom(p) {
   if (p.kind === 'vendor') {
@@ -467,6 +514,7 @@ function primGeom(p) {
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(...p.axis).normalize());
     return new THREE.CylinderGeometry(p.r, p.r, p.h, 32).rotateX(Math.PI / 2).applyQuaternion(q).translate(...p.c);
   }
+  if (p.kind === 'wire') return wireGeom(p);
   if (p.kind === 'mesh') {
     // a bought part modeled whole (the phone's clamp): flat-shaded facets
     const g = new THREE.BufferGeometry();
@@ -836,25 +884,48 @@ function poseAll(k, f) {
 /* ---------- the panel ---------- */
 /* A step's text: lines, each a sentence ("Text"), a sub-step ("1. Text")
    or a detail under the sub-step above it ("- text"). */
-function noteHtml(note) {
+/* units as they are read: 10 kΩ, 100 µF, 3.3V */
+const pretty = s => String(s).replace(/(\d)\s*kohm\b/g, '$1 kΩ').replace(/(\d)\s*ohm\b/g, '$1 Ω')
+  .replace(/(\d)\s*uF\b/g, '$1 µF').replace(/\b3V3\b/g, '3.3V');
+/* which sub-steps are ticked: a convenience kept in this browser only */
+let ticked = {};
+try { ticked = JSON.parse(localStorage.getItem('ojig-ticked') || '{}'); } catch (e) {}
+const saveTicks = () => { try { localStorage.setItem('ojig-ticked', JSON.stringify(ticked)); } catch (e) {} };
+function noteHtml(note, st) {
+  // numbered sub-steps can be ticked off; in a wiring step every line is
+  // a joint, so its bullets can be too
+  let n = 0;
+  const tick = (text, on) => {
+    if (!on) return `<span class="t">${text}</span>`;
+    const k = `${st.id}:${n++}`;
+    return `<input type="checkbox" class="tick" data-k="${k}"${ticked[k] ? ' checked' : ''}><span class="t">${text}</span>`;
+  };
+  const liOpen = (on, k) => `<li${on && ticked[`${st.id}:${n}`] ? ' class="done"' : ''}>`;
   let out = '', ol = false, ul = false;
   const closeUl = () => { if (ul) { out += '</ul>'; ul = false; } };
   const closeOl = () => { closeUl(); if (ol) { out += '</li></ol>'; ol = false; } };
-  for (const line of note.split('\n')) {
+  // **what to watch for** is set bold
+  for (const line of note.split('\n').map(l => l.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'))) {
     let m;
     if ((m = line.match(/^(\d+)\. (.*)$/))) {
       closeUl();
-      out += ol ? '</li><li>' : `<ol start="${m[1]}"><li>`;
-      ol = true; out += m[2];
+      out += ol ? '</li>' + liOpen(true) : `<ol start="${m[1]}">` + liOpen(true);
+      ol = true; out += tick(m[2], true);
     } else if ((m = line.match(/^- (.*)$/))) {
       if (!ul) { out += '<ul>'; ul = true; }
-      out += `<li>${m[1]}</li>`;
+      out += liOpen(st.solder) + tick(m[1], st.solder) + '</li>';
     } else { closeOl(); out += `<p>${line}</p>`; }
   }
   closeOl();
   return out;
 }
 const names = n => n.replace(/_/g, ' ');
+function tickCount(li) {
+  const all = li.querySelectorAll('input.tick');
+  all.forEach(cb => cb.closest('li').classList.toggle('done', cb.checked));
+  const n = [...all].filter(cb => cb.checked).length;
+  li.querySelector('.ticks').textContent = n ? `${n} of ${all.length} done` : '';
+}
 const stepsEl = document.getElementById('steps');
 { const bar = document.querySelector('.bar.sticky');
   const setBar = () => document.documentElement.style.setProperty('--bar-h', bar.offsetHeight + 'px');
@@ -865,15 +936,25 @@ STEPS.forEach((st, i) => {
   const c = checked[st.id];
   const ok = c ? !c.fouls.length : null;
   const chips = st.bodies.map(b => `<span class="chip p">${names(b)}</span>`)
-    .concat(st.hardware.filter(h => h.item).map(h => `<span class="chip h">${h.qty} × ${h.item}</span>`))
+    .concat(st.hardware.filter(h => h.item).map(h => `<span class="chip h">${h.qty} × ${pretty(h.item)}</span>`))
     .concat(st.carry.map(id => `<span class="chip">with step ${idx[id] + 1}</span>`));
-  li.innerHTML = `<span class="k">${i + 1}</span><b>${st.title}</b>` +
+  li.innerHTML = `<span class="k">${i + 1}</span><b>${pretty(st.title)}<span class="ticks"></span></b>` +
     `<span class="v ${ok === null ? '' : ok ? 'ok' : 'bad'}" title="${ok ? 'path swept clear' : ok === false ? 'collides: ' + c.fouls.map(f => f[1].join(', ')).join('; ') : 'not swept'}">${ok === null ? '' : ok ? '✓' : '✗'}</span>` +
-    (st.note ? `<div class="what">${noteHtml(st.note)}</div>` : '') +
+    (st.note ? `<div class="what">${noteHtml(pretty(st.note), st)}</div>` : '') +
     (chips.length ? `<span class="chips">${chips.join('')}</span>` : '');
-  li.onclick = () => { go(i); };
+  li.onclick = e => { if (!e.target.classList.contains('tick')) go(i); };
+  li.querySelectorAll('input.tick').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) ticked[cb.dataset.k] = 1; else delete ticked[cb.dataset.k];
+    saveTicks(); tickCount(li);
+  }));
+  tickCount(li);
   stepsEl.appendChild(li);
 });
+document.getElementById('untick').onclick = () => {
+  ticked = {}; saveTicks();
+  document.querySelectorAll('#steps li.step').forEach(li => {
+    li.querySelectorAll('input.tick').forEach(cb => { cb.checked = false; }); tickCount(li); });
+};
 const C = A.checked;
 const fitsOk = A.fits.every(f => f.ok);
 const anyFoul = C ? C.steps.some(s => s.fouls.length) : true;
@@ -889,7 +970,7 @@ STEPS.forEach((st, i) => st.hardware.forEach(h => { if (h.item) (usedIn[h.item] 
 document.getElementById('bom').innerHTML = '<tr><th>item</th><th class="n">BOM</th><th class="n">fitted</th><th>steps</th></tr>' +
   Object.entries(A.bom).map(([item, q]) => {
     const u = usedIn[item] || [], got = u.reduce((a, [, n]) => a + n, 0);
-    return `<tr><td>${item}</td><td class="n">${q}</td><td class="n ${got === q ? 'ok' : 'bad'}">${got}</td><td>${u.map(([s, n]) => n > 1 ? `${s} (${n})` : s).join(', ')}</td></tr>`;
+    return `<tr><td>${pretty(item)}</td><td class="n">${q}</td><td class="n ${got === q ? 'ok' : 'bad'}">${got}</td><td>${u.map(([s, n]) => n > 1 ? `${s} (${n})` : s).join(', ')}</td></tr>`;
   }).join('');
 document.getElementById('printed').innerHTML = '<tr><th>part</th><th class="n">step</th></tr>' +
   Object.keys(D.to_world).map(n => `<tr><td>${names(n)}</td><td class="n">${stepOfBody[n] !== undefined ? stepOfBody[n] + 1 : '—'}</td></tr>`).join('');
@@ -968,7 +1049,7 @@ function hudText() {
   document.getElementById('prev').disabled = k === 0;
   document.getElementById('next').disabled = k === STEPS.length - 1 && f >= 1;
   const v = c ? (c.fouls.length ? ' · <span style="color:var(--risk)">collides</span>' : ' · path swept clear') : '';
-  hud.innerHTML = `<span class="n">step ${k + 1} / ${STEPS.length}</span> · <b>${st.title}</b>${v}`;
+  hud.innerHTML = `<span class="n">step ${k + 1} / ${STEPS.length}</span> · <b>${pretty(st.title)}</b>${v}`;
   STEPS.forEach((_, i) => {
     const el = document.getElementById('st' + i);
     el.className = 'step' + (i === k ? ' on' : i < k ? ' done' : '');
@@ -1027,7 +1108,7 @@ STEPS.forEach(st => {
   let j = 0;
   for (const h of st.hardware) for (const p of h.prims) {
     const m = hwOf[STEPS.indexOf(st)][j++];
-    if (m && !m.userData.label) m.userData.label = [h.item || st.title, HW_NOTE[h.item] || st.title];
+    if (m && !m.userData.label) m.userData.label = [pretty(h.item || st.title), pretty(HW_NOTE[h.item] || st.title)];
   }
 });
 /* each part as the occurrence it is: the step that fits this one */
@@ -1047,7 +1128,9 @@ renderer.domElement.addEventListener('pointerup', e => {
   // nothing solid is behind it
   const hits = picker.intersectObjects(allMeshes.filter(m => m.visible), false);
   const hit = hits.find(h => !h.object.material.transparent) || hits[0];
-  if (!hit) { pickEl.style.display = 'none'; return; }
+  // the background: nothing selected, every part its own colour again
+  if (!hit) { pickEl.style.display = 'none'; select(null); return; }
+  select(hit.object);
   const [name, note] = hit.object.userData.label || ['', ''];
   const at = hit.object.userData.step;
   pickEl.innerHTML = `<div><b>${name}</b>${note ? `<div class="sub">${note}</div>` : ''}` +
