@@ -3770,6 +3770,10 @@ def _bolt_prims(seat, length, r=1.5, head_r=HEAD_R, head_h=HEAD_H,
     points from the shank to the head."""
     a = np.asarray(axis, float) / np.linalg.norm(axis)
     seat = np.asarray(seat, float)
+    # a length McMaster's model is in hand for: drawn as it is
+    pid = M3_SOCKET_HEAD.get(length)
+    if pid and r == 1.5 and (head_r, head_h) == (HEAD_R, HEAD_H):
+        return [vendor_prim(pid, seat, a)]
     return [dict(kind="cyl", c=(seat + a * head_h / 2).tolist(),
                  axis=a.tolist(), r=head_r, h=head_h),
             dict(kind="cyl", c=(seat - a * length / 2).tolist(),
@@ -3793,6 +3797,8 @@ VENDOR = {
                       ref=(1, 0, 0), r=4.0, h=4.0),
     "91292A033": dict(name="M3 x 35 socket head screw", seat=(0, 0, 16.0),
                       axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=35.0),
+    "91292A115": dict(name="M3 x 16 socket head screw", seat=(0, 0, 6.5),
+                      axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=16.0),
     "91390A101": dict(name="M3 x 8 cup-point set screw", seat=(0, 0, 0),
                       axis=(0, 0, 1), ref=(1, 0, 0), r=1.5, h=8.0),
     "91828A211": dict(name="M3 hex nut", seat=(0, 0, 0), axis=(0, 0, 1),
@@ -3801,6 +3807,9 @@ VENDOR = {
                       ref=(1, 0, 0), r=1.5, h=16.0),
 }
 _VENDOR_CACHE = {}
+# the M3 socket head screws by length, where McMaster's STEP is in hand;
+# the rest are drawn as a head and a shank until theirs is
+M3_SOCKET_HEAD = {16: "91292A115", 35: "91292A033"}
 # Pairs whose real threads meet: drawn as McMaster models them, a screw
 # slid straight into its nut meets the nut's thread with its own -- it
 # goes in by turning. The sweep lets them through each other; the
@@ -3866,7 +3875,7 @@ MOUNT_THETA = 45.0
 
 def _step(id_, title, note, bodies=(), hw=(), path=None, against=None,
           check=None, spin=None, carry=(), at=None, alt=None, turn=None,
-          presses=(), solder=False, view=None, hide=()):
+          presses=(), solder=False, view=None, hide=(), prep=False):
     """`hw` is [(bom_item, qty, [prims])]; `path` is (direction, travel),
     the way the pieces arrive. `against`, when given, makes it a bench
     step checked against those bodies only; what it builds rides along
@@ -3877,7 +3886,9 @@ def _step(id_, title, note, bodies=(), hw=(), path=None, against=None,
     wires they are soldered to by design, so they are checked against
     the printed parts only. `view` is where the page's camera looks from,
     toward what the step fits, and `hide` the bodies it leaves out of the
-    picture so the work can be seen."""
+    picture so the work can be seen. `prep` is bench work done before
+    assembly starts -- every insert in one sitting with the iron hot --
+    whose part is shown only at that step until its own step fits it."""
     return dict(id=id_, title=title, note=note, bodies=list(bodies),
                 hardware=[dict(item=i, qty=q, prims=pr) for i, q, pr in hw],
                 path=None if path is None else
@@ -3889,7 +3900,7 @@ def _step(id_, title, note, bodies=(), hw=(), path=None, against=None,
                                             for v in np.ravel(at)],
                 alt=alt, turn=turn, presses=[list(p) for p in presses],
                 solder=solder, view=None if view is None else [float(v) for v in view],
-                hide=list(hide))
+                hide=list(hide), prep=prep)
 
 
 def assembly_steps(parts, specimen=SPECIMEN):
@@ -4067,14 +4078,24 @@ def assembly_steps(parts, specimen=SPECIMEN):
         _step("puck_inserts", "Inserts into the pucks",
               "On the bench: one M3 insert melted into the top of each.",
               hw=[(INSERT_M3, 3, sole_ins)], path=(down, 15.0),
-              against=list(PUCKS)),
+              against=list(PUCKS), prep=True),
         _step("stator_inserts", "Inserts into the base",
               "Four M3 inserts: one in the top of each tower, one under "
               "the drive post's socket. Its bolt runs right through, so "
               "once it is cool clear the melt pushed under it: a 2.5 mm "
               "drill down through the insert, by hand.",
               hw=[(INSERT_M3, 4, tower_ins + post_ins)],
-              path=(down, 15.0), against=["stator"]),
+              path=(down, 15.0), against=["stator"], prep=True),
+        _step("rotor_inserts", "Inserts into the rotor's pad",
+              "Three M3 inserts in the floor of the pad's slot, at the "
+              "ring's top.",
+              hw=[(INSERT_M3, 3, pad_ins)],
+              path=(down, 15.0), against=["rotor"], prep=True),
+        _step("saddle_inserts", "Inserts into the saddle",
+              "On the bench: two M3 inserts into the saddle's inboard face, "
+              "for the receiver.",
+              hw=[(INSERT_M3, 2, saddle_ins)], path=(inboard, 15.0),
+              against=["saddle"], at=E, prep=True),
         _step("pucks", "Pucks up under the base",
               "On the bench: an insert-side-up puck under each of the three "
               "counterbored holes at the base's corners.",
@@ -4150,10 +4171,6 @@ def assembly_steps(parts, specimen=SPECIMEN):
                     _bolt_prims(a, length["bearing axle to tower"], r=1.5,
                                 head_r=AXLE_HEAD[0], head_h=AXLE_HEAD[1])])],
               path=(down, 20.0)),
-        _step("rotor_inserts", "Inserts into the rotor's pad",
-              "Three M3 inserts in the floor of the pad's slot.",
-              hw=[(INSERT_M3, 3, pad_ins)],
-              path=(down, 15.0), against=["rotor"]),
         _step("ring_magnet", "Home magnet into the ring",
               "On the bench: a drop of CA in its pocket, then the magnet, "
               "either way up.",
@@ -4452,11 +4469,6 @@ def assembly_steps(parts, specimen=SPECIMEN):
                    [p for b in bars for p in
                     _bolt_prims(b, length["arc bar to rotor pad"])])],
               path=(down, 25.0)),
-        _step("saddle_inserts", "Inserts into the saddle",
-              "On the bench: two M3 inserts into the saddle's inboard face, "
-              "for the receiver.",
-              hw=[(INSERT_M3, 2, saddle_ins)], path=(inboard, 15.0),
-              against=["saddle"], at=E),
         _step("nut", "Square nut into the saddle",
               "On the bench: flat, down into the square pocket in the "
               "saddle's inboard face until it sits on the pocket's floor, "
