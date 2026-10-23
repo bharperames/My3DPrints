@@ -606,7 +606,10 @@ PARTS = [
        # its side arm 1.4 thick. 53.0.0 was recorded part way.
        # 55.0.0: the gearmotor's shaft 9.0 long, as Brett's stands out of
        # the floor, so the crank's D-bore is 1.0 shallower.
-       version="55.0.0",
+       # 56.0.0: the XIAO held closer: its window 0.1 over the board across
+       # and 0.1 past its far end, and the hooks over it printing 1.6 over
+       # the ledge, not 1.8.
+       version="56.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face

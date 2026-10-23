@@ -1635,7 +1635,6 @@ TRAY_T = 3.0            # the plate, on the box's floor (2.0 until 42.0.0)
 # the plate is cut away round them.
 INLET_TRAY_T = 2.0
 TRAY_GAP = 0.3          # all round inside the box's walls and bosses
-TRAY_FIT = 0.25         # each board's window, per side
 # The tray's notches round the lid's two bosses: a snug fit, so the
 # bosses, in opposite corners, wedge the tray and it stays put unglued.
 # Until 30.0.0 it was 0.4 per side and the tray sat loose.
@@ -1689,6 +1688,16 @@ DRV_SLOT = 2.0          # the slot under each of its rows of holes, through
 # hooks reach. Every hook stands clear over the thickest board.
 XIAO_TOL = 0.2          # on its length and width
 XIAO_T_MAX = 1.6
+# 56.0.0: Brett's XIAO was loose in all three: across, along, and up and
+# down under the hooks. The window is drawn 0.1 over the board across
+# (0.3 until now) and 0.1 past its far end (0.25), the end arm springing
+# back for a longer one. Under the hooks: the ledge's top is at 0.6 on the
+# tray's own floor, a layer line, and the hooks' undersides were drawn at
+# 2.37, which the 0.2 layers print at 2.4 -- 1.8 over a 1.59 board. Drawn
+# 0.02 over his board's top they print at the 2.2 line: 1.6.
+XIAO_ACROSS = 0.1       # the +y wall past the board, beyond SEAT at -y
+XIAO_END_FIT = 0.1      # the far end's window past the board
+XIAO_HOOK_OVER = 0.02   # over Brett's 1.59, so the 2.2 layer line
 DRV_EDGE_TOL = 0.3      # on each edge, Pololu's drawing
 SEAT = 0.05             # a nominal board to the walls that hold it
 LATCH_T = 1.0           # each arm, across its bend
@@ -2048,7 +2057,7 @@ def tray_layout():
     # the XIAO's window, open to the wall it butts against: its -y wall
     # the one it is held to, its +y wide enough for the widest board but
     # for the arm beside the USB-C, which stands at a nominal one's edge
-    x0 = XIAO_X1 - XIAO[0] - TRAY_FIT
+    x0 = XIAO_X1 - XIAO[0] - XIAO_END_FIT
     ym, yp = _xiao_walls()
     ya = XIAO[1] / 2 + SEAT - XIAO_SIDE_PRELOAD
     window = _rect(x0, ym, xi + 1, yp).difference(
@@ -2130,7 +2139,7 @@ def _xiao_walls():
     """The XIAO's window across: the -y wall it is held to, and the +y
     wall that clears the widest board pressed against it."""
     ym = -XIAO[1] / 2 - SEAT
-    return ym, ym + XIAO[1] + XIAO_TOL + 0.1
+    return ym, ym + XIAO[1] + XIAO_ACROSS
 
 
 def _drv_frame():
@@ -2154,7 +2163,7 @@ def _latches(x0, xi):
     T, S, P = LATCH_T, LATCH_SLOT, LATCH_SPLIT
     ym, yp = _xiao_walls()
     ya = XIAO[1] / 2 + SEAT - XIAO_SIDE_PRELOAD   # the side arm's face
-    xb = _xiao_z() + XIAO_T_MAX + HOOK_OVER    # the XIAO on its ledge
+    xb = _xiao_z() + XIAO[2] + XIAO_HOOK_OVER  # the XIAO on its ledge
     db = _drv_top() + DRV8833[2] * 0.1 + HOOK_OVER   # FR4's own +-10%
     slots, raised, hooks = [], [], []
     # the XIAO's far end: an arm down the window's end wall, root at its corner
@@ -2434,11 +2443,12 @@ def c1_prims():
     vin, gnd = drv_hole("power", "VIN"), drv_hole("power", "GND")
     c = (vin + gnd) / 2
     z0 = _drv_top() + C1_STANDOFF
-    out = [_cylp((c[0], c[1], z0 + H / 2), (0, 0, 1), D / 2, H, "cap_sleeve"),
-           _cylp((c[0], c[1], z0 + H + 0.1), (0, 0, 1), D / 2 - 0.4, 0.2, "steel"),
-           # the - stripe, on the side over GND
-           _boxp((c[0] - 1.0, c[1] - D / 2 - 0.05, z0 + 0.3),
-                 (c[0] + 1.0, c[1] - D / 2 + 0.6, z0 + H - 0.3), "cap_stripe")]
+    # its sleeve printed as Panasonic marks it: the rated capacitance and
+    # voltage, the series, and the - band down the side over GND
+    sleeve = _cylp((c[0], c[1], z0 + H / 2), (0, 0, 1), D / 2, H, "cap_sleeve")
+    sleeve["print"] = dict(lines=["100\u00b5F", "16V", "FR", "(M)"], minus=[0.0, -1.0])
+    out = [sleeve,
+           _cylp((c[0], c[1], z0 + H + 0.1), (0, 0, 1), D / 2 - 0.4, 0.2, "steel")]
     for h, s in ((vin, 1), (gnd, -1)):
         top = np.array([c[0], c[1] + s * pitch / 2, z0])
         out += _wire([top, (top[0], top[1], z0 - LEAD_MIN_STRAIGHT),
@@ -3816,7 +3826,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
                      M=DR)]
     crank_nut = [dict(kind="cyl", c=[0.0, yn + 0.15 + NUT_T / 2, zm], axis=[0, 1, 0],
                       r=NUT_AF / np.sqrt(3), h=NUT_T, sides=6, corner=[1.0, 0, 0],
-                      M=DR)]
+                      mat="steel", M=DR)]
     lr, lp = HALL_LEADS
     post_screw = ([dict(vendor_prim("91292A033", [POST_R - GENEVA_C, SCREW_Y, Zd["face"]],
                                     [0, 0, 1]), M=DR)]
@@ -4151,8 +4161,12 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "2. Strip 3 mm off each wire's DRV8833 end.\n"
               "3. The 100 uF on the power row, standing 2 mm off the board's "
               "parts so its top stays under the lid:\n"
-              "- its long leg (+) into VIN\n"
-              "- its striped leg (-) into the GND beside it\n"
+              "- it has a polarity: in backwards, it can burst once the "
+              "USB-C is plugged in\n"
+              "- +, the longer leg: into VIN\n"
+              "- -, the shorter leg, on the side with the gray band of "
+              "minus signs: into the GND beside VIN\n"
+              "- before soldering, check the band faces GND\n"
               "4. Into the logic row:\n"
               f"- AIN1: a yellow cut {wire_cut('W15')} mm\n"
               f"- AIN2: a yellow cut {wire_cut('W16')} mm\n"
@@ -4178,11 +4192,13 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "1. Clip it in, the tray flat on the bench, right side up, the "
               "XIAO's window toward you:\n"
               "- the XIAO parts up, its USB-C toward the window's open end\n"
-              "- tilt it and slide the edge away from the M1 name into its "
-              "groove, under the row of lips between its pads\n"
-              "- press the other edge down until the hooks at its far end "
-              "and along that edge click over it: each edge now sits on a "
-              "ledge under a hook\n"
+              "- slide it in flat from the window's open end, its edges "
+              "under the row of lips between its pads and under the hooks, "
+              "until its far end stops against the end arm\n"
+              "- it is snug, a slide rather than a drop: if it binds, tilt "
+              "the edge away from the M1 name in under the lips and press "
+              "the other edge down past the hooks\n"
+              "- each edge now sits on a ledge under a hook\n"
               "2. Every wire here lies flat along its pad:\n"
               "- strip 2 mm and tin it, and tin the pad\n"
               "- lay the wire on it pointing off the board's edge and touch "

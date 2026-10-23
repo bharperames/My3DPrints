@@ -571,6 +571,41 @@ function photoDecals(p) {
     return d;
   });
 }
+/* A capacitor's sleeve as its maker prints it: the - band, a column of
+   minus signs, down the side `minus` faces; the rating to either side of
+   it. Wrapped on a skin just over the sleeve, clear where nothing is
+   printed. The sleeve stands along z. */
+function sleevePrint(p) {
+  const pr = p.print, W = 1024, H = Math.round(W * p.h / (2 * Math.PI * p.r));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const ink = css('--cap-ink') || '#b9c0c8';
+  g.fillStyle = ink;
+  // the band: a quarter of the way round, centred at u = 0.5
+  g.fillRect(W * 0.39, 0, W * 0.22, H);
+  g.fillStyle = '#1d1f24';
+  const n = 5, bh = H / n;
+  for (let k = 0; k < n; k++) g.fillRect(W * 0.455, bh * (k + 0.5) - bh * 0.06, W * 0.09, bh * 0.12);
+  // the rating, set at u = 0.15 and 0.85: readable from either side
+  g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const fs = H / (pr.lines.length + 2.5);
+  g.font = `600 ${fs}px "Helvetica Neue", Arial, sans-serif`;
+  for (const u of [0.17, 0.83]) pr.lines.forEach((t, k) =>
+    g.fillText(t, W * u, H / 2 + (k - (pr.lines.length - 1) / 2) * fs * 1.15, W * 0.26));
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  // u = 0.5 where the cylinder faces `minus`: three's theta 0 faces -y
+  // once its axis is turned from y onto z
+  const t0 = Math.atan2(pr.minus[0], -pr.minus[1]) - Math.PI;
+  const geo = new THREE.CylinderGeometry(p.r + 0.006, p.r + 0.006, p.h * 0.94, 96, 1, true, t0)
+    .rotateX(Math.PI / 2);
+  const d = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.45,
+    metalness: 0.1, alphaTest: 0.5 }));
+  d.position.set(...p.c);
+  d.userData.decal = true;
+  return d;
+}
 /* what each step's bought parts are made of */
 const MATS = { motor: ['steel', 'brass', 'steel', 'brass'], cable: ['cable'], ctrl: ['pcb'],
   home_hall: ['dark'], ring_magnet: ['magnet'], home_lead: ['cable'], cable_run: ['cable'],
@@ -595,6 +630,7 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
   m.userData.base = p.M ? new THREE.Matrix4().set(...p.M) : new THREE.Matrix4();
   m.userData.unit = p.unit ?? j;
   if (p.photo) m.userData.decals = photoDecals(p);
+  if (p.print) m.userData.decals = [sleevePrint(p)];
   for (const d of m.userData.decals || []) m.add(d);
   return m;
 })));
@@ -654,6 +690,8 @@ STEPS.forEach((st, i) => st.bodies.forEach(b => stepOfBody[b] = i));
 const carrier = {};                       // bench step id -> the step that carries it
 STEPS.forEach((st, i) => st.carry.forEach(id => carrier[id] = i));
 const idx = Object.fromEntries(STEPS.map((s, i) => [s.id, i]));
+const benchUse = {};                      // body -> the bench steps that build onto it
+STEPS.forEach((st, i) => (st.against || []).forEach(n => (benchUse[n] ||= []).push(i)));
 // does step i's work move during step k: its own, or carried there --
 // by a carrier, or by whatever carries that (the pucks' inserts ride the
 // pucks onto the base, and the base onto the board)
@@ -745,14 +783,16 @@ function mark(m, current, f, fade) {
 function poseAll(k, f) {
   for (const [n, m] of Object.entries(body)) {
     const i = stepOfBody[n];
-    // a body a bench step builds onto is shown as a ghost during it
+    // a body a bench step builds onto is shown as a ghost from that step
+    // until its own: what was built onto it does not float in the air
     // (a strict boolean: three skips a body only when visible === false)
-    const benchOn = !!(STEPS[k].against && STEPS[k].against.includes(n) && i > k);
+    const benchStep = i > k ? (benchUse[n] || []).filter(j => j <= k).pop() : undefined;
+    const benchOn = benchStep !== undefined;
     m.visible = (visibleAt(i, k) || benchOn) && !(STEPS[k].hide || []).includes(n);
     setGhost(m, !!benchOn || spare(i));
     const st = STEPS[i];
     let M = new THREE.Matrix4();
-    const atStep = benchOn ? STEPS[k] : st;
+    const atStep = benchOn ? STEPS[benchStep] : st;
     if (atStep.at) M = new THREE.Matrix4().set(...atStep.at);
     if (turnOf[n]) {
       const t = turnOf[n];
