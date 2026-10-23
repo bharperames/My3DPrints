@@ -1884,7 +1884,7 @@ WIRES = (
      ((-26.6, -16.2), (12.4, -16.2))),
     ("W9", "white", "home", ("lead", 2), ("hole", "D5", 0), "j_home", 6.8,
      ((-26.6, 4.6),)),
-    ("W10", "red", "5V", ("xiao", "5V"), ("under", "power", "VIN"), "xiao", 8.8,
+    ("W10", "red", "5V", ("xiao", "5V"), ("under", "power", "VIN"), "drv", 8.8,
      ((26.88, -11.6), (-15.38, -11.6))),
     ("W11", "black", "GND", ("xiao", "GND"), ("hole", "GND", 2), "xiao", 3.8,
      ((24.34, -14.0),)),
@@ -4165,8 +4165,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "alongside the motor's cable, and in through the box's inlet.",
               hw=[("", 0, lead)]),
         _step("drv", "The DRV8833 off the tray: everything under it",
-              "Five wires and the capacitor's two legs go in through the "
-              "DRV8833's holes from the top and are soldered underneath. Once "
+              "Six wires and the capacitor's two legs go into the DRV8833's "
+              "holes and are soldered underneath. Once "
               "the board is clipped into the tray its underside cannot be "
               "reached, so this is done first, **on the bench**.\n"
               "1. Hold the board in helping hands by its edges, **chips "
@@ -4187,13 +4187,20 @@ def assembly_steps(parts, specimen=SPECIMEN):
               f"- **AIN2**: yellow, **{wire_cut('W16')} mm**\n"
               f"- **FLT**: yellow, **{wire_cut('W17')} mm**\n"
               f"- **GND**: black, **{wire_cut('W12')} mm**\n"
-              "5. Back on the VIN edge: the motor cable's **black** wire "
-              "into **AOUT2**.\n"
+              "5. Back on the VIN edge:\n"
+              "- the motor cable's **black** wire into **AOUT2**\n"
+              f"- the 5V supply, a red cut **{wire_cut('W10')} mm**: under "
+              "the board, **twist its stripped end once round the capacitor's "
+              "+ leg** where it comes through VIN, so they are soldered as "
+              "one\n"
               "6. Bend each wire and leg out a little underneath so nothing "
               "drops out, and turn the board over.\n"
               "7. Solder all seven, then **trim them flush**: the tray leaves "
               "only 1 mm under the board.\n"
-              "8. Clip it into the tray, the tray flat on the bench:\n"
+              "8. The red's loose end through the tray first: **down the "
+              "slot under VIN**, along its groove under the tray, and **up "
+              "the hole beside the 100 uF label**.\n"
+              "9. Clip the board into the tray, the tray flat on the bench:\n"
               "- chips up, its **square GND pad** toward the 100 uF label "
               "on the tray\n"
               "- tuck the far end under the lip in its frame\n"
@@ -4223,11 +4230,11 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "below the tray's top: keep the tip "
               "upright and off the window's walls\n"
               "3. New wires, cut to length:\n"
-              f"- 5V: a red cut {wire_cut('W10')} mm\n"
               f"- GND: a black cut {wire_cut('W11')} mm\n"
               f"- 3V3: a blue cut {wire_cut('W13')} mm\n"
               f"- D5: a white cut {wire_cut('W14')} mm\n"
               "4. Wires already there:\n"
+              "- 5V: the red from VIN, up the hole beside the 100 uF label\n"
               "- D0, D1 and D8: the yellows from AIN1, AIN2 and FLT\n"
               "- D3 and D4: the motor cable's yellow and white\n"
               "5. The black, blue and white go on down the hole beside their "
@@ -4236,8 +4243,8 @@ def assembly_steps(parts, specimen=SPECIMEN):
               # its side arm stands XIAO_SIDE_PRELOAD inside the board's edge
               presses=[("Seeed Studio XIAO ESP32S3", "ctrl_tray")],
               solder=True, view=top_view, hide=["ctrl_box"]),
-        _step("r1", "Up from below: the 4.7 ohm and 5 V",
-              "These two come up into the DRV8833 from under the tray.\n"
+        _step("r1", "Up from below: the 4.7 ohm",
+              "Its leg comes up into the DRV8833 from under the tray.\n"
               "1. Hold the tray on its long edge in the helping hands, the M1 "
               "side up, so both faces can be reached.\n"
               "2. The 4.7 ohm into its saddle above the DRV8833:\n"
@@ -4246,10 +4253,7 @@ def assembly_steps(parts, specimen=SPECIMEN):
               "- under the tray, its leg nearer the left wall along its "
               "groove and up the slot into AOUT1\n"
               "- its other leg stays long, for the M1 pocket\n"
-              "3. The red from 5V down the hole beside the 100 uF's value, "
-              "along its groove and up the slot into VIN beside the "
-              "capacitor's leg.\n"
-              "4. Lay the tray flat, right side up, and solder both on the "
+              "3. Lay the tray flat, right side up, and solder it on the "
               "DRV8833's top.",
               hw=[(MOTOR_R_ITEM, 1, inbox(r1_prims()))], solder=True,
               view=top_view, hide=["ctrl_box"]),
