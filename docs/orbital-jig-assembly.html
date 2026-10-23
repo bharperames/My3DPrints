@@ -73,6 +73,12 @@
   button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   button.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
   /* the controls stay put while the cards scroll under them */
+  /* one line, never wrapped: the transport row fits the panel at its width */
+  .bar.sticky { flex-wrap:nowrap; gap:5px; }
+  .bar.sticky > * { flex:none; }
+  .bar.sticky > button { padding:6px 10px; }
+  .bar.sticky > button.icon { min-width:2.6em; }
+  #speed { min-width:3.2em; font-variant-numeric:tabular-nums; }
   .bar.sticky { position:sticky; top:-14px; z-index:5; margin:-14px -16px 10px; padding:12px 16px 10px;
     background:var(--surface); border-bottom:1px solid var(--line); }
   button:disabled { opacity:.4; cursor:default; border-color:var(--edge); }
@@ -92,6 +98,9 @@
   .chk i { font-style:normal; font-weight:700; width:14px; flex:0 0 14px; }
   .chk.ok i { color:var(--good); } .chk.bad i { color:var(--risk); }
   .chk.bad { color:var(--risk); }
+  li.grp { margin:14px 2px 6px; font-size:12.5px; color:var(--ink-soft); }
+  li.grp:first-child { margin-top:4px; }
+  li.grp b { display:block; font-size:13.5px; color:var(--ink); margin-bottom:2px; }
   ol.steps { list-style:none; margin:6px 0 0; padding:0; counter-reset:s; }
   .step { display:grid; grid-template-columns:26px 1fr auto; gap:2px 8px; padding:7px 8px;
     border:1px solid var(--edge); border-radius:7px; margin-bottom:6px; cursor:pointer;
@@ -125,6 +134,14 @@
   td { padding:4px 4px 4px 0; border-bottom:1px solid var(--line); vertical-align:top; }
   td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; }
   td.ok { color:var(--good); font-weight:650; } td.bad { color:var(--risk); font-weight:650; }
+  /* until the file is read the panel has nothing to list: say what is
+     happening instead of showing empty headings */
+  body.loading aside > h2, body.loading .tablewrap, body.loading details.adv,
+  body.loading .checks, body.loading #thetaNote { display:none; }
+  body.loading .bar.sticky > button { opacity:.4; pointer-events:none; }
+  #loading { display:none; font-size:13px; line-height:1.5; margin:4px 0 12px; }
+  body.loading #loading { display:block; }
+  #loading .t { font-variant-numeric:tabular-nums; color:var(--ink-soft); }
   .note { font-size:12px; color:var(--ink-soft); border-top:1px solid var(--line); margin-top:16px; padding-top:12px; }
   .note b { color:var(--ink); }
   .tablewrap { overflow-x:auto; }
@@ -137,7 +154,7 @@
 "three/addons/utils/BufferGeometryUtils.js":"../vendor/utils/BufferGeometryUtils.js"}}
 </script>
 </head>
-<body>
+<body class="loading">
 <header>
   <h1>Orbital scanning jig — assembly</h1>
   <span class="sub" id="sub">loading…</span>
@@ -149,11 +166,14 @@
   <aside>
     <div class="bar sticky">
       <button id="play" class="primary">▶ Assemble</button>
-      <button id="prev">◀ Step</button>
-      <button id="next">Step ▶</button>
-      <button id="reset">Reset</button>
-      <span class="seg" id="speed"><button data-s="1" class="on">1×</button><button data-s="3">3×</button></span>
+      <button id="reset" class="icon" title="Start: back to step 1" aria-label="Start">⏮</button>
+      <button id="prev" class="icon" title="Step back" aria-label="Step back">◀</button>
+      <button id="next" class="icon" title="Step forward: play the next step" aria-label="Step forward">▶</button>
+      <button id="built" class="icon" title="End: the last step, the jig built" aria-label="End">⏭</button>
+      <button id="speed" title="Playback speed: 1×, 2×, 3×">1×</button>
     </div>
+    <div id="loading"><b id="loadWhat">Loading the jig…</b> <span class="t" id="loadT"></span>
+      <div id="loadWhy"></div></div>
     <div class="checks" id="checks"></div>
     <h2>The order</h2>
     <ol class="steps" id="steps"></ol>
@@ -196,10 +216,10 @@
       drawn at the pin's size jams. Each size is measured off the built
       part — a section loop, or a ray across a slot — not read from the
       number it was drawn with.
-      <br><br>
+      <span id="thetaNote"><br><br>
       <b>Shown with the carriage half way up the arc</b>, at <span id="theta"></span>°,
       because that is where it goes on: at the arc's foot the leg is solid
-      and the carriage's tongue has no channel to enter.
+      and the carriage's tongue has no channel to enter.</span>
     </div>
   </aside>
 </div>
@@ -225,15 +245,36 @@ const errors = [];
 addEventListener('error', e => errors.push(String(e.message || e)));
 const Q = new URLSearchParams(location.search);
 const specimen = Q.get('specimen') ? +Q.get('specimen') : 78;
-hud.textContent = 'building the jig from its generator (a few seconds the first time)…';
-const res = await fetch(`../src?id=orbital_jig&params=${encodeURIComponent(JSON.stringify({ specimen }))}`);
+/* while it loads: what is being waited on, and for how long */
+const loadEl = { what: document.getElementById('loadWhat'), t: document.getElementById('loadT'),
+  why: document.getElementById('loadWhy') };
+const loadT0 = performance.now();
+const loadTick = setInterval(() => {
+  const s = Math.round((performance.now() - loadT0) / 1000);
+  loadEl.t.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}, 500);
+function loading(what, why) {
+  loadEl.what.textContent = what; loadEl.why.textContent = why || ''; hud.textContent = what;
+  return new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));   // let it paint
+}
+const srcQ = `id=orbital_jig&params=${encodeURIComponent(JSON.stringify({ specimen }))}`;
+let rebuilding = false;
+try { rebuilding = (await (await fetch(`../stale?${srcQ}`)).json()).stale; } catch (e) {}
+await loading(rebuilding ? 'Rebuilding the jig…' : 'Fetching the printed file…', rebuilding
+  ? 'The generator changed since the 3MF was last built, so the shop is building it again: '
+    + 'every part, then every step\'s path swept against what is already in place. '
+    + 'This takes a few minutes; the page fills in when it is done.'
+  : 'The 3MF is up to date; reading it and building the scene takes about ten seconds.');
+const res = await fetch(`../src?${srcQ}`);
 if (!res.ok) {
   let msg = res.statusText;
   try { msg = (await res.json()).error || msg; } catch (e) {}
-  hud.textContent = 'could not build the part: ' + msg;
+  clearInterval(loadTick); loading('Could not build the jig', msg);
   throw new Error(msg);
 }
 const buf = await res.arrayBuffer();
+await loading('Building the scene…', `${(buf.byteLength / 1e6).toFixed(0)} MB read; `
+  + 'every part and bought piece is now turned into meshes and outlines, about ten seconds.');
 const files = unzipSync(new Uint8Array(buf));
 const D = JSON.parse(new TextDecoder().decode(files['Metadata/orbital_jig.json']));
 /* The bought parts McMaster drew, carried in the archive as GLBs: each
@@ -331,9 +372,12 @@ const selectMaterial = () => new THREE.MeshStandardMaterial({ color: SELECT, rou
   metalness: 0.05, side: THREE.DoubleSide });
 let selected = null;
 function select(m) {
+  if (m && m.userData.group) m = m.userData.group[0];
   if (selected === m) return;
   const was = selected; selected = m;
-  for (const o of [was, m]) if (o) { o.userData.selected = o === m; style(o); }
+  const all = o => (o ? o.userData.group || [o] : []);
+  for (const o of all(was)) { o.userData.selected = false; style(o); }
+  for (const o of all(m)) { o.userData.selected = true; style(o); }
 }
 function style(m) {
   const u = m.userData;
@@ -354,8 +398,23 @@ function style(m) {
   mat.opacity = op;
   mat.depthWrite = op >= 1;
   mat.polygonOffset = true; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 1;
-  mat.depthTest = !u.inside;
-  m.renderOrder = u.inside ? 10 : 0;
+  mat.depthTest = true;
+  m.renderOrder = 0;
+  // hardware riding in inside its part (the nut sealed in the saddle) is
+  // drawn as it is where it can be seen, and as a faint shape only where
+  // something stands in front of it -- not over everything, which put it
+  // in front of the very part it sits in
+  const showHid = !!u.inside && m.visible && (mode === 'edges' || mode === 'shaded');
+  if (showHid && !u.hidMesh) {
+    u.hidMesh = new THREE.Mesh(m.geometry, new THREE.MeshBasicMaterial({ transparent: true,
+      opacity: 0.3, depthWrite: false, depthFunc: THREE.GreaterDepth }));
+    u.hidMesh.renderOrder = 10; u.hidMesh.raycast = () => {};
+    m.add(u.hidMesh);
+  }
+  if (u.hidMesh) {
+    u.hidMesh.visible = showHid;
+    u.hidMesh.material.color.copy(u.selected ? SELECT : own.color);
+  }
   // A ghost -- the part a bench step builds onto -- is drawn as a hidden-
   // line drawing over faint glass: its faces write depth, so its edges
   // can be told apart, solid where seen and dashed where behind.
@@ -838,7 +897,10 @@ function poseAll(k, f) {
     // a body a bench step builds onto is shown as a ghost from that step
     // until its own: what was built onto it does not float in the air
     // (a strict boolean: three skips a body only when visible === false)
-    const benchStep = i > k ? (benchUse[n] || []).filter(j => j <= k).pop() : undefined;
+    // (work done before assembly shows its part only at its own step:
+    // the part waits off the picture until the step that fits it)
+    const benchStep = i > k ? (benchUse[n] || []).filter(j => j <= k && (!STEPS[j].prep || j === k)).pop()
+      : undefined;
     const benchOn = benchStep !== undefined;
     m.visible = (visibleAt(i, k) || benchOn) && !(STEPS[k].hide || []).includes(n);
     setGhost(m, !!benchOn || spare(i));
@@ -863,8 +925,12 @@ function poseAll(k, f) {
   }
   STEPS.forEach((st, i) => {
     const O = offsetFor(i, k, f);
+    // an insert melted in before assembly is seen at its own step, then
+    // again once the step that fits its part brings it in
+    const shown = st.prep ? i === k || (carrier[st.id] !== undefined && carrier[st.id] <= k)
+      : visibleAt(i, k);
     hwOf[i].forEach((m, j) => {
-      m.visible = visibleAt(i, k);
+      m.visible = shown;
       let M = m.userData.base.clone();
       // the bearings ride their eccentrics in
       if (st.id === 'bearings' && preload >= 0) {
@@ -931,7 +997,24 @@ const stepsEl = document.getElementById('steps');
 { const bar = document.querySelector('.bar.sticky');
   const setBar = () => document.documentElement.style.setProperty('--bar-h', bar.offsetHeight + 'px');
   new ResizeObserver(setBar).observe(bar); setBar(); }
+/* the bench work done before assembly -- every insert, the iron hot once
+   -- under its own heading, with what to gather for it */
+const prepSteps = STEPS.filter(st => st.prep);
+function groupHead(title, text) {
+  const li = document.createElement('li');
+  li.className = 'grp';
+  li.innerHTML = `<b>${title}</b>` + (text ? `<div>${text}</div>` : '');
+  stepsEl.appendChild(li);
+  return li;
+}
+let prepHead = null;
 STEPS.forEach((st, i) => {
+  if (st.prep && i === STEPS.indexOf(prepSteps[0])) {
+    const n = prepSteps.reduce((a, s) => a + s.hardware.reduce((b, h) => b + h.qty, 0), 0);
+    prepHead = groupHead('Before assembly', '');
+    prepHead.dataset.n = n;
+  }
+  if (!st.prep && i > 0 && STEPS[i - 1].prep) groupHead('Assembly', '');
   const li = document.createElement('li');
   li.className = 'step'; li.id = 'st' + i;
   const c = checked[st.id];
@@ -1076,8 +1159,17 @@ document.getElementById('prev').onclick = () => {
   k = k - 1; f = 1; playing = false; setPlay(); hudText(); frameStep(k); showCard(); };
 document.getElementById('reset').onclick = () => {
   k = 0; f = 0; playing = false; setPlay(); hudText(); frameStep(k); showCard(); };
-document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
-  speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b)); });
+/* straight to the end: every step fitted, the whole jig in view */
+document.getElementById('built').onclick = () => {
+  k = STEPS.length - 1; f = 1; playing = false; setPlay(); hudText(); showCard();
+  const c = whole.getCenter(new THREE.Vector3());
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const p = c.clone().add(dir.multiplyScalar(fitDist(whole.getSize(new THREE.Vector3()).length() / 2)));
+  cam = { segs: [{ a: { t: controls.target.clone(), p: camera.position.clone() }, b: { t: c, p }, d: 1.0 }], s: 0, t: 0 };
+};
+/* one button for the speed: 1x, 2x, 3x and round again */
+document.getElementById('speed').onclick = e => {
+  speed = speed % 3 + 1; e.currentTarget.textContent = speed + '×'; };
 
 buildPicker(document.getElementById('petg'), petg, choice => {
   for (const [n, m] of Object.entries(body)) setFilament(m, petgMaterial(choice.groups[groupOfPart(n)], n));
@@ -1105,11 +1197,27 @@ const PART = {
 };
 const HW_NOTE = { 'Honeywell SS451A omnipolar Hall switch': 'Hall-effect switch: pulses when a magnet passes 1–3 mm away' };
 for (const [n, m] of Object.entries(body)) m.userData.label = PART[n] || [n, ''];
+if (prepHead) {        // named as the parts are named on a click: the pucks, once
+  const parts = [...new Set(prepSteps.flatMap(s => s.against || [])
+    .map(n => /^puck_/.test(n) ? 'the three pucks' : 'the ' + (PART[n] || [names(n)])[0].toLowerCase()))];
+  prepHead.insertAdjacentHTML('beforeend', `<div>Every heat-set insert in one sitting: gather the `
+    + `${prepHead.dataset.n} inserts and ${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}, `
+    + `and heat the iron once.</div>`);
+}
 STEPS.forEach(st => {
   let j = 0;
   for (const h of st.hardware) for (const p of h.prims) {
     const m = hwOf[STEPS.indexOf(st)][j++];
     if (m && !m.userData.label) m.userData.label = [pretty(h.item || st.title), pretty(HW_NOTE[h.item] || st.title)];
+  }
+});
+/* a bought part drawn in pieces -- the gearmotor's can, gearbox and
+   shaft -- is one thing: a click on any piece takes the whole of it */
+hwOf.forEach((ms, i) => {
+  let j = 0;
+  for (const h of STEPS[i].hardware) {
+    const g = ms.slice(j, j + h.prims.length); j += h.prims.length;
+    if (h.item && h.qty === 1 && g.length > 1) g.forEach(m => { m.userData.group = g; });
   }
 });
 /* each part as the occurrence it is: the step that fits this one */
@@ -1581,6 +1689,8 @@ renderer.setAnimationLoop(now => {
   renderHowto(dt);
 });
 
+clearInterval(loadTick);
+document.body.classList.remove('loading');
 window.__assembly = {
   errors, steps: STEPS.length,
   get at() { return { k, f, id: STEPS[k].id }; },

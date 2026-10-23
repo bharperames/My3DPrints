@@ -414,6 +414,24 @@ class Handler(SimpleHTTPRequestHandler):
             return self.do_POST()
         if url.path == "/notes":
             return self._json(200, load_notes())
+        if url.path == "/stale":
+            # whether /src will rebuild before it answers: a page waiting
+            # on it can say "rebuilding, minutes" rather than "a moment"
+            q = parse_qs(url.query)
+            pid = unquote(q.get("id", [""])[0])
+            try:
+                params = json.loads(unquote(q.get("params", ["{}"])[0]) or "{}")
+            except ValueError:
+                params = {}
+            cat, _ = _shop_modules()
+            try:
+                part = cat.find(pid)
+            except KeyError:
+                return self._json(404, {"ok": False, "error": "unknown part"})
+            if part["kind"] == "library":
+                return self._json(200, {"ok": True, "stale": False})
+            path = cat.out_path(part, params or cat.defaults(part))
+            return self._json(200, {"ok": True, "stale": cat.stale(part, path)})
         if url.path == "/src":
             # The real geometry, by part id. The page used to render a GLB
             # built beside every 3MF -- three hundred and fifty megabytes of
