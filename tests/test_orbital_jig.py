@@ -484,6 +484,32 @@ class TestRealDrive(unittest.TestCase):
         self.assertFalse(any(k.startswith("M2x8") for k in bom))
         self.assertIn(J.CABLE_ITEM, bom)
 
+    def test_the_cut_cable_reaches_both_ends(self):
+        """The motor's cable is cut in two: the plug's end must reach the
+        motor's farthest joint, and the rest the sensor's -- and the
+        jumpers come from hookup wire, on the BOM."""
+        motor, sensor = J.cable_needs()
+        self.assertLessEqual(motor, J.cable_cut())
+        self.assertLessEqual(sensor + 50.0, J.CABLE_LEN - J.cable_cut())
+        self.assertEqual(J.inserts()[J.HOOKUP_ITEM], 1)
+
+    def test_every_wire_piece_names_its_wire(self):
+        """A wire drawn in pieces selects as one on the page, and its
+        marker lines are drawn from the same name: every wire prim of every
+        step names the wire it is, and the yellow jumpers are told apart."""
+        names = {w[0] for w in J.WIRES}
+        seen = set()
+        for st in J.assembly_steps(self.parts):
+            for h in st["hardware"]:
+                for p in h["prims"]:
+                    if p.get("kind") == "wire" and p.get("mat", "").startswith("wire_"):
+                        self.assertIn(p.get("wid"), names, (st["id"], p.get("label")))
+                        seen.add(p["wid"])
+        self.assertEqual(seen, names)
+        marks = [J.WIRE_MARKS.get(w[0]) for w in J.WIRES
+                 if w[1] == "yellow" and w[3][0] not in ("cable", "lead")]
+        self.assertEqual(sorted(marks), [1, 2, 3])
+
     def test_nothing_that_turns_carries_a_wire(self):
         rotating = set(J.ROTOR_SIDE) | set(J.CARRIAGE)
         self.assertFalse(rotating & {"drive_block", "drive_cap", "ctrl_box"})

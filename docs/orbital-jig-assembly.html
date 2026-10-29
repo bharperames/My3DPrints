@@ -11,7 +11,8 @@
   :root {
     --bg:#14181A; --surface:#1D2327; --surface-2:#232B2F;
     --ink:#EAF1EF; --ink-soft:#AFBEBB; --line:#313B40; --edge:#4A5A62;
-    --accent:#5FA893; --accent-ink:#14201C;
+    --accent:#5FA893; --accent-ink:#14201C; --now:#FFD400;
+    --mech:#6F9BD1; --elec:#E39A3B;
     --good:#7CC287; --warn:#E7B75E; --risk:#E08578;
     --p-stator:#7A8088; --p-rotor:#4F9A88; --p-arc:#D9736A;
     --p-carriage:#63A6C4; --p-small:#C99A3C; --hw:#B4BCC3; --cam:#5A626B;
@@ -42,6 +43,7 @@
     background:color-mix(in srgb,var(--surface) 92%,transparent); border:1px solid var(--line); border-radius:10px; padding:12px 18px 12px 12px; }
   #pick canvas { flex:0 0 auto; width:220px; height:170px; border-radius:6px; background:var(--surface-2); }
   #pick b { font-weight:650; font-size:25px; display:block; } #pick .sub { color:var(--ink-soft); font-size:18px; margin-top:4px; }
+  #pick .len { color:var(--ink); font-variant-numeric:tabular-nums; }
   #pick button { font-size:16px; margin-top:10px; }
   @media (max-width: 900px) { #pick { font-size:16px; } #pick b { font-size:19px; } #pick .sub { font-size:15px; }
     #pick canvas { width:130px; height:100px; } }
@@ -106,17 +108,61 @@
     border:1px solid var(--edge); border-radius:7px; margin-bottom:6px; cursor:pointer;
     background:var(--surface); }
   .step:hover { border-color:var(--accent); }
+  /* the kind of work, down the card's left edge: mechanical or electrical */
+  .step.mechanical { border-left:4px solid var(--mech); }
+  .step.electrical { border-left:4px solid var(--elec); }
+  .work-key { display:inline-flex; align-items:center; gap:5px; margin-right:12px; }
+  .work-key i { width:4px; height:13px; border-radius:1px; display:inline-block; }
   .step.on { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
-  .step.done { opacity:.72; }
+  /* your progress, kept in this browser: steps finished in any order */
+  .progress { display:flex; align-items:center; justify-content:space-between; gap:8px;
+    margin:4px 0 2px; font-size:12.5px; color:var(--ink-soft); }
+  .progress b { color:var(--ink); font-weight:650; font-variant-numeric:tabular-nums; }
+  #untick { white-space:nowrap; }
+  label.hide-done { display:inline-flex; align-items:center; gap:6px; margin:2px 0 6px;
+    font-size:12.5px; color:var(--ink); cursor:pointer; }
+  label.hide-done input { margin:0; accent-color:var(--accent); cursor:pointer; }
+  /* finished steps folded away: the one on screen stays until you move on */
+  #steps.hide-done li.step.finished:not(.on) { display:none; }
+  /* clearing progress asks first */
+  /* the wire flags: printed from the step that cuts the jumpers */
+  .step .flags { grid-column:2 / -1; display:flex; align-items:center; gap:8px; margin:4px 0 2px;
+    font-size:12px; color:var(--ink-soft); }
+  dialog#flagAsk { width:min(560px, 92vw); }
+  dialog#flagAsk .strip { max-height:58vh; overflow:auto; background:#fff; border-radius:6px;
+    padding:8px; margin:0 0 12px; text-align:center; }
+  dialog#flagAsk .strip img { width:240px; image-rendering:auto; }
+  dialog#flagAsk .status { flex:1; align-self:center; font-size:12px; color:var(--ink-soft); }
+  dialog#flagAsk .status.err { color:var(--risk); }
+  dialog#clearAsk, dialog#flagAsk { border:1px solid var(--edge); border-radius:10px; padding:18px 20px 16px;
+    background:var(--surface); color:var(--ink); max-width:360px; font-size:13px; line-height:1.45; }
+  dialog#clearAsk::backdrop, dialog#flagAsk::backdrop { background:rgba(0,0,0,.55); }
+  dialog#clearAsk b, dialog#flagAsk b { font-size:14px; display:block; margin-bottom:6px; }
+  dialog#clearAsk p, dialog#flagAsk p { margin:0 0 14px; color:var(--ink-soft); }
+  dialog#clearAsk .row, dialog#flagAsk .row { display:flex; justify-content:flex-end; gap:8px; }
+  dialog#clearAsk button.danger { background:var(--risk); border-color:var(--risk); color:#1A0F0D; font-weight:600; }
   .step .k { font-variant-numeric:tabular-nums; color:var(--ink-soft); font-size:12.5px; }
   .step b { font-size:13px; font-weight:600; }
-  .step .v { font-size:12px; font-weight:700; }
-  .step .v.ok { color:var(--good); } .step .v.bad { color:var(--risk); }
+  .step .v { font-size:12px; font-weight:700; color:var(--risk); }
+  /* finished, as the person says: a ring to click, a green check once done */
+  .step .fin { width:20px; height:20px; padding:0; border-radius:50%; cursor:pointer;
+    border:1.5px solid var(--ink-soft); background:transparent; color:transparent;
+    font-size:13px; font-weight:800; line-height:17px; text-align:center; }
+  .step .fin:hover { border-color:var(--good); }
+  .step.finished .fin { border-color:var(--good); background:var(--good); color:var(--surface); }
+  .step .side { display:flex; gap:6px; align-items:flex-start; }
   .step .what { grid-column:2 / -1; font-size:12px; color:var(--ink-soft); line-height:1.4; }
   .step .what p { margin:0 0 4px; }
   .step .what ol { margin:2px 0 4px; padding-left:20px; }
   .step .what ol > li { margin:3px 0; padding-left:2px; }
   .step .what ol > li::marker { color:var(--ink); font-weight:600; }
+  /* a step played sub-step by sub-step: the one on screen now, its text
+     in the view's selection yellow so it is found at a glance */
+  .step .what ol > li.now { background:color-mix(in srgb, var(--now) 9%, transparent);
+    box-shadow:inset 3px 0 0 var(--now); border-radius:0 4px 4px 0; padding-left:7px; margin-left:-5px;
+    color:var(--now); }
+  .step .what ol > li.now b, .step .what ol > li.now::marker { color:var(--now); }
+  .step.subs .what ol > li { cursor:pointer; }
   .step .what ul { margin:2px 0 2px; padding-left:16px; }
   .step .what ul > li { margin:1px 0; }
   .step .what b { color:var(--ink); font-weight:650; }
@@ -124,7 +170,8 @@
   .step .what input.tick { margin:0 5px 0 0; vertical-align:-2px; accent-color:var(--accent); cursor:pointer; }
   .step .what li.done > .t { color:var(--ink-soft); opacity:0.55; }
   .step .what li.done::marker { opacity:0.55; }
-  .step .ticks { font-size:11px; color:var(--ink-soft); margin-left:6px; font-weight:400; }
+  .step .ticks { display:block; font-size:11px; color:var(--ink-soft); font-weight:400; }
+  .step .ticks:empty { display:none; }
   .chips { grid-column:2 / -1; display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
   .chip { font-size:11.5px; padding:1px 7px; border-radius:99px; border:1px solid var(--edge); }
   .chip.p { border-color:var(--p-small); color:var(--ink); }
@@ -176,6 +223,22 @@
       <div id="loadWhy"></div></div>
     <div class="checks" id="checks"></div>
     <h2>The order</h2>
+    <div class="progress"><span id="progress"></span>
+      <button type="button" id="untick" title="Clear every finished mark and sub-step tick">Restart build steps</button></div>
+    <label class="hide-done"><input type="checkbox" id="hideDone"> Hide completed steps</label>
+    <dialog id="clearAsk"><form method="dialog">
+      <b>Clear all progress?</b><p id="clearWhat"></p>
+      <div class="row"><button value="cancel" autofocus>Cancel</button>
+        <button value="clear" class="danger">Clear progress</button></div></form></dialog>
+    <dialog id="flagAsk">
+      <b>Print the wire flags?</b>
+      <p id="flagWhat">A fold-over flag for every wire, on the 38 mm tape (DK-22225).
+        Cut on the dashed lines, wrap the band between the ticks round the wire,
+        and press the halves together, sticky side to sticky side.</p>
+      <div class="strip"><img id="flagImg" alt="the strip of wire flags as it will print"></div>
+      <div class="row"><span class="status" id="flagStatus"></span>
+        <button type="button" id="flagCancel">Cancel</button>
+        <button type="button" id="flagSend" class="primary">Print</button></div></dialog>
     <ol class="steps" id="steps"></ol>
     <h2>Bill of materials, as the steps use it</h2>
     <div class="tablewrap"><table id="bom"></table></div>
@@ -193,7 +256,6 @@
       <label class="follow"><input type="checkbox" id="follow" checked> follow the step</label>
       <h3>Filament</h3>
       <div id="petg"></div>
-      <button type="button" id="untick">Clear the ticked sub-steps</button>
     </details>
     <div class="note">
       <b>What is drawn is what prints, and what was checked.</b> The bodies
@@ -202,8 +264,10 @@
       same archive. Before the file was written, the generator moved each
       step's pieces along that path, half a millimeter at a time, against
       everything already in place — printed parts and the hardware fitted
-      before them — and nothing could touch until it seated. A ✓ beside a
-      step is that check, not this page's opinion.
+      before them — and nothing could touch until it seated. A step that
+      failed it would carry a red ✗; the ring beside each step is yours, to
+      mark it finished, in whatever order you work. Your marks stay in this
+      browser through a reload until you restart the build steps.
       <br><br>
       <b>The bill of materials is the sum of the steps.</b> If the BOM names
       something no step fits, or a step needs something the BOM does not
@@ -384,10 +448,15 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(css('--surface-2'));
 // hidden line is drawn from normals and depth, not from crease edges: see hlr.js
 const hlr = new HiddenLine(renderer);
-const camera = new THREE.PerspectiveCamera(36, 1, 1, 4000);
+// near enough to look into a sensor's pins from a few millimeters off
+const camera = new THREE.PerspectiveCamera(36, 1, 0.2, 4000);
 camera.up.set(0, 0, 1);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+// the wheel pushes in toward what is under the cursor, not the middle of
+// the view, so a small part can be gone up to wherever it is on screen
+controls.zoomToCursor = true;
+controls.minDistance = 0.5;
 camera.position.set(520, -560, 330);
 controls.target.set(0, 0, -60);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 1.9));
@@ -401,7 +470,13 @@ addEventListener('resize', resize);
 
 const allMeshes = [];
 function makeMesh(geometry, mat, edgeDeg = 25) {
-  const { g, edges } = shaded(geometry, edgeDeg);
+  // a wire (edgeDeg null) is a smooth tube with nothing to outline: drawn
+  // with edges, the seam of its round end cap showed as a line across it,
+  // and where two pieces of one wire meet it looked like a joint
+  const { g, edges } = edgeDeg === null
+    ? { g: geometry, edges: new THREE.BufferGeometry().setAttribute('position',
+        new THREE.Float32BufferAttribute([], 3)) }
+    : shaded(geometry, edgeDeg);
   const mesh = new THREE.Mesh(g, mat);
   mesh.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: edgeColor(mat) })));
   mesh.userData.edge = edgeColor(mat);
@@ -436,7 +511,24 @@ function inkFor(mat) {             // CAD edges: dark ink, light on a dark part
   return hsl.l < 0.32 ? INK_ON_DARK : INK;
 }
 const SELECT = new THREE.Color('#ffd400');           // CAD's selection yellow
-const selectMaterial = () => new THREE.MeshStandardMaterial({ color: SELECT, roughness: 0.45,
+/* a wire's color is what it is -- painted over, a yellow and a red can no
+   longer be told apart -- so a selected wire keeps it and glows at its
+   edges instead: a bright cyan rim and a soft halo past it, each its own
+   surface pushed out along the normals and seen from inside */
+const haloMaterial = (width, opacity) => {
+  const m = new THREE.MeshBasicMaterial({ color: '#12dcff', side: THREE.BackSide,
+    transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
+  m.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>',
+      `#include <begin_vertex>\n  transformed += normalize(normal) * ${width.toFixed(3)};`);
+  };
+  return m;
+};
+const HALO = [haloMaterial(0.22, 1), haloMaterial(0.6, 0.35)];
+// every selected part is the one yellow, whatever its own color; a wire
+// keeps its color and glows instead (below)
+const selectColor = () => SELECT;
+const selectMaterial = own => new THREE.MeshStandardMaterial({ color: selectColor(own), roughness: 0.45,
   metalness: 0.05, side: THREE.DoubleSide });
 let selected = null;
 function select(m) {
@@ -452,7 +544,7 @@ function style(m) {
   // a part joined into an assembly wears the assembly's colour; the one
   // clicked wears selection yellow, in every style
   const own = u.joined ? u.asmMat : u.mat;
-  const want = u.selected ? (u.selMat ||= selectMaterial())
+  const want = u.selected && !u.wire ? (u.selMat ||= selectMaterial(own))
     : mode === 'hlr' ? (u.hlrMat ||= HLR_FACE())
     : mode === 'xray' ? (u.xrayMat ||= XRAY_FACE()) : own;
   if (m.material !== want) { m.material = want; u.key = null; }
@@ -481,7 +573,7 @@ function style(m) {
   }
   if (u.hidMesh) {
     u.hidMesh.visible = showHid;
-    u.hidMesh.material.color.copy(u.selected ? SELECT : own.color);
+    u.hidMesh.material.color.copy(u.selected && !u.wire ? selectColor(own) : own.color);
   }
   // A ghost -- the part a bench step builds onto -- is drawn as a hidden-
   // line drawing over faint glass: its faces write depth, so its edges
@@ -492,7 +584,17 @@ function style(m) {
   // either needs the material rebuilt, or the old one keeps drawing
   const key = `${mat.transparent}|${mat.wireframe}`;
   if (u.key !== key) { mat.needsUpdate = true; u.key = key; }
-  if (mat.emissive) mat.emissive.copy(u.selected ? SELECT : GLOW).multiplyScalar(u.selected ? 0.35 : glow);
+  if (mat.emissive) mat.emissive.copy(u.selected && !u.wire ? SELECT : GLOW)
+    .multiplyScalar(u.selected && !u.wire ? 0.35 : glow);
+  if (u.wire && u.selected && !u.halo) {
+    u.halo = HALO.map((hm, k) => {
+      const h = new THREE.Mesh(m.geometry, hm);
+      h.raycast = () => {}; h.renderOrder = 3 + k;
+      m.add(h);
+      return h;
+    });
+  }
+  for (const h of u.halo || []) h.visible = u.selected && mode !== 'wire';
   // a photo on its face: only where the faces are drawn as they are,
   // and as faded as the part it lies on
   for (const d of u.decals || []) {
@@ -501,7 +603,7 @@ function style(m) {
     dm.opacity = op; dm.transparent = op < 1; dm.depthWrite = op >= 1;
     if (d.userData.key !== dk) { dm.needsUpdate = true; d.userData.key = dk; }
   }
-  const e = m.children[0];
+  const e = m.children[0]?.isLineSegments ? m.children[0] : null;
   if (e) {
     e.visible = m.visible && (mode === 'edges' || mode === 'xray' || mode === 'hlr');
     e.material.transparent = hl; e.renderOrder = hl ? 2 : 0;
@@ -627,13 +729,55 @@ function wireGeom(p) {
   path.add(new THREE.LineCurve3(from, P[P.length - 1]));
   const n = Math.ceil(path.getLength() * 6) + 24 * corners + 2;
   const tube = new THREE.TubeGeometry(path, n, p.r, 24, false);
+  // round the tube, its uv is measured from the side facing up (sideways
+  // where the wire runs upright), not from the tube's own twisting frame:
+  // so a marker line keeps its place along a wire, and two pieces of one
+  // wire meeting end to end carry it on unbroken
+  const up = new THREE.Vector3(0, 0, 1), ax = new THREE.Vector3(1, 0, 0);
+  const uv = tube.getAttribute('uv'), R = 25;
+  let last = null;
+  for (let i = 0; i <= n; i++) {
+    const t = tube.tangents[i], N = tube.normals[i], B = tube.binormals[i];
+    const u = up.clone().addScaledVector(t, -up.dot(t)), x = ax.clone().addScaledVector(t, -ax.dot(t));
+    const w = Math.min(1, Math.max(0, (u.length() - 0.3) / 0.4));
+    const ref = (u.lengthSq() > 1e-12 ? u.normalize() : u).multiplyScalar(w)
+      .addScaledVector(x.normalize(), 1 - w);
+    let phi = Math.atan2(ref.dot(B), ref.dot(N));
+    if (last !== null) phi += 2 * Math.PI * Math.round((last - phi) / (2 * Math.PI));
+    last = phi;
+    for (let j = 0; j < R; j++) uv.setY(i * R + j, 0.5 - j / (R - 1) - phi / (2 * Math.PI));
+  }
   const cap = (q, d) => new THREE.SphereGeometry(p.r, 24, 12, 0, 2 * Math.PI, 0, Math.PI / 2)
     .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d))
     .translate(q.x, q.y, q.z);
   const t0 = path.getTangentAt(0).negate(), t1 = path.getTangentAt(1);
   const parts = [tube, cap(P[0], t0), cap(P[P.length - 1], t1)].map(g => g.toNonIndexed());
-  parts.forEach(g => { g.deleteAttribute('uv'); });
+  // the tube's own uv runs along it (x) and round it (y), so a stripe
+  // follows it through every bend; the caps sit off the stripe
+  for (const g of parts.slice(1)) g.setAttribute('uv',
+    new THREE.Float32BufferAttribute(new Float32Array(g.getAttribute('position').count * 2).fill(0.5), 2));
   return mergeGeometries(parts);
+}
+/* black marker lines down a wire, side by side on its upper face: one
+   an eighth of the way round, two or three narrower, the rest the wire's
+   own color */
+const stripeTex = {};
+function stripeTexture(n) {
+  if (stripeTex[n]) return stripeTex[n];
+  const H = 64, cv = document.createElement('canvas'); cv.width = 2; cv.height = H;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 2, H);
+  g.fillStyle = '#141414';
+  const bw = n === 1 ? 8 : 5, pitch = 9;
+  for (let k = 0; k < n; k++) {
+    const r0 = Math.round(k * pitch - ((n - 1) * pitch + bw) / 2);    // centred on row 0
+    for (const off of [0, H]) g.fillRect(0, r0 + off, 2, bw);
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.NearestFilter;
+  t.wrapT = THREE.RepeatWrapping;
+  return (stripeTex[n] = t);
 }
 /* hardware from the same primitives the generator swept */
 function primGeom(p) {
@@ -674,6 +818,16 @@ function primGeom(p) {
       i ? sh.lineTo(x, y) : sh.moveTo(x, y);
     }
     g = new THREE.ExtrudeGeometry(sh, { depth: p.h, bevelEnabled: false }).translate(0, 0, -p.h / 2);
+  } else if (p.dome) {
+    // solder: flat on its pad, a short wall, then bulging over to the top,
+    // so it catches the light like a fillet rather than a disc
+    const n = 12, pts = [[0, -p.h / 2], [p.r, -p.h / 2], [p.r, p.h / 2 - p.dome]];
+    for (let i = 1; i <= n; i++) {
+      const a = i / n * Math.PI / 2;
+      pts.push([p.r * Math.cos(a), p.h / 2 - p.dome + p.dome * Math.sin(a)]);
+    }
+    g = new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), p.sides || 32)
+      .rotateX(Math.PI / 2);
   } else {
     // along z, a corner on +x: a hex head's corners are placed below
     g = new THREE.CylinderGeometry(p.r, p.r, p.h, p.sides || 32, 1, false, Math.PI / 2).rotateX(Math.PI / 2);
@@ -785,8 +939,8 @@ function sleevePrint(p) {
   return d;
 }
 /* what each step's bought parts are made of */
-const MATS = { motor: ['steel', 'brass', 'steel', 'brass'], cable: ['cable'], ctrl: ['pcb'],
-  home_hall: ['dark'], ring_magnet: ['magnet'], home_lead: ['cable'], cable_run: ['cable'],
+const MATS = { motor: ['steel', 'brass', 'steel', 'brass'], cable: ['cable'], ctrl: ['cable'],
+  home_hall: ['dark'], ring_magnet: ['magnet'],
   camera: ['phone'], nut: ['steel'], bearings: ['steel'] };
 const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
   if (p.kind === 'external') {
@@ -804,15 +958,76 @@ const hwOf = STEPS.map(st => st.hardware.flatMap(h => h.prims.map((p, j) => {
     : p.kind === 'cyl' && j % 2 === 0 ? 'dark' : 'steel';     // bolt heads, shanks
   // an insert's knurl would draw a line on every ridge: only its steps
   const knurled = kind === 'brass' && p.kind === 'ring';
-  const m = makeMesh(knurled ? insertGeom(p) : primGeom(p), hardwareMaterial(kind), knurled ? 80 : 25);
+  // the home sensor's wires carry a black tracer down one side: the same
+  // colors as the motor's, told apart by it
+  let mat = hardwareMaterial(kind);
+  if (p.stripe) { mat = mat.clone(); mat.map = stripeTexture(p.stripe); }
+  const m = makeMesh(knurled ? insertGeom(p) : primGeom(p), mat,
+    p.kind === 'wire' ? null : knurled ? 80 : 25);
   m.userData.base = p.M ? new THREE.Matrix4().set(...p.M) : new THREE.Matrix4();
   m.userData.unit = p.unit ?? j;
+  if (p.until) m.userData.until = p.until;          // a loose end, taken up at that step
+  if (p.until_sub !== undefined) m.userData.untilSub = p.until_sub;   // ... as that sub-step plays
+  if (p.show) m.userData.show = p.show;             // its window in the step's sub-steps
+  if (p.move) m.userData.move = p.move;             // [sub-step, dx, dy, dz]: arrives over it
+  if (p.still) m.userData.still = true;             // lies where it is while the step's path runs
   if (p.photo) m.userData.decals = photoDecals(p);
   if (p.print) m.userData.decals = [sleevePrint(p)];
   if (p.label) m.userData.label = p.label.map(pretty);    // a wire: what it joins
+  if (p.wid) m.userData.wid = p.wid;
+  if (p.ghost) setGhost(m, true);                   // where something goes, a later step's
+  if (p.kind === 'wire') m.userData.wire = true;
   for (const d of m.userData.decals || []) m.add(d);
   return m;
 })));
+
+/* What joins what under the tray, traced dashed on its top while it is
+   wired: each groove from its hole to its pocket, and the pocket the
+   wires meet in, faint -- so from above the three blues and the 10 kohm's
+   leg are seen to end in one joint. Dashes are thin tubes, not lines, so
+   they hold their width as the view closes in. */
+const links = (() => {
+  const L = A.links;
+  if (!L) return null;
+  const R = 0.22, DASH = 1.0, GAP = 0.7;
+  const parts = [];
+  const dashes = pts => {
+    let phase = 0;                      // carried round corners
+    for (let i = 1; i < pts.length; i++) {
+      const a = new THREE.Vector3(...pts[i - 1]), b = new THREE.Vector3(...pts[i]);
+      const len = a.distanceTo(b), dir = b.clone().sub(a).normalize();
+      let t = 0;
+      while (t < len) {
+        const on = phase < DASH, step = Math.min(len - t, (on ? DASH : DASH + GAP) - phase);
+        if (on && step > 0.05) {
+          const c = a.clone().addScaledVector(dir, t + step / 2);
+          parts.push(new THREE.CylinderGeometry(R, R, step, 8, 1)
+            .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir))
+            .translate(c.x, c.y, c.z));
+        }
+        t += step; phase = (phase + step) % (DASH + GAP);
+      }
+    }
+  };
+  for (const rt of L.routes) dashes(rt.pts);
+  for (const pk of L.pockets) {
+    const n = Math.max(12, Math.round(2 * Math.PI * pk.r / 0.9));
+    dashes(Array.from({ length: n + 1 }, (_, i) => {
+      const a = i / n * 2 * Math.PI;
+      return [pk.c[0] + pk.r * Math.cos(a), pk.c[1] + pk.r * Math.sin(a), pk.c[2]];
+    }));
+  }
+  // a deep violet: no wire is that color, and it stands off the gray
+  // tray (about 3.8:1) where the page's accent green did not
+  const m = new THREE.Mesh(mergeGeometries(parts), new THREE.MeshBasicMaterial({
+    color: '#4b1fa8' }));
+  m.renderOrder = 2;
+  m.visible = false;
+  m.matrixAutoUpdate = false;           // carried with the tray, as it is lowered in
+  scene.add(m);
+  return { mesh: m, from: STEPS.findIndex(s => s.id === L.steps[0]),
+           to: STEPS.findIndex(s => s.id === L.steps[1]) };
+})();
 
 const GLOW = new THREE.Color(css('--accent'));
 /* ---------- the bench: the shop's graph paper ----------
@@ -824,16 +1039,18 @@ function graphTexture(nIn) {
   const px = 96, W = nIn * px;
   const cv = document.createElement('canvas'); cv.width = cv.height = W;
   const ctx = cv.getContext('2d');
-  ctx.fillStyle = '#f2f7ff'; ctx.fillRect(0, 0, W, W);
+  // dark paper, so the parts and the wires stand off it -- light enough
+  // that a black wire still reads against it
+  ctx.fillStyle = '#2f3a46'; ctx.fillRect(0, 0, W, W);
   const line = (i, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w;
     ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, W); ctx.moveTo(0, i); ctx.lineTo(W, i); ctx.stroke(); };
   for (let k = 0; k <= nIn * 8; k++) {
     const i = k * px / 8;
     if (k % 8 === 0) continue;
-    line(i, k % 4 === 0 ? 1.6 : 0.7, k % 4 === 0 ? '#8fb0e4' : '#c3d5f2');
+    line(i, k % 4 === 0 ? 1.6 : 0.7, k % 4 === 0 ? '#4a6384' : '#3b4a5b');
   }
-  for (let k = 0; k <= nIn; k++) line(k * px, 2.6, '#3a6fd8');
-  ctx.fillStyle = '#3a6fd8'; ctx.font = '600 22px IBM Plex Sans, sans-serif';
+  for (let k = 0; k <= nIn; k++) line(k * px, 2.6, '#6d93cc');
+  ctx.fillStyle = '#a9c3ea'; ctx.font = '600 22px IBM Plex Sans, sans-serif';
   for (let k = 1; k < nIn; k++) {
     ctx.fillText(k + '\u2033', k * px + 5, W - 8);
     ctx.fillText(k + '\u2033', 5, W - k * px - 6);
@@ -860,7 +1077,7 @@ function graphTexture(nIn) {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(S, S), paper());
   floor.position.set(x0 + S / 2, y0 + S / 2, board - 0.05);
   scene.add(floor);
-  scene.background = new THREE.Color('#dfe7f2');
+  scene.background = new THREE.Color('#161b20');
 }
 
 /* ---------- the timeline ---------- */
@@ -890,7 +1107,8 @@ STEPS.forEach((st, c) => {
   if (!st.carry.length) return;
   // printed parts brought in from other steps: three pucks set down
   // side by side are not an assembly
-  const brought = STEPS.flatMap((s, i) => i !== c && ridesWith(i, c) ? s.bodies : []);
+  const brought = STEPS.flatMap((s, i) => i !== c && ridesWith(i, c)
+    ? s.bodies.filter(b => !(s.tools && s.tools[b])) : []);
   if (!brought.length) return;
   const members = st.bodies.concat(brought);
   const color = ASSEMBLY_COLORS[nAssemblies++ % ASSEMBLY_COLORS.length];
@@ -929,13 +1147,19 @@ function spinTimes(st) {
   return { engage, drop: DROP_S, thread: engage / sp.lead / TURNS_PER_S };
 }
 function distAt(st, f) {
+  // a step played as its sub-steps runs its path in its own one of them
+  if (st.subs) return (1 - ease(Math.min(1, Math.max(0, f * st.subs.n - st.subs.path)))) * st.path.travel;
   const sp = spinTimes(st);
   if (!sp) return (1 - ease(f)) * st.path.travel;
   const T = sp.drop + sp.thread, t = f * T;
   if (t < sp.drop) return st.path.travel - (st.path.travel - sp.engage) * ease(t / sp.drop);
   return sp.engage * (1 - Math.min(1, (t - sp.drop) / sp.thread));
 }
-const durOf = i => { const sp = spinTimes(STEPS[i]); return sp ? sp.drop + sp.thread : STEP_S; };
+const SUB_S = 2.2;                    // a sub-step's share of the clock
+const durOf = i => { const st = STEPS[i], sp = spinTimes(st);
+  return st.subs ? SUB_S * st.subs.n : sp ? sp.drop + sp.thread : STEP_S; };
+/* where step i is in its own sub-steps, 0..n, seen from step k at f */
+const subAt = (i, k, f) => i < k ? Infinity : i > k ? -Infinity : f * STEPS[i].subs.n;
 
 /* where a step's own pieces are, given the current step k and progress f */
 function offsetFor(i, k, f) {
@@ -960,6 +1184,12 @@ function mark(m, current, f, fade) {
   m.userData.fade = fade === undefined ? 1 : fade;
 }
 function poseAll(k, f) {
+  if (links) {
+    links.mesh.visible = k >= links.from && k < links.to;
+    // traced as the tray sits; wherever the tray's step has it, so is the trace
+    links.mesh.matrix.copy(offsetFor(links.from, k, f));
+    links.mesh.matrixWorldNeedsUpdate = true;
+  }
   for (const [n, m] of Object.entries(body)) {
     const i = stepOfBody[n];
     // a body a bench step builds onto is shown as a ghost from that step
@@ -970,9 +1200,19 @@ function poseAll(k, f) {
     const benchStep = i > k ? (benchUse[n] || []).filter(j => j <= k && (!STEPS[j].prep || j === k)).pop()
       : undefined;
     const benchOn = benchStep !== undefined;
-    m.visible = (visibleAt(i, k) || benchOn) && !(STEPS[k].hide || []).includes(n);
-    setGhost(m, !!benchOn || spare(i));
+    // a body the step sets aside to show the work is still drawn, as a
+    // ghost: the wires laid into the box keep the box they run into
+    const aside = (STEPS[k].hide || []).includes(n);
+    m.visible = visibleAt(i, k) || benchOn;
+    setGhost(m, !!benchOn || spare(i) || aside);
     const st = STEPS[i];
+    // a tool the step uses and takes away (the driver's shim): drawn where
+    // it is used, only for its sub-steps, never riding the path
+    const tool = st.tools && st.tools[n];
+    if (tool) {
+      const s = subAt(i, k, f);
+      m.visible = i === k && (tool[0] === 0 ? s >= 0 : s > tool[0]) && s < tool[1];
+    }
     let M = new THREE.Matrix4();
     const atStep = benchOn ? STEPS[benchStep] : st;
     if (atStep.at) M = new THREE.Matrix4().set(...atStep.at);
@@ -981,11 +1221,12 @@ function poseAll(k, f) {
       const g = k < preload ? 0 : k === preload ? ease(f) : 1;
       M = aboutZ(t.axis[0], t.axis[1], -t.deg * (1 - g)).multiply(M);
     }
-    const O = benchOn ? new THREE.Matrix4() : offsetFor(i, k, f);
+    const O = benchOn || tool ? new THREE.Matrix4() : offsetFor(i, k, f);
     m.matrix.copy(O.multiply(M).multiply(toWorld[n]));
     m.matrixWorldNeedsUpdate = true;
     const moving = ridesWith(i, k);
-    mark(m, moving && !benchOn, f, !st.path && i === k && !spare(i) ? f : undefined);
+    // (fading in only while it plays: stopped on the step, it is seen whole)
+    mark(m, moving && !benchOn && (!!st.path || playing), f, !st.path && i === k && !spare(i) && playing ? f : undefined);
     const a = assemblyOf[n];
     m.userData.joined = !!a && k >= a.step && !benchOn;
     if (a && !m.userData.asmMat) m.userData.asmMat = petgMaterial('grey', n).clone();
@@ -998,7 +1239,14 @@ function poseAll(k, f) {
     const shown = st.prep ? i === k || (carrier[st.id] !== undefined && carrier[st.id] <= k)
       : visibleAt(i, k);
     hwOf[i].forEach((m, j) => {
-      m.visible = shown;
+      const u = m.userData.until, w = m.userData.show;
+      const ui = u ? STEPS.findIndex(s => s.id === u) : -1;
+      const us = m.userData.untilSub;
+      m.visible = shown && !(u && (us === undefined || !STEPS[ui].subs ? k >= ui
+        : k > ui || (k === ui && subAt(ui, k, f) > us)));
+      // a piece drawn for part of the step: the leads straight, then bending
+      // (from its sub-step's start, not the end of the one before)
+      if (w && st.subs) { const s = subAt(i, k, f); m.visible &&= (w[0] === 0 ? s >= 0 : s > w[0]) && (w[1] === null || s < w[1]); }
       let M = m.userData.base.clone();
       // the bearings ride their eccentrics in
       if (st.id === 'bearings' && preload >= 0) {
@@ -1006,11 +1254,26 @@ function poseAll(k, f) {
         const g = k < preload ? 0 : k === preload ? ease(f) : 1;
         if (t) M = aboutZ(t.axis[0], t.axis[1], t.deg * g).multiply(M);
       }
-      m.matrix.copy(O.clone().multiply(M));
+      // a piece that arrives in its own sub-step: the capacitor into its holes
+      const mv = m.userData.move;
+      if (mv && st.subs) {
+        const g = 1 - ease(Math.min(1, Math.max(0, subAt(i, k, f) - mv[0])));
+        M = new THREE.Matrix4().makeTranslation(mv[1] * g, mv[2] * g, mv[3] * g).multiply(M);
+      }
+      m.matrix.copy((m.userData.still ? new THREE.Matrix4() : O.clone()).multiply(M));
       m.matrixWorldNeedsUpdate = true;
       const moving = ridesWith(i, k) || (st.turn && i === k)
         || (st.id === 'bearings' && k === preload);
-      mark(m, moving, f, !st.path && i === k ? Math.max(0.05, f) : 1);
+      // a laid piece stopped on is shown as it lies, its own colour, not lit
+      mark(m, moving && (!!st.path || playing), f, !st.path && i === k && playing ? Math.max(0.05, f) : 1);
+      // played sub-step by sub-step, only what the sub-step on screen
+      // brings in is lit, fading as it arrives
+      if (st.subs && i === k) {
+        const s = f * st.subs.n, cur = Math.min(st.subs.n - 1, Math.floor(s));
+        const from = mv ? mv[0] : w ? Math.ceil(w[0]) : m.userData.still ? -1 : st.subs.path;
+        m.userData.glow = from === cur && (from !== st.subs.path || !!st.path || playing)
+          ? 0.55 * (1 - 0.7 * Math.min(1, s - cur)) : 0;
+      }
       // a bench piece riding in with its part (the nut, sealed in the
       // saddle) is drawn through it, so it is not lost from view
       m.userData.inside = i !== k && ridesWith(i, k);
@@ -1055,11 +1318,37 @@ function noteHtml(note, st) {
   return out;
 }
 const names = n => n.replace(/_/g, ' ');
+const FIN = 'finished:';
+const FLAG_STEP = 'jumpers';          // where the wires are prepared: the flags print from there
 function tickCount(li) {
   const all = li.querySelectorAll('input.tick');
   all.forEach(cb => cb.closest('li').classList.toggle('done', cb.checked));
   const n = [...all].filter(cb => cb.checked).length;
-  li.querySelector('.ticks').textContent = n ? `${n} of ${all.length} done` : '';
+  // every sub-step ticked is the step finished, and one unticked is not
+  const id = STEPS[+li.id.slice(2)].id;
+  const was = !!ticked[FIN + id];
+  if (all.length && n === all.length) ticked[FIN + id] = 1;
+  else if (all.length) delete ticked[FIN + id];
+  li.classList.toggle('finished', !!ticked[FIN + id]);
+  li.querySelector('.fin').setAttribute('aria-pressed', ticked[FIN + id] ? 'true' : 'false');
+  // on its own line from the start, 0 included, so ticking one moves nothing
+  li.querySelector('.ticks').textContent = all.length ? `${n} of ${all.length} done` : '';
+  showProgress();
+  return !was && !!ticked[FIN + id];
+}
+/* a step just marked finished moves the view on to the next step not yet
+   finished, after it in the order */
+function advanceFrom(i) {
+  for (let j = i + 1; j < STEPS.length; j++)
+    if (!ticked[FIN + STEPS[j].id]) { go(j, false); return; }
+}
+// how many steps are marked finished, wherever they fall in the order
+function showProgress() {
+  const n = STEPS.filter(st => ticked[FIN + st.id]).length;
+  const el = document.getElementById('progress');
+  el.innerHTML = n === STEPS.length ? `<b>All ${n} steps finished</b>`
+    : `<b>${n} of ${STEPS.length}</b> steps finished`;
+  document.getElementById('untick').disabled = !Object.keys(ticked).length;
 }
 const stepsEl = document.getElementById('steps');
 { const bar = document.querySelector('.bar.sticky');
@@ -1082,31 +1371,105 @@ STEPS.forEach((st, i) => {
     prepHead = groupHead('Before assembly', '');
     prepHead.dataset.n = n;
   }
-  if (!st.prep && i > 0 && STEPS[i - 1].prep) groupHead('Assembly', '');
+  if (!st.prep && i > 0 && STEPS[i - 1].prep) groupHead('Assembly',
+    '<span class="work-key"><i style="background:var(--mech)"></i>mechanical</span>'
+    + '<span class="work-key"><i style="background:var(--elec)"></i>electrical</span>');
   const li = document.createElement('li');
-  li.className = 'step'; li.id = 'st' + i;
+  li.className = 'step ' + (st.work || 'mechanical'); li.id = 'st' + i;
   const c = checked[st.id];
   const ok = c ? !c.fouls.length : null;
   const chips = st.bodies.map(b => `<span class="chip p">${names(b)}</span>`)
     .concat(st.hardware.filter(h => h.item).map(h => `<span class="chip h">${h.qty} × ${pretty(h.item)}</span>`))
     .concat(st.carry.map(id => `<span class="chip">with step ${idx[id] + 1}</span>`));
+  // a step that fails its sweep says so beside the toggle; one that
+  // passes needs no mark (the summary above counts them)
   li.innerHTML = `<span class="k">${i + 1}</span><b>${pretty(st.title)}<span class="ticks"></span></b>` +
-    `<span class="v ${ok === null ? '' : ok ? 'ok' : 'bad'}" title="${ok ? 'path swept clear' : ok === false ? 'collides: ' + c.fouls.map(f => f[1].join(', ')).join('; ') : 'not swept'}">${ok === null ? '' : ok ? '✓' : '✗'}</span>` +
+    `<span class="side">${ok === false ? `<span class="v" title="collides: ${c.fouls.map(f => f[1].join(', ')).join('; ')}">✗</span>` : ''}` +
+    `<button class="fin" title="Mark this step finished" aria-label="Mark step ${i + 1} finished">✓</button></span>` +
     (st.note ? `<div class="what">${noteHtml(pretty(st.note), st)}</div>` : '') +
+    (st.id === FLAG_STEP ? `<div class="flags"><button type="button" class="flagbtn">Print wire flags…</button>`
+      + `<span>a label for every wire, to fold onto it</span></div>` : '') +
     (chips.length ? `<span class="chips">${chips.join('')}</span>` : '');
-  li.onclick = e => { if (!e.target.classList.contains('tick')) go(i); };
+  li.onclick = e => {
+    if (e.target.classList.contains('tick') || e.target.classList.contains('fin')) return;
+    if (e.target.closest('.flags')) return;
+    // in a step played sub-step by sub-step, a sub-step shows where it ends
+    const sub = st.subs && e.target.closest('.what ol > li');
+    if (sub) {
+      const j = [...sub.parentElement.children].indexOf(sub);
+      if (k !== i) go(i, false);
+      f = (j + 1) / st.subs.n; playing = false; setPlay(); hudText();
+      return;
+    }
+    go(i);
+  };
+  if (st.subs) li.classList.add('subs');
   li.querySelectorAll('input.tick').forEach(cb => cb.addEventListener('change', () => {
     if (cb.checked) ticked[cb.dataset.k] = 1; else delete ticked[cb.dataset.k];
-    saveTicks(); tickCount(li);
+    saveTicks(); if (tickCount(li)) advanceFrom(i);
   }));
+  // finishing a step ticks all it holds; unfinishing it clears them
+  li.querySelector('.fin').onclick = () => {
+    const done = !ticked[FIN + st.id];
+    if (done) ticked[FIN + st.id] = 1; else delete ticked[FIN + st.id];
+    li.querySelectorAll('input.tick').forEach(cb => {
+      cb.checked = done; if (done) ticked[cb.dataset.k] = 1; else delete ticked[cb.dataset.k]; });
+    saveTicks(); tickCount(li);
+    if (done) advanceFrom(i);
+  };
   tickCount(li);
   stepsEl.appendChild(li);
 });
-document.getElementById('untick').onclick = () => {
-  ticked = {}; saveTicks();
-  document.querySelectorAll('#steps li.step').forEach(li => {
-    li.querySelectorAll('input.tick').forEach(cb => { cb.checked = false; }); tickCount(li); });
-};
+// the wire flags: shown as they will print, sent only once asked
+{ const ask = document.getElementById('flagAsk'), img = document.getElementById('flagImg');
+  const status = document.getElementById('flagStatus'), send = document.getElementById('flagSend');
+  const say = (t, err) => { status.textContent = t; status.classList.toggle('err', !!err); };
+  document.querySelectorAll('.flagbtn').forEach(b => b.onclick = () => {
+    say('Drawing the strip…'); send.disabled = true; img.removeAttribute('src');
+    ask.showModal();
+    // fetched, not just pointed at, so a failure can say which it is
+    fetch('/jig/wire-labels.png?t=' + Date.now()).then(async r => {
+      if (r.status === 404) throw new Error('the shop server is older than the wire flags: restart it (make serve)');
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `the server answered ${r.status}`);
+      img.onload = () => { say(`${Math.round(img.naturalHeight / (300 / 25.4))} mm of tape`); send.disabled = false; };
+      img.src = URL.createObjectURL(await r.blob());
+    }).catch(e => say('Could not draw the strip: ' + (e.message === 'Failed to fetch'
+      ? 'the shop server is not running' : e.message), true));
+  });
+  document.getElementById('flagCancel').onclick = () => ask.close();
+  send.onclick = async () => {
+    send.disabled = true; say('Sending to the printer…');
+    try {
+      const r = await fetch('/jig/wire-labels', { method: 'POST' });
+      if (r.status === 404) throw new Error('restart the shop server (make serve)');
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || r.status);
+      say('Sent to the printer.');
+    } catch (e) { say('Not printed: ' + e.message, true); send.disabled = false; }
+  };
+}
+// finished steps hidden or shown: remembered in this browser
+{ const cb = document.getElementById('hideDone');
+  try { cb.checked = localStorage.getItem('ojig-hide-done') === '1'; } catch (e) {}
+  const apply = () => stepsEl.classList.toggle('hide-done', cb.checked);
+  cb.onchange = () => { apply(); try { localStorage.setItem('ojig-hide-done', cb.checked ? '1' : '0'); } catch (e) {} };
+  apply(); }
+// clearing everything asks first, saying what it will clear
+{ const btn = document.getElementById('untick'), ask = document.getElementById('clearAsk');
+  btn.onclick = () => {
+    const n = STEPS.filter(st => ticked[FIN + st.id]).length;
+    const t = Object.keys(ticked).filter(key => !key.startsWith(FIN)).length;
+    document.getElementById('clearWhat').textContent =
+      `${n} of ${STEPS.length} steps marked finished and ${t} sub-step tick${t === 1 ? '' : 's'} will be cleared. This cannot be undone.`;
+    ask.returnValue = ''; ask.showModal();
+  };
+  ask.onclose = () => {
+    if (ask.returnValue !== 'clear') return;
+    ticked = {}; saveTicks();
+    document.querySelectorAll('#steps li.step').forEach(li => {
+      li.querySelectorAll('input.tick').forEach(cb => { cb.checked = false; }); tickCount(li); });
+  };
+}
 const C = A.checked;
 const fitsOk = A.fits.every(f => f.ok);
 const anyFoul = C ? C.steps.some(s => s.fouls.length) : true;
@@ -1155,11 +1518,15 @@ function frameStep(i) {
   if (!followEl.checked) { cam = null; return; }
   const box = new THREE.Box3();
   const add = o => { o.updateMatrixWorld(true); box.expandByObject(o); };
-  poseAll(i, 1);
-  for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === i) add(m);
-  hwOf[i].forEach(add);
-  STEPS.forEach((st, j) => { if (j !== i && ridesWith(j, i)) { hwOf[j].forEach(add);
-    for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === j) add(m); } });
+  // where the pieces start as well as where they seat: a screw dropped
+  // 30 mm onto its hole is seen coming, not only once it is home
+  for (const g of STEPS[i].path ? [0, 1] : [1]) {
+    poseAll(i, g);
+    for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === i) add(m);
+    hwOf[i].forEach(add);
+    STEPS.forEach((st, j) => { if (j !== i && ridesWith(j, i)) { hwOf[j].forEach(add);
+      for (const [n, m] of Object.entries(body)) if (stepOfBody[n] === j) add(m); } });
+  }
   poseAll(k, Math.min(1, f));
   if (box.isEmpty()) { cam = null; return; }
   const c = box.getCenter(new THREE.Vector3());
@@ -1195,17 +1562,32 @@ const holdOf = i => STEPS[i].hardware.some(h => SMALL.test(h.item)) ? 1.0 : 0.25
 
 /* ---------- playback ---------- */
 const STEP_S = 1.4;
-let k = 0, f = 0, playing = false, speed = 1;
+let k = 0, f = 0, playing = false, speed = 1, hudK = 0;
 function hudText() {
   const st = STEPS[k], c = checked[st.id];
+  // a new step lets go of the part picked in the last one
+  if (k !== hudK) { hudK = k; select(null); document.getElementById('pick').style.display = 'none'; }
   document.getElementById('prev').disabled = k === 0;
   document.getElementById('next').disabled = k === STEPS.length - 1 && f >= 1;
   const v = c ? (c.fouls.length ? ' · <span style="color:var(--risk)">collides</span>' : ' · path swept clear') : '';
   hud.innerHTML = `<span class="n">step ${k + 1} / ${STEPS.length}</span> · <b>${pretty(st.title)}</b>${v}`;
   STEPS.forEach((_, i) => {
     const el = document.getElementById('st' + i);
-    el.className = 'step' + (i === k ? ' on' : i < k ? ' done' : '');
+    // toggled, not assigned: the card also carries finished and subs
+    el.classList.toggle('on', i === k);
   });
+}
+/* the sub-step on screen, lit in its card */
+let subShown = null;
+function showSub() {
+  const st = STEPS[k];
+  // a sub-step's end is still that sub-step: 1 of 4 shows at f = 0.25
+  const j = st.subs ? Math.max(0, Math.ceil(Math.min(1, f) * st.subs.n) - 1) : -1;
+  const key = `${k}:${j}`;
+  if (key === subShown) return;
+  subShown = key;
+  document.querySelectorAll('#steps .what ol > li.now').forEach(el => el.classList.remove('now'));
+  if (j >= 0) { const el = document.querySelectorAll(`#st${k} .what ol > li`)[j]; if (el) el.classList.add('now'); }
 }
 /* the step's card, its top just under the controls */
 function showCard() { document.getElementById('st' + k).scrollIntoView({ block: 'start', behavior: 'smooth' }); }
@@ -1276,7 +1658,8 @@ STEPS.forEach(st => {
   let j = 0;
   for (const h of st.hardware) for (const p of h.prims) {
     const m = hwOf[STEPS.indexOf(st)][j++];
-    if (m && !m.userData.label) m.userData.label = [pretty(h.item || st.title), pretty(HW_NOTE[h.item] || st.title)];
+    // the step that installs it is named on the button that goes there
+    if (m && !m.userData.label) m.userData.label = [pretty(h.item || st.title), pretty(HW_NOTE[h.item] || '')];
   }
 });
 /* a bought part drawn in pieces -- the gearmotor's can, gearbox and
@@ -1288,6 +1671,11 @@ hwOf.forEach((ms, i) => {
     if (h.item && h.qty === 1 && g.length > 1) g.forEach(m => { m.userData.group = g; });
   }
 });
+/* a wire drawn in pieces -- its run under the base, its stretch over the
+   tray, a loose end later replaced -- is one wire: a click takes it all */
+const wirePieces = {};
+hwOf.forEach(ms => ms.forEach(m => { if (m && m.userData.wid) (wirePieces[m.userData.wid] ||= []).push(m); }));
+for (const g of Object.values(wirePieces)) g.forEach(m => { m.userData.group = g; });
 /* each part as the occurrence it is: the step that fits this one */
 hwOf.forEach((ms, i) => ms.forEach(m => { m.userData.step = i; }));
 for (const [n, m] of Object.entries(body)) m.userData.step = stepOfBody[n];
@@ -1295,8 +1683,7 @@ const pickEl = document.getElementById('pick');
 const picker = new THREE.Raycaster();
 let downAt = null;
 renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
-renderer.domElement.addEventListener('pointerup', e => {
-  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
+function hitAt(e) {
   const r = renderer.domElement.getBoundingClientRect();
   picker.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1,
                                          -(e.clientY - r.top) / r.height * 2 + 1), camera);
@@ -1304,14 +1691,32 @@ renderer.domElement.addEventListener('pointerup', e => {
   // first solid one behind it, as it looks; a see-through part only when
   // nothing solid is behind it
   const hits = picker.intersectObjects(allMeshes.filter(m => m.visible), false);
-  const hit = hits.find(h => !h.object.material.transparent) || hits[0];
+  return hits.find(h => !h.object.material.transparent) || hits[0];
+}
+/* a double-click on a part makes the point under it the one the view
+   turns about: the view slides across to center it, no nearer and no
+   turn, so getting round the other side of something is one drag */
+renderer.domElement.addEventListener('dblclick', e => {
+  const hit = hitAt(e);
+  if (!hit) return;
+  const d = hit.point.clone().sub(controls.target);
+  cam = { segs: [{ a: { t: controls.target.clone(), p: camera.position.clone() },
+                   b: { t: hit.point.clone(), p: camera.position.clone().add(d) }, d: 0.35 }], s: 0, t: 0 };
+});
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
+  const hit = hitAt(e);
   // the background: nothing selected, every part its own colour again
   if (!hit) { pickEl.style.display = 'none'; select(null); return; }
   select(hit.object);
-  const [name, note] = hit.object.userData.label || ['', ''];
+  // a wire's third line is its length, end to end
+  const [name, note, len] = hit.object.userData.label || ['', ''];
   const at = hit.object.userData.step;
   pickEl.innerHTML = `<div><b>${name}</b>${note ? `<div class="sub">${note}</div>` : ''}` +
-    (at !== undefined ? `<button id="pickgo">Go to install step ${at + 1}</button>` : '') + '</div>';
+    (len ? `<div class="sub len">${len}</div>` : '') +
+    (at !== undefined ? `<div class="sub at">Installed in step ${at + 1}: ${pretty(STEPS[at].title)}</div>`
+      + `<button id="pickgo">Go to step ${at + 1}</button>` : '')
+    + '</div>';
   if (at !== undefined) document.getElementById('pickgo').onclick = () => go(at, false);
   pickEl.prepend(thumb.domElement);
   pickEl.style.display = 'flex';
@@ -1334,7 +1739,7 @@ function drawThumb(src) {
   mat.depthTest = true;
   const m = new THREE.Mesh(src.geometry, mat);
   // its outline is the one already worked out for the main view
-  m.add(new THREE.LineSegments(src.children[0].geometry,
+  if (src.children[0]?.isLineSegments) m.add(new THREE.LineSegments(src.children[0].geometry,
     new THREE.LineBasicMaterial({ color: src.userData.edge || '#333' })));
   m.matrixAutoUpdate = false; m.matrix.copy(src.matrixWorld); m.userData.thumb = true;
   thumbScene.add(m); m.updateMatrixWorld(true);
@@ -1739,6 +2144,7 @@ renderer.setAnimationLoop(now => {
     }
   }
   poseAll(k, Math.min(1, f));
+  showSub();
   // the marked insert moves as the inset's does, not on the step's own clock
   if (howLift && howLift.seat.stud && studOf[k] === howLift.seat) {
     for (const m of howLift.seat.meshes) { studPose(m, howLift.seat, howLift.lift, howLift.turn); m.visible = true; }
@@ -1770,6 +2176,10 @@ window.__assembly = {
   // world-space bounds of a body as the page has posed it
   bounds(n) { const m = body[n]; m.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(m, true); return { min: b.min.toArray(), max: b.max.toArray(), visible: m.visible }; },
+  // world-space bounds of the dashed trace under the tray, as posed
+  traceBounds() { if (!links) return null; links.mesh.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(links.mesh, true);
+    return { min: b.min.toArray(), max: b.max.toArray(), visible: links.mesh.visible }; },
   hwVisible(i) { return hwOf[i].map(m => m.visible); },
   hwBounds(i) { return hwOf[i].map(m => { m.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(m, true); return [b.min.toArray(), b.max.toArray()]; }); },
@@ -1780,6 +2190,14 @@ window.__assembly = {
   // where a world point lands on the screen, in client pixels
   screen(p) { const v = new THREE.Vector3(...p).project(camera), r = renderer.domElement.getBoundingClientRect();
     return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
+  // a wire's visible pieces, each as a world point along its middle
+  wirePieces(wid) { return hwOf.flat().filter(m => m && m.userData.wid === wid && m.visible).map(m => {
+    m.updateMatrixWorld(true); const a = m.geometry.getAttribute('position');
+    return [0.2, 0.3, 0.4, 0.5, 0.6].map(f => new THREE.Vector3()
+      .fromBufferAttribute(a, Math.floor(a.count * f / 3) * 3).applyMatrix4(m.matrixWorld).toArray()); }); },
+  // what is selected: each mesh's wire, if it is one, and whether it is drawn
+  selected() { return hwOf.flat().filter(m => m && m.userData.selected)
+    .map(m => ({ wid: m.userData.wid || null, visible: m.visible, color: '#' + m.material.color.getHexString() })); },
 };
 </script>
 </body>

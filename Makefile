@@ -33,7 +33,7 @@ PY := $(HOME)/.claude/skills/3d-print-check/.venv/bin/python
 # assembly page links the parts mat it writes, which follows the steps. Nothing the UI reads should depend on
 # somebody remembering a command.
 build:
-	cd tools && $(PY) build_designs.py && $(PY) extract_meta.py && $(PY) previews.py && $(PY) versions.py && $(PY) knot_page.py && $(PY) jig_mat.py && $(PY) build_local.py
+	cd tools && $(PY) build_designs.py && $(PY) extract_meta.py && $(PY) previews.py && $(PY) versions.py && $(PY) knot_page.py && $(PY) jig_mat.py && $(PY) wire_labels.py && $(PY) build_local.py
 
 .PHONY: test
 test:

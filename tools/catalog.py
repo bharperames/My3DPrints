@@ -610,7 +610,15 @@ PARTS = [
        # 56.0.0: the XIAO held closer: its window 0.1 over the board across
        # and 0.1 past its far end, and the hooks over it printing 1.6 over
        # the ledge, not 1.8.
-       version="56.0.0",
+       # 57.0.0: the controller box, its lid and its tray stand at 135, on
+       # the home sensor's side of the drive's corner, not 15 -- the same
+       # solids turned, so each one's size in the assembly's frame moved;
+       # the motor's cable is cut 28 cm past where it leaves the base.
+       # 58.0.0: from Brett's wiring of the tray -- its wire holes 1.8, not
+       # 1.6, and at each of the XIAO's pads the window's wall stands back
+       # and the ledge is cut away for the soldered fillet; the ring's
+       # magnet pocket chamfered at its first-layer mouth.
+       version="58.0.0",
        # what stands on little: the mount screw is an 11:1 lever on its
        # head, the hex nut 7 mm2 of first layer, the drive block 58 mm
        # tall on its lid face
