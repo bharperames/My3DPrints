@@ -16,10 +16,12 @@ The shop's server holds one Jig and the page talks to it (serve.py,
     python tools/jig_control.py flash          # build and load the XIAO
 """
 import glob
+import hashlib
 import json
 import math
 import os
 import queue
+import re
 import shutil
 import subprocess
 import sys
@@ -136,18 +138,97 @@ def find_port():
     return ports[0] if ports else None
 
 
-def flash(port=None):
-    """Compile the program for the XIAO and load it. Returns the log."""
+# Which server process this is: the page starts its log over when it
+# changes, as it does when the server restarts itself on new code.
+BOOT = time.time()
+
+# What the ESP32-S3 prints when it cannot run the program. With nothing it
+# can start (a load cut off partway leaves a half-written image) it resets
+# and says so again about every tenth of a second, which floods the log; in
+# its loader it waits for a program and runs nothing until reset.
+NO_PROGRAM = re.compile(r"No bootable app partitions|app partition slot \d+ is not bootable")
+IN_LOADER = re.compile(r"waiting for download")
+# the boot report's lines, held back while the board has no program: one
+# explanation in the log instead of fifteen lines ten times a second
+BOOT_REPORT = re.compile(r"ESP-ROM:|^Build:|^rst:0x|^Saved PC:|^SPIWP:|^mode:(DIO|QIO|DOUT|QOUT)|"
+                         r"^load:0x|^entry 0x|^E \(\d+\) (esp_image|boot):")
+
+
+def source_print():
+    """The program file's fingerprint, as a number: the board reports the
+    one it was compiled from in its hello, so the page can tell a board
+    running an older program than the file from one that is up to date."""
+    with open(os.path.join(FIRMWARE, "orbital_jig.ino"), "rb") as f:
+        return int(hashlib.sha256(f.read()).hexdigest()[:8], 16)
+
+
+def _run_streaming(args, on_line, timeout=600):
+    """Run arduino-cli, handing each line of its output to `on_line` as it
+    comes -- esptool redraws its progress with carriage returns, so those
+    end a line too. Returns (exit code, the output's tail)."""
+    p = subprocess.Popen([ARDUINO_CLI] + args, stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)
+    killer = threading.Timer(timeout, p.kill)
+    killer.start()
+    out, buf = [], b""
+    try:
+        while True:
+            chunk = p.stdout.read1(4096)
+            if not chunk:
+                break
+            buf += chunk
+            *lines, buf = re.split(rb"[\r\n]", buf)
+            for ln in lines:
+                text = ln.decode(errors="replace").strip()
+                if text:
+                    out.append(text)
+                    # progress is news, not the job: a fault in reporting it
+                    # must never stop esptool halfway through writing the chip
+                    try:
+                        on_line(text)
+                    except Exception as e:  # noqa: BLE001
+                        out.append(f"(progress report failed: {e})")
+        p.wait()
+    finally:
+        killer.cancel()
+    return p.returncode, "\n".join(out)[-3000:]
+
+
+def flash(port=None, progress=None):
+    """Compile the program for the XIAO and load it. Returns the log.
+    `progress(stage, **kw)`, if given, hears each stage as it starts and
+    the load's percentage as esptool reports it."""
+    say = progress or (lambda stage, **kw: None)
     port = port or find_port()
     if not port:
         raise RuntimeError("no XIAO on USB: plug it in with a data cable")
+    # the fingerprint rides in a header beside the program, so only the
+    # program recompiles -- a define on the command line would change the
+    # build's options and rebuild the whole ESP32 core every time
+    with open(os.path.join(FIRMWARE, "fw_src.h"), "w") as f:
+        f.write("// written by Load the program (tools/jig_control.py flash): the\n"
+                "// fingerprint of orbital_jig.ino this build was made from\n"
+                f"#define FW_SRC {source_print()}u\n")
     build = os.path.join(ROOT, "firmware", "build")
     out = []
-    for args in (["compile", "-b", FQBN, "--build-path", build, FIRMWARE],
-                 ["upload", "-b", FQBN, "-p", port, "--input-dir", build, FIRMWARE]):
-        r = subprocess.run([ARDUINO_CLI] + args, capture_output=True, text=True, timeout=600)
-        out.append((r.stdout + r.stderr)[-3000:])
-        if r.returncode:
+    last = [-100]
+
+    def heard(text):
+        if "Connecting" in text and last[0] < 0:
+            say("loading", what="connecting to the XIAO")
+        m = re.search(r"Writing at .*?(\d+(?:\.\d+)?) ?%", text)
+        if m:
+            pct = int(float(m.group(1)))
+            if pct >= last[0] + 2 or (pct == 100 and last[0] != 100):
+                last[0] = pct
+                say("loading", pct=pct)
+
+    for stage, args in (("compiling", ["compile", "-b", FQBN, "--build-path", build, FIRMWARE]),
+                        ("loading", ["upload", "-b", FQBN, "-p", port, "--input-dir", build, FIRMWARE])):
+        say(stage)
+        code, tail = _run_streaming(args, heard if stage == "loading" else (lambda t: None))
+        out.append(tail)
+        if code:
             raise RuntimeError("\n".join(out))
     return "\n".join(out)
 
@@ -224,7 +305,10 @@ class SerialLink:
             while b"\n" in buf:
                 line, buf = buf.split(b"\n", 1)
                 self.on_line(line.decode("utf-8", "replace").rstrip("\r"))
-        self.on_line("~{\"closed\":1}")
+        # closed by us, or gone from under us: unplugged, or reset by a load
+        if self.alive:
+            self.alive = False
+            self.on_line("~{\"lost\":1}")
 
     def write(self, line):
         try:
@@ -266,16 +350,42 @@ class Jig:
         self._continue = threading.Event()
         self._abort = threading.Event()
         self.shots = []
+        self.connected_as = None    # (mode, kw): what to reconnect after new code
+        self.flashing = False
+        self.board = None           # 'no program' or 'in loader', from its boot report
+        self.resets = 0             # restarts seen while it has no program
+        self._sent_at = self._answered_at = 0.0
+
+    def idle(self):
+        """Nothing under way that new code would cut short: no capture, no
+        program being loaded, and the last command answered (or two minutes
+        gone, the longest Home)."""
+        running = self.run and self.run.get("state") not in ("done", "stopped", "failed")
+        waiting = self._sent_at > self._answered_at and time.time() - self._sent_at < 120
+        return not (running or self.flashing or waiting)
+
+    def adopt(self, old):
+        """Take over from a Jig made by the previous code: its log and its
+        numbering, so the page carries on, and its connection, made again."""
+        again = old.connected_as if old.link else None
+        old.disconnect()            # first, so nothing it says is numbered after this
+        with old.lock:
+            self.seq, self.log, self.settings = old.seq, old.log, old.settings
+        self._note("reloaded")
+        if again:
+            self.connect(again[0], **again[1])
 
     # the link
     def connect(self, mode="sim", **kw):
         self.disconnect()
         self._abort.clear()
+        self.connected_as = (mode, dict(kw))
         with self.lock:
             self.shots = []
             self.model = None
             self.phone = False
             self.dev = {}
+            self.board, self.resets = None, 0
             if mode == "sim":
                 self.link = SimLink(self._line, **kw)
             else:
@@ -291,6 +401,36 @@ class Jig:
                 self.link.close()
                 self._note("disconnected")
             self.link = None
+
+    def flash(self):
+        """Load the program onto the XIAO. The upload needs the port, so a
+        connection to the XIAO is let go first and made again after."""
+        was = bool(self.link) and self.link.kind == "xiao"
+        t0 = time.time()
+
+        def say(stage, **kw):
+            self._note("flash", stage=stage, t=round(time.time() - t0, 1), **kw)
+
+        self.flashing = True
+        if was:
+            say("letting go of the port")
+            self.disconnect()
+        ok = False
+        try:
+            log = flash(progress=say)
+            ok = True
+            return log
+        except Exception:
+            say("failed")
+            raise
+        finally:
+            if was:
+                say("restarting")
+                time.sleep(1.5)          # the XIAO restarting into the new program
+                self.connect("xiao")
+            self.flashing = False
+            if ok:
+                say("done")
 
     def _line(self, line):
         if not line:
@@ -309,29 +449,66 @@ class Jig:
                     return
                 if "shot" in d:
                     self.shots.append(d)
+                # the XIAO's port went away: say so, rather than go on taking
+                # commands that reach nothing
+                if d.get("lost") and self.link and not getattr(self.link, "alive", True):
+                    self.link = None
+                    self.seq += 1
+                    self.log.append((self.seq, dict(ev="lost", src="mac")))
+                    return
                 self.log.append((self.seq, dict(d, src="sim")))
                 return
             try:
                 d = json.loads(line)
             except ValueError:
                 d = dict(ev="text", text=line)
+                if self._boot_report(line):
+                    return
+            else:
+                self.board = None       # the program is talking: it runs
             if d.get("ev") == "hello":
                 self.dev = d
                 self.phone = d.get("phone", False)
             if d.get("ev") == "phone":
                 self.phone = d.get("connected", False)
             self.log.append((self.seq, dict(d, src="xiao")))
-        if d.get("ev") not in ("hall", "phone", "note", "text"):
+        if d.get("ev") not in ("hall", "phone", "note", "text", "ble"):
+            self._answered_at = time.time()
             self.replies.put(d)
 
-    def _note(self, what, **kw):
+    def _boot_report(self, line):
+        """Read the board's boot report for whether it can run the program;
+        True for a line to keep out of the log. The first time it has none,
+        or is waiting in its loader, a note says what to do, once."""
+        if NO_PROGRAM.search(line):
+            if "No bootable" in line:
+                self.resets += 1
+            if self.board != "no program":
+                self.board = "no program"
+                self._note("board", state=self.board)
+            return True
+        if IN_LOADER.search(line):
+            if self.board != "in loader":
+                self.board = "in loader"
+                self._note("board", state=self.board)
+            return False
+        return self.board == "no program" and bool(BOOT_REPORT.search(line))
+
+    def _note(self, ev, /, **kw):
+        # `ev` positional-only: a note may carry its own `what` (a load
+        # stage does), and a keyword of the same name collided with it --
+        # which failed a load halfway and left the XIAO in its bootloader
         with self.lock:
             self.seq += 1
-            self.log.append((self.seq, dict(ev=what, src="mac", **kw)))
+            self.log.append((self.seq, dict(kw, ev=ev, src="mac")))
 
     def send(self, line):
         if not self.link:
             raise RuntimeError("not connected")
+        # a hello moves nothing, and a board with no program never answers
+        # it: it must not hold back new code for two minutes (idle())
+        if line != "hello":
+            self._sent_at = time.time()
         with self.lock:
             self.seq += 1
             self.log.append((self.seq, dict(ev="sent", src="mac", line=line)))
@@ -458,7 +635,9 @@ class Jig:
                 connected=bool(self.link),
                 mode=self.link.kind if self.link else None,
                 port=getattr(self.link, "port", None),
-                dev=self.dev, model=self.model, phone=self.phone,
+                dev=self.dev, src=source_print(), boot=BOOT,
+                model=self.model, phone=self.phone,
+                board=self.board, resets=self.resets,
                 run=self.run, settings=self.settings, seq=self.seq,
                 log=[dict(d, seq=s) for s, d in self.log if s > since],
                 trace=[dict(d, seq=s) for s, d in self.trace if s > ts],

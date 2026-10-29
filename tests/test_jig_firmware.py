@@ -188,5 +188,54 @@ class TestSimulated(unittest.TestCase):
             jig.disconnect()
 
 
+
+class BoardWithNoProgram(unittest.TestCase):
+    """A load cut off partway leaves the XIAO restarting ten times a second,
+    each time printing its boot report: the controller says so once and keeps
+    the report out of the log, and lets go when the program answers."""
+
+    # as the XIAO printed it on 2026-10-29, after a load that failed halfway
+    LOOP = ["\ufffd\x01\x11\x02\x00\ufffdESP-ROM:esp32s3-20210327", "Build:Mar 27 2021",
+            "rst:0x3 (RTC_SW_SYS_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)", "Saved PC:0x403cd0e9", "SPIWP:0xee",
+            "mode:DIO, clock div:1", "load:0x3fce2820,len:0x10cc", "load:0x403c8700,len:0xc2c",
+            "load:0x403cb700,len:0x30b0", "entry 0x403c88b8",
+            "E (106) esp_image: invalid segment length 0x2000e136",
+            "E (107) boot: OTA app partition slot 0 is not bootable",
+            "E (107) esp_image: image at 0x340000 has invalid magic byte (nothing flashed here?)",
+            "E (112) boot: OTA app partition slot 1 is not bootable",
+            "E (117) boot: No bootable app partitions in the partition table"]
+
+    def test_a_boot_loop_is_one_note_not_a_flood(self):
+        jig = C.Jig()
+        for _ in range(50):
+            for line in self.LOOP:
+                jig._line(line)
+        st = jig.state()
+        self.assertEqual(st["board"], "no program")
+        self.assertEqual(st["resets"], 50)
+        notes = [(d["ev"], d["state"]) for d in st["log"] if d.get("ev") == "board"]
+        self.assertEqual(notes, [("board", "no program")])
+        self.assertLess(len(st["log"]), 2 * len(self.LOOP), "the restarts after the first still reach the log")
+        jig._line('{"ev":"hello","fw":"1.3.1"}')
+        self.assertIsNone(jig.state()["board"])
+
+    def test_the_loader_is_named_and_its_lines_kept(self):
+        jig = C.Jig()
+        for line in ("rst:0x15 (USB_UART_CHIP_RESET),boot:0x0 (DOWNLOAD(USB/UART0))", "Saved PC:0x40034f84",
+                     "waiting for download"):
+            jig._line(line)
+        st = jig.state()
+        self.assertEqual(st["board"], "in loader")
+        self.assertEqual(sum(d.get("ev") == "text" for d in st["log"]), 3)
+
+    def test_a_hello_does_not_hold_back_new_code(self):
+        jig = C.Jig()
+        jig.link = type("Quiet", (), {"kind": "xiao", "write": lambda self, line: None})()
+        jig.send("hello")
+        self.assertTrue(jig.idle())
+        jig.send("home")
+        self.assertFalse(jig.idle())
+
+
 if __name__ == "__main__":
     unittest.main()

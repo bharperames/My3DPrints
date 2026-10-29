@@ -1,7 +1,8 @@
 /* The phone end of the Bluetooth shutter, simulated. What the program
    builds -- a HID device with a consumer-control report -- is accepted as
    built; what reaches the simulated phone is the report's value on
-   notify(): 0xE9 down is the shutter, as the Camera app takes it. The
+   notify(): bit 5 of the first byte down is the shutter (Volume Increment
+   in the sixteen-key media report), as the Camera app takes it. The
    phone connects when the simulation says it does (sim.cpp). */
 #pragma once
 #include <cstddef>

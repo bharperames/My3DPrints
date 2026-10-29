@@ -417,7 +417,7 @@ void delayMicroseconds(uint32_t us) { advance(us); }
 
 void BLECharacteristic::notify() {
   if (!phone_up) return;
-  if (value[0] == 0xE9 && shutter_down_at < 0) {
+  if ((value[0] & 0x20) && shutter_down_at < 0) {     // bit 5: Volume Increment (1.4.1)
     shutter_down_at = tms();
     double th, g, gp;
     geneva(M.psi + slip, th, g, gp);

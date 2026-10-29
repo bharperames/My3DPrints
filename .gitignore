@@ -33,3 +33,4 @@ tools/index_out/
 # simulator, both rebuilt from firmware/ whenever they are asked for.
 firmware/build/
 firmware/sim/build/
+firmware/orbital_jig/fw_src.h

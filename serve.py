@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, unquote, quote
 
@@ -125,20 +126,84 @@ def _genus(m):
 # be an APPS table pointing at a checkout in the developer's home
 # directory, which made a card's link work on exactly one machine.
 # The orbital jig's controller, real or simulated: one per server, made
-# on first use, and never reloaded -- it holds a USB port or a running
-# simulator, and the capture under way on it.
+# on first use. It holds a USB port or a running simulator and the capture
+# under way on it, so new code is taken up only while it is idle: a new
+# Jig from the reloaded module takes over the old one's log and makes its
+# connection again. Brett restarted the server for every fix until it did.
 _JIG = None
+_JIG_AT = 0.0
 _JIG_LOCK = threading.Lock()
+_JIG_SRC = os.path.join(ROOT, "tools", "jig_control.py")
 
 
 def _jig():
-    global _JIG
+    global _JIG, _JIG_AT
     with _JIG_LOCK:
         if _JIG is None:
             sys.path.insert(0, os.path.join(ROOT, "tools"))
             import jig_control
             _JIG = jig_control.Jig()
+            _JIG_AT = os.path.getmtime(_JIG_SRC)
+        elif os.path.getmtime(_JIG_SRC) > _JIG_AT and _JIG.idle():
+            import importlib
+            import jig_control
+            try:
+                importlib.reload(jig_control)
+            except Exception as e:  # noqa: BLE001 -- a half-saved file: keep the old
+                print(f"jig_control did not reload: {e}", flush=True)
+                return _JIG
+            print("reloading: jig_control.py", flush=True)
+            _JIG_AT = os.path.getmtime(_JIG_SRC)
+            new = jig_control.Jig()
+            try:
+                new.adopt(_JIG)
+            except Exception as e:  # noqa: BLE001 -- the new one stands; the page can reconnect
+                print(f"jig_control reloaded, but reconnecting failed: {e}", flush=True)
+            _JIG = new
         return _JIG
+
+
+# serve.py itself cannot be reloaded under its own feet: when it changes,
+# and the jig is idle, the server starts itself over in the same process
+# (same PID, so `make stop` still finds it), telling the new one what the
+# jig was connected to.
+_STARTED = time.time()
+
+
+def _restart_on_change():
+    me = os.path.abspath(__file__)
+    while True:
+        time.sleep(2)
+        try:
+            if os.path.getmtime(me) <= _STARTED:
+                continue
+            with _JIG_LOCK:
+                jig = _JIG
+            if jig is not None and not jig.idle():
+                continue
+            again = jig.connected_as if jig is not None and jig.link else None
+            if jig is not None:
+                jig.disconnect()
+            print("restarting: serve.py changed", flush=True)
+            env = dict(os.environ)
+            env.pop("JIG_RECONNECT", None)
+            if again:
+                env["JIG_RECONNECT"] = json.dumps(again)
+            os.execve(sys.executable, [sys.executable] + sys.argv, env)
+        except Exception as e:  # noqa: BLE001 -- never take the server down over this
+            print(f"restart check: {e}", flush=True)
+
+
+def _reconnect_from_restart():
+    again = os.environ.get("JIG_RECONNECT")
+    if not again:
+        return
+    try:
+        mode, kw = json.loads(again)
+        time.sleep(1)
+        _jig().connect(mode, **kw)
+    except Exception as e:  # noqa: BLE001
+        print(f"reconnect after restart: {e}", flush=True)
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -238,7 +303,7 @@ class Handler(SimpleHTTPRequestHandler):
                     if k in b:
                         jig.settings[k] = max(0.0, min(30.0, float(b[k])))
             elif op == "flash":
-                return self._json(200, {"ok": True, "log": jc.flash()})
+                return self._json(200, {"ok": True, "log": jig.flash()})
             elif op == "ports":
                 return self._json(200, {"ok": True, "port": jc.find_port()})
             else:
@@ -251,6 +316,8 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/jig/cmd":
             return self._jig_cmd()
+        if url.path == "/jig/wire-labels":
+            return self._wire_labels(send=True)
         if url.path == "/shop/receive":
             return self._receive(url)
         if url.path in ("/shop/layout", "/shop/build"):
@@ -379,8 +446,30 @@ class Handler(SimpleHTTPRequestHandler):
             json.dump(notes, f, indent=1)
         self._json(200, {"ok": True, "notes": notes[cid]})
 
+    def _wire_labels(self, send=False):
+        """The orbital jig's wire flags, made fresh from the wires as they
+        are now: the strip itself, or (send) printed on the label printer."""
+        out = os.path.join(MODELS, "orbital-jig", "wire-labels.png")
+        cmd = [sys.executable, os.path.join(ROOT, "tools", "wire_labels.py"), "--out", out]
+        r = subprocess.run(cmd + (["--print"] if send else []), cwd=ROOT,
+                           capture_output=True, text=True, timeout=120)
+        if r.returncode != 0:
+            return self._json(500, {"ok": False, "error": (r.stdout + r.stderr)[-1500:]})
+        if send:
+            return self._json(200, {"ok": True, "log": r.stdout.strip()})
+        with open(out, "rb") as f:
+            body = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == "/jig/wire-labels.png":
+            return self._wire_labels()
         if url.path == "/jig/state":
             q = parse_qs(url.query)
             since = int(q.get("since", ["0"])[0])
@@ -795,4 +884,7 @@ if __name__ == "__main__":
     app = find_app()
     print(f"Fidget Shelf →  http://localhost:{PORT}")
     print(f"Bambu Studio: {'found (' + app + '.app)' if app else 'NOT FOUND — print buttons will explain'}")
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    threading.Thread(target=_restart_on_change, daemon=True).start()
+    threading.Thread(target=_reconnect_from_restart, daemon=True).start()
+    httpd.serve_forever()

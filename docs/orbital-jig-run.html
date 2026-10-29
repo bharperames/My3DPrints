@@ -62,6 +62,25 @@
   input[type=range] { accent-color:var(--accent); }
 
   .wrap { display:grid; grid-template-columns:minmax(0,1fr) 340px; min-height:calc(100vh - 100px); }
+  /* On the Mac the cockpit fits its window: the page itself never scrolls,
+     each card scrolls inside itself where it has more than it can show. */
+  @media (min-width: 1201px) {
+    html, body { height:100%; }
+    body { display:flex; flex-direction:column; overflow:hidden; }
+    .wrap { flex:1 1 auto; min-height:0; }
+    main { min-height:0; overflow:hidden; padding-bottom:12px;
+      grid-template-rows:minmax(0, 1.25fr) minmax(0, 1fr); align-content:stretch; }
+    aside { min-height:0; overflow-y:auto; padding-bottom:16px; }
+  }
+  main .row { display:flex; gap:12px; min-height:0; }
+  main .row > .card { flex:1 1 0; }
+  main .top > #serialCard { flex:1 1 0; }
+  main .top > #circuitCard { flex:1.45 1 0; }
+  main .bottom > #signalsCard { flex:1.5 1 0; }
+  .card.fill { display:flex; flex-direction:column; min-height:0; }
+  .card.fill > :last-child { min-height:0; }
+  #circuitCard { padding:6px 8px; }
+  #progCard, #simPanel { overflow-y:auto; }
   @media (max-width: 1200px) { .wrap { grid-template-columns:1fr; } }
   main { padding:12px 14px 28px; display:grid; gap:12px; align-content:start; min-width:0; }
   aside { padding:12px 14px 28px; border-left:1px solid var(--line); background:var(--surface); display:grid; gap:14px; align-content:start; }
@@ -77,6 +96,24 @@
   .cl { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin-right:2px; }
   .cmdbar button { padding:4px 10px; }
   .help { font-size:12px; color:var(--ink-soft); flex:1 1 260px; min-width:0; }
+  /* the XIAO's last answer, where the buttons are: the Serial panel is a scroll away */
+  /* four rows of history, the newest at the bottom, in a well with its own
+     edge and a scrollbar that stays drawn (the Mac hides an unstyled one) */
+  .reply { flex:1 0 100%; font-size:13px; line-height:19px; height:calc(4 * 19px + 10px); overflow-y:scroll;
+    padding:4px 4px 4px 10px; color:var(--ink-soft); background:var(--well);
+    border:1px solid var(--edge); border-radius:6px; margin:2px 0 4px; }
+  .reply::-webkit-scrollbar { width:12px; }
+  .reply::-webkit-scrollbar-track { background:var(--surface-2); border-left:1px solid var(--line); border-radius:0 6px 6px 0; }
+  .reply::-webkit-scrollbar-thumb { background:var(--edge); border-radius:6px; border:3px solid var(--surface-2); min-height:24px; }
+  .reply::-webkit-scrollbar-thumb:hover { background:var(--ink-soft); }
+  .reply > div { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .reply > div:hover { white-space:normal; }
+  .reply b { color:var(--ink); font-weight:600; }
+  .reply .err b { color:var(--risk); }
+  #portStatus.stale { color:var(--warn); font-weight:600; }
+  /* the button in the warning's own amber, so the two read as one message */
+  #flash.stale { background:var(--warn); border-color:var(--warn); color:var(--bg); font-weight:600; }
+  #flash.stale:hover { filter:brightness(1.08); }
   .inst { display:grid; grid-template-columns:68px minmax(0,1fr); gap:8px; align-items:start;
     padding:6px 0; border-top:1px solid var(--line); }
   .inst svg { width:68px; height:auto; display:block; }
@@ -94,16 +131,17 @@
   .gauge b { position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--risk); }
   .gauge b.soft { background:var(--warn); }
 
-  #circuit { width:100%; height:auto; display:block; }
+  #circuit { width:100%; height:100%; display:block; min-height:0; flex:1 1 auto; }
   #circuit .pin { cursor:help; } #circuit .pin:hover text { fill:var(--ink); }
   #scope { width:100%; height:300px; display:block; background:var(--well); border-radius:6px; }
+  @media (min-width: 1201px) { #scope { height:auto; flex:1 1 auto; min-height:120px; } }
   .bar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:2px 0 8px; }
 
   .prog { list-style:none; margin:0; padding:0; font-size:12.5px; }
   .prog li { padding:3px 8px; border-left:3px solid transparent; color:var(--ink-soft); }
   .prog li.on { border-left-color:var(--accent); color:var(--ink); background:var(--surface-2); font-weight:600; }
   .prog li code { font-size:11px; color:var(--ink-soft); font-weight:400; }
-  #log { height:200px; overflow:auto; font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+  #log { height:200px; overflow:auto; flex:1 1 auto; min-height:0; font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
     background:var(--well); border-radius:6px; padding:6px 8px; }
   #log .mac { color:var(--w-blue); } #log .xiao { color:var(--ink); } #log .sim { color:var(--ink-soft); }
   #log .err { color:var(--risk); }
@@ -147,7 +185,7 @@
       <button data-mode="sim" class="on" title="The XIAO's program compiled for the Mac, driving simulated parts">Simulated</button>
       <button data-mode="xiao" title="The real controller, plugged into this Mac by USB">Real XIAO</button>
     </span>
-    <button class="primary" id="connect">Connect</button>
+    <button class="primary" id="connect" title="Picking Simulated or Real XIAO connects to it; this starts it again (after replugging the XIAO, or changing the simulation's settings)">Connect</button>
     <button id="disconnect" disabled>Disconnect</button>
     <span class="sub" id="connStatus">not connected</span>
   </span>
@@ -172,28 +210,35 @@
   <span class="cg"><span class="cl">Ring</span>
     <button data-cmd="home" data-help="Home: find the magnet and stop centered on it, stop 0">Home</button>
     <button data-cmd="step 1" data-help="Step +1: one driver turn, the ring moves one 10° stop">Step +1</button>
-    <button data-cmd="step 2" data-help="Step +2: two stops, 20°, without stopping between">Step +2</button></span>
+    <button data-cmd="step 2" data-help="Step +2: two stops, 20°, without stopping between">Step +2</button>
+    <button data-cmd="step -1" data-help="Step −1: one driver turn backward, the ring goes back one 10° stop">Step −1</button>
+    <button data-cmd="step -2" data-help="Step −2: two stops back, 20°, without stopping between">Step −2</button></span>
   <span class="cg"><span class="cl">Phone</span>
     <button data-cmd="shoot" data-help="Shoot: volume-up over Bluetooth, the Camera app takes a photo">Shoot</button></span>
   <span class="cg"><span class="cl">Bench</span>
+    <button data-cmd="jog -300" data-help="Jog back: run the motor backward for 0.3 s whatever happens, no jam check — to free a stuck ring. Home again after.">Jog ◀</button>
+    <button data-cmd="jog 300" data-help="Jog forward: run the motor forward for 0.3 s whatever happens, no jam check — to free a stuck ring, and to see whether the encoder counts. Home again after.">Jog ▶</button>
     <button data-cmd="spin 3" data-help="Spin 3: three driver turns with nothing on the shaft, to check the motor, its wiring and the encoder">Spin 3</button>
     <button data-cmd="hall" data-help="Read switch: is the magnet over the home switch right now?">Read switch</button>
-    <button data-cmd="hello" data-help="Hello: the program's version, and whether it is homed">Hello</button>
+    <button data-cmd="hello" data-help="Status: program version, homed and at which stop, phone, switch, driver fault. Moves nothing.">Status</button>
     <button class="simonly" id="wave" data-help="Wave magnet: pass the magnet over the switch by hand (simulation)">Wave magnet</button>
     <label class="chk simonly" data-help="Motor alone: the gearmotor on the bench, nothing on its shaft, the switch loose on its lead. Takes effect on Connect."><input type="checkbox" id="bench"> motor alone</label></span>
   <span class="help" id="cmdHelp">Hover a command to see what it does.</span>
+  <div class="reply" id="reply" aria-live="polite"><div>The XIAO's answers show here, newest at the bottom; scroll up for older ones. Every raw line is in Serial below.</div></div>
 </div>
 <div class="wrap">
 <main>
-    <section class="card" id="circuitCard">
-      <h2>Circuit <span class="sub">every wire as the tray lays it out, with what it carries</span></h2>
-      <svg id="circuit" viewBox="0 0 960 450" role="img" aria-label="Wiring diagram with live line values"></svg>
-      <p class="note">Values are the simulation's: logic lines read 3.3 V high or 0 V low; the motor's terminals are worked out from the current through the driver's switches and the 4.7 Ω.</p>
+  <div class="row top">
+    <section class="card fill" id="serialCard">
+      <h2>Serial <span class="sub">Mac to XIAO, and back</span></h2>
+      <div id="log"></div>
     </section>
-
-
-  <div class="row2">
-    <section class="card">
+    <section class="card fill" id="circuitCard">
+      <svg id="circuit" viewBox="0 30 960 422" role="img" aria-label="Wiring diagram with live line values"><title>Every wire as the tray lays it out. Values are the simulation's: logic lines read 3.3 V high or 0 V low; the motor's terminals are worked out from the current through the driver's switches and the 4.7 Ω.</title></svg>
+    </section>
+  </div>
+  <div class="row bottom">
+    <section class="card fill" id="signalsCard">
       <h2>Signals <span class="sub" id="scopeNote"></span></h2>
       <div class="bar">
         <span class="sub">window</span>
@@ -205,19 +250,12 @@
       </div>
       <canvas id="scope"></canvas>
     </section>
-    <section class="card">
+    <section class="card fill" id="progCard">
       <h2>The program <span class="sub">where the XIAO's code is now</span></h2>
       <ul class="prog" id="prog"></ul>
       <p class="note" id="progNote"></p>
     </section>
-  </div>
-
-  <div class="row2">
-    <section class="card">
-      <h2>Serial <span class="sub">Mac to XIAO, and back</span></h2>
-      <div id="log"></div>
-    </section>
-    <section class="card" id="simPanel">
+    <section class="card fill" id="simPanel">
       <h2>What if <span class="sub">break the simulated jig on purpose</span></h2>
       <div class="whatif" id="whatif"></div>
       <div class="bar" style="margin-top:10px">
@@ -359,14 +397,37 @@ function derive(s) {
 }
 
 // --- the annunciator ------------------------------------------------------------
+const BOARD_HELP = {
+  'no program': 'The XIAO has no program it can start: a load was cut off partway, so it restarts over and over. ' +
+    'Click Load the program. If the load cannot reach it, unplug the XIAO, hold B while plugging it back in, load, then press R.',
+  'in loader': 'The XIAO is waiting in its loader and runs nothing until it gets a program or is reset: ' +
+    'click Load the program, or press R on the board to start the program it has.',
+};
 function updateLamps() {
   const s = lastSample && lastSample.s;
   const c = S && S.connected;
   const d = s ? derive(s) : null;
   const L = [
     ['LINK', c ? 'on' : '', c ? (S.mode === 'sim' ? 'Connected to the simulated jig' : `Connected to the XIAO on ${S.port}`) : 'Not connected'],
-    ['HOMED', s ? (s.homed ? 'on' : 'amb') : '', 'The program knows where stop 0 is'],
-    ['PHONE', s ? (s.phone ? 'on' : 'amb') : (S && S.phone ? 'on' : ''), 'The phone is linked over Bluetooth'],
+    // the real XIAO sends no trace: its own replies say whether it is homed,
+    // and the server keeps whether the phone is linked
+    ...(() => {
+      const real = c && S.mode === 'xiao';
+      const homed = s ? s.homed : real ? realHomed : null;
+      const phone = s ? s.phone : real ? !!S.phone : null;
+      const deaf = real && phone && realListening === false;
+      return [
+        [homed === false ? 'NOT HOMED' : 'HOMED', homed == null ? '' : homed ? 'on' : 'amb',
+         homed ? 'The program knows where stop 0 is' : 'Home before stepping: the program does not know where stop 0 is'],
+        [phone === false ? 'NO PHONE' : deaf ? 'PHONE NOT LISTENING' : 'PHONE', phone == null ? '' : phone && !deaf ? 'on' : 'amb',
+         deaf ? 'The phone is connected but has not subscribed to shutter presses, or the link is not encrypted: it will ignore Shoot. Forget This Device on the phone and pair again.'
+         : phone ? 'The phone is linked to the XIAO over Bluetooth and listening for the shutter'
+               : 'No phone linked over Bluetooth: on the phone, Settings → Bluetooth → Orbital Jig'],
+      ];
+    })(),
+    // the XIAO's boot report: no program it can start, or waiting in its loader
+    ...(c && S.mode === 'xiao' && S.board ? [[S.board === 'no program' ? 'NO PROGRAM' : 'IN LOADER',
+      S.board === 'no program' ? 'bad' : 'amb', BOARD_HELP[S.board]]] : []),
     [d ? d.dir.toUpperCase() : 'MOTOR', d ? (d.driving ? 'on' : d.braking ? 'amb' : '') : '', 'What the DRV8833 is doing to the motor'],
     [d ? (d.locked ? 'LOCKED' : 'PIN DRIVING') : 'GENEVA', d ? (d.locked ? 'on' : 'amb') : '', 'Locked: the ring cannot turn. Pin driving: it is moving.'],
     ['FAULT', s && s.p[5] === 0 ? 'bad' : '', "The DRV8833's nFAULT line: over-current or over-temperature"],
@@ -759,7 +820,7 @@ const AN = [
 function drawScope() {
   const cv = $('#scope'), dpr = devicePixelRatio || 1;
   const W = cv.clientWidth, H = cv.clientHeight;
-  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
   const x = cv.getContext('2d');
   x.setTransform(dpr, 0, 0, dpr, 0, 0);
   x.clearRect(0, 0, W, H);
@@ -876,10 +937,188 @@ function logLine(cls, text) {
   while (L.childNodes.length > 400) L.removeChild(L.firstChild);
   if (stick) L.scrollTop = L.scrollHeight;
 }
+// The last command and what came back, in words, under the buttons.
+let lastSent = '';
+let pendingRow = null;      // the row of a command still waiting for its answer
+function replyRow() {
+  const R = $('#reply');
+  if (pendingRow) { const r = pendingRow; pendingRow = null; r.innerHTML = ''; return r; }
+  const r = document.createElement('div');
+  R.appendChild(r);
+  while (R.childNodes.length > 200) R.removeChild(R.firstChild);
+  return r;
+}
+function showReply(d) {
+  const R = $('#reply');
+  const stick = R.scrollTop + R.clientHeight >= R.scrollHeight - 4;
+  if (d.src === 'mac') {
+    lastSent = d.line === 'hello' ? 'status' : d.line;     // the board's word for it is hello
+    if (pendingRow) pendingRow = null;                      // its answer never came: leave it waiting
+    const r = replyRow();
+    r.append(`${lastSent}: `, Object.assign(document.createElement('b'), { textContent: 'waiting for the XIAO…' }));
+    pendingRow = r;
+    if (stick) R.scrollTop = R.scrollHeight;
+    return;
+  }
+  const { src, seq, ev, ...rest } = d;
+  const say = ev === 'error' ? d.what : ev === 'note' ? d.what : inWords(d) ||
+    (Object.keys(rest).length ? `${ev} — ` + Object.entries(rest).map(([k, v]) => `${k} ${Array.isArray(v) ? v.join(', ') : v}`).join(' · ') : ev);
+  const row = replyRow();
+  row.className = ev === 'error' ? 'err' : '';
+  const answers = { stepped: `step ${d.k}`, homed: 'home', jogged: `jog ${d.ms}`, shot: 'shoot', hello: 'status',
+                    turn: 'spin', done: d.cmd, ble: 'bluetooth', phone: 'bluetooth' }[ev] || lastSent;
+  row.append(answers ? `${answers}: ` : '', Object.assign(document.createElement('b'), { textContent: (ev === 'error' ? 'failed — ' : '') + say }));
+  // a command the board does not know is one added since its program was loaded
+  if (ev === 'error' && /^unknown command/.test(d.what || ''))
+    row.append(' — the XIAO is running an older program than the file: click Load the program, then try again.');
+  if (stick) R.scrollTop = R.scrollHeight;
+}
+// Whether the real XIAO is homed, from what it says: its hello, a Home,
+// and anything that moves the ring without counting stops.
+let realHomed = null;
+// whether the phone is listening: subscribed to the report, on an encrypted
+// link. null until the board has said (programs before 1.3.0 never do).
+let realListening = null, realSub = null, realEnc = null;
+function trackListening(d) {
+  if (d.src === 'mac' && (d.ev === 'connected' || d.ev === 'disconnected' || d.ev === 'lost')) realSub = realEnc = null;
+  if (d.src !== 'xiao') return;
+  if (d.ev === 'hello' && d.subscribed != null) { realSub = d.subscribed; realEnc = d.encrypted; }
+  if (d.ev === 'phone') { realSub = d.connected ? 0 : null; realEnc = d.connected ? -1 : null; }
+  // only the shutter's report counts: 'shutter' from 1.4.0, report 2 before
+  if (d.ev === 'ble' && d.what === 'subscribed' && (d.report === 'shutter' || d.report === 2)) realSub = d.value;
+  if (d.ev === 'ble' && d.what === 'security') realEnc = d.status === 0 && d.encrypted ? 1 : 0;
+  if (d.ev === 'shot' && d.subscribed != null) { realSub = d.subscribed; realEnc = d.encrypted; }
+  realListening = realSub == null ? null : realSub > 0 && realEnc === 1;
+}
+function trackHomed(d) {
+  if (d.src === 'mac' && (d.ev === 'connected' || d.ev === 'disconnected' || d.ev === 'lost')) realHomed = null;
+  if (d.src !== 'xiao') return;
+  if (d.ev === 'hello') realHomed = !!d.homed;
+  else if (d.ev === 'homed' || d.ev === 'stepped') realHomed = true;
+  else if (d.ev === 'jogged' || d.ev === 'turn') realHomed = false;
+  else if (d.ev === 'error' && (lastSent === 'home' || /^not homed/.test(d.what))) realHomed = false;
+}
+// A reply as a sentence: where the ring is, whether the switch agrees, how
+// long it took. The Serial panel keeps the XIAO's own words.
+const sec = ms => `${(ms / 1000).toFixed(2)} s`;
+const where = stop => {
+  const n = 36, k = ((stop % n) + n) % n;
+  return k === 0 ? `stop 0, home (0°)` : `stop ${k} (${k * 10}°)`;
+};
+const turns = c => `${(Math.abs(c) / 3575.04).toFixed(2)} turn`;
+function switchSays(on, expected) {
+  if (expected) return on ? 'switch on, as it should be at home ✓' : 'switch OFF — at home it should be on ✗';
+  return on ? 'switch ON — away from home it should be off ✗' : 'switch off, as it should be away from home ✓';
+}
+function inWords(d) {
+  switch (d.ev) {
+    case 'stepped': {
+      const k = Math.abs(d.k), way = d.k > 0 ? 'forward' : 'back';
+      let t = `moved ${k} stop${k > 1 ? 's' : ''} ${way} to ${where(d.stop)} · ${switchSays(d.hall, d.home_expected)}` +
+        ` · ${d.ms.length > 1 ? 'each step ' + d.ms.map(sec).join(', ') : 'took ' + sec(d.ms[0])}`;
+      if (d.home_check_deg != null) t += ` · home check: the lock is ${Math.abs(d.home_check_deg).toFixed(1)}° of the driver's turn from where the counts put it${Math.abs(d.home_check_deg) <= 5 ? ' ✓' : ' — more than 5°, worth a look'}`;
+      return t;
+    }
+    case 'homed':
+      return `home found after ${d.turns.toFixed(2)} driver turns in ${sec(d.ms)}, now at ${where(0)} · ` +
+        `${switchSays(d.hall, true)} · the magnet held the switch on for ${(d.off - d.on).toLocaleString()} counts (${Math.round((d.off - d.on) * 360 / 3575.04)}° of the driver)` +
+        (d.flicker ? ` · the switch dropped out ${d.flicker / 2 >= 1 ? Math.floor(d.flicker / 2) + ' time' + (d.flicker >= 4 ? 's' : '') : 'once'} on the way and was ignored` : '');
+    case 'jogged':
+      return `ran ${d.ms > 0 ? 'forward' : 'back'} ${sec(Math.abs(d.ms))}: ${Math.abs(d.counts).toLocaleString()} counts, ${turns(d.counts)}` +
+        `${Math.abs(d.counts) < 100 ? ' — barely moved: something is stopping it' : ''} · switch ${d.hall ? 'on' : 'off'} · home again before stepping`;
+    case 'turn':
+      return `spin turn ${d.n}: ${d.counts.toLocaleString()} counts in ${sec(d.ms)}`;
+    case 'done': return d.cmd === 'spin' ? 'spin finished' : 'done';
+    case 'shot': {
+      if (d.sent == null) return 'the shutter press went to the phone';
+      // what the board found when it pressed: was the phone listening?
+      if (d.sent.some(x => x !== 0)) return `✗ Bluetooth refused the press (code ${d.sent.join(', ')}): the phone may have just gone`;
+      if (!d.subscribed) return '✗ sent, but the phone has not subscribed to shutter presses, so it ignores them: on the phone, Bluetooth → Orbital Jig → ⓘ → Forget This Device, then pair again';
+      if (d.encrypted !== 1) return '✗ sent, but the link is not encrypted, and iOS ignores a shutter it has not paired with: Forget This Device on the phone, then pair again';
+      return 'press sent, and the phone was listening (subscribed, encrypted' + (d.bonded ? ', paired' : '') + ') ✓ — no photo means the Camera app was not open in front, unlocked';
+    }
+    case 'ble':
+      if (d.what === 'subscribed') {
+        // a program before 1.4.0 numbered them: 1 the keyboard, 2 the shutter
+        if (d.report === 1) return d.value ? 'the phone subscribed to the keyboard report' : 'the phone stopped listening to the keyboard report';
+        return d.value ? 'the phone subscribed to shutter presses ✓' : 'the phone stopped listening for shutter presses';
+      }
+      if (d.what === 'read the report map') return 'the phone read the report map: it is setting the jig up as a keyboard\'s media keys';
+      if (d.what === 'security') return d.status === 0 && d.encrypted ? `the link is encrypted${d.bonded ? ' and the phone is paired' : ''} ✓` : `✗ pairing failed (status ${d.status}): Forget This Device on the phone, then pair again`;
+      return null;
+    case 'hall': return d.on ? 'switch on: the magnet is over it' : 'switch off: no magnet over it';
+    case 'stopped': return 'motor stopped';
+    case 'phone': return d.connected ? 'phone connected' : 'phone disconnected';
+    case 'hello':
+      return `program ${d.fw} · ${d.homed ? `homed, at ${where(d.stop)}` : 'not homed'} · phone ${d.phone ? 'connected' : 'not connected'} · switch ${d.hall ? 'on' : 'off'}${d.fault ? ' · DRIVER FAULT' : ''}`;
+  }
+  return null;
+}
+// Is the board's program the file as it is now? Its hello carries the
+// fingerprint of the file it was compiled from (none before 1.1.1), and the
+// server reports the file's own. Load the program is what makes them agree.
+let flashing = false;
+// Loading the program, a stage at a time: what the server reports as each
+// begins, and the seconds since, counted here between its reports.
+const FLASH_STAGES = {
+  'letting go of the port': 'letting go of the port',
+  compiling: '1 of 3 · compiling the program',
+  loading: '2 of 3 · loading it onto the XIAO',
+  restarting: '3 of 3 · the XIAO restarting, reconnecting',
+};
+let flashAt = null, flashTick = null;
+function showFlash(d) {
+  if (!flashing) return;
+  if (d.stage === 'done' || d.stage === 'failed') return;
+  const label = FLASH_STAGES[d.stage] || d.stage;
+  if (!flashAt || flashAt.stage !== d.stage) flashAt = { stage: d.stage, label, t0: performance.now() };
+  if (d.what) flashAt.what = d.what;
+  if (d.pct != null) { flashAt.pct = d.pct; flashAt.what = null; }
+  renderFlash();
+}
+function renderFlash() {
+  if (!flashing || !flashAt) return;
+  const secs = Math.floor((performance.now() - flashAt.t0) / 1000);
+  const extra = flashAt.pct != null ? ` ${flashAt.pct}%` : flashAt.what ? `: ${flashAt.what}` : '';
+  $('#portStatus').textContent = `${flashAt.label}${extra} · ${secs} s`;
+}
+function programStale() {
+  return !!(S && S.connected && S.mode === 'xiao' && S.dev && S.dev.fw && typeof S.src === 'number' && S.dev.src !== S.src);
+}
+function showProgramState() {
+  if (flashing || !S || S.mode !== 'xiao' || !S.connected) return;
+  if (S.board) {
+    $('#portStatus').textContent = S.board === 'no program'
+      ? `no program it can start${S.resets > 1 ? ` (restarted ${S.resets} times)` : ''}: load it` : 'waiting in its loader: load it, or press R';
+    $('#portStatus').classList.add('stale');
+    $('#flash').classList.add('stale');
+    $('#flash').title = BOARD_HELP[S.board];
+    return;
+  }
+  if (!(S.dev && S.dev.fw)) return;
+  // a shop server started before the check existed reports no fingerprint:
+  // it cannot say, and it also loads programs without one, so say that
+  if (typeof S.src !== 'number') {
+    $('#portStatus').textContent = '';
+    $('#portStatus').classList.remove('stale');
+    $('#flash').classList.remove('stale');
+    return;
+  }
+  const stale = programStale();
+  $('#portStatus').textContent = stale ? 'older than the file: load it' : 'matches the file';
+  $('#portStatus').classList.toggle('stale', stale);
+  $('#flash').classList.toggle('stale', stale);
+  $('#flash').title = stale ? 'The XIAO is running an older program than orbital_jig.ino: compile the file and load it'
+    : 'Compile the program and load it onto the XIAO plugged into this Mac';
+}
 function describe(d) {
   if (d.src === 'mac') {
     if (d.ev === 'sent') return ['mac', `→ ${d.line}`];
     if (d.ev === 'run') return null;
+    if (d.ev === 'flash') return d.pct != null || d.what ? null : ['mac', `· load the program: ${d.stage}${d.stage === 'done' ? ` in ${Math.round(d.t)} s` : ''}`];
+    if (d.ev === 'board') return ['err', '· ' + BOARD_HELP[d.state] + (d.state === 'no program' ? ' (Its boot messages are held back from here until it runs.)' : '')];
+    if (d.ev === 'reloaded') return ['mac', '· the shop picked up new jig code and reconnected'];
+    if (d.ev === 'lost') return ['err', '· the XIAO went away (unplugged?): plug it in and pick Real XIAO again'];
     return ['mac', `· ${d.ev}${d.mode ? ' ' + d.mode : ''}${d.port ? ' ' + d.port : ''}`];
   }
   if (d.src === 'sim') {
@@ -915,19 +1154,26 @@ function drawWhatIf() {
 }
 
 // --- polling ----------------------------------------------------------------
-let polling = false;
+let polling = false, lastBoot = null;
 async function poll() {
   if (polling) return;
   polling = true;
   try {
     const r = await fetch(`/jig/state?since=${since}`);
     S = await r.json();
+    // the server started itself over on new code: its log numbering did too
+    if (S.boot && lastBoot && S.boot !== lastBoot && since > S.seq) { lastBoot = S.boot; since = 0; return; }
+    if (S.boot) lastBoot = S.boot;
     for (const d of S.log) {
       if (d.mark) { marks.push(d); lastMark = d.mark; }
       if (d.shot) shots.push(d);
       if (d.model) showModel(d.model);
+      if (d.ev === 'flash') showFlash(d);
+      trackHomed(d);
+      trackListening(d);
       const line = describe(d);
       if (line) logLine(line[0], line[1]);
+      if (d.src === 'xiao' || (d.src === 'mac' && d.ev === 'sent')) showReply(d);
     }
     if (!$('#freeze').checked) for (const d of S.trace) samples.push(d);
     if (S.trace.length && !$('#freeze').checked) lastSample = S.trace[S.trace.length - 1];
@@ -938,8 +1184,11 @@ async function poll() {
     if (S.model) showModel(S.model);
     $('#connStatus').textContent = S.connected ? (S.mode === 'sim' ? 'simulated' : `real XIAO on ${S.port}`) +
       (S.dev && S.dev.fw ? ` · program ${S.dev.fw}` : '') : 'not connected';
-    $('#connect').disabled = !!S.connected;
-    $('#disconnect').disabled = !S.connected;
+    $('#connect').textContent = S.connected ? 'Reconnect' : 'Connect';
+    showProgramState();
+    $('#connect').disabled = switching;
+    $('#disconnect').disabled = !S.connected || switching;
+    if (S.connected && S.mode !== mode && !switching) pickMode(S.mode);
     document.querySelectorAll('#prog li').forEach(li => li.classList.toggle('on', li.dataset.m === lastMark));
     $('#progNote').textContent = S.mode === 'sim' ? 'Marked in the program as it runs: the same file the XIAO runs, compiled for the Mac.' :
       S.mode === 'xiao' ? 'The real XIAO answers commands; the simulation is what shows its insides.' : '';
@@ -980,16 +1229,37 @@ function showMode(m) {
   $('#simPanel').style.display = sim ? '' : 'none';
   document.querySelectorAll('.simonly').forEach(e => { e.style.display = sim ? '' : 'none'; });
 }
-seg('modeSeg', 'mode', m => {
+// Picking a mode connects to it: the buttons always drive what the toggle
+// shows, never a simulator left running behind a lit "Real XIAO".
+function pickMode(m) {
   mode = m;
+  document.querySelectorAll('#modeSeg button').forEach(o => o.classList.toggle('on', o.dataset.mode === m));
   showMode(m);
-  if (m === 'xiao') post({ op: 'ports' }).then(j => {
-    $('#portStatus').textContent = j.port ? `found ${j.port}` : 'no XIAO on USB yet';
-  });
+}
+let switching = false;
+seg('modeSeg', 'mode', async m => {
+  pickMode(m);
+  if (S && S.connected && S.mode === m) return;
+  switching = true;
+  try {
+    if (m === 'xiao') {
+      const j = await post({ op: 'ports' });
+      $('#portStatus').textContent = j.port ? `found ${j.port}` : 'no XIAO on USB: plug it in with a data cable';
+      if (!j.port) {
+        if (S && S.connected) await post({ op: 'disconnect' });
+        logLine('err', '· no XIAO on USB: plug it in with a data cable, then pick Real XIAO again');
+        return;
+      }
+    }
+    await connectTo(m);
+  } finally {
+    switching = false;
+  }
 });
 seg('speedSeg', 'speed', v => { speed = +v; if (S && S.mode === 'sim') post({ op: 'control', line: `speed ${v}` }); });
 seg('winSeg', 'win', v => { win = +v; });
-$('#connect').addEventListener('click', async () => {
+$('#connect').addEventListener('click', () => connectTo(mode));
+async function connectTo(mode) {
   samples.length = 0; marks.length = 0; shots.length = 0; modelShown = false; lastSample = null;
   for (const k of Object.keys(wiState)) delete wiState[k];
   drawWhatIf();
@@ -998,7 +1268,7 @@ $('#connect').addEventListener('click', async () => {
                                            start_psi: Math.round(Math.random() * 360) });
   logLine('mac', mode === 'sim' ? '· starting the simulated jig' : '· opening the XIAO\'s port');
   await post(body);
-});
+}
 $('#disconnect').addEventListener('click', () => post({ op: 'disconnect' }));
 document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => post({ op: 'send', line: b.dataset.cmd })));
 $('#wave').addEventListener('click', () => post({ op: 'control', line: 'wave' }));
@@ -1011,10 +1281,18 @@ $('#continue').addEventListener('click', () => post({ op: 'continue' }));
 $('#stopRun').addEventListener('click', () => post({ op: 'stop' }));
 $('#flash').addEventListener('click', async () => {
   $('#flash').disabled = true;
-  $('#portStatus').textContent = 'compiling and loading — about a minute';
+  flashing = true;
+  flashAt = { stage: 'start', label: 'starting', t0: performance.now() };
+  flashTick = setInterval(renderFlash, 250);
+  $('#portStatus').classList.remove('stale');
+  renderFlash();
+  const t0 = performance.now();
   const j = await post({ op: 'flash' });
+  clearInterval(flashTick);
   $('#flash').disabled = false;
-  $('#portStatus').textContent = j.ok ? 'loaded' : 'did not load: see the log';
+  flashing = false;
+  flashAt = null;
+  $('#portStatus').textContent = j.ok ? `loaded in ${Math.round((performance.now() - t0) / 1000)} s` : 'did not load: see the log';
   if (j.log) logLine(j.ok ? 'mac' : 'err', j.log.split('\n').slice(-4).join(' / '));
 });
 for (const id of ['settle', 'after']) $('#' + id).addEventListener('change', () =>
